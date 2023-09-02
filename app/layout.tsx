@@ -11,8 +11,6 @@ export const metadata: Metadata = {
   description: "Build by gamers for gamers.",
 };
 
-// TODO figure out why there's a disconnect in the value of theme between server / client components
-
 export default function RootLayout({
   children,
 }: {
