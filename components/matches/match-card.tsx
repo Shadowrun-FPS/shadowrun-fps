@@ -81,15 +81,14 @@ export default function MatchCard() {
             {players.map((player) => {
               const playerRank = getPlayerRank(player.elo);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
-              console.log("playerRankIcon: ", playerRankIcon);
               return (
                 <div className="flex p-2 transition duration-300 rounded hover:bg-gray-100">
                   <Image
                     className="mr-2 not-prose"
                     src={`/rankedicons/${playerRankIcon}.png`}
                     alt={`${playerRank} Rank`}
-                    width={24}
-                    height={24}
+                    width={20}
+                    height={20}
                   />
                   <div
                     className="font-semibold overflow-hidden whitespace-nowrap max-w-[10ch]"
