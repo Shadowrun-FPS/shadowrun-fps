@@ -1,0 +1,149 @@
+{
+  "match_id": "SR12345",
+  "game_mode": "Attrition",
+  "queue_id": "Queue1",
+  "maps": [
+    {
+      "map_name": "Nerve Center Small",
+      "game_mode": "Attrition",
+      "scored_by": {
+        "Team1": "Player1",
+        "Team2": "Player3"
+      },
+      "players": [
+        {
+          "player_id": "Player1",
+          "team": "Team1",
+          "kills": 10,
+          "deaths": 3,
+          "resurrects": 2,
+          "total_money_earned": 500
+        },
+        {
+          "player_id": "Player2",
+          "team": "Team1",
+          "kills": 8,
+          "deaths": 5,
+          "resurrects": 1,
+          "total_money_earned": 450
+        },
+        {
+          "player_id": "Player3",
+          "team": "Team2",
+          "kills": 7,
+          "deaths": 4,
+          "resurrects": 3,
+          "total_money_earned": 480
+        },
+        {
+          "player_id": "Player4",
+          "team": "Team2",
+          "kills": 9,
+          "deaths": 6,
+          "resurrects": 0,
+          "total_money_earned": 420
+        }
+      ],
+      "result": "Team1 Wins",
+      "final_scores": {
+        "Team1": 18,
+        "Team2": 16
+      }
+    },
+    {
+      "map_name": "Pinnacle",
+      "game_mode": "Attrition",
+      "scored_by": {
+        "Team1": "Player1",
+        "Team2": "Player3"
+      },
+      "players": [
+        {
+          "player_id": "Player1",
+          "team": "Team1",
+          "kills": 10,
+          "deaths": 3,
+          "resurrects": 2,
+          "total_money_earned": 500
+        },
+        {
+          "player_id": "Player2",
+          "team": "Team1",
+          "kills": 8,
+          "deaths": 5,
+          "resurrects": 1,
+          "total_money_earned": 450
+        },
+        {
+          "player_id": "Player3",
+          "team": "Team2",
+          "kills": 7,
+          "deaths": 4,
+          "resurrects": 3,
+          "total_money_earned": 480
+        },
+        {
+          "player_id": "Player4",
+          "team": "Team2",
+          "kills": 9,
+          "deaths": 6,
+          "resurrects": 0,
+          "total_money_earned": 420
+        }
+      ],
+      "result": "Team2 Wins",
+      "final_scores": {
+        "Team1": 18,
+        "Team2": 16
+      }
+    },
+    {
+      "map_name": "Lobby",
+      "game_mode": "Extraction",
+      "scored_by": {
+        "Team1": "Player1",
+        "Team2": "Player3"
+      },
+      "players": [
+        {
+          "player_id": "Player1",
+          "team": "Team1",
+          "kills": 10,
+          "deaths": 3,
+          "resurrects": 2,
+          "total_money_earned": 500
+        },
+        {
+          "player_id": "Player2",
+          "team": "Team1",
+          "kills": 8,
+          "deaths": 5,
+          "resurrects": 1,
+          "total_money_earned": 450
+        },
+        {
+          "player_id": "Player3",
+          "team": "Team2",
+          "kills": 7,
+          "deaths": 4,
+          "resurrects": 3,
+          "total_money_earned": 480
+        },
+        {
+          "player_id": "Player4",
+          "team": "Team2",
+          "kills": 9,
+          "deaths": 6,
+          "resurrects": 0,
+          "total_money_earned": 420
+        }
+      ],
+      "result": "Team1 Wins",
+      "final_scores": {
+        "Team1": 18,
+        "Team2": 16
+      }
+    }
+  ],
+  "winner": "Team1"
+}
