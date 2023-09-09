@@ -4,12 +4,12 @@ import IconDiscordLogo from "@/components/logos/discord-logo";
 
 function Header() {
   return (
-    <header className="p-4">
-      <nav className="mx-auto flex max-w-7xl items-center justify-between p-6 lg:px-8">
-        <IconDiscordLogo />
+    <header className="flex items-center justify-between p-6 mx-auto max-w-7xl lg:px-8">
+      <IconDiscordLogo />
+      <nav>
         <MainNavMenu />
-        <ThemeToggle />
       </nav>
+      <ThemeToggle />
     </header>
   );
 }
