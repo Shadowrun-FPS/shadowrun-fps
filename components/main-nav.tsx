@@ -76,10 +76,10 @@ export function MainNavMenu() {
                 Join up to play on PC for free!
               </ListItem>
               <ListItem href="/docs/installation" title="Installation">
-                How to install the game for PC
+                How to install the game for PC.
               </ListItem>
-              <ListItem href="/docs/errors" title="Errors and Info">
-                How to fix common errors with the game
+              <ListItem href="/docs/troubleshoot" title="Troubleshooting">
+                How to fix common errors with the game.
               </ListItem>
             </ul>
           </NavigationMenuContent>
