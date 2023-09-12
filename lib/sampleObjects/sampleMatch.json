@@ -2,6 +2,7 @@
   "match_id": "SR12345",
   "game_mode": "Attrition",
   "queue_id": "Queue1",
+  "ranked": true,
   "maps": [
     {
       "map_name": "Nerve Center Small",
