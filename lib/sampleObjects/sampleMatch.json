@@ -1,150 +1,181 @@
 {
-  "match_id": "SR12345",
-  "game_mode": "Attrition",
-  "queue_id": "Queue1",
+  "matchId": "SR12345",
+  "gameMode": "Attrition",
+  "queueId": "Queue1",
   "ranked": true,
   "maps": [
     {
-      "map_name": "Nerve Center Small",
-      "game_mode": "Attrition",
-      "scored_by": {
-        "Team1": "Player1",
-        "Team2": "Player3"
+      "mapName": "Nerve Center Small",
+      "gameMode": "Attrition",
+      "scoredBy": {
+        "team1": "Player1",
+        "team2": "Player3"
       },
       "players": [
         {
-          "player_id": "Player1",
+          "playerId": "Player1",
           "team": "Team1",
           "kills": 10,
           "deaths": 3,
           "resurrects": 2,
-          "total_money_earned": 500
+          "totalMoneyEarned": 500
         },
         {
-          "player_id": "Player2",
+          "playerId": "Player2",
           "team": "Team1",
           "kills": 8,
           "deaths": 5,
           "resurrects": 1,
-          "total_money_earned": 450
+          "totalMoneyEarned": 450
         },
         {
-          "player_id": "Player3",
+          "playerId": "Player3",
           "team": "Team2",
           "kills": 7,
           "deaths": 4,
           "resurrects": 3,
-          "total_money_earned": 480
+          "totalMoneyEarned": 480
         },
         {
-          "player_id": "Player4",
+          "playerId": "Player4",
           "team": "Team2",
           "kills": 9,
           "deaths": 6,
           "resurrects": 0,
-          "total_money_earned": 420
+          "totalMoneyEarned": 420
         }
       ],
       "result": "Team1 Wins",
       "final_scores": {
-        "Team1": 18,
-        "Team2": 16
+        "team1": 18,
+        "team2": 16
       }
     },
     {
-      "map_name": "Pinnacle",
-      "game_mode": "Attrition",
-      "scored_by": {
-        "Team1": "Player1",
-        "Team2": "Player3"
+      "mapName": "Pinnacle",
+      "gameMode": "Attrition",
+      "scoredBy": {
+        "team1": "Player1",
+        "team2": "Player3"
       },
       "players": [
         {
-          "player_id": "Player1",
+          "playerId": "Player1",
           "team": "Team1",
           "kills": 10,
           "deaths": 3,
           "resurrects": 2,
-          "total_money_earned": 500
+          "totalMoneyEarned": 500
         },
         {
-          "player_id": "Player2",
+          "playerId": "Player2",
           "team": "Team1",
           "kills": 8,
           "deaths": 5,
           "resurrects": 1,
-          "total_money_earned": 450
+          "totalMoneyEarned": 450
         },
         {
-          "player_id": "Player3",
+          "playerId": "Player3",
           "team": "Team2",
           "kills": 7,
           "deaths": 4,
           "resurrects": 3,
-          "total_money_earned": 480
+          "totalMoneyEarned": 480
         },
         {
-          "player_id": "Player4",
+          "playerId": "Player4",
           "team": "Team2",
           "kills": 9,
           "deaths": 6,
           "resurrects": 0,
-          "total_money_earned": 420
+          "totalMoneyEarned": 420
         }
       ],
       "result": "Team2 Wins",
       "final_scores": {
-        "Team1": 18,
-        "Team2": 16
+        "team1": 18,
+        "team2": 16
       }
     },
     {
-      "map_name": "Lobby",
-      "game_mode": "Extraction",
-      "scored_by": {
-        "Team1": "Player1",
-        "Team2": "Player3"
+      "mapName": "Lobby",
+      "gameMode": "Extraction",
+      "scoredBy": {
+        "team1": "Player1",
+        "team2": "Player3"
       },
       "players": [
         {
-          "player_id": "Player1",
+          "playerId": "Player1",
           "team": "Team1",
           "kills": 10,
           "deaths": 3,
           "resurrects": 2,
-          "total_money_earned": 500
+          "totalMoneyEarned": 500
         },
         {
-          "player_id": "Player2",
+          "playerId": "Player2",
           "team": "Team1",
           "kills": 8,
           "deaths": 5,
           "resurrects": 1,
-          "total_money_earned": 450
+          "totalMoneyEarned": 450
         },
         {
-          "player_id": "Player3",
+          "playerId": "Player3",
           "team": "Team2",
           "kills": 7,
           "deaths": 4,
           "resurrects": 3,
-          "total_money_earned": 480
+          "totalMoneyEarned": 480
         },
         {
-          "player_id": "Player4",
+          "playerId": "Player4",
           "team": "Team2",
           "kills": 9,
           "deaths": 6,
           "resurrects": 0,
-          "total_money_earned": 420
+          "totalMoneyEarned": 420
         }
       ],
       "result": "Team1 Wins",
-      "final_scores": {
-        "Team1": 18,
-        "Team2": 16
+      "finalScores": {
+        "team1": 18,
+        "team2": 16
       }
     }
   ],
+  "players": [
+    {
+      "playerId": "Player1",
+      "discordId": "player1",
+      "stats": [
+        {
+          "teamSize": 2,
+          "elo": 1000,
+          "kills": 10,
+          "deaths": 1,
+          "resurrects": 1,
+          "avgMoney": 123
+        }
+      ]
+    },
+    {
+      "playerId": "Player2",
+      "discordId": "player2",
+      "stats": [
+        {
+          "teamSize": 2,
+          "elo": 1114,
+          "kills": 13,
+          "deaths": 13,
+          "resurrects": 5,
+          "avgMoney": 33
+        }
+      ]
+    }
+  ],
+  "teamSize": 2,
   "winner": "Team1"
 }

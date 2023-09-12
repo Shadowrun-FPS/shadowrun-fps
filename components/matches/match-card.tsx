@@ -8,10 +8,10 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
+import { IPlayer, IMatch } from "@/types/types";
 
-interface Player {
-  name: string;
-  elo: number;
+interface MatchCardProps {
+  match: IMatch;
 }
 
 const rankIcons: { [char: string]: string } = {
@@ -22,7 +22,11 @@ const rankIcons: { [char: string]: string } = {
   platinum: "platinum_v002",
 };
 
-function getPlayerRank(elo: number): string {
+function getPlayerRank(player: IPlayer, matchTeamSize: number): string {
+  const getTeamSizeStats = player.stats.find(
+    (stat) => stat.teamSize === matchTeamSize
+  );
+  const elo = getTeamSizeStats?.elo ?? 0;
   if (elo >= 0 && elo <= 1099) {
     return "Bronze";
   } else if (elo >= 1100 && elo <= 1299) {
@@ -38,48 +42,21 @@ function getPlayerRank(elo: number): string {
   }
 }
 
-function generateRandomName(): string {
-  const nameLength = Math.floor(Math.random() * 24) + 1;
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-  let name = "";
-
-  for (let i = 0; i < nameLength; i++) {
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    name += characters.charAt(randomIndex);
-  }
-
-  return name;
-}
-
-function generatePlayers(numPlayers: number): Player[] {
-  const players: Player[] = [];
-
-  for (let i = 0; i < numPlayers; i++) {
-    const elo = Math.floor(Math.random() * 501) + 1000; // Generate random Elo between 1000 and 1500
-    const name = generateRandomName();
-    players.push({ name, elo });
-  }
-
-  return players;
-}
-
-const numberOfPlayers = 10; // You can change this number as per your requirement
-const players = generatePlayers(numberOfPlayers);
-
-export default function MatchCard() {
+export default function MatchCard({ match }: MatchCardProps) {
+  const { players } = match;
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Match 1</CardTitle>
-        <CardDescription>Match Description</CardDescription>
+        <CardTitle>{match.matchId}</CardTitle>
+        <CardDescription>{match.gameMode}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="max-w-md mx-auto prose">
+        <div className="max-w-md mx-auto">
           <div className="grid grid-cols-2 gap-x-4">
             <h5 className="p-2">Team 1</h5>
             <h5 className="p-2">Team 2</h5>
-            {players.map((player) => {
-              const playerRank = getPlayerRank(player.elo);
+            {players.map((player: IPlayer) => {
+              const playerRank = getPlayerRank(player, match.teamSize);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
               return (
                 <div className="flex p-2 transition duration-300 rounded hover:bg-gray-100">
@@ -92,9 +69,9 @@ export default function MatchCard() {
                   />
                   <div
                     className="font-semibold overflow-hidden whitespace-nowrap max-w-[10ch]"
-                    title={player.name}
+                    title={player.playerId}
                   >
-                    {player.name}
+                    {player.playerId}
                   </div>
                 </div>
               );
