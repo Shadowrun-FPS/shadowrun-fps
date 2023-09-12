@@ -16,14 +16,14 @@ import {
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "View Matches",
-    href: "/matches",
-    description: "Pick up games in progress.",
+    title: "Play Ranked",
+    href: "/ranked",
+    description: "Ranked pick up games.",
   },
   {
-    title: "Queue",
-    href: "/queue",
-    description: "Join a pick up game!",
+    title: "Play Casual",
+    href: "/casual",
+    description: "Join a casual pick up game!",
   },
   {
     title: "Leaderboard",
@@ -58,10 +58,10 @@ export function MainNavMenu() {
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
                   <a
-                    className="flex h-full w-full select-none flex-col justify-end rounded-md bg-gradient-to-b from-muted/50 to-muted p-6 no-underline outline-none focus:shadow-md"
+                    className="flex flex-col justify-end w-full h-full p-6 no-underline rounded-md outline-none select-none bg-gradient-to-b from-muted/50 to-muted focus:shadow-md"
                     href="/"
                   >
-                    <div className="mb-2 mt-4 text-lg font-medium">
+                    <div className="mt-4 mb-2 text-lg font-medium">
                       Shadowrun FPS
                     </div>
                     <p className="text-sm leading-tight text-muted-foreground">
@@ -85,7 +85,7 @@ export function MainNavMenu() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Pick up Games</NavigationMenuTrigger>
+          <NavigationMenuTrigger>Play</NavigationMenuTrigger>
           <NavigationMenuContent>
             <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               {components.map((component) => (
@@ -101,9 +101,9 @@ export function MainNavMenu() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <Link href="/chat" legacyBehavior passHref>
+          <Link href="/support" legacyBehavior passHref>
             <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Chat
+              Support
             </NavigationMenuLink>
           </Link>
         </NavigationMenuItem>
@@ -128,7 +128,7 @@ const ListItem = React.forwardRef<
           {...props}
         >
           <div className="text-sm font-medium leading-none">{title}</div>
-          <p className="line-clamp-2 text-sm leading-snug text-muted-foreground">
+          <p className="text-sm leading-snug line-clamp-2 text-muted-foreground">
             {children}
           </p>
         </a>
