@@ -48,7 +48,10 @@ export default function MatchCard({ match }: MatchCardProps) {
     <Card>
       <CardHeader>
         <CardTitle>{match.matchId}</CardTitle>
-        <CardDescription>{match.gameMode}</CardDescription>
+        <CardDescription>
+          {match.gameMode}
+          <p>Elapsed time: 10:32</p>
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="max-w-md mx-auto">
@@ -59,7 +62,7 @@ export default function MatchCard({ match }: MatchCardProps) {
               const playerRank = getPlayerRank(player, match.teamSize);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
               return (
-                <div className="flex p-2 transition duration-300 rounded hover:bg-gray-100">
+                <div className="flex p-2 transition duration-300 rounded hover:bg-accent">
                   <Image
                     className="mr-2 not-prose"
                     src={`/rankedicons/${playerRankIcon}.png`}
@@ -77,7 +80,6 @@ export default function MatchCard({ match }: MatchCardProps) {
               );
             })}
           </div>
-          <p>Elapsed time: 10:32</p>
         </div>
       </CardContent>
 
