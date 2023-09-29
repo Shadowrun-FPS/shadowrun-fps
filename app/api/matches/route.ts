@@ -3,7 +3,9 @@ import clientPromise from "@/lib/mongodb";
 
 export async function GET(request: NextRequest) {
   try {
-    const ranked = request.nextUrl.searchParams.get("ranked");
+    const searchParams = request.nextUrl.searchParams;
+    console.log("SearchParams: ", searchParams);
+    const ranked = searchParams.get("ranked");
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
     const matches = await db
