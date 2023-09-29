@@ -1,5 +1,6 @@
 import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
+import { sample4PlayerMatch } from "../../lib/sampleObjects/sampleMatch";
 
 async function getRankedMatches() {
   const res = await fetch(
@@ -12,8 +13,8 @@ async function getRankedMatches() {
 }
 
 export default async function RankedPage() {
-  const data = await getRankedMatches();
-  const { matches } = data;
+  // const data = await getRankedMatches();
+  const matches = [sample4PlayerMatch];
   return (
     <main className="container">
       <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
