@@ -29,8 +29,8 @@ export default function Home() {
           <p>
             <p>
               Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a
-              community dedicated to the FASA Studios' 2007 Shadowrun FPS. It
-              works in 2023!
+              community dedicated to the FASA Studios&apos; 2007 Shadowrun FPS.
+              It works in 2023!
             </p>
           </p>
           <Button>Join a Game</Button>
