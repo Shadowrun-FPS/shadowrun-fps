@@ -1,6 +1,5 @@
 import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
-import { error } from "console";
 
 async function getRankedMatches() {
   const res = await fetch(

@@ -13,6 +13,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
+import { useEffect } from "react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -48,6 +49,20 @@ const components: { title: string; href: string; description: string }[] = [
 ];
 
 export function MainNavMenu() {
+  useEffect(() => {
+    const getMatchData = async () => {
+      const res = await fetch(
+        process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true"
+      );
+      if (!res.ok) {
+        throw new Error("Failed to fetch data");
+      }
+      const data = await res.json();
+      console.log("data: ", data);
+    };
+
+    getMatchData();
+  }, []);
   return (
     <NavigationMenu>
       <NavigationMenuList>
