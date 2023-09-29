@@ -13,11 +13,12 @@ async function getRankedMatches() {
 
 export default async function RankedPage() {
   const data = await getRankedMatches();
-  const matches = data.matches;
+  const matches = data?.matches;
+  console.log("matches: ", matches);
   return (
     <main className="container">
       <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
-      {matches.map((match: MatchResult) => {
+      {matches?.map((match: MatchResult) => {
         return <MatchCard key={match.matchId} match={match} />;
       })}
     </main>
