@@ -2,7 +2,9 @@ import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
 
 async function getRankedMatches() {
-  const res = await fetch("http://localhost:3000/api/matches?ranked=true");
+  const res = await fetch(
+    process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true"
+  );
   if (!res.ok) {
     throw new Error("Failed to fetch data");
   }
