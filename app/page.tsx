@@ -34,7 +34,7 @@ export default function Home() {
           <Button>Join a Game</Button>
         </div>
       </div>
-      <div className="grid max-w-full grid-cols-1 gap-12 p-12 prose dark:prose-invert md:grid-cols-2">
+      <div className="grid max-w-full grid-cols-1 gap-12 p-12 prose bg-muted dark:prose-invert md:grid-cols-2">
         <p>
           Welcome to our Shadowrun FPS Pick Up Game, where corporate espionage
           collides with intense battles. Whether you're a seasoned runner or a

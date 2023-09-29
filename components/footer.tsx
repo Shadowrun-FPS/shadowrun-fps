@@ -6,7 +6,7 @@ const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="py-4 bg-muted">
+    <footer className="py-4">
       <div className="container flex items-center justify-center gap-12 mx-auto prose dark:prose-invert">
         <Link className="no-underline hover:text-blue-600" href="/about">
           About
@@ -18,7 +18,7 @@ const Footer = () => {
           Discord
         </Link>
       </div>
-      <div className="container mx-auto mt-4 text-center">
+      <div className="container mx-auto mt-4 prose text-center dark:prose-invert">
         <p>&copy; {currentYear} Shadowrun FPS. All rights reserved.</p>
       </div>
     </footer>
