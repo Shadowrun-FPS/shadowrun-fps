@@ -8,12 +8,12 @@ async function getRankedMatches() {
   if (!res.ok) {
     throw new Error("Failed to fetch data");
   }
-  return res.json();
+  return await res.json();
 }
 
 export default async function RankedPage() {
-  const matchesRes = await getRankedMatches();
-  const matches = matchesRes;
+  const data = await getRankedMatches();
+  const { matches } = data;
   return (
     <main className="container">
       <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
