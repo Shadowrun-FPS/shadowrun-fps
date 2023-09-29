@@ -7,7 +7,7 @@ async function getRankedMatches() {
     { cache: "no-store" }
   );
   if (!res.ok) {
-    throw new Error("Failed to fetch data");
+    throw new Error("Failed to fetch match data.");
   }
   return await res.json();
 }
@@ -15,10 +15,18 @@ async function getRankedMatches() {
 export default async function RankedPage() {
   const data = await getRankedMatches().catch((error) => {
     console.error(error);
+    return undefined;
   });
-  console.log("data: ", data);
+  if (!data) {
+    return (
+      <main className="container">
+        <h1 className="p-4 text-3xl font-extrabold">
+          Error loading ranked matches.
+        </h1>
+      </main>
+    );
+  }
   const matches = data?.matches;
-  console.log("matches: ", matches);
   return (
     <main className="container">
       <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
