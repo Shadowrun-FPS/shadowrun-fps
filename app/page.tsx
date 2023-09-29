@@ -37,10 +37,10 @@ export default function Home() {
       <div className="grid max-w-full grid-cols-1 gap-12 p-12 prose bg-muted dark:prose-invert md:grid-cols-2">
         <p>
           Welcome to our Shadowrun FPS Pick Up Game, where corporate espionage
-          collides with intense battles. Whether you're a seasoned runner or a
-          rookie, our pick-up games offer the perfect playground to hone skills
-          in a unique blend of first-person shooter chaos and strategic RPG
-          elements.
+          collides with intense battles. Whether you&apos;re a seasoned runner
+          or a rookie, our pick-up games offer the perfect playground to hone
+          skills in a unique blend of first-person shooter chaos and strategic
+          RPG elements.
         </p>
         <p>
           In this dystopian future, mercenaries, hackers, and street samurais
