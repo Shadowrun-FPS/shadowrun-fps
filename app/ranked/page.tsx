@@ -1,5 +1,5 @@
 import MatchCard from "@/components/matches/match-card";
-import { IMatch } from "@/types/types";
+import { MatchResult } from "@/types/types";
 
 async function getRankedMatches() {
   const res = await fetch("http://localhost:3000/api/matches?ranked=true");
@@ -11,11 +11,11 @@ async function getRankedMatches() {
 
 export default async function RankedPage() {
   const matchesRes = await getRankedMatches();
-  const matches = matchesRes.matches;
+  const matches = matchesRes;
   return (
     <main className="container">
       <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
-      {matches.map((match: IMatch) => {
+      {matches.map((match: MatchResult) => {
         return <MatchCard key={match.matchId} match={match} />;
       })}
     </main>

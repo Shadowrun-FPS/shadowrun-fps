@@ -1,47 +1,51 @@
-export interface IPlayer {
+export type PlayerStats = {
+  teamSize: number;
+  elo: number;
+  kills: number;
+  deaths: number;
+  resurrects: number;
+  avgMoney: number;
+};
+
+export type Player = {
   playerId: string;
   discordId: string;
-  stats: [
-    {
-      teamSize: number;
-      elo: number;
-      kills: number;
-      deaths: number;
-      resurrects: number;
-      avgMoney: number;
-    }
-  ];
-}
-export interface IPlayerResults {
+  stats: PlayerStats[];
+};
+
+export type MapScore = {
+  team1: string;
+  team2: string;
+};
+
+export type PlayerInfo = {
   playerId: string;
   team: string;
   kills: number;
   deaths: number;
   resurrects: number;
   totalMoneyEarned: number;
-}
+};
 
-export interface IMapScore {
-  team1: string;
-  team2: string;
-}
-
-export interface IMap {
+export type MapResult = {
   mapName: string;
   gameMode: string;
-  scoredBy: IMapScore;
-  playerResults: IPlayerResults[];
+  scoredBy: MapScore;
+  players: PlayerInfo[];
   result: string;
-  finalScores: IMapScore;
-}
+  finalScores: {
+    team1: number;
+    team2: number;
+  };
+};
 
-export interface IMatch {
+export type MatchResult = {
   matchId: string;
   gameMode: string;
   queueId: string;
   ranked: boolean;
-  maps: IMap[];
-  players: IPlayer[];
+  maps: MapResult[];
+  players: Player[];
   teamSize: number;
   winner: string;
-}
+};
