@@ -8,10 +8,10 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { IPlayer, IMatch } from "@/types/types";
+import { Player, MatchResult } from "@/types/types";
 
 interface MatchCardProps {
-  match: IMatch;
+  match: MatchResult;
 }
 
 const rankIcons: { [char: string]: string } = {
@@ -22,7 +22,7 @@ const rankIcons: { [char: string]: string } = {
   platinum: "platinum_v002",
 };
 
-function getPlayerRank(player: IPlayer, matchTeamSize: number): string {
+function getPlayerRank(player: Player, matchTeamSize: number): string {
   const getTeamSizeStats = player.stats.find(
     (stat) => stat.teamSize === matchTeamSize
   );
@@ -58,11 +58,14 @@ export default function MatchCard({ match }: MatchCardProps) {
           <div className="grid grid-cols-2 gap-x-4">
             <h5 className="p-2">Team 1</h5>
             <h5 className="p-2">Team 2</h5>
-            {players.map((player: IPlayer) => {
+            {players.map((player: Player) => {
               const playerRank = getPlayerRank(player, match.teamSize);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
               return (
-                <div className="flex p-2 transition duration-300 rounded hover:bg-accent">
+                <div
+                  key={player.playerId}
+                  className="flex p-2 transition duration-300 rounded hover:bg-accent"
+                >
                   <Image
                     className="mr-2 not-prose"
                     src={`/rankedicons/${playerRankIcon}.png`}

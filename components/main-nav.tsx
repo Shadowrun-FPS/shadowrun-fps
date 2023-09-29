@@ -65,9 +65,9 @@ export function MainNavMenu() {
                       Shadowrun FPS
                     </div>
                     <p className="text-sm leading-tight text-muted-foreground">
-                      Welcome to ‘This Is Shadowrun’, we’re a community
-                      dedicated to the FASA Studios' 2007 Shadowrun FPS. It
-                      works in 2023!
+                      Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a
+                      community dedicated to the FASA Studios&apos; 2007
+                      Shadowrun FPS. It works in 2023!
                     </p>
                   </a>
                 </NavigationMenuLink>
