@@ -34,10 +34,9 @@ function getTeamSizeStats(playerId: string, teamSize: number) {
     .then((response) => {
       return response.json();
     })
-    .then((result) => {
-      console.log("result", result);
-      if (result.data !== undefined) {
-        return result.data.stats.find(
+    .then((data) => {
+      if (data.results !== undefined) {
+        return data.results.stats.find(
           (playerStats: PlayerStats) => playerStats.teamSize === teamSize
         );
       } else return undefined;
@@ -50,7 +49,6 @@ async function getPlayerRank(
   matchTeamSize: number
 ): Promise<EloRankGroup> {
   const playerStats = await getTeamSizeStats(player.playerId, matchTeamSize);
-  console.log("playerStats: ", playerStats);
   const elo = playerStats?.elo ?? 0;
   if (elo >= 0 && elo <= 1099) {
     return "Bronze";
@@ -68,6 +66,7 @@ async function getPlayerRank(
 
 export default function MatchCard({ match }: MatchCardProps) {
   const { players } = match;
+  const isMatchFull = match.teamSize === players.length;
   return (
     <Card key={match.matchId}>
       <CardHeader>
@@ -111,7 +110,7 @@ export default function MatchCard({ match }: MatchCardProps) {
       </CardContent>
 
       <CardFooter className="grid grid-cols-2 gap-4">
-        <Button>Join</Button>
+        <Button disabled={isMatchFull}>{isMatchFull ? "Full" : "Join"}</Button>
         <Button variant="secondary">Leave</Button>
       </CardFooter>
     </Card>

@@ -12,8 +12,8 @@ async function getRankedMatches() {
       }
       return response.json();
     })
-    .then((result) => {
-      return result.data;
+    .then((data) => {
+      return data.results;
     })
     .catch((error) => {
       console.error("There was a problem fetching match data: ", error.message);

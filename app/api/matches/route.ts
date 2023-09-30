@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
     const matches = await db.collection("Matches").find().toArray();
     return NextResponse.json({
       ok: true,
-      data: matches,
+      results: matches,
       status: 201,
     });
   } catch (error) {

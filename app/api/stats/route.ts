@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const stats = await db.collection("Stats").findOne({ playerId: playerId });
     return NextResponse.json({
       ok: true,
-      data: stats,
+      results: stats,
       status: 201,
     });
   } catch (error) {
