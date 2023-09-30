@@ -1,23 +1,29 @@
 import MatchCard from "@/components/matches/match-card";
-import { MatchResult } from "@/types/types";
+import { Match } from "@/types/types";
 
 async function getRankedMatches() {
-  const res = await fetch(
+  return await fetch(
     process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true",
     { cache: "no-store" }
-  );
-  if (!res.ok) {
-    throw new Error("Failed to fetch match data.");
-  }
-  return await res.json();
+  )
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then((result) => {
+      return result.data;
+    })
+    .catch((error) => {
+      console.error("There was a problem fetching match data: ", error.message);
+      throw error;
+    });
 }
 
 export default async function RankedPage() {
-  const data = await getRankedMatches().catch((error) => {
-    console.error(error);
-    return undefined;
-  });
-  if (!data) {
+  const matches = await getRankedMatches();
+  if (!matches) {
     return (
       <main className="container">
         <h1 className="p-4 text-3xl font-extrabold">
@@ -26,13 +32,14 @@ export default async function RankedPage() {
       </main>
     );
   }
-  const matches = data?.matches;
   return (
     <main className="container">
       <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
-      {matches?.map((match: MatchResult) => {
-        return <MatchCard key={match.matchId} match={match} />;
-      })}
+      <div className="grid grid-cols-2 gap-8">
+        {matches?.map((match: Match) => {
+          return <MatchCard key={match.matchId} match={match} />;
+        })}
+      </div>
     </main>
   );
 }

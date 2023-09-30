@@ -4,17 +4,19 @@ import clientPromise from "@/lib/mongodb";
 export async function GET(request: NextRequest) {
   try {
     const client = await clientPromise;
+    const searchParams = request.nextUrl.searchParams;
+    const playerId = searchParams.get("playerId");
     const db = client.db("ShadowrunWeb");
-    const matches = await db.collection("Matches").find().toArray();
+    const stats = await db.collection("Stats").findOne({ playerId: playerId });
     return NextResponse.json({
       ok: true,
-      data: matches,
+      data: stats,
       status: 201,
     });
   } catch (error) {
     return NextResponse.json({
       ok: false,
-      message: "Error getting matches: " + error,
+      message: "Error getting player stats: " + error,
       status: 500,
     });
   }

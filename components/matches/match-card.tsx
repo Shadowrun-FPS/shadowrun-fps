@@ -8,10 +8,11 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { Player, MatchResult } from "@/types/types";
+import { Player, PlayerStats, Match, EloRankGroup } from "@/types/types";
+import { createURL } from "@/lib/utils";
 
 interface MatchCardProps {
-  match: MatchResult;
+  match: Match;
 }
 
 const rankIcons: { [char: string]: string } = {
@@ -22,11 +23,35 @@ const rankIcons: { [char: string]: string } = {
   platinum: "platinum_v002",
 };
 
-function getPlayerRank(player: Player, matchTeamSize: number): string {
-  const getTeamSizeStats = player.stats.find(
-    (stat) => stat.teamSize === matchTeamSize
-  );
-  const elo = getTeamSizeStats?.elo ?? 0;
+function getTeamSizeStats(playerId: string, teamSize: number) {
+  const url = createURL("/api/stats", {
+    playerId,
+  });
+  console.log(url);
+  return fetch(url, {
+    cache: "no-cache",
+  })
+    .then((response) => {
+      return response.json();
+    })
+    .then((result) => {
+      console.log("result", result);
+      if (result.data !== undefined) {
+        return result.data.stats.find(
+          (playerStats: PlayerStats) => playerStats.teamSize === teamSize
+        );
+      } else return undefined;
+    })
+    .catch((error) => console.error(error));
+}
+
+async function getPlayerRank(
+  player: Player,
+  matchTeamSize: number
+): Promise<EloRankGroup> {
+  const playerStats = await getTeamSizeStats(player.playerId, matchTeamSize);
+  console.log("playerStats: ", playerStats);
+  const elo = playerStats?.elo ?? 0;
   if (elo >= 0 && elo <= 1099) {
     return "Bronze";
   } else if (elo >= 1100 && elo <= 1299) {
@@ -37,20 +62,18 @@ function getPlayerRank(player: Player, matchTeamSize: number): string {
     return "Platinum";
   } else if (elo >= 1800 && elo <= 3000) {
     return "Diamond";
-  } else {
-    return "Unknown";
   }
+  return "Bronze";
 }
 
 export default function MatchCard({ match }: MatchCardProps) {
   const { players } = match;
   return (
-    <Card>
+    <Card key={match.matchId}>
       <CardHeader>
-        <CardTitle>{match.matchId}</CardTitle>
+        <CardTitle>{match.gameMode}</CardTitle>
         <CardDescription>
-          {match.gameMode}
-          <p>Elapsed time: 10:32</p>
+          <p>Team Size: {match.teamSize}</p>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -58,8 +81,9 @@ export default function MatchCard({ match }: MatchCardProps) {
           <div className="grid grid-cols-2 gap-x-4">
             <h5 className="p-2">Team 1</h5>
             <h5 className="p-2">Team 2</h5>
-            {players.map((player: Player) => {
-              const playerRank = getPlayerRank(player, match.teamSize);
+            {players.map(async (player: Player) => {
+              const playerRank = await getPlayerRank(player, match.teamSize);
+              // console.log("playerRank: ", playerRank);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
               return (
                 <div

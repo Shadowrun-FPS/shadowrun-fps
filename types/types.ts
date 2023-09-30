@@ -10,7 +10,6 @@ export type PlayerStats = {
 export type Player = {
   playerId: string;
   discordId: string;
-  stats: PlayerStats[];
 };
 
 export type MapScore = {
@@ -27,25 +26,60 @@ export type PlayerInfo = {
   totalMoneyEarned: number;
 };
 
-export type MapResult = {
+export type Map = {
   mapName: string;
   gameMode: string;
-  scoredBy: MapScore;
-  players: PlayerInfo[];
-  result: string;
-  finalScores: {
+  scoredBy?: MapScore;
+  players?: PlayerInfo[];
+  result?: string;
+  finalScores?: {
     team1: number;
     team2: number;
   };
 };
 
-export type MatchResult = {
+export type Match = {
   matchId: string;
   gameMode: string;
   queueId: string;
   ranked: boolean;
-  maps: MapResult[];
+  status: "queue" | "voting" | "in-progress" | "complete";
+  maps: Map[];
   players: Player[];
   teamSize: number;
-  winner: string;
+  winner?: string;
 };
+
+export type EloRank =
+  | "Bronze V"
+  | "Bronze IV"
+  | "Bronze III"
+  | "Bronze II"
+  | "Bronze I"
+  | "Silver V"
+  | "Silver IV"
+  | "Silver III"
+  | "Silver II"
+  | "Silver I"
+  | "Gold V"
+  | "Gold IV"
+  | "Gold III"
+  | "Gold II"
+  | "Gold I"
+  | "Platinum V"
+  | "Platinum IV"
+  | "Platinum III"
+  | "Platinum II"
+  | "Platinum I"
+  | "Diamond V"
+  | "Diamond IV"
+  | "Diamond III"
+  | "Diamond II"
+  | "Diamond I";
+
+export type EloRankGroup =
+  | "Bronze"
+  | "Silver"
+  | "Gold"
+  | "Platinum"
+  | "Diamond";
