@@ -53,6 +53,10 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        discord: {
+          DEFAULT: "var(--discord-brand)",
+          foreground: "var(--white-500)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
