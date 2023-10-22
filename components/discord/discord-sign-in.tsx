@@ -27,7 +27,9 @@ const DiscordSignIn: React.FC = () => {
       onClick={isSignedIn ? handleSignOut : handleSignIn}
     >
       <IconDiscordLogo height={"2em"} width={"2em"} />
-      {isSignedIn ? "Sign out" : "Sign in"}
+      <span className="hidden md:block">
+        {isSignedIn ? "Sign out" : "Sign in"}
+      </span>
     </Button>
   );
 };

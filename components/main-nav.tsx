@@ -49,6 +49,8 @@ const components: { title: string; href: string; description: string }[] = [
 ];
 
 export function MainNavMenu() {
+  // TODO create mobile friendly nav menu that takes up less width
+  // use shadcn/ui dropdown menu https://ui.shadcn.com/docs/components/dropdown-menu
   useEffect(() => {
     const getMatchData = async () => {
       const res = await fetch(
