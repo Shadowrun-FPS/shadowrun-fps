@@ -1,14 +1,16 @@
 import { MainNavMenu } from "@/components/main-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
-import IconDiscordLogo from "@/components/logos/discord-logo";
+import MainLogo from "./logos/main-logo";
+import DiscordSignIn from "./discord/discord-sign-in";
 
 function Header() {
   return (
     <header className="flex items-center justify-between p-6 mx-auto max-w-7xl lg:px-8">
-      <IconDiscordLogo />
+      <MainLogo />
       <nav>
         <MainNavMenu />
       </nav>
+      <DiscordSignIn />
       <ThemeToggle />
     </header>
   );
