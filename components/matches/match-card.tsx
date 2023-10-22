@@ -23,7 +23,8 @@ const rankIcons: { [char: string]: string } = {
 };
 
 function getPlayerRank(player: Player, matchTeamSize: number): string {
-  if (!player) return "Unknown";
+  console.log("player: ", player);
+  if (!player.stats) return "Unknown";
   const getTeamSizeStats = player.stats.find(
     (stat) => stat.teamSize === matchTeamSize
   );
