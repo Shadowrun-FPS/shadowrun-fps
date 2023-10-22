@@ -1,8 +1,8 @@
-import NextAuth from 'next-auth'
-import DiscordProvider from 'next-auth/providers/discord'
+import NextAuth from "next-auth";
+import DiscordProvider from "next-auth/providers/discord";
 
 // https://discord.com/developers/docs/topics/oauth2#shared-resources-oauth2-scopes
-const scopes = ['identify'].join(' ')
+const scopes = ["identify"].join(" ");
 
 const handler = NextAuth({
   providers: [
@@ -17,8 +17,9 @@ const handler = NextAuth({
     strategy: "jwt",
   },
   pages: {
-      signIn: "/auth/signin",
-  }
-})
+    signIn: "/auth/signin",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+});
 
-export { handler as GET, handler as POST }
+export { handler as GET, handler as POST };
