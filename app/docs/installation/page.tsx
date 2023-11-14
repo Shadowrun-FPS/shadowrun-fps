@@ -3,11 +3,11 @@ import Image from "next/image";
 
 export default function InstallationPage() {
   return (
-    <div className="ml-8 prose lg:prose-xl dark:prose-invert">
+    <div className="mt-16 ml-16 prose lg:prose-xl dark:prose-invert">
       <h1>Installation Guide</h1>
 
       <h2>Preface</h2>
-      <p>
+      <p className="whitespace-nowrap">
         Trouble Installing? Please use the following channels if you are having
         issues installing:
       </p>
@@ -16,40 +16,47 @@ export default function InstallationPage() {
           <Link href="/docs/troubleshoot">General Errors and Info</Link>
         </li>
         <li>
-          <a href="https://discord.com/channels/930362820627943495/938788090087088168">
-            troubleshoot-chat
-          </a>{" "}
-          - General Troubleshooting discussions
+          <Link
+            target="_blank"
+            href="https://discord.com/channels/930362820627943495/938788090087088168"
+          >
+            Troubleshoot Chat
+          </Link>
         </li>
         <li>
-          <a href="https://discord.com/channels/930362820627943495/1042564057481363476">
-            support-ticket
-          </a>{" "}
-          - Still having issues? Create a ticket here
+          <Link
+            target="_blank"
+            href="https://discord.com/channels/930362820627943495/1042564057481363476"
+          >
+            Support Ticket
+          </Link>
         </li>
       </ul>
       <h2 className="mt-16 mb-0 text-3xl font-bold not-prose">File Archiver</h2>
-      <p className="mb-0 not-prose">
-        In order to extract any ".7z" file, download and install:
-        <a href="https://www.7-zip.org/a/7z2201-x64.exe">7-Zip</a> or{" "}
+      <p className="mt-0 mb-0">
+        In order to extract any ".7z" file, download and install:{" "}
+        <Link href="https://www.7-zip.org/a/7z2201-x64.exe">7-Zip</Link> or{" "}
         <a href="https://github.com/peazip/PeaZip/releases/download/8.9.0/peazip-8.9.0.WIN64.exe">
           Peazip
         </a>
       </p>
-      <p className="mt-o not-prose">
+      <p className="mt-0 not-prose">
         <b>
-          <u>Extracting with Winrar is known to cause issues.</u>
+          <em>
+            <u>Extracting with Winrar is known to cause issues.</u>
+          </em>
         </b>
       </p>
-      <h2>FPS Limitations</h2>
-      <p>
+      <h2 className="mt-16 mb-0 text-3xl font-bold not-prose">
+        FPS Limitations
+      </h2>
+      <p className="mt-o not-prose whitespace-nowrap">
         Parts of the game malfunction when the fps is not limited. See the Limit
         FPS section under In Game Preferences below.
       </p>
       <br />
       <h2>Free Installation Guide</h2>
-      <br />
-      <h3>Step 1:</h3>
+      <h2 className="mt-8 mb-0 text-3xl font-bold not-prose">Step 1</h2>
       <p>
         Download & Install:{" "}
         <a href="https://community.pcgamingwiki.com/files/file/1012-microsoft-games-for-windows-live/?do=download&r=3736&confirm=1&t=1&csrfKey=72a35fbfd8ae582fe891f867e376ddcc">
@@ -69,34 +76,34 @@ export default function InstallationPage() {
           </em>
         </li>
       </ul>
-      <br />
       <h3>Step 2:</h3>
       <p>
-        Download:{" "}
-        <a href="https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg">
+        Download{" "}
+        <Link
+          href="https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg"
+          target="_blank"
+        >
           Shadowrun - DXVK (2.3).zip
-        </a>{" "}
+        </Link>{" "}
         version of the Pre-installed and updated game
       </p>
       <ul>
-        <li>
+        <li className="whitespace-nowrap">
           Open "Shadowrun DXVK (2.3).zip" and drag and drop or extract the
           Shadowrun folder contained inside
         </li>
       </ul>
-      <br />
       <h3>Step 3:</h3>
       <p>Launch Shadowrun.exe</p>
-      <p>
+      <p className="whitespace-nowrap">
         Then sign in to your Microsoft account by pressing home or fn+home on
         the keyboard (This is any account that can log in to{" "}
         <a href="https://www.xbox.com/">Xbox.com</a>)
       </p>
-      <p>
+      <p className="whitespace-nowrap">
         Enter your key when prompted. First time login/activation loading circle
         may take 5-20 minutes (see "Getting a key" section below)
       </p>
-      <br />
       <h3>Step 4:</h3>
       <p>Configure Resolution and In-game advanced video settings</p>
       <p>
@@ -119,8 +126,11 @@ export default function InstallationPage() {
         <a href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/">
           Warhammer 40,000: Dawn of War II
         </a>{" "}
-        from steam to use its GFWL key to activate Shadowrun. This is possible
-        because specific GFWL games can cross authenticate each other :: see{" "}
+        from steam to use its GFWL key to activate Shadowrun.
+      </p>
+      <p className="whitespace-nowrap">
+        This is possible because specific GFWL games can cross authenticate each
+        other - see{" "}
         <a href="https://discord.com/channels/930362820627943495/1106078455226957854/1106080395352604723">
           FAQ
         </a>
@@ -131,7 +141,6 @@ export default function InstallationPage() {
         width={400}
         height={300}
       />
-      <br />
       <p>
         <strong>Once Purchased</strong>
       </p>
@@ -159,7 +168,7 @@ export default function InstallationPage() {
       <h2>
         <strong>Sharing Keys</strong>
       </h2>
-      <p>
+      <p className="whitespace-nowrap">
         A channel for sharing keys. You can give a shout if you notice a key has
         been all used up. Feel free to leave one!{" "}
         <a href="https://canary.discord.com/channels/930362820627943495/1130511102938194063">

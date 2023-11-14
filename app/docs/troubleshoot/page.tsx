@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function TroubleshootingPage() {
   return (
-    <div className="ml-8 prose lg:prose-xl dark:prose-invert">
+    <div className="mt-16 ml-16 prose lg:prose-xl dark:prose-invert">
       <h1>Errors and Info</h1>
 
       <h2>Installation</h2>
