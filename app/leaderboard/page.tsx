@@ -79,16 +79,16 @@ export default async function Leaderboard({
                     Player ID
                   </th>
                   <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="ELO" sortingAbbreviation="e" twClasses="" />
+                    <LeaderboardCategory category="ELO" sortingAbbreviation="e" defaultCategory={true} />
                   </th>
                   <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="W" sortingAbbreviation="w" twClasses="" />
+                    <LeaderboardCategory category="W" sortingAbbreviation="w" />
                   </th>
                   <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="L" sortingAbbreviation="l" twClasses="" />
+                    <LeaderboardCategory category="L" sortingAbbreviation="l" />
                   </th>
                   <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="W/L Ratio" sortingAbbreviation="r" twClasses="" />
+                    <LeaderboardCategory category="W/L Ratio" sortingAbbreviation="r" />
                   </th>
               </tr>
           </thead>

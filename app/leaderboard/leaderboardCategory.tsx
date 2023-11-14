@@ -10,15 +10,11 @@ import "./leaderboardStyles.css"
 const leaderboard_url = BASE_URL + "/leaderboard"
 
 
-export default function LeaderboardCategory ({category, sortingAbbreviation, twClasses, sortable=true}: {category: string, sortingAbbreviation: string, twClasses: string, sortable?: boolean}) {
+export default function LeaderboardCategory ({category, sortingAbbreviation, defaultCategory=false}: {category: string, sortingAbbreviation: string, defaultCategory?:boolean, sortable?: boolean}) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    if (!searchParams.get('sort')) {
-        router.push("/leaderboard/?sort=e&dir=desc&page=1");
-        return;
-    }
-    const selected = sortable ? (searchParams.get('sort') == sortingAbbreviation ? true : false) : false;
-    const descending = selected ? (searchParams.get('dir') == 'desc' ? true : false) : false; 
+    const selected = !searchParams.get('sort') && defaultCategory ? true : searchParams.get('sort') == sortingAbbreviation ? true : false;
+    const descending = selected ? (searchParams.get('dir') == 'desc' || !searchParams.get('dir') ? true : false) : false; 
 
     function handleClick () {
         const params = new URLSearchParams(searchParams);
@@ -31,7 +27,7 @@ export default function LeaderboardCategory ({category, sortingAbbreviation, twC
 
     return (
         <>
-            <Button className={{twClasses} + (selected ? (descending ? " descending" : " ascending") : "")} variant="link" onClick={handleClick}>{category}</Button>
+            <Button className={(selected ? (descending ? " descending" : " ascending") : "")} variant="link" onClick={handleClick}>{category}</Button>
         </>
     )
 }
