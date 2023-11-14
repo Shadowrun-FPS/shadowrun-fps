@@ -38,12 +38,12 @@ const components: { title: string; href: string; description: string }[] = [
   },
   {
     title: "Rules",
-    href: "/rules",
+    href: "/docs/rules",
     description: "Rules to play in the pick up games.",
   },
   {
     title: "Tutorials",
-    href: "/tutorials",
+    href: "/docs/tutorials",
     description: "Shadowrun tutorials and content.",
   },
 ];
