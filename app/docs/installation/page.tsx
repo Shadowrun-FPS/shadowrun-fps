@@ -1,3 +1,6 @@
+import Link from "next/link";
+import Image from "next/image";
+
 export default function InstallationPage() {
   return (
     <div className="ml-8 prose lg:prose-xl dark:prose-invert">
@@ -10,42 +13,34 @@ export default function InstallationPage() {
       </p>
       <ul>
         <li>
-          ⁠
-          <a href="https://discord.com/channels/930362820627943495/1106078455226957854">
-            errors-and-info
-          </a>{" "}
-          - General error and info FAQ
+          <Link href="/docs/troubleshoot">General Errors and Info</Link>
         </li>
         <li>
-          ⁠
           <a href="https://discord.com/channels/930362820627943495/938788090087088168">
             troubleshoot-chat
           </a>{" "}
           - General Troubleshooting discussions
         </li>
         <li>
-          ⁠
           <a href="https://discord.com/channels/930362820627943495/1042564057481363476">
             support-ticket
           </a>{" "}
           - Still having issues? Create a ticket here
         </li>
       </ul>
-      <br />
-      <h2>File Archiver</h2>
-      <p>
+      <h2 className="mt-16 mb-0 text-3xl font-bold not-prose">File Archiver</h2>
+      <p className="mb-0 not-prose">
         In order to extract any ".7z" file, download and install:
         <a href="https://www.7-zip.org/a/7z2201-x64.exe">7-Zip</a> or{" "}
         <a href="https://github.com/peazip/PeaZip/releases/download/8.9.0/peazip-8.9.0.WIN64.exe">
           Peazip
         </a>
       </p>
-      <p>
+      <p className="mt-o not-prose">
         <b>
           <u>Extracting with Winrar is known to cause issues.</u>
         </b>
       </p>
-      <br />
       <h2>FPS Limitations</h2>
       <p>
         Parts of the game malfunction when the fps is not limited. See the Limit
@@ -110,9 +105,10 @@ export default function InstallationPage() {
         the in-game's Advanced Video settings
       </p>
       <img
-        src="https://i.imgur.com/ijW7dFg.png"
+        src="/shadowrunvsync.png"
         alt="Installation Guide Image"
-        style={{ width: "40%" }}
+        width={500}
+        height={500}
       />
 
       <br />
@@ -129,10 +125,11 @@ export default function InstallationPage() {
           FAQ
         </a>
       </p>
-      <img
-        src="https://cdn.cloudflare.steamstatic.com/steam/apps/15620/header.jpg?t=1632305419"
+      <Image
+        src="/dawnofwar2.jpg"
         alt="Installation Guide Image"
-        style={{ width: "30%" }}
+        width={400}
+        height={300}
       />
       <br />
       <p>
