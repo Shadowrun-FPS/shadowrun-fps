@@ -7,24 +7,21 @@ export async function GET(request: NextRequest, { params } : {params: {pid: stri
     const db = client.db("ShadowrunDB2");
     const pid = params.pid;
     const sortOption = getSortOption(request.nextUrl.searchParams.get("sort") + '');
-    const sortDirection = (request.nextUrl.searchParams.get("dir") == "asc" ? 1 : -1);
+    const querySortDirection = (request.nextUrl.searchParams.get("dir") == "asc" ? 1 : -1);
     const playersPerLBPage = 20; // If changing, change the same var value in the leaderboard/[lbpage]/page.tsx file
     const skipAmount = Math.max(playersPerLBPage * (Number(pid) - 1), 0);
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - 2);
-    const players = sortOption === "ratio" ? 
-      await db.collection("players").aggregate([
+    const players =
+      await db.collection("players")
+        .aggregate([
+          {$project: {"_id": 0, "discordId": 1, "rating": 1, "wins": 1, "losses": 1, "lastMatchDate": 1}},
           {$match: {'lastMatchDate': {$gte: cutoffDate}}},
           {$addFields: {"ratio": {$round: [{$divide: ["$wins", {$add: ["$wins", "$losses"]}]}, 2]}}},
-          {$sort: {"ratio": sortDirection}}])
+          {$sort: {[sortOption]: querySortDirection}}])
         .skip(skipAmount)
         .limit(playersPerLBPage)
-        .toArray() :
-      await db.collection("players").find({lastMatchDate: {$gte: cutoffDate}})
-        .sort({[sortOption]: sortDirection})
-        .skip(skipAmount)
-        .limit(playersPerLBPage)
-        .toArray();
+        .toArray()
 
     const activePlayerCount = await db.collection("players").countDocuments({lastMatchDate: {$gte: cutoffDate}});
 
