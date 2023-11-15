@@ -43,7 +43,7 @@ export default function InstallationPage() {
           File Archiver
         </h2>
         <p className="mt-0 mb-0">
-          In order to extract any ".7z" file, download and install:{" "}
+          In order to extract any .7z file, download and install:{" "}
           <Link href="https://www.7-zip.org/a/7z2201-x64.exe">7-Zip</Link> or{" "}
           <Link href="https://github.com/peazip/PeaZip/releases/download/8.9.0/peazip-8.9.0.WIN64.exe">
             Peazip
@@ -59,7 +59,7 @@ export default function InstallationPage() {
         </h2>
         <p className="mt-o not-prose">
           Parts of the game may malfunction if the fps is not limited. See the
-          Limit FPS section under 'In Game Preferences' below.
+          Limit FPS section under In Game Preferences below.
         </p>
         <br />
         <h2>Free Installation Guide</h2>
@@ -73,12 +73,12 @@ export default function InstallationPage() {
         <ul>
           <li>Extract the folder</li>
           <li>
-            Run <u>"gfwllivesetup.exe"</u>
+            Run <u>gfwllivesetup.exe</u>
           </li>
           <li>
             <em>
-              When prompted, select 'Launch' and the GFWL program will launch
-              showing "Connection Error." This is to be expected and can be
+              When prompted, select Launch and the GFWL program will launch
+              showing Connection Error. This is to be expected and can be
               ignored. You DO NOT need to launch this program after installing!
             </em>
           </li>
@@ -96,7 +96,7 @@ export default function InstallationPage() {
         </p>
         <ul>
           <li>
-            Open "Shadowrun DXVK (2.3).zip" and drag and drop or extract the
+            Open Shadowrun DXVK (2.3).zip and drag and drop or extract the
             Shadowrun folder contained inside.
           </li>
         </ul>
@@ -124,11 +124,11 @@ export default function InstallationPage() {
         <ul>
           <li>
             While the other settings are up to your preferences of detail,
-            quality, and performance, it is important to set "Vertical Sync" to
+            quality, and performance, it is important to set Vertical Sync to
             Disabled in the in-game's Advanced Video settings.
           </li>
         </ul>
-        <img
+        <Image
           src="/shadowrunvsync.png"
           alt="Installation Guide Image"
           width={500}
