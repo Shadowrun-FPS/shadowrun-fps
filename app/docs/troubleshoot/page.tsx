@@ -1,95 +1,70 @@
 import Link from "next/link";
 import Image from "next/image";
+import { DocHero } from "@/components/doc-hero";
+import AccordionGroup, { AccoridonType } from "@/components/accordion-group";
+
+const errorAccordions: AccoridonType[] = [
+  {
+    title: "d3dx9 error - install this",
+    content: "Install the DirectX installer to resolve d3dx9 errors.",
+    href: "https://www.microsoft.com/en-us/download/details.aspx?id=35",
+    link: "directx installer",
+  },
+  {
+    title: "Error 1603 or 1722",
+    content:
+      'Verify you have all drivers installed and up to date via optional Windows updates. Open CMD as an administrator and run the command "sfc/scannow" to check for repairable Windows system errors.',
+  },
+  {
+    title: 'Error "xlive.dll not found"',
+    content:
+      'Verify that the Games for Windows Live installer was extracted before installing. Open "services msc" from the start menu search bar. Right-click and start "Xbox Live Networking Service" or restart the game.',
+  },
+  {
+    title: "Error 0x80072746",
+    content:
+      'Open "services msc" from the start menu search bar. Right-click and start "Windows License Manager Service" or restart the game (potentially conflicts with VPN to activate, though, unconfirmed).',
+  },
+  {
+    title: "Error Ordinal 43",
+    content: "Re-extract and reinstall GFWL components.",
+  },
+  {
+    title: "Error unable to create Direct3D Device",
+    content:
+      "Install DirectX or update missing/outdated drivers. Test with the compatibility tool provided.",
+  },
+  {
+    title: "Error 0x8007065b",
+    content:
+      "Microsoft server account issue. Create a new free account and try the original account after a day or so.",
+  },
+  {
+    title: "Xbox Login Issues",
+    list: [
+      "Disable 2FA",
+      "Turn off VPN",
+      "Add GFWL & Shadowrun to firewall exceptions",
+      "Uninstall GFWL and try reinstalling it in Windows 7 compatibility mode",
+      "Verify open NAT status",
+      "Password could be too long (max pass length 11-16 characters)",
+      "Xbox account changes can be delayed 10ish minutes to update",
+      "Sign out of Xbox Game Bar/Xbox app, sign back in, and retry on Shadowrun",
+      "Open services.msc and restart 'Windows License Manager' and 'Xbox Live Networking Service'",
+      "Update Windows & optional Windows updates for driver/security updates",
+      "Restart PC",
+      "Create a new gamertag on Xbox.com (doesn't even require email verification) & add other profile after activation",
+    ],
+  },
+];
 
 export default function TroubleshootingPage() {
   return (
-    <div className="mt-16 ml-16 prose lg:prose-xl dark:prose-invert">
-      <h1>Errors and Info</h1>
-
-      <h2>Installation</h2>
-
-      <h3>
-        d3dx9 error - install this &gt;
-        <a href="https://www.microsoft.com/en-us/download/details.aspx?id=35">
-          directx installer
-        </a>
-      </h3>
-      <p>Install the DirectX installer to resolve d3dx9 errors.</p>
-      <br />
-      <h3>Error 1603 or 1722</h3>
-      <p>
-        Verify you have all drivers installed and up to date via optional
-        Windows updates. Open CMD as an administrator and run the command "sfc
-        /scannow" to check for repairable Windows system errors.
-      </p>
-      <br />
-      <h3>Error "xlive.dll not found"</h3>
-      <p>
-        Verify that the Games for Windows Live installer was extracted before
-        installing.
-      </p>
-      <ul>
-        <li>Open "services.msc" from the start menu search bar.</li>
-        <li>
-          Right-click and start "Xbox Live Networking Service" or restart the
-          game.
-        </li>
-      </ul>
-      <br />
-      <h3>Error 0x80072746</h3>
-      <ul>
-        <li>Open "services.msc" from the start menu search bar.</li>
-        <li>
-          Right-click and start "Windows License Manager Service" or restart the
-          game (potentially conflicts with VPN to activate, though,
-          unconfirmed).
-        </li>
-      </ul>
-      <br />
-      <h3>Error Ordinal 43</h3>
-      <p>Re-extract and reinstall GFWL components.</p>
-      <br />
-      <h3>Error unable to create Direct3D Device</h3>
-      <p>
-        Install DirectX or update missing/outdated drivers. Test with the
-        compatibility tool provided.
-      </p>
-      <br />
-      <h3>Error 0x8007065b</h3>
-      <p>
-        Microsoft server account issue. Create a new free account and try the
-        original account after a day or so.
-      </p>
-      <br />
-      <h3>Xbox Login Issues</h3>
-      <ul>
-        <p>Disable 2FA</p>
-        <p>Turn off VPN</p>
-        <p>Add GFWL & Shadowrun to firewall exceptions</p>
-        <p>
-          Uninstall GFWL and try reinstalling it in Windows 7 compatibility mode
-        </p>
-        <p>Verify open NAT status</p>
-        <p>Password could be too long (max pass length 11-16 characters)</p>
-        <p>Xbox account changes can be delayed 10ish minutes to update</p>
-        <p>
-          Sign out of Xbox Game Bar/Xbox app, sign back in, and retry on
-          Shadowrun
-        </p>
-        <p>
-          Open services.msc and restart 'Windows License Manager' and 'Xbox Live
-          Networking Service'
-        </p>
-        <p>
-          Update Windows & optional Windows updates for driver/security updates
-        </p>
-        <p>Restart PC</p>
-        <p>
-          Create a new gamertag on Xbox.com (doesn't even require email
-          verification) & add other profile after activation
-        </p>
-      </ul>
-      <br />
+    <>
+      <DocHero title={"Errors and Info"} />
+      <div className="container my-8">
+        <AccordionGroup accordions={errorAccordions} title={"Error Codes"} />
+      </div>
       <h3>Activation</h3>
       <p>
         The first time you activate may take up to 20 minutes to load the key
@@ -263,6 +238,6 @@ export default function TroubleshootingPage() {
         tip: "#" before a line in dxvk.conf disables the setting toggle but
         keeps the entered info
       </p>
-    </div>
+    </>
   );
 }

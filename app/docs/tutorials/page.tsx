@@ -27,7 +27,6 @@ const videos = [
     title: "Shadowrun FPS - FASA Developer AMA",
     src: "https://www.youtube.com/embed/SAkaQb6V5jE",
   },
-
   // Add more video data as needed in the future
 ];
 

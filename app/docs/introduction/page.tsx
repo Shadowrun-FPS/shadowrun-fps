@@ -4,14 +4,7 @@ import React from "react";
 
 export default function IntroductionPage() {
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <img
-        src="/under_construction_PNG49.png"
-        alt="Under Construction Cone"
-        className="mb-8"
-        width={1050}
-        height={350}
-      />
+    <div className="flex flex-col items-center justify-center">
       <div className="prose text-center lg:prose-xl dark:prose-invert">
         <h1>Introduction Page is Under Construction</h1>
         <p>
