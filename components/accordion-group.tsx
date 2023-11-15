@@ -30,7 +30,7 @@ export default function AccordionGroup({
       </h2>
       <Accordion type="single" collapsible>
         {accordions.map((item, i) => (
-          <AccordionItem value={"item" + i}>
+          <AccordionItem key={item.title + i} value={"item" + i}>
             <AccordionTrigger>{item.title}</AccordionTrigger>
             <AccordionContent>
               {item.content}
@@ -49,8 +49,8 @@ export default function AccordionGroup({
 function List({ list }: { list: string[] }) {
   return (
     <ul className="prose dark:prose-invert">
-      {list.map((item) => (
-        <li>{item}</li>
+      {list.map((item, i) => (
+        <li key={i}>{item}</li>
       ))}
     </ul>
   );

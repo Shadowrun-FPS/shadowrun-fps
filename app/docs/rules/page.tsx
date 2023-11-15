@@ -40,12 +40,12 @@ export default function RankedRulesPage() {
       </ul>
 
       <h2>RANKED RULES</h2>
-      <p>No arguing with the bot; you'll look a fool.</p>
+      <p>No arguing with the bot; youll look a fool.</p>
       <p>
         Once a match has been created by the bot, the match must be played out
         with the teams that have been created. If a player attempts to queue
         dodge after teams have been created, then that player will be penalized
-        per the "Penalties" section of the rules.
+        per the Penalties section of the rules.
       </p>
 
       <h2>PENALTIES </h2>

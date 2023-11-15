@@ -70,9 +70,9 @@ export default function TroubleshootingPage() {
         The first time you activate may take up to 20 minutes to load the key
         entry page after logging in.
       </p>
-      <p>If you get the error "This key has been used too many times":</p>
+      <p>If you get the error This key has been used too many times</p>
       <ul>
-        <p>Click "Retry"</p>
+        <p>Click Retry</p>
         <p>
           Wait for 5-10 minutes for the window to pop up to allow you to type in
           your newly acquired key. (Not sure why this step takes so long, if you
@@ -87,7 +87,7 @@ export default function TroubleshootingPage() {
         <a href="https://discord.com/channels/930362820627943495/935953977768558602">
           PC Install Guide
         </a>{" "}
-        won't launch, then graphics drivers or associated software need updating
+        wont launch, then graphics drivers or associated software need updating
         for up-to-date Vulkan compatibility.
       </p>
       <p>
@@ -113,7 +113,7 @@ export default function TroubleshootingPage() {
       </p>
       <p>
         If frames are not limiting even though you have dxvk.conf in your game
-        folder, verify the file wasn't saved as dxvk.conf.txt (file save as
+        folder, verify the file wasnt saved as dxvk.conf.txt (file save as
         change Save as type: to All Files).
       </p>
       <p>
@@ -184,17 +184,17 @@ export default function TroubleshootingPage() {
         Download <a href="https://www.bandicam.com/">Bandicam Free</a>
       </p>
       <p>
-        After installed, under 'Home' in the side panel, change to 'Game
-        Recording Mode' (controller icon) .
+        After installed, under Home in the side panel, change to Game Recording
+        Mode (controller icon) .
       </p>
 
       <p>
-        Under 'FPS' on the side panel, at the bottom set your FPS Limit hot key
+        Under FPS on the side panel, at the bottom set your FPS Limit hot key
         and set whatever FPS you desire.
       </p>
       <p>
         Now once you want to change your frames in-game, press your hot key and
-        it will enable/disable your FPS limit."
+        it will enable/disable your FPS limit.
       </p>
       <br />
       <h3>Rivatuner/RTSS FPS Limit</h3>
@@ -220,7 +220,7 @@ export default function TroubleshootingPage() {
       <h3>DXVK.conf FPS Limit</h3>
       <p>
         The most consistent option to limit frames is by creating or editing a
-        text file named "dxvk.conf" in your game folder [C:\Program Files
+        text file named dxvk.conf in your game folder [C:\Program Files
         (x86)\Microsoft Games\Shadowrun]
       </p>
       <p>
@@ -235,8 +235,8 @@ export default function TroubleshootingPage() {
       <p>it is set by either 1 = on or 0 = off</p>
       <br />
       <p>
-        tip: "#" before a line in dxvk.conf disables the setting toggle but
-        keeps the entered info
+        tip: # before a line in dxvk.conf disables the setting toggle but keeps
+        the entered info
       </p>
     </>
   );
