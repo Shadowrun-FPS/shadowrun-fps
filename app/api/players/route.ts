@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     cutoffDate.setMonth(cutoffDate.getMonth() - 2);
 
 
-    if (teamSizeOption != '2') {
+    if (teamSizeOption === '4') {
       const client = await clientPromise;
       const db = client.db("ShadowrunDB2");
       const players =
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     else {
       const client = await clientPromise;
       const db = client.db("ShadowrunWeb");
-      const players =
+      const data =
         await db.collection('Stats')
         .aggregate([
             {
@@ -72,14 +72,23 @@ export async function GET(request: NextRequest) {
               }
             },
             {$addFields: {"ratio": {$round: [{$divide: ["$wins", {$add: ["$wins", "$losses"]}]}, 2]}}},
-            {$sort: {["stats." + sortOption]: querySortDirection}}
+            {$sort: {[sortOption]: querySortDirection}},
+            {$facet: {
+              playerCount: [
+                {$count: 'total'}
+              ],
+              players: [
+                {$skip: skipAmount},
+                {$limit: playersPerLBPage}
+              ]
+            }}
           ])
           .toArray();
 
       return NextResponse.json({
         ok: true,
-        players: players,
-        playerCount: 4,
+        players: data[0].players,
+        playerCount: data[0].playerCount[0].total,
         status: 201,
       });
     }
@@ -103,6 +112,5 @@ const getSortOption = (sortParam: string) => {
     case ("e"):
     default:
       return "elo";
-      // return "rating";
   }
 } 

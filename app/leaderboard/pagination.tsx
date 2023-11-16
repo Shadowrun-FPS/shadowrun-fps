@@ -53,7 +53,7 @@ export default function Pagination({
       <div className="flex justify-center w-full">
         <div className="flex content-center justify-between w-72">{PageButtons}</div>
       </div>
-      <div className="flex justify-center w-full">Showing {(playersPerPage * (page - 1)) + 1} - {(playersPerPage * (page))} of {playerCount}</div>
+      <div className="flex justify-center w-full">Showing {(playersPerPage * (page - 1)) + 1} - {Math.min(playerCount, (playersPerPage * (page)))} of {playerCount}</div>
     </>
   );
 }

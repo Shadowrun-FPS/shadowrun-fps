@@ -108,24 +108,3 @@ export default async function Leaderboard({
     </>
   );
 }
-
-
-const getSearchParamsString = (sortOptions: { sort: string; dir: string }) => {
-  const searchOption = sortOptions?.sort;
-  const dirOption = sortOptions?.dir;
-  if (!searchOption && !dirOption) {
-    return "";
-  }
-  var urlQueryAddOn = "?";
-  if (searchOption) {
-    urlQueryAddOn = urlQueryAddOn + "sort=" + searchOption;
-  }
-  if (dirOption) {
-    if (urlQueryAddOn[urlQueryAddOn.length - 1] != "?") {
-      urlQueryAddOn = urlQueryAddOn + "&";
-    }
-    urlQueryAddOn = urlQueryAddOn + "dir=" + dirOption;
-  }
-
-  return urlQueryAddOn;
-};

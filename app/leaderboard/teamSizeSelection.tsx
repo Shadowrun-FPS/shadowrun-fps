@@ -3,7 +3,6 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuItem, DropdownMenuConten
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation";
-import { BASE_URL } from "@/components/baseurl";
 
 const defaultTeamSize = '2';
 
