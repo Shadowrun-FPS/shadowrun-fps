@@ -6,14 +6,14 @@ import "./leaderboardStyles.css";
 import Pagination from "./pagination";
 import formatPlayerStats from "./leaderboardBody";
 import LeaderboardCategory from "./leaderboardCategory";
-
+import TeamSizeMenu from "./teamSizeSelection";
+import { teamSizeDefault, rowsDefault, sortOptionDefault, dirOptionDefault } from "./leaderboardDefaults";
 
 import React from "react";
 const leaderboard_url = process.env.NEXT_PUBLIC_API_URL + "/leaderboard";
 
 const leaderboard_categories = [
   // [Category, Query Abbreviation, Tailwind class names specific to that category]
-  ['Player ID', 'e', ''],
   ['ELO'      , 'e', ''],
   ['W'        , 'w', ''],
   ['L'        , 'l', ''],
@@ -24,16 +24,18 @@ const getStats = async (searchParams: {
   page: number;
   sort: string;
   dir: string;
+  rows: number;
+  teamSize: string;
 }) => {
   const sortOption = searchParams?.sort;
   const dirOption = searchParams?.dir;
   const page = searchParams?.page;
+  const rows = searchParams?.rows;
+  const teamSizeOption = searchParams?.teamSize;
   try {
     const res = await fetch(
       process.env.NEXT_PUBLIC_API_URL +
-        "/api/players/" +
-        `${page}` +
-        getSearchParamsString({ sort: sortOption, dir: dirOption }),
+        "/api/players/?page=" + String(page) +"&sort=" + sortOption + "&dir=" + dirOption + "&teamSize=" + teamSizeOption + "&rows=" + rows,
       {
         cache: "no-store",
       }
@@ -51,45 +53,45 @@ const getStats = async (searchParams: {
 export default async function Leaderboard({
   searchParams,
 }: {
-  searchParams: { page: number; sort: string; dir: string };
+  searchParams: { page: number; sort: string; dir: string, rows: string, teamSize: string };
 }) {
   const page = Math.max(searchParams.page || 1, 1);
-  const sortOption = searchParams?.sort ? searchParams.sort : "e";
-  const dirOption = searchParams?.dir ? searchParams.dir : "desc";
+  const sortOption = searchParams?.sort ? searchParams.sort : sortOptionDefault;
+  const dirOption = searchParams?.dir ? searchParams.dir : dirOptionDefault;
   const descending = dirOption == "desc" ? true : false;
-  const playersPerPage = 20; // If changing, change the same var value in the api/players/[lbpage]/route.ts file
+  const rowsPerPage = searchParams?.rows ? Number(searchParams.rows) : rowsDefault;
+  const teamSizeOption = searchParams?.teamSize ? searchParams.teamSize : teamSizeDefault;
   const playerStatsFetch = await getStats({
     page: page,
     sort: sortOption,
     dir: dirOption,
+    rows: rowsPerPage,
+    teamSize: teamSizeOption
   });
   const playerStatsQuery = playerStatsFetch.players;
   const playerCount = playerStatsFetch.playerCount;
-  const startingRankNumber = descending ? (page - 1) * playersPerPage : playerCount - ((page - 1) * playersPerPage);
+  const startingRankNumber = descending ? (page - 1) * rowsPerPage : playerCount - ((page - 1) * rowsPerPage);
   const leaderboardBody = formatPlayerStats(playerStatsQuery, startingRankNumber, descending)
   return (
     <>
-      <h1 className="flex justify-center text-3xl font-bold">Leaderboard</h1>
+      <h1 className="flex justify-center text-3xl font-bold">Leaderboard <TeamSizeMenu /></h1>
       <br />
-      <div className="md:mx-[10%] md:h-[70vh] h-[60vh] overflow-y-auto shadow-md sm:rounded-lg">
+      <div className="md:mx-[10%] md:h-[65vh] h-[55vh] overflow-y-auto shadow-md sm:rounded-lg">
         <table className="w-full text-sm text-left text-gray-500 rtl:text-right dark:text-gray-400">
           <thead className="text-xs text-gray-700 bg-gray-300 dark:bg-slate-700 dark:text-gray-400">
               <tr>
-                  <th scope="col" className="px-6 py-3">
-                    Player ID
-                  </th>
-                  <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="ELO" sortingAbbreviation="e" defaultCategory={true} />
-                  </th>
-                  <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="W" sortingAbbreviation="w" />
-                  </th>
-                  <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="L" sortingAbbreviation="l" />
-                  </th>
-                  <th scope="col" className="px-6 py-3">
-                    <LeaderboardCategory category="W/L Ratio" sortingAbbreviation="r" />
-                  </th>
+                    <th scope="col" className="px-6 py-3">
+                      Player ID
+                    </th>
+                  {leaderboard_categories.map((category)=>
+                    <th scope="col" className="px-6 py-3">
+                      <LeaderboardCategory
+                      category={category[0]}
+                      sortingAbbreviation={category[1]}
+                      defaultCategory={leaderboard_categories[0][1] == category[1] ? true: false}
+                      />
+                    </th>
+                  )}
               </tr>
           </thead>
           <tbody>
@@ -101,7 +103,7 @@ export default async function Leaderboard({
       <Pagination
         page={page}
         playerCount={playerCount}
-        playersPerPage={playersPerPage}
+        playersPerPage={rowsPerPage}
       />
     </>
   );
