@@ -28,15 +28,6 @@ export default function IntroductionPage() {
             If you have urgent inquiries or need assistance, feel free to reach
             out to us through the community discord.
           </p>
-          <ul>
-            {/* <li>
-            Email:{" "}
-            <a href="mailto:3M3RGx@protonmail.com">info@ShadowrunFPS.com</a>
-          </li> */}
-            {/* <li>
-            Phone: <a href="tel:+1234567890">+1 (234) 567-890</a>
-          </li> */}
-          </ul>
         </div>
         <br />
         <section
@@ -101,24 +92,6 @@ export default function IntroductionPage() {
                 Twitter
               </a>
             </li>
-            {/* <li>
-            <a
-              href="https://www.facebook.com/example"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Facebook
-            </a>
-          </li> */}
-            {/* <li>
-            <a
-              href="https://www.instagram.com/example"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Instagram
-            </a>
-          </li> */}
           </ul>
         </div>
       </div>

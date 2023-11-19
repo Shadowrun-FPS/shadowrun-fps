@@ -28,15 +28,6 @@ export default function SupportPage() {
             If you have urgent inquiries or need assistance, feel free to reach
             out to us through the community discord.
           </p>
-          <ul>
-            {/* <li>
-            Email:{" "}
-            <a href="mailto:3M3RGx@protonmail.com">info@ShadowrunFPS.com</a>
-          </li> */}
-            {/* <li>
-            Phone: <a href="tel:+1234567890">+1 (234) 567-890</a>
-          </li> */}
-          </ul>
         </div>
 
         <div className="mt-8 text-center">
@@ -45,36 +36,6 @@ export default function SupportPage() {
             Follow us on social media for updates and announcements about our
             progress:
           </p>
-          <ul>
-            <br />
-            <li>
-              <a
-                href="https://twitter.com/i/communities/1688188047064470011"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Twitter
-              </a>
-            </li>
-            {/* <li>
-            <a
-              href="https://www.facebook.com/example"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Facebook
-            </a>
-          </li> */}
-            {/* <li>
-            <a
-              href="https://www.instagram.com/example"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Instagram
-            </a>
-          </li> */}
-          </ul>
         </div>
       </div>
     </>

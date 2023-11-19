@@ -6,16 +6,7 @@ export default function InstallationPage() {
   return (
     <>
       <DocHero title={""} />
-      <div
-        className="mt-2 ml-14 lg:prose-xl dark:prose-invert"
-        // style={{
-        //   backgroundImage: 'url("/shadowrun_invite_banner.png")', // <-- Provide the correct path
-        //   backgroundSize: "cover",
-        //   backgroundAttachment: "fixed",
-        //   backgroundPosition: "right",
-        //   width: "40%",
-        // }}
-      >
+      <div className="mt-2 ml-14 lg:prose-xl dark:prose-invert">
         <div className="ml-16 prose lg:prose-xl dark:prose-invert">
           <br />
           <h1>Installation Guide</h1>

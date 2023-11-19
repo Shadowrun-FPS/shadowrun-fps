@@ -65,7 +65,7 @@ const errorAccordions: AccoridonType[] = [
 
 export default function TroubleshootingPage() {
   return (
-    <>
+    <main className="w-auto md:w-4/5 md:mx-auto">
       <DocHero title={""} />
       <div className="ml-16 prose lg:prose-xl dark:prose-invert">
         <br />
@@ -76,7 +76,7 @@ export default function TroubleshootingPage() {
       <div className="container my-8">
         <AccordionGroup accordions={errorAccordions} title={"Error Codes"} />
       </div>
-      <main className="ml-16 prose lg:prose-xl dark:prose-invert">
+      <div className="prose lg:prose-xl dark:prose-invert">
         <br />
         <h3>Activation</h3>
         <p>
@@ -255,7 +255,7 @@ export default function TroubleshootingPage() {
           tip: # before a line in dxvk.conf disables the setting toggle but
           keeps the entered info
         </p>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }
