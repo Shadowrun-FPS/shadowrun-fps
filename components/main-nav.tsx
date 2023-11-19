@@ -38,12 +38,12 @@ const components: { title: string; href: string; description: string }[] = [
   },
   {
     title: "Rules",
-    href: "/rules",
+    href: "/docs/rules",
     description: "Rules to play in the pick up games.",
   },
   {
     title: "Tutorials",
-    href: "/tutorials",
+    href: "/docs/tutorials",
     description: "Shadowrun tutorials and content.",
   },
 ];
@@ -89,7 +89,7 @@ export function MainNavMenu() {
                   </a>
                 </NavigationMenuLink>
               </li>
-              <ListItem href="/docs" title="Introduction">
+              <ListItem href="/docs/introduction" title="Introduction">
                 Join up to play on PC for free!
               </ListItem>
               <ListItem href="/docs/installation" title="Installation">
@@ -118,7 +118,7 @@ export function MainNavMenu() {
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <Link href="/support" legacyBehavior passHref>
+          <Link href="/docs/support" legacyBehavior passHref>
             <NavigationMenuLink className={navigationMenuTriggerStyle()}>
               Support
             </NavigationMenuLink>

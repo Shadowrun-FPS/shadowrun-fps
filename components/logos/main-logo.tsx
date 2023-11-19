@@ -22,8 +22,8 @@ function MainLogo() {
         className="hidden md:block"
         src={`/title.png`}
         alt={`Shadowrun Title`}
-        width={120}
-        height={120}
+        width={240}
+        height={170}
       />
     </Link>
   );

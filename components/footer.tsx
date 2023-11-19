@@ -14,7 +14,11 @@ const Footer = () => {
         <Link className="no-underline hover:text-blue-600" href="/contact">
           Contact
         </Link>
-        <Link className="no-underline hover:text-blue-600" href="/discord">
+        <Link
+          className="no-underline hover:text-blue-600"
+          href="https://discord.com/servers/this-is-shadowrun-930362820627943495"
+          target="_blank"
+        >
           Discord
         </Link>
       </div>
