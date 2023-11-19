@@ -119,7 +119,7 @@ export default function InstallationPage() {
           <ul>
             <li>
               Enter your key when prompted. The first time login/activation
-              loading circle may take 5-20 minutes (see "Getting a key" section
+              loading circle may take 5-20 minutes (see Getting a key section
               below)
             </li>
           </ul>
@@ -129,7 +129,7 @@ export default function InstallationPage() {
             <li>
               While the other settings are up to your preferences of detail,
               quality, and performance, it is important to set Vertical Sync to
-              Disabled in the in-game's Advanced Video settings.
+              Disabled in the in-game Advanced Video settings.
             </li>
           </ul>
           <Image

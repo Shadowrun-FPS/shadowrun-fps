@@ -56,6 +56,11 @@ const errorAccordions: AccoridonType[] = [
       "Create a new gamertag on Xbox.com (doesn't even require email verification) & add other profile after activation",
     ],
   },
+  {
+    title: "Error Need Multiplayer Enabled",
+    content:
+      "Xbox settings - system - storage devices - clear local Xbox 360 storage",
+  },
 ];
 
 export default function TroubleshootingPage() {

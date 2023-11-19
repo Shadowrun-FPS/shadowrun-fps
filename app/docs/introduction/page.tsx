@@ -58,7 +58,7 @@ export default function IntroductionPage() {
               <h3 className="text-2xl">Shadowrun 2023 LAN - Nashville, TN</h3>
               <div className="text-lg">
                 How 21 friends took over an AirBnB in Nashville, TN for
-                Shadowrun's first LAN event after many years in 2017. Equiped
+                Shadowruns first LAN event after many years in 2017. Equiped
                 with eight PCs and a shared passion, one great weekend ensued.
               </div>
             </div>
@@ -74,7 +74,7 @@ export default function IntroductionPage() {
               <h3 className="text-2xl">Shadowrun 2017 LAN - Anaheim, CA</h3>
               <div className="text-lg">
                 How 13 friends took over an Esports Arena in Anaheim, CA for
-                Shadowrun's first LAN event after many years in 2017. Equiped
+                Shadowruns first LAN event after many years in 2017. Equiped
                 with Xbox 360s and a shared passion, one great weekend ensued.
               </div>
             </div>
