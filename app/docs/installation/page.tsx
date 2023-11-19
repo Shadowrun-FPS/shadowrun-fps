@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function InstallationPage() {
   return (
-    <div className="mt-8 ml-16 prose lg:prose-xl dark:prose-invert">
+    <main className="w-screen min-h-full mt-8 ml-16">
       <h1>Installation Guide</h1>
       <h2>Preface</h2>
       <p>
@@ -186,6 +186,6 @@ export default function InstallationPage() {
           Public Key Share
         </Link>{" "}
       </p>
-    </div>
+    </main>
   );
 }
