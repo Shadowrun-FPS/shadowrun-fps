@@ -4,23 +4,16 @@ import React from "react";
 
 export default function SupportPage() {
   return (
-    <div className="flex flex-col items-center justify-center h-screen">
-      <img
-        src="/under_construction_PNG49.png"
-        alt="Under Construction Cone"
-        className="mb-8"
-        width={1050}
-        height={350}
-      />
+    <div className="flex flex-col items-center justify-center">
       <div className="prose text-center lg:prose-xl dark:prose-invert">
         <h1>Support Page is Under Construction</h1>
         <p>
-          We're currently working hard to enhance your experience. Our website
-          is undergoing some renovations to bring you exciting new content and
+          Were currently working hard to enhance your experience. Our website is
+          undergoing some renovations to bring you exciting new content and
           features.
         </p>
         <p>
-          We appreciate your patience and can't wait to share the improvements
+          We appreciate your patience and cant wait to share the improvements
           with you. Please check back soon!
         </p>
       </div>
