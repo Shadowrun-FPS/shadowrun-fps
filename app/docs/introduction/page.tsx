@@ -45,7 +45,10 @@ export default function IntroductionPage() {
         >
           <h2 className="text-6xl text-bold ">Latest Community Posts</h2>
           <br />
-          <div id="latest-posts-list" style={{ display: "flex", gap: "24px" }}>
+          <div
+            id="latest-posts-list"
+            className="flex flex-col md:flex-row gap-7"
+          >
             <div id="post">
               <Image
                 src="/2023NashvilleLAN.jpeg"
