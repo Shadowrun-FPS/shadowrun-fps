@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { DocHero } from "@/components/doc-hero";
 
 export default function InstallationPage() {
   return (
