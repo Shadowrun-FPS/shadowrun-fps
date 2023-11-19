@@ -35,7 +35,7 @@ export default function TutorialsPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="flex items-center justify-center bg-gray-900">
+      <div className="flex flex-col items-center justify-center bg-gray-900 md:flex-row">
         <main
           className="prose place-content-center lg:prose-xl dark:prose-invert"
           style={{ maxWidth: "1600px" }}
@@ -48,9 +48,9 @@ export default function TutorialsPage() {
           <div className="grid grid-cols-1 gap-8 mt-8 lg:grid-cols-2 lg:mb-24 lg:mt-0">
             {/* Map over the videos array to dynamically generate video sections */}
             {videos.map((video, index) => (
-              <section key={index} className="relative mt-12 lg:mb-48">
+              <section key={index} className="relative">
                 <iframe
-                  className="w-full h-[160%] max-w-full rounded-md"
+                  className="w-full rounded-md aspect-video"
                   src={video.src}
                   frameBorder="0"
                   allowFullScreen
