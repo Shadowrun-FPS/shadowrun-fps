@@ -7,8 +7,8 @@ export default function IntroductionPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="flex flex-col items-center justify-center">
-        <div className="prose text-center lg:prose-xl dark:prose-invert">
+      <div className="flex flex-col items-center justify-center ">
+        <div className="mx-8 prose text-center lg:prose-xl dark:prose-invert">
           <br />
           <h1>Introduction Page is Under Construction</h1>
           <p>
@@ -22,7 +22,7 @@ export default function IntroductionPage() {
           </p>
         </div>
 
-        <div className="mt-8 text-center">
+        <div className="mx-8 mt-8 text-center">
           <h2>Contact Us</h2>
           <p>
             If you have urgent inquiries or need assistance, feel free to reach
@@ -52,7 +52,7 @@ export default function IntroductionPage() {
               <h3 className="text-2xl">Shadowrun 2023 LAN - Nashville, TN</h3>
               <div className="text-lg">
                 How 21 friends took over an AirBnB in Nashville, TN for
-                Shadowruns first LAN event after many years in 2017. Equiped
+                Shadowruns first LAN event after several years in 2023. Equiped
                 with eight PCs and a shared passion, one great weekend ensued.
               </div>
             </div>

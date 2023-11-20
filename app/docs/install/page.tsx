@@ -6,8 +6,8 @@ export default function InstallationPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="mt-2 ml-14 lg:prose-xl dark:prose-invert">
-        <div className="ml-16 prose lg:prose-xl dark:prose-invert">
+      <div className="mx-8 mt-2 text-justify dark:prose-invert">
+        <div className="mx-auto prose lg:prose-xl dark:prose-invert">
           <br />
           <h1>Installation Guide</h1>
           <article>
