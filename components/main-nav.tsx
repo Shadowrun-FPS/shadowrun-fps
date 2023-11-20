@@ -37,7 +37,7 @@ const components: { title: string; href: string; description: string }[] = [
     description: "View stats by player name.",
   },
   {
-    title: "Rules",
+    title: "Ranked Rules",
     href: "/docs/rules",
     description: "Rules to play in the pick up games.",
   },

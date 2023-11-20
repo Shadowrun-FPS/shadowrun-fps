@@ -6,7 +6,7 @@ export default function RankedRulesPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="mx-8 mt-8 prose xl:mx-auto lg:text-justify lg:max-w-7xl lg:prose-xl dark:prose-invert">
+      <div className="mx-8 mt-16 prose xl:mx-auto lg:text-justify lg:max-w-7xl lg:prose-xl dark:prose-invert">
         <h1>RANKED RULES</h1>
 
         <h2>Game Setup Rules</h2>

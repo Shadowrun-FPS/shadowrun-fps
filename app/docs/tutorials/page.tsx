@@ -17,7 +17,7 @@ const videos = [
     src: "https://www.youtube.com/embed/3Da9ny1Qi2g",
   },
   {
-    title: "Dream Impulse - Shadowrun 2007 Montage #1",
+    title: "DreamImpulse - Shadowrun 2007 Montage #1",
     src: "https://www.youtube.com/embed/xEK0e0edZz8?si=W21dycgcs9N9-54E",
   },
   {
