@@ -6,7 +6,7 @@ export default function RankedRulesPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="mt-16 ml-16 prose lg:prose-xl dark:prose-invert">
+      <div className="mx-8 mt-8 prose xl:mx-auto lg:text-justify lg:max-w-7xl lg:prose-xl dark:prose-invert">
         <h1>RANKED RULES</h1>
 
         <h2>Game Setup Rules</h2>
@@ -19,7 +19,7 @@ export default function RankedRulesPage() {
             Game 2 - The other team than that indicated by the bot has the
             choice of side OR server.
           </li>
-          <li className="mb-0 not-prose">
+          <li className="mb-0">
             Game 3 - The team that has won the most total rounds* between games
             1 & 2 will choose EITHER the Side, OR Server, and the other team
             will receive the remaining choice of Side, or Server.

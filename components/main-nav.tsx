@@ -19,22 +19,22 @@ import { BookText, Menu, HelpCircle } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Play Ranked",
-    href: "/ranked",
+    title: "Play Ranked (Coming Soon)",
+    href: "/#",
     description: "Ranked pick up games.",
   },
   {
-    title: "Play Casual",
+    title: "Play Casual (Coming Soon)",
     href: "/casual",
     description: "Join a casual pick up game!",
   },
   {
-    title: "Leaderboard",
+    title: "Leaderboard (Coming Soon)",
     href: "/leaderboard",
     description: "A leaderboard of the highest ranked players.",
   },
   {
-    title: "Stats look up",
+    title: "Stats Look-up (Coming Soon)",
     href: "/stats",
     description: "View stats by player name.",
   },
@@ -83,7 +83,7 @@ export function MainNavMenu() {
               <ListItem href="/docs/introduction" title="Introduction">
                 Join up to play on PC for free!
               </ListItem>
-              <ListItem href="/docs/installation" title="Installation">
+              <ListItem href="/docs/install" title="Installation">
                 How to install the game for PC.
               </ListItem>
               <ListItem href="/docs/troubleshoot" title="Troubleshooting">
