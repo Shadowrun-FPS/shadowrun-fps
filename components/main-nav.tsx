@@ -19,22 +19,22 @@ import { BookText, Menu, HelpCircle } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Play Ranked (Coming Soon)",
+    title: "Play Ranked",
     href: "/#",
     description: "Ranked pick up games.",
   },
   {
-    title: "Play Casual (Coming Soon)",
+    title: "Play Casual",
     href: "/casual",
     description: "Join a casual pick up game!",
   },
   {
-    title: "Leaderboard (Coming Soon)",
+    title: "Leaderboard",
     href: "/leaderboard",
     description: "A leaderboard of the highest ranked players.",
   },
   {
-    title: "Stats Look-up (Coming Soon)",
+    title: "Stats Look-up",
     href: "/stats",
     description: "View stats by player name.",
   },
