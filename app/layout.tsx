@@ -22,11 +22,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`min-h-screen ${inter.className}`}>
+      <body className={`min-h-screen flex flex-col ${inter.className}`}>
         <NextAuthProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Header />
-            {children}
+            <main className="flex-1 overflow-y-auto mt-[100px]">
+              {children}
+            </main>
             <Footer />
           </ThemeProvider>
         </NextAuthProvider>
