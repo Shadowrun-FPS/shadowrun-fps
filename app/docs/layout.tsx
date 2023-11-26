@@ -1,7 +1,13 @@
+import { DocHero } from "@/components/doc-hero";
+
 export default function DocsLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <main>{children}</main>;
+  return (
+    <div>
+      <DocHero /> {children}
+    </div>
+  );
 }
