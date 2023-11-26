@@ -72,7 +72,7 @@ export default function TroubleshootingPage() {
           <br />
           <h1 className="5xl-text">Errors and Info</h1>
         </div>
-        <div className="container mt-8">
+        <div className="mt-8">
           <AccordionGroup accordions={errorAccordions} title={"Error Codes"} />
         </div>
         <div className="mx-auto prose lg:text-justify lg:max-w-7xl lg:prose-xl dark:prose-invert">

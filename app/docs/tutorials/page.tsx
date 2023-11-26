@@ -41,7 +41,7 @@ export default function TutorialsPage() {
           style={{ maxWidth: "1600px" }}
         >
           <div className="mt-12 mb-4 text-center text-white">
-            <h1 className="mt-12 mb-4 text-5xl font-bold not-prose">
+            <h1 className="mt-12 mb-4 text-3xl font-bold md:text-5xl not-prose">
               Shadowrun Tutorials
             </h1>
           </div>
@@ -57,7 +57,7 @@ export default function TutorialsPage() {
                   style={{ width: "100%" }}
                 ></iframe>
                 <div className="text-center text-white">
-                  <h2 className="mt-4 mb-8 text-4xl font-bold not-prose">
+                  <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
                     {video.title}
                   </h2>
                 </div>
