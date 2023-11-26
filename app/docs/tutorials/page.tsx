@@ -17,7 +17,7 @@ const videos = [
     src: "https://www.youtube.com/embed/3Da9ny1Qi2g",
   },
   {
-    title: "Dream Impulse - Shadowrun 2007 Montage #1",
+    title: "DreamImpulse - Shadowrun 2007 Montage #1",
     src: "https://www.youtube.com/embed/xEK0e0edZz8?si=W21dycgcs9N9-54E",
   },
   {
@@ -41,7 +41,7 @@ export default function TutorialsPage() {
           style={{ maxWidth: "1600px" }}
         >
           <div className="mt-12 mb-4 text-center text-white">
-            <h1 className="mt-12 mb-4 text-5xl font-bold not-prose">
+            <h1 className="mt-12 mb-4 text-3xl font-bold md:text-5xl not-prose">
               Shadowrun Tutorials
             </h1>
           </div>
@@ -57,7 +57,7 @@ export default function TutorialsPage() {
                   style={{ width: "100%" }}
                 ></iframe>
                 <div className="text-center text-white">
-                  <h2 className="mt-4 mb-8 text-4xl font-bold not-prose">
+                  <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
                     {video.title}
                   </h2>
                 </div>

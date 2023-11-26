@@ -8,7 +8,10 @@ const Footer = () => {
   return (
     <footer className="py-4">
       <div className="container flex items-center justify-center gap-12 mx-auto prose dark:prose-invert">
-        <Link className="no-underline hover:text-blue-600" href="/about">
+        <Link
+          className="no-underline hover:text-blue-600"
+          href="/docs/introduction"
+        >
           About
         </Link>
         <Link className="no-underline hover:text-blue-600" href="/contact">

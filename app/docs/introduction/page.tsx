@@ -7,92 +7,351 @@ export default function IntroductionPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="flex flex-col items-center justify-center">
-        <div className="prose text-center lg:prose-xl dark:prose-invert">
-          <br />
-          <h1>Introduction Page is Under Construction</h1>
-          <p>
-            Were currently working hard to enhance your experience. Our website
-            is undergoing some renovations to bring you exciting new content and
-            features.
-          </p>
-          <p>
-            We appreciate your patience and cant wait to share the improvements
-            with you. Please check back soon!
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center ">
+        <div className="container mx-auto mt-12 md:px-6">
+          <section className="mb-8 text-center">
+            <h2 className="mb-12 text-3xl font-bold">
+              Meet the{" "}
+              <u className="text-primary dark:text-primary-400">Staff team</u>
+            </h2>
+            <h1 className="mb-12 text-3xl font-bold">Admins</h1>
+            <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-6">
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/siris.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
 
-        <div className="mt-8 text-center">
-          <h2>Contact Us</h2>
-          <p>
-            If you have urgent inquiries or need assistance, feel free to reach
-            out to us through the community discord.
-          </p>
+                <p className="mb-2 font-bold">Siris</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Founder/Oh Brother
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/bumjamas.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+
+                <p className="mb-2 font-bold">BumJamas</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Admin/Content Lord/Cameraman/Dad
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/pants.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">Pants</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Admin/IT Wizard
+                </p>
+              </div>
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/bagel.gif"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">$5 Bagel</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Admin/Designer/Oscar Winner/Autism Recognition Specialist
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/shubwub.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">ShubWub</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Admin/Bot Team/Copy Collector
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/sinful.jpg"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">Sinful Hollowz</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Admin/Mr. OCD/ Troublemaker
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="mb-8 text-center">
+            <h1 className="mb-12 text-3xl font-bold">Moderators</h1>
+            <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-5">
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/hormel.jpg"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">HormelVEVO</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/Pot Stirrer
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/v2cain.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">v2 C A i N</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator (AWOL)
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/manamystery.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">ManaMystery</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/List Master
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/frank.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">Frank</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/HVAC Master/Frank
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/final.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">FinalForce07</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/Queue Master
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/ff5ninja.gif"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">FF5Ninja</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/Bot Team
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/wwm0nkey.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">wwm0nkey</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/BTS Guru
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/shadowrungirl.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">Shadowrun Girl</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/Toxic/Always Innocent
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/SRLogo.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">Bryman</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/Bot Team
+                </p>
+              </div>
+
+              <div className="mb-12 hover:scale-110">
+                <Image
+                  src="/shwifty.png"
+                  className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
+                  alt=""
+                  width={120}
+                  height={100}
+                />
+                <p className="mb-2 font-bold">Shwiftyy</p>
+                <p className="text-neutral-500 dark:text-neutral-300">
+                  Moderator/Shy
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+        {/* <!-- Section: Design Block --> */}
+        <div className="container mx-auto md:px-6">
+          <section className="mb-8">
+            <h2 className="mb-12 text-3xl font-bold text-center">
+              Latest articles
+            </h2>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div
+                className="relative overflow-hidden bg-no-repeat bg-cover rounded-lg shadow-lg hover:scale-105 zoom dark:shadow-black/20"
+                data-te-ripple-init
+                data-te-ripple-color="light"
+              >
+                <img
+                  src="/2023NashvilleLAN.jpeg"
+                  className="w-full h-full align-middle transition duration-300 ease-linear"
+                />
+                <a href="#!">
+                  <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-[hsla(0,0%,0%,0.4)] bg-fixed">
+                    <div className="flex items-end justify-start h-full">
+                      <div className="m-6 text-white">
+                        <h5 className="mb-3 text-lg font-bold">
+                          2023 Nashville LAN
+                        </h5>
+                        <p>
+                          <small>
+                            Published <u>10-17-2023</u> by Sinful Hollowz
+                          </small>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-fixed transition duration-300 ease-in-out hover:bg-[hsla(0,0%,99%,0.15)]"></div>
+                </a>
+              </div>
+              <div
+                className="relative overflow-hidden bg-no-repeat bg-cover rounded-lg shadow-lg hover:scale-105 dark:shadow-black/20"
+                data-te-ripple-init
+                data-te-ripple-color="light"
+              >
+                <img
+                  src="/shadowrunAMA_03.png"
+                  className="w-full h-full align-middle transition duration-300 ease-linear "
+                />
+                <a
+                  href="https://youtu.be/SAkaQb6V5jE?si=Wi02DvBdjpU6o2wx!"
+                  target="_blank"
+                >
+                  <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-[hsla(0,0%,0%,0.4)] bg-fixed">
+                    <div className="flex items-end justify-start h-full">
+                      <div className="m-6 text-white">
+                        <h5 className="mb-3 text-lg font-bold">
+                          FASA Studios Developer AMA Q&A
+                        </h5>
+                        <p>
+                          <small>
+                            Published <u>08-10-2023</u> by Sinful Hollowz
+                          </small>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-fixed transition duration-300 ease-in-out hover:bg-[hsla(0,0%,99%,0.15)]"></div>
+                </a>
+              </div>
+              <div
+                className="relative overflow-hidden bg-no-repeat bg-cover rounded-lg shadow-lg hover:scale-105 dark:shadow-black/20"
+                data-te-ripple-init
+                data-te-ripple-color="light"
+              >
+                <img
+                  src="/Shadowrun2017AnaheimLAN.jpeg"
+                  className="w-full align-middle transition duration-300 ease-linear "
+                />
+                <a href="#!">
+                  <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-[hsla(0,0%,0%,0.4)] bg-fixed">
+                    <div className="flex items-end justify-start h-full">
+                      <div className="m-6 text-white">
+                        <h5 className="mb-3 text-lg font-bold">
+                          2017 Anaheim LAN
+                        </h5>
+                        <p>
+                          <small>
+                            Published <u>01-22-2017</u> by Sinful Hollowz
+                          </small>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-fixed transition duration-300 ease-in-out hover:bg-[hsla(0,0%,99%,0.15)]"></div>
+                </a>
+              </div>
+              {/* <!-- Section: Design Block --> */}
+            </div>
+          </section>
         </div>
         <br />
-        <section
-          id="blog"
-          className="grid grid-cols-1 p-8 mx-auto prose rounded max-w-screen-2xl bg-muted dark:prose-invert "
-        >
-          <h2 className="text-6xl text-bold ">Latest Community Posts</h2>
-          <br />
-          <div
-            id="latest-posts-list"
-            className="flex flex-col md:flex-row gap-7"
-          >
-            <div id="post">
-              <Image
-                src="/2023NashvilleLAN.jpeg"
-                alt=""
-                width={800}
-                height={800}
-                object-fit="cover"
-              ></Image>
 
-              <h3 className="text-2xl">Shadowrun 2023 LAN - Nashville, TN</h3>
-              <div className="text-lg">
-                How 21 friends took over an AirBnB in Nashville, TN for
-                Shadowruns first LAN event after many years in 2017. Equiped
-                with eight PCs and a shared passion, one great weekend ensued.
-              </div>
-            </div>
-            <div id="post" className="">
-              <Image
-                src="/Shadowrun2017AnaheimLAN.jpeg"
-                alt=""
-                width={800}
-                height={800}
-                object-fit="cover"
-              ></Image>
-
-              <h3 className="text-2xl">Shadowrun 2017 LAN - Anaheim, CA</h3>
-              <div className="text-lg">
-                How 13 friends took over an Esports Arena in Anaheim, CA for
-                Shadowruns first LAN event after many years in 2017. Equiped
-                with Xbox 360s and a shared passion, one great weekend ensued.
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="mt-8 text-center">
-          <h2>Stay Connected</h2>
-          <p>
+        <div className="text-center">
+          <h2 className="mb-4">Stay Connected</h2>
+          <p className="mb-4">
             Follow us on social media for updates and announcements about our
             progress:
           </p>
-          <ul>
-            <br />
-            <li>
-              <a
-                href="https://twitter.com/i/communities/1688188047064470011"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Twitter
-              </a>
-            </li>
-          </ul>
         </div>
       </div>
     </>

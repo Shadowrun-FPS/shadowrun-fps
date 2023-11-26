@@ -7,7 +7,7 @@ export default function SupportPage() {
   return (
     <>
       <DocHero title={""} />
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center mx-8">
         <div className="prose text-center lg:prose-xl dark:prose-invert">
           <br />
           <h1>Support Page is Under Construction</h1>
