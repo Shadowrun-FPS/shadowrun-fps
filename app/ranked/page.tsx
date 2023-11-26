@@ -32,21 +32,19 @@ export default async function RankedPage() {
     }
     const matches = data?.matches;
     return (
-      <main className="container">
+      <div>
         <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
         {matches?.map((match: MatchResult) => {
           return <MatchCard key={match.matchId} match={match} />;
         })}
-      </main>
+      </div>
     );
   } else {
     return (
-      <main className="container">
-        <ComingSoon
-          title={"Ranked pick up games"}
-          description="Here is where you will be able to sign up for ranked pick up games, similar to the discord bot."
-        />
-      </main>
+      <ComingSoon
+        title={"Ranked pick up games"}
+        description="Here is where you will be able to sign up for ranked pick up games, similar to the discord bot."
+      />
     );
   }
 }
