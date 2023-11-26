@@ -59,16 +59,16 @@ export default function RankedRulesPage() {
               <li>
                 Once a match begins, you must play for the entirety of the
                 match. Leaving a match early will result in the offender being
-                penalized per the "Penalties" section of the rules.
+                penalized per the Penalties section of the rules.
               </li>
               <li>
                 Any acts of griefing will be penalized in accordance with the
-                "Penalties" section of the rules.
+                Penalties section of the rules.
               </li>
               <li>
                 Any manipulation of frame rate in-game to increase jump height
                 is not allowed and offenders will be penalized in accordance
-                with the "Penalties" section of the rules.
+                with the Penalties. section of the rules.
               </li>
               <li>
                 If a player makes an accidental purchase (ex: elf buying a tree)
@@ -79,19 +79,19 @@ export default function RankedRulesPage() {
               </li>
               <li>
                 If an outside player (a player who is NOT a participant on
-                either team's roster) joins a Ranked match in progress, the host
+                either team roster) joins a Ranked match in progress, the host
                 of the game must ensure the outsider is removed from the game
                 prior to the start of the following round.
               </li>
               <li>
                 If a player gets disconnected from the lobby, the round that the
-                player d/c'd will be completed as a 4v3. The following round,
-                the player will be given a 3 minute grace period to rejoin the
-                game by way of all players AFK'ing in spawn until 1 minute
-                remains in the round (If the bot makes it to enemy spawn then
-                the bot can be killed). If the player has not rejoined after the
-                grace period, then the rest of the match will continue on as a
-                4v3.
+                player disconnected will be completed as a 4v3. The following
+                round, the player will be given a 3 minute grace period to
+                rejoin the game by way of all players AFKing in spawn until 1
+                minute remains in the round (If the bot makes it to enemy spawn
+                then the bot can be killed). If the player has not rejoined
+                after the grace period, then the rest of the match will continue
+                on as a 4v3.
               </li>
               <li>
                 If the SERVER drops/disconnects and the game is on round 3 or
@@ -99,17 +99,17 @@ export default function RankedRulesPage() {
                 different server chosen. If round 3 has been completed prior to
                 server disconnect, then you will have the option to either: A.
                 Suicide to the score prior to the disconnect. OR B. End the game
-                and come to a Gentleman's Agreement as a lobby on how the game
+                and come to a Gentlemans Agreement as a lobby on how the game
                 should be scored.
               </li>
               <li>
                 If the server disconnects more than once, then a 6-3* will be
                 awarded to the team that did not have server (or a comparable
-                score if a Gentleman's Agreement can be reached).
+                score if a Gentlemans Agreement can be reached).
               </li>
               <ul>
                 <p>
-                  *- This rule has been written in the event that a Gentleman's
+                  *- This rule has been written in the event that a Gentlemans
                   Agreement cannot be reached when a dispute occurs.
                 </p>
               </ul>
