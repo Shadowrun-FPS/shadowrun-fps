@@ -1,6 +1,6 @@
 import { MainNavMenu } from "@/components/main-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
-import MainLogo from "./logos/main-logo";
+import MainLogo from "./icons/main-logo";
 import DiscordSignIn from "./discord/discord-sign-in";
 
 function Header() {
