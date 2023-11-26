@@ -25,7 +25,7 @@ export default function AccordionGroup({
 }: AccordionGroupProps) {
   return (
     <div>
-      <h2 className="my-8 text-4xl font-bold prose dark:prose-invert">
+      <h2 className="my-8 text-2xl font-bold prose dark:prose-invert">
         {title}
       </h2>
       <Accordion type="single" collapsible>
