@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { Button } from "@/components/ui/button";
-import IconDiscordLogo from "../logos/discord-logo";
+import IconDiscordLogo from "../icons/discord-logo";
 import { signIn, signOut } from "next-auth/react";
 
 import { useSession } from "next-auth/react";
