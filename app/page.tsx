@@ -26,14 +26,16 @@ export default function Home() {
   return (
     <>
       <div className="px-4 py-32 mx-auto bg-center bg-no-repeat bg-cover max-w-screen-2xl bg-hero-image sm:px-6 lg:flex lg:items-center lg:px-8">
-        <div className="grid max-w-sm gap-4">
-          <h1 className="text-3xl font-extrabold">Start playing today</h1>
-          <p>
+        <div className="grid max-w-sm gap-4 ">
+          <h1 className="text-3xl font-extrabold text-white">
+            Start playing today
+          </h1>
+          <p className="text-white">
             Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a community
             dedicated to the FASA Studios&apos; 2007 Shadowrun FPS. It works in
             2023!
           </p>
-          <Button>Join a Game</Button>
+          <Button variant={"outline"}>Join a Game</Button>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-12 p-12 mx-auto prose max-w-screen-2xl bg-muted dark:prose-invert md:grid-cols-2">
