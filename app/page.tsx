@@ -24,7 +24,7 @@ export default function Home() {
   // TODO make main take up rest of height on page
   // ensuring footer is always at the bottom of the page
   return (
-    <main className="min-h-full">
+    <>
       <div className="px-4 py-32 mx-auto bg-center bg-no-repeat bg-cover max-w-screen-2xl bg-hero-image sm:px-6 lg:flex lg:items-center lg:px-8">
         <div className="grid max-w-sm gap-4">
           <h1 className="text-3xl font-extrabold">Start playing today</h1>
@@ -52,6 +52,6 @@ export default function Home() {
           games begin.
         </p>
       </div>
-    </main>
+    </>
   );
 }

@@ -20,7 +20,7 @@ import { BookText, Menu, HelpCircle } from "lucide-react";
 const components: { title: string; href: string; description: string }[] = [
   {
     title: "Play Ranked",
-    href: "/#",
+    href: "/ranked",
     description: "Ranked pick up games.",
   },
   {
