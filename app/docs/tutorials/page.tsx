@@ -33,39 +33,36 @@ const videos = [
 
 export default function TutorialsPage() {
   return (
-    <>
-      <DocHero title={""} />
-      <div className="flex flex-col items-center justify-center bg-gray-900 md:flex-row">
-        <main
-          className="prose place-content-center lg:prose-xl dark:prose-invert"
-          style={{ maxWidth: "1600px" }}
-        >
-          <div className="mt-12 mb-4 text-center text-white">
-            <h1 className="mt-12 mb-4 text-3xl font-bold md:text-5xl not-prose">
-              Shadowrun Tutorials
-            </h1>
-          </div>
-          <div className="grid grid-cols-1 gap-8 mt-8 lg:grid-cols-2 lg:mb-24 lg:mt-0">
-            {/* Map over the videos array to dynamically generate video sections */}
-            {videos.map((video, index) => (
-              <section key={index} className="relative">
-                <iframe
-                  className="w-full rounded-md aspect-video"
-                  src={video.src}
-                  frameBorder="0"
-                  allowFullScreen
-                  style={{ width: "100%" }}
-                ></iframe>
-                <div className="text-center text-white">
-                  <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
-                    {video.title}
-                  </h2>
-                </div>
-              </section>
-            ))}
-          </div>
-        </main>
-      </div>
-    </>
+    <div className="flex flex-col items-center justify-center bg-gray-900 md:flex-row">
+      <main
+        className="prose place-content-center lg:prose-xl dark:prose-invert"
+        style={{ maxWidth: "1600px" }}
+      >
+        <div className="mt-12 mb-4 text-center text-white">
+          <h1 className="mt-12 mb-4 text-3xl font-bold md:text-5xl not-prose">
+            Shadowrun Tutorials
+          </h1>
+        </div>
+        <div className="grid grid-cols-1 gap-8 mt-8 lg:grid-cols-2 lg:mb-24 lg:mt-0">
+          {/* Map over the videos array to dynamically generate video sections */}
+          {videos.map((video, index) => (
+            <section key={index} className="relative">
+              <iframe
+                className="w-full rounded-md aspect-video"
+                src={video.src}
+                frameBorder="0"
+                allowFullScreen
+                style={{ width: "100%" }}
+              ></iframe>
+              <div className="text-center text-white">
+                <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
+                  {video.title}
+                </h2>
+              </div>
+            </section>
+          ))}
+        </div>
+      </main>
+    </div>
   );
 }
