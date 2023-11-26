@@ -13,7 +13,9 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { useEffect } from "react";
+
+import ResponsitveTitle from "./navigation/responsive-title";
+import { BookText, Menu, HelpCircle } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -51,27 +53,16 @@ const components: { title: string; href: string; description: string }[] = [
 export function MainNavMenu() {
   // TODO create mobile friendly nav menu that takes up less width
   // use shadcn/ui dropdown menu https://ui.shadcn.com/docs/components/dropdown-menu
-  useEffect(() => {
-    const getMatchData = async () => {
-      const res = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true"
-      );
-      if (!res.ok) {
-        throw new Error("Failed to fetch data");
-      }
-      const data = await res.json();
-      console.log("data: ", data);
-    };
 
-    getMatchData();
-  }, []);
   return (
     <NavigationMenu>
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
+          <NavigationMenuTrigger>
+            <ResponsitveTitle title={"Getting Started"} icon={<BookText />} />
+          </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+            <ul className="grid gap-3 p-6 w-[250px] md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-3">
                 <NavigationMenuLink asChild>
                   <a
@@ -98,13 +89,18 @@ export function MainNavMenu() {
               <ListItem href="/docs/troubleshoot" title="Troubleshooting">
                 How to fix common errors with the game.
               </ListItem>
+              <ListItem href="/docs/support" title="Support">
+                Support
+              </ListItem>
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Play</NavigationMenuTrigger>
+          <NavigationMenuTrigger>
+            <ResponsitveTitle title={"Play"} icon={<Menu />} />
+          </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+            <ul className="grid w-[250px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               {components.map((component) => (
                 <ListItem
                   key={component.title}
@@ -116,13 +112,6 @@ export function MainNavMenu() {
               ))}
             </ul>
           </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <Link href="/docs/support" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Support
-            </NavigationMenuLink>
-          </Link>
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>
