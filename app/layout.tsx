@@ -26,9 +26,7 @@ export default function RootLayout({
         <NextAuthProvider>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
             <Header />
-            <main className="flex-1 overflow-y-auto mt-[100px]">
-              {children}
-            </main>
+            <main className="container flex-1 overflow-y-auto">{children}</main>
             <Footer />
           </ThemeProvider>
         </NextAuthProvider>
