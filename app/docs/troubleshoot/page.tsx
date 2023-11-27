@@ -66,14 +66,14 @@ const errorAccordions: AccoridonType[] = [
 export default function TroubleshootingPage() {
   return (
     <div className="mx-8 md:ml-16">
-      <div className="mx-auto prose lg:text-center lg:max-w-7xl lg:prose-xl dark:prose-invert">
+      <div className="prose lg:max-w-7xl lg:prose-xl dark:prose-invert">
         <br />
         <h1 className="5xl-text">Errors and Info</h1>
       </div>
       <div className="mt-8">
         <AccordionGroup accordions={errorAccordions} title={"Error Codes"} />
       </div>
-      <div className="mx-auto prose lg:text-justify lg:max-w-7xl lg:prose-xl dark:prose-invert">
+      <div className="prose lg:max-w-7xl lg:prose-xl dark:prose-invert">
         <br />
         <h3 className="">Activation</h3>
         <p>
