@@ -33,7 +33,7 @@ const videos = [
 
 export default function TutorialsPage() {
   return (
-    <div className="flex flex-col items-center justify-center bg-gray-900 md:flex-row">
+    <div className="flex flex-col items-center justify-center md:flex-row">
       <main
         className="prose place-content-center lg:prose-xl dark:prose-invert"
         style={{ maxWidth: "1600px" }}

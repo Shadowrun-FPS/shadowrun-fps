@@ -1,4 +1,4 @@
-import ComingSoon from "../coming-soon";
+import ComingSoon from "../../coming-soon";
 
 const LeaderboardPage: React.FC = () => {
   return (

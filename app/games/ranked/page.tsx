@@ -1,6 +1,6 @@
 import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
-import ComingSoon from "../coming-soon";
+import ComingSoon from "../../coming-soon";
 
 async function getRankedMatches() {
   const res = await fetch(

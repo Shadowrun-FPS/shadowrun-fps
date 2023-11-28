@@ -1,4 +1,4 @@
-import ComingSoon from "../coming-soon";
+import ComingSoon from "../../coming-soon";
 
 const CasualPage: React.FC = () => {
   return (
