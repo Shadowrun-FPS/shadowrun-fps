@@ -6,7 +6,7 @@ import { DocHero } from "@/components/doc-hero";
 export default function IntroductionPage() {
   return (
     <div className="flex flex-col items-center justify-center ">
-      <div className="container mx-auto mt-12 md:px-6">
+      <div className="mx-auto mt-12 md:px-6">
         <section className="mb-8 text-center">
           <h2 className="mb-12 text-3xl font-bold">
             Meet the{" "}
@@ -247,7 +247,7 @@ export default function IntroductionPage() {
         </section>
       </div>
       {/* <!-- Section: Design Block --> */}
-      <div className="container mx-auto md:px-6">
+      <div className="mx-auto">
         <section className="mb-8">
           <h2 className="mb-12 text-3xl font-bold text-center">
             Latest articles
@@ -259,9 +259,12 @@ export default function IntroductionPage() {
               data-te-ripple-init
               data-te-ripple-color="light"
             >
-              <img
+              <Image
                 src="/2023NashvilleLAN.jpeg"
                 className="w-full h-full align-middle transition duration-300 ease-linear"
+                alt=""
+                width={1000}
+                height={1000}
               />
               <a href="#!">
                 <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-[hsla(0,0%,0%,0.4)] bg-fixed">
@@ -286,9 +289,12 @@ export default function IntroductionPage() {
               data-te-ripple-init
               data-te-ripple-color="light"
             >
-              <img
+              <Image
                 src="/shadowrunAMA_03.png"
-                className="w-full h-full align-middle transition duration-300 ease-linear "
+                className="w-full h-full align-middle transition duration-300 ease-linear"
+                alt=""
+                width={1000}
+                height={1000}
               />
               <a
                 href="https://youtu.be/SAkaQb6V5jE?si=Wi02DvBdjpU6o2wx!"
@@ -316,9 +322,12 @@ export default function IntroductionPage() {
               data-te-ripple-init
               data-te-ripple-color="light"
             >
-              <img
+              <Image
                 src="/Shadowrun2017AnaheimLAN.jpeg"
-                className="w-full align-middle transition duration-300 ease-linear "
+                className="w-full align-middle transition duration-300 ease-linear"
+                alt=""
+                width={1000}
+                height={1000}
               />
               <a href="#!">
                 <div className="absolute top-0 right-0 bottom-0 left-0 h-full w-full overflow-hidden bg-[hsla(0,0%,0%,0.4)] bg-fixed">

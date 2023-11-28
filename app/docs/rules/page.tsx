@@ -5,7 +5,7 @@ import { DocHero } from "@/components/doc-hero";
 export default function RankedRulesPage() {
   return (
     <div className="mt-8 lg:grid-cols-3 lg:flex dark:prose-invert">
-      <div className="mx-8 prose xl:mx-auto md:text-justify md:mx-auto lg:prose-xl dark:prose-invert">
+      <div className="prose xl:mx-auto md:text-justify md:mx-auto lg:prose-xl dark:prose-invert">
         <h1>RANKED RULES</h1>
         <section id="game-setup-rules">
           <h2 className="pt-6">Game Setup Rules</h2>

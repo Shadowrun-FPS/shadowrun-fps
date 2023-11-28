@@ -65,7 +65,7 @@ const errorAccordions: AccoridonType[] = [
 
 export default function TroubleshootingPage() {
   return (
-    <div className="mx-8 md:ml-16">
+    <div className="md:ml-16">
       <div className="prose lg:max-w-7xl lg:prose-xl dark:prose-invert">
         <br />
         <h1 className="5xl-text">Errors and Info</h1>

@@ -6,7 +6,7 @@ import { DocHero } from "@/components/doc-hero";
 export default function InstallationPage() {
   return (
     <div className="mt-8 lg:grid-cols-3 lg:flex dark:prose-invert">
-      <div className="mx-8 prose xl:mx-auto lg:prose-xl dark:prose-invert">
+      <div className="prose xl:mx-auto lg:prose-xl dark:prose-invert">
         <div
           data-te-spy="scroll"
           data-te-target="#scrollspy1"
