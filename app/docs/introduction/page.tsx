@@ -6,7 +6,7 @@ import { DocHero } from "@/components/doc-hero";
 export default function IntroductionPage() {
   return (
     <div className="flex flex-col items-center justify-center ">
-      <div className="container mx-auto mt-12 md:px-6">
+      <div className="mx-auto mt-12 md:px-6">
         <section className="mb-8 text-center">
           <h2 className="mb-12 text-3xl font-bold">
             Meet the{" "}
@@ -247,7 +247,7 @@ export default function IntroductionPage() {
         </section>
       </div>
       {/* <!-- Section: Design Block --> */}
-      <div className="container mx-auto md:px-6">
+      <div className="mx-auto">
         <section className="mb-8">
           <h2 className="mb-12 text-3xl font-bold text-center">
             Latest articles
