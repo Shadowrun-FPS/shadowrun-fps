@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 type MainLogoProps = {
-  className: string;
+  className?: string;
 };
 
 function MainLogo({ className }: MainLogoProps) {
@@ -23,7 +23,7 @@ function MainLogo({ className }: MainLogoProps) {
         height={40}
       />
       <Image
-        className="hidden lg:block"
+        className="hidden md:block"
         src={`/title.png`}
         alt={`Shadowrun Title`}
         width={240}
