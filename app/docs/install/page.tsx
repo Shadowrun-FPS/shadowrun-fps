@@ -230,7 +230,7 @@ export default function InstallationPage() {
         </div>
       </div>
 
-      <div className="fixed h-16 xl:left-1/4 md:right-4 top-50">
+      <div className="fixed h-16 md:right-4 top-50">
         <div
           id="scrollspy1"
           className="pl-3 text-md scroll-smooth focus:scroll-auto"
