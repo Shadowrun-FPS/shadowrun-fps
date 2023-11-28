@@ -23,7 +23,7 @@ function MainLogo({ className }: MainLogoProps) {
         height={40}
       />
       <Image
-        className="hidden md:block"
+        className="hidden lg:block"
         src={`/title.png`}
         alt={`Shadowrun Title`}
         width={240}
