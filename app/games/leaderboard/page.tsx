@@ -1,7 +1,4 @@
 import "@/app/globals.css";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import Image from "next/image";
 import "./leaderboardStyles.css";
 import Pagination from "./pagination";
 import formatPlayerStats from "./leaderboardBody";

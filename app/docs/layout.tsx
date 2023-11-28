@@ -6,8 +6,9 @@ export default function DocsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <DocHero /> {children}
-    </div>
+    <>
+      <DocHero />
+      <div className="container">{children}</div>
+    </>
   );
 }

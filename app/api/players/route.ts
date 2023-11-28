@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { rowsDefault,  teamSizeDefault} from "@/app/leaderboard/common";
+import { rowsDefault,  teamSizeDefault} from "@/app/games/leaderboard/common";
 
 export async function GET(request: NextRequest) {
   try {
