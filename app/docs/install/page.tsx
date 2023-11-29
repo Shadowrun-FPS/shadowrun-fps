@@ -28,7 +28,7 @@ export default function InstallationPage() {
                 <li>
                   <Link
                     target="_blank"
-                    href="https://discord.com/channels/930362820627943495/938788090087088168"
+                    href="discord://discord.com/channels/930362820627943495/938788090087088168"
                   >
                     Troubleshoot Chat
                   </Link>
