@@ -19,14 +19,16 @@ const Footer = () => {
         </Link>
         <Link
           className="no-underline hover:text-blue-600"
-          href="https://discord.com/servers/this-is-shadowrun-930362820627943495"
+          href="discord://discord.com/servers/this-is-shadowrun-930362820627943495"
           target="_blank"
         >
           Discord
         </Link>
       </div>
       <div className="container mx-auto mt-4 prose text-center dark:prose-invert">
-        <p>&copy; {currentYear} Shadowrun FPS. All rights reserved.</p>
+        <p>
+          &copy; {currentYear} Shadowrun FPS Fan Community. All rights reserved.
+        </p>
       </div>
     </footer>
   );
