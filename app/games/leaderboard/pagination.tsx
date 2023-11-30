@@ -35,7 +35,7 @@ export default function Pagination({
       (i + 1) * playersPerPage < playerCount
     ) {
       if (skipButtons) continue;
-      PageButtons.push(<span>...</span>);
+      PageButtons.push(<>...</>);
       skipButtons = true;
       continue;
     }
@@ -48,7 +48,6 @@ export default function Pagination({
         key={pageNumber}
       >
         {pageNumber}
-        <span className="sr-only">Move to page {pageNumber}</span>
       </Button>
     );
   }
