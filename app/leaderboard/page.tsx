@@ -7,10 +7,9 @@ import Pagination from "./pagination";
 import formatPlayerStats from "./leaderboardBody";
 import LeaderboardCategory from "./leaderboardCategory";
 import TeamSizeMenu from "./teamSizeSelection";
-import { teamSizeDefault, rowsDefault, sortOptionDefault, dirOptionDefault } from "./leaderboardDefaults";
+import { teamSizeDefault, rowsDefault, sortOptionDefault, dirOptionDefault } from "./common";
 
 import React from "react";
-const leaderboard_url = process.env.NEXT_PUBLIC_API_URL + "/leaderboard";
 
 const leaderboard_categories = [
   // [Category, Query Abbreviation, Tailwind class names specific to that category]

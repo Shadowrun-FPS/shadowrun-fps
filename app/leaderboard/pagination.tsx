@@ -18,7 +18,9 @@ export default function Pagination({
   const searchParams = useSearchParams();
 
   function handleClick(pageNumber: number) {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams(searchParams.toString());
+    const currentPage = params.get("page");
+    if (currentPage == pageNumber.toString() || (!currentPage && pageNumber === 1)) return;
     params.set("page", pageNumber.toString());
     router.push("/leaderboard/?" + params);
   }
@@ -43,15 +45,17 @@ export default function Pagination({
         size="sm"
         className={i === page - 1 ? "bg-slate-300" : "bg-slate-400 dark:bg-slate-600"}
         onClick={(_) => handleClick(pageNumber)}
+        key={pageNumber}
       >
         {pageNumber}
+        <span className="sr-only">Move to page {pageNumber}</span>
       </Button>
     );
   }
   return (
     <>
       <div className="flex justify-center w-full">
-        <div className="flex content-center justify-between w-72">{PageButtons}</div>
+        <div className={"flex content-center w-72" + ( i==1 ? " justify-center" : " justify-between")}>{PageButtons}</div>
       </div>
       <div className="flex justify-center w-full">Showing {(playersPerPage * (page - 1)) + 1} - {Math.min(playerCount, (playersPerPage * (page)))} of {playerCount}</div>
     </>

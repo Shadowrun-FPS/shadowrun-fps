@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 
 // https://discord.com/developers/docs/topics/oauth2#shared-resources-oauth2-scopes
-const scopes = ["identify"].join(" ");
+const scopes = ["identify", "guilds", "guilds.members.read"].join(" ");
 
 const handler = NextAuth({
   providers: [
@@ -10,7 +10,7 @@ const handler = NextAuth({
       name: "Discord",
       clientId: process.env.DISCORD_CLIENT_ID || "",
       clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
-      // authorization: {params: {scope: scopes}},
+      authorization: {params: {scope: scopes}},
     }),
   ],
   session: {
@@ -20,6 +20,55 @@ const handler = NextAuth({
     signIn: "/auth/signin",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  callbacks: {
+    async jwt({ token, account }) {
+      // Persist the OAuth access_token and or the user id to the token right after signin
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({session, token}) {
+      if(session?.user) {
+        const bearerMsg = `Bearer ${token.accessToken}`
+        try {
+          const discordFetchResult = await fetch(
+              'https://discord.com/api/users/@me/guilds/930362820627943495/member',
+              {
+                  method: 'GET',
+                  headers: {
+                      "Authorization": bearerMsg,
+                  },
+                  cache: 'no-cache'
+              }
+          )
+          if (!discordFetchResult.ok) {
+              throw new Error("Failed to fetch discord info from callback");
+          }
+          const discordMemberInfo = await discordFetchResult.json();
+          const mongoFetchResult = await fetch(
+            process.env.NEXT_PUBLIC_API_URL +
+              `/api/players/${discordMemberInfo.user.id}`,
+            {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({discordNickname: discordMemberInfo.nick}),
+            }
+          );
+          if (!discordFetchResult.ok) {
+            throw new Error("Failed to update MongoDB with latest nickname");
+          }
+          // console.log(mongoFetchResult.json());
+
+        } catch(error) {
+            console.log(error);
+        }
+      }
+      return session;
+    }
+  },
 });
 
 export { handler as GET, handler as POST };

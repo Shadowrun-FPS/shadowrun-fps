@@ -6,10 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import "./leaderboardStyles.css"
 
-
-const leaderboard_url = BASE_URL + "/leaderboard"
-
-
 export default function LeaderboardCategory ({category, sortingAbbreviation, defaultCategory=false}: {category: string, sortingAbbreviation: string, defaultCategory?:boolean, sortable?: boolean}) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -17,14 +13,12 @@ export default function LeaderboardCategory ({category, sortingAbbreviation, def
     const descending = selected ? (searchParams.get('dir') == 'desc' || !searchParams.get('dir') ? true : false) : false; 
 
     function handleClick () {
-        const params = new URLSearchParams(searchParams);
+        const params = new URLSearchParams(searchParams.toString());
         descending ? params.set("dir", "asc") : params.set("dir", "desc");
         params.set("page", "1");
         params.set("sort", sortingAbbreviation);
         router.push("/leaderboard/?" + params);
     }
-
-
     return (
         <>
             <Button className={(selected ? (descending ? " descending" : " ascending") : "")} variant="link" onClick={handleClick}>{category}</Button>

@@ -5,11 +5,13 @@ export type PlayerStats = {
   deaths: number;
   resurrects: number;
   avgMoney: number;
+  lastMatchDate: Date;
 };
 
 export type Player = {
   playerId: string;
   discordId: string;
+  discordNickname: string;
   stats: PlayerStats[];
 };
 
