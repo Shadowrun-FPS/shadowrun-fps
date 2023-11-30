@@ -3,12 +3,11 @@ import { NextApiRequest, NextApiResponse } from "next";
 import clientPromise from "@/lib/mongodb";
 import { Player, PlayerStats } from "@/types/types";
 
-export async function GET(request: NextApiRequest, response: NextApiResponse) {
+export async function GET(request: NextRequest, {params}: {params: {playerId: string}}) {
   try {
-    console.log("In the GET.... dammit");
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
-    const {playerId} = request.query;
+    const playerId = params.playerId;
     const stats = await db.collection("Stats").findOne({playerId: playerId});
     return NextResponse.json({
       ok: true,
