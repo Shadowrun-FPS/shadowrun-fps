@@ -77,7 +77,7 @@ export default async function Leaderboard({
       <br />
       <div className="md:mx-[10%] md:h-[65vh] h-[55vh] overflow-y-auto shadow-md sm:rounded-lg">
         <table className="w-full text-sm text-left text-gray-500 rtl:text-right dark:text-gray-400">
-          <thead className="text-xs text-gray-700 bg-gray-300 dark:bg-slate-700 dark:text-gray-400">
+          <thead className="sticky top-0 text-xs text-gray-700 bg-gray-300 dark:bg-slate-700 dark:text-gray-400">
               <tr>
                     <th scope="col" className="px-6 py-3">
                       Player ID
