@@ -22,7 +22,7 @@ export default function Pagination({
     const currentPage = params.get("page");
     if (currentPage == pageNumber.toString() || (!currentPage && pageNumber === 1)) return;
     params.set("page", pageNumber.toString());
-    router.push("/leaderboard/?" + params);
+    router.push("/games/leaderboard/?" + params);
   }
 
   const PageButtons = [];

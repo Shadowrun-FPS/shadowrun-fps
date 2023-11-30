@@ -15,7 +15,7 @@ export default function TeamSizeMenu () {
     
     function handleClick(nextTeamSizeString: string) {
         if (currentTeamSizeString === nextTeamSizeString) return;
-        router.push("/leaderboard/?teamSize=" + nextTeamSizeString);
+        router.push("/games/leaderboard/?teamSize=" + nextTeamSizeString);
     }
 
     return (

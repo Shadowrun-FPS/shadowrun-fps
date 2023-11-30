@@ -17,7 +17,7 @@ export default function LeaderboardCategory ({category, sortingAbbreviation, def
         descending ? params.set("dir", "asc") : params.set("dir", "desc");
         params.set("page", "1");
         params.set("sort", sortingAbbreviation);
-        router.push("/leaderboard/?" + params);
+        router.push("/games/leaderboard/?" + params);
     }
     return (
         <>
