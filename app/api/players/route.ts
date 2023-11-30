@@ -15,8 +15,10 @@ export async function GET(request: NextRequest) {
     const skipAmount = Math.max(playersPerLBPage * (Number(page) - 1), 0);
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - 2);
+    console.log("CHECKPOINT 1");
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
+    console.log("CHECKPOINT 2");
     const data =
       await db.collection('Stats')
       .aggregate([
@@ -62,6 +64,7 @@ export async function GET(request: NextRequest) {
           }}
         ])
         .toArray();
+      console.log("CHECKPOINT 3");
 
     // console.log(data[0].players[0]);
     return NextResponse.json({
@@ -71,6 +74,7 @@ export async function GET(request: NextRequest) {
       status: 201,
     });
   } catch (error) {
+    console.log("CHECKPOINT 4");
     return NextResponse.json({
       ok: false,
       message: "Error getting players: " + error,
