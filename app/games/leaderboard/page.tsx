@@ -30,6 +30,8 @@ const getStats = async (searchParams: {
   const rows = searchParams?.rows;
   const teamSizeOption = searchParams?.teamSize;
   try {
+    console.log("FETCHING PLAYERS FROM: " + BASE_URL +
+      "/api/players/?page=" + String(page) +"&sort=" + sortOption + "&dir=" + dirOption + "&teamSize=" + teamSizeOption + "&rows=" + rows)
     const res = await fetch(
       BASE_URL +
         "/api/players/?page=" + String(page) +"&sort=" + sortOption + "&dir=" + dirOption + "&teamSize=" + teamSizeOption + "&rows=" + rows,
@@ -64,7 +66,7 @@ export default async function Leaderboard({
     dir: dirOption,
     rows: rowsPerPage,
     teamSize: teamSizeOption
-  });
+  }) || {players: []};
   const playerStatsQuery = playerStatsFetch.players;
   const playerCount = playerStatsFetch.playerCount;
   const startingRankNumber = descending ? (page - 1) * rowsPerPage : playerCount - ((page - 1) * rowsPerPage);
