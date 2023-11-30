@@ -4,6 +4,8 @@ import { rowsDefault,  teamSizeDefault} from "@/app/games/leaderboard/common";
 
 export async function GET(request: NextRequest) {
   try {
+    console.log("RUNNING GET");
+    console.log(request.nextUrl.href);
     const searchParams = request.nextUrl.searchParams;
     const page = (searchParams.get("page") ? searchParams.get("page") : 1);
     const sortOption = getSortOption(searchParams.get("sort") + '');
