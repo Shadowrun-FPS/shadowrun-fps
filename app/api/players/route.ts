@@ -4,11 +4,12 @@ import { rowsDefault,  teamSizeDefault} from "@/app/games/leaderboard/common";
 
 export async function GET(request: NextRequest) {
   try {
-    const page = (request.nextUrl.searchParams.get("page") ? request.nextUrl.searchParams.get("page") : 1);
-    const sortOption = getSortOption(request.nextUrl.searchParams.get("sort") + '');
-    const querySortDirection = (request.nextUrl.searchParams.get("dir") == "asc" ? 1 : -1);
-    const teamSizeOption = request.nextUrl.searchParams.get("teamSize") ? request.nextUrl.searchParams.get("teamSize") : teamSizeDefault;
-    const playersPerLBPage = request.nextUrl.searchParams.get("rows") ? Number(request.nextUrl.searchParams.get("rows")) : rowsDefault;
+    const searchParams = request.nextUrl.searchParams;
+    const page = (searchParams.get("page") ? searchParams.get("page") : 1);
+    const sortOption = getSortOption(searchParams.get("sort") + '');
+    const querySortDirection = (searchParams.get("dir") == "asc" ? 1 : -1);
+    const teamSizeOption = searchParams.get("teamSize") ? searchParams.get("teamSize") : teamSizeDefault;
+    const playersPerLBPage = searchParams.get("rows") ? Number(searchParams.get("rows")) : rowsDefault;
     const skipAmount = Math.max(playersPerLBPage * (Number(page) - 1), 0);
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - 2);
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
         ])
         .toArray();
 
-    console.log(data[0].players[0]);
+    // console.log(data[0].players[0]);
     return NextResponse.json({
       ok: true,
       players: data[0].players,

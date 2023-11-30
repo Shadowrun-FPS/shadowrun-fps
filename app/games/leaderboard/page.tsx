@@ -45,7 +45,7 @@ const getStats = async (searchParams: {
     }
     return res.json();
   } catch (error) {
-    console.log("Error loading stats");
+    console.log("Error loading stats", error);
   }
 };
 
