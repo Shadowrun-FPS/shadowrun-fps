@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { rowsDefault,  teamSizeDefault} from "@/app/games/leaderboard/common";
 
+export const dynamic = "force-static";
+
 export async function GET(request: NextRequest) {
   try {
     console.log("RUNNING GET");
