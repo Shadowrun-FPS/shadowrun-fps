@@ -39,7 +39,7 @@ const getStats = async (searchParams: {
         cache: "no-store",
       }
     );
-
+    console.log("Done fetching.... allegedly");
     if (!res.ok) {
       throw new Error("Failed to fetch stats");
     }
