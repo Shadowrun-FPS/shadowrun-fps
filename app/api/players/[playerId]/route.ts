@@ -5,6 +5,7 @@ import { Player, PlayerStats } from "@/types/types";
 
 export async function GET(request: NextRequest, {params}: {params: {playerId: string}}) {
   try {
+    console.log("Get single player stats");
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
     const playerId = params.playerId;
@@ -26,6 +27,7 @@ export async function GET(request: NextRequest, {params}: {params: {playerId: st
 export async function PUT(request: NextRequest, {params}: {params: {playerId: string}}) {
     // Either updates the discordNickname or ONE of the stats (i.e. can update entry for teamSize 4 but not teamSize 4 and teamSize 2 at the same time)
     try {
+        console.log("Put/Update single player stats");
         const client = await clientPromise;
         const db = client.db("ShadowrunWeb");
         const playerId = params.playerId;
