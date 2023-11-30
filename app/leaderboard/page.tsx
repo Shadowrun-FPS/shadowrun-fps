@@ -7,6 +7,7 @@ import Pagination from "./pagination";
 import formatPlayerStats from "./leaderboardBody";
 import LeaderboardCategory from "./leaderboardCategory";
 import TeamSizeMenu from "./teamSizeSelection";
+import { BASE_URL } from "@/components/baseurl";
 import { teamSizeDefault, rowsDefault, sortOptionDefault, dirOptionDefault } from "./common";
 
 import React from "react";
@@ -33,7 +34,7 @@ const getStats = async (searchParams: {
   const teamSizeOption = searchParams?.teamSize;
   try {
     const res = await fetch(
-      process.env.NEXT_PUBLIC_API_URL +
+      BASE_URL +
         "/api/players/?page=" + String(page) +"&sort=" + sortOption + "&dir=" + dirOption + "&teamSize=" + teamSizeOption + "&rows=" + rows,
       {
         cache: "no-store",
