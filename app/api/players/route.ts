@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
         ])
         .toArray();
 
-    // console.log(data[0].players[0]);
+    console.log(data[0].players[0]);
     return NextResponse.json({
       ok: true,
       players: data[0].players,
