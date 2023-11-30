@@ -34,7 +34,7 @@ export default function TeamSizeMenu () {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="center">
                         {teamSizeOptions.map((teamSize)=>
-                            <DropdownMenuItem className="text-lg text-center" onClick={()=>handleClick(teamSize.toString())}>
+                            <DropdownMenuItem className="text-lg text-center" onClick={()=>handleClick(teamSize.toString())} key={teamSize}>
                                 {teamSize}v{teamSize}
                             </DropdownMenuItem>
                         )}
