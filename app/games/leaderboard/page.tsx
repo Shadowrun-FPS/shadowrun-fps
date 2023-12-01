@@ -36,11 +36,13 @@ const getStats = async (searchParams: {
       BASE_URL +
         "/api/players/?page=" + String(page) +"&sort=" + sortOption + "&dir=" + dirOption + "&teamSize=" + teamSizeOption + "&rows=" + rows,
       {
+        method: 'GET',
         cache: "no-store",
       }
     );
     console.log("Done fetching.... allegedly");
     if (!res.ok) {
+      if (res?.message) console.log("Res message:", res.message);
       throw new Error("Failed to fetch stats");
     }
     return res.json();
