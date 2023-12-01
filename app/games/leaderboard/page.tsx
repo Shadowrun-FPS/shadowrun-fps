@@ -42,7 +42,7 @@ const getStats = async (searchParams: {
     );
     console.log("Done fetching.... allegedly");
     if (!res.ok) {
-      if (res?.message) console.log("Res message:", res.message);
+      console.log("Res message:", res);
       throw new Error("Failed to fetch stats");
     }
     return res.json();
