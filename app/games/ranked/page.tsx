@@ -15,8 +15,7 @@ async function getRankedMatches() {
 }
 
 export default async function RankedPage() {
-  // const isDev = process.env.NODE_ENV === "development";
-  const isDev = true;
+  const isDev = process.env.NODE_ENV === "development";
   if (isDev) {
     const data = await getRankedMatches().catch((error) => {
       console.error(error);
