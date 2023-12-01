@@ -10,13 +10,15 @@ export default function IntroductionPage() {
         <section className="mb-8 text-center">
           <h2 className="mb-12 text-3xl font-bold">
             Meet the{" "}
-            <u className="text-primary dark:text-primary-400">Staff team</u>
+            <u className="text-primary dark:text-primary-400">
+              Community Support Team
+            </u>
           </h2>
           <h1 className="mb-12 text-3xl font-bold">Admins</h1>
           <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-6">
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/siris.png"
+                src="/staffphotos/siris.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -31,7 +33,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/bumjamas.png"
+                src="/staffphotos/bumjamas.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -40,13 +42,13 @@ export default function IntroductionPage() {
 
               <p className="mb-2 font-bold">BumJamas</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Admin/Content Lord/Cameraman/Dad
+                Content Lord/Cameraman/Dad
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/pants.png"
+                src="/staffphotos/pants.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -54,12 +56,12 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">Pants</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Admin/IT Wizard
+                IT Wizard
               </p>
             </div>
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/bagel.gif"
+                src="/staffphotos/bagel.gif"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -67,13 +69,13 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">$5 Bagel</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Admin/Designer/Oscar Winner/Autism Recognition Specialist
+                Designer/Oscar Winner/Autism Recognition Specialist
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/shubwub.png"
+                src="/staffphotos/shubwub.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -81,13 +83,13 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">ShubWub</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Admin/Bot Team/Copy Collector
+                Bot Team/Copy Collector
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/sinful.jpg"
+                src="/staffphotos/sinful.jpg"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -95,7 +97,7 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">Sinful Hollowz</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Admin/Mr. OCD/ Troublemaker
+                Mr. OCD/Troublemaker
               </p>
             </div>
           </div>
@@ -106,21 +108,21 @@ export default function IntroductionPage() {
           <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-5">
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/hormel.jpg"
+                src="/staffphotos/hormel.jpg"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
                 height={100}
               />
-              <p className="mb-2 font-bold">HormelVEVO</p>
+              <p className="mb-2 font-bold">Hormel</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/Pot Stirrer
+                Pot Stirrer
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/v2cain.png"
+                src="/staffphotos/v2cain.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -128,13 +130,13 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">v2 C A i N</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator (AWOL)
+                Laissez-faire/AWOL
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/manamystery.png"
+                src="/staffphotos/manamystery.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -142,13 +144,13 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">ManaMystery</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/List Master
+                List Manager
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/frank.png"
+                src="/staffphotos/frank.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -156,13 +158,13 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">Frank</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/HVAC Master/Frank
+                HVAC Master/Frank
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/final.png"
+                src="/staffphotos/final.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -170,27 +172,25 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">FinalForce07</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/Queue Master
+                Queue Master
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/ff5ninja.gif"
+                src="/staffphotos/ff5ninja.gif"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
                 height={100}
               />
               <p className="mb-2 font-bold">FF5Ninja</p>
-              <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/Bot Team
-              </p>
+              <p className="text-neutral-500 dark:text-neutral-300">Bot Team</p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/wwm0nkey.png"
+                src="/staffphotos/wwm0nkey.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -198,13 +198,13 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">wwm0nkey</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/BTS Guru
+                Microsoft Whisperer
               </p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/shadowrungirl.png"
+                src="/staffphotos/shadowrungirl.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -212,7 +212,7 @@ export default function IntroductionPage() {
               />
               <p className="mb-2 font-bold">Shadowrun Girl</p>
               <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/Toxic/Always Innocent
+                Never Toxic/Always Innocent
               </p>
             </div>
 
@@ -225,25 +225,26 @@ export default function IntroductionPage() {
                 height={100}
               />
               <p className="mb-2 font-bold">Bryman</p>
-              <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/Bot Team
-              </p>
+              <p className="text-neutral-500 dark:text-neutral-300">Bot Team</p>
             </div>
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/shwifty.png"
+                src="/staffphotos/shwifty.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
                 height={100}
               />
               <p className="mb-2 font-bold">Shwiftyy</p>
-              <p className="text-neutral-500 dark:text-neutral-300">
-                Moderator/Shy
-              </p>
+              <p className="text-neutral-500 dark:text-neutral-300">Shy</p>
             </div>
           </div>
+          <p>
+            Just a group of people passionate about the Shadowrun FPS
+            volunteering their time to help provide a space for the future of
+            the game and community.
+          </p>
         </section>
       </div>
       {/* <!-- Section: Design Block --> */}
