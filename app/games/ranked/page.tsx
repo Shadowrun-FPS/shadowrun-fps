@@ -1,12 +1,12 @@
 import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
 import ComingSoon from "../../coming-soon";
+import { BASE_URL } from "@/lib/baseurl";
 
 async function getRankedMatches() {
-  const res = await fetch(
-    process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true",
-    { cache: "no-store" }
-  );
+  const res = await fetch(BASE_URL + "/api/matches?ranked=true", {
+    cache: "no-store",
+  });
   if (!res.ok) {
     throw new Error("Failed to fetch match data.");
   }
@@ -15,7 +15,7 @@ async function getRankedMatches() {
 
 export default async function RankedPage() {
   // const isDev = process.env.NODE_ENV === "development";
-  const isDev = false;
+  const isDev = true;
   if (isDev) {
     const data = await getRankedMatches().catch((error) => {
       console.error(error);

@@ -4,7 +4,7 @@ import Pagination from "./pagination";
 import formatPlayerStats from "./leaderboardBody";
 import LeaderboardCategory from "./leaderboardCategory";
 import TeamSizeMenu from "./teamSizeSelection";
-import { BASE_URL } from "@/components/baseurl";
+import { BASE_URL } from "@/lib/baseurl";
 import {
   teamSizeDefault,
   rowsDefault,
@@ -67,7 +67,7 @@ const getStats = async (searchParams: {
     );
     console.log("Done fetching.... allegedly");
     if (!res.ok) {
-      console.log("Res message:", res);
+      console.log("Fetch stats error response:", res);
       throw new Error("Failed to fetch stats");
     }
     return res.json();
