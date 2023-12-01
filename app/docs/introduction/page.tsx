@@ -18,7 +18,7 @@ export default function IntroductionPage() {
           <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-6">
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/siris.png"
+                src="/staffphotos/siris.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -33,7 +33,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/bumjamas.png"
+                src="/staffphotos/bumjamas.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -48,7 +48,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/pants.png"
+                src="/staffphotos/pants.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -61,7 +61,7 @@ export default function IntroductionPage() {
             </div>
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/bagel.gif"
+                src="/staffphotos/bagel.gif"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -75,7 +75,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/shubwub.png"
+                src="/staffphotos/shubwub.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -89,7 +89,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/sinful.jpg"
+                src="/staffphotos/sinful.jpg"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -108,7 +108,7 @@ export default function IntroductionPage() {
           <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-5">
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/hormel.jpg"
+                src="/staffphotos/hormel.jpg"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -122,7 +122,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/v2cain.png"
+                src="/staffphotos/v2cain.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -136,7 +136,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/manamystery.png"
+                src="/staffphotos/manamystery.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -150,7 +150,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/frank.png"
+                src="/staffphotos/frank.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -164,7 +164,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/final.png"
+                src="/staffphotos/final.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -178,7 +178,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/ff5ninja.gif"
+                src="/staffphotos/ff5ninja.gif"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -190,7 +190,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/wwm0nkey.png"
+                src="/staffphotos/wwm0nkey.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -204,7 +204,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/shadowrungirl.png"
+                src="/staffphotos/shadowrungirl.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
@@ -230,7 +230,7 @@ export default function IntroductionPage() {
 
             <div className="mb-12 hover:scale-110">
               <Image
-                src="/shwifty.png"
+                src="/staffphotos/shwifty.png"
                 className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                 alt=""
                 width={120}
