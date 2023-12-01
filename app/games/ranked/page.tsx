@@ -8,6 +8,7 @@ async function getRankedMatches() {
     cache: "no-store",
   });
   if (!res.ok) {
+    console.error(res);
     throw new Error("Failed to fetch match data.");
   }
   return await res.json();
