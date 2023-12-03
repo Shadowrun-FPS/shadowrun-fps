@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { Player, PlayerStats, Match, EloRankGroup } from "@/types/types";
 import { createURL } from "@/lib/utils";
+import JoinButton from "./join-button";
 
 interface MatchCardProps {
   match: Match;
@@ -67,7 +68,8 @@ async function getPlayerRank(
 
 export default function MatchCard({ match, className }: MatchCardProps) {
   const { players } = match;
-  const isMatchFull = match.teamSize === players.length;
+  const isMatchFull = match.teamSize * 2 === players.length;
+
   return (
     <Card key={match.matchId} className={className}>
       <CardHeader>
@@ -82,7 +84,7 @@ export default function MatchCard({ match, className }: MatchCardProps) {
             <h5 className="p-2">Team 1</h5>
             <h5 className="p-2">Team 2</h5>
             {players.map(async (player: Player) => {
-              const playerRank = await getPlayerRank(player, match.teamSize);
+              const playerRank = "Bronze"; // TODO figure out infinite loop here
               // console.log("playerRank: ", playerRank);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
               return (
@@ -111,7 +113,7 @@ export default function MatchCard({ match, className }: MatchCardProps) {
       </CardContent>
 
       <CardFooter className="grid grid-cols-2 gap-4">
-        <Button disabled={isMatchFull}>{isMatchFull ? "Full" : "Join"}</Button>
+        <JoinButton isMatchFull={isMatchFull} />
         <Button variant="secondary">Leave</Button>
       </CardFooter>
     </Card>
