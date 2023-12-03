@@ -13,6 +13,7 @@ import { createURL } from "@/lib/utils";
 
 interface MatchCardProps {
   match: Match;
+  className?: string;
 }
 
 const rankIcons: { [char: string]: string } = {
@@ -64,11 +65,11 @@ async function getPlayerRank(
   return "Bronze";
 }
 
-export default function MatchCard({ match }: MatchCardProps) {
+export default function MatchCard({ match, className }: MatchCardProps) {
   const { players } = match;
   const isMatchFull = match.teamSize === players.length;
   return (
-    <Card key={match.matchId}>
+    <Card key={match.matchId} className={className}>
       <CardHeader>
         <CardTitle>{match.gameMode}</CardTitle>
         <CardDescription>

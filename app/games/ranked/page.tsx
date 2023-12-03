@@ -1,5 +1,5 @@
 import MatchCard from "@/components/matches/match-card";
-import { MatchResult } from "@/types/types";
+import { Match } from "@/types/types";
 import ComingSoon from "../../coming-soon";
 import { createURL } from "@/lib/utils";
 
@@ -38,11 +38,19 @@ export default async function RankedPage() {
       );
     }
     return (
-      <div>
+      <div className="grid gap-8">
         <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
-        {matches?.map((match: MatchResult) => {
-          return <MatchCard key={match.matchId} match={match} />;
-        })}
+        <div className="flex flex-wrap gap-8">
+          {matches?.map((match: Match) => {
+            return (
+              <MatchCard
+                key={match.matchId}
+                className="w-[350px]"
+                match={match}
+              />
+            );
+          })}
+        </div>
       </div>
     );
   } else {

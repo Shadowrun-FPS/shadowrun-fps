@@ -3,5 +3,5 @@ export default function RankedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <section>{children}</section>;
+  return <div className="container">{children}</div>;
 }
