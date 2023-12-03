@@ -1,27 +1,34 @@
 import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
 import ComingSoon from "../../coming-soon";
+import { createURL } from "@/lib/utils";
 
 async function getRankedMatches() {
-  const res = await fetch(
-    process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true",
-    { cache: "no-store" }
-  );
-  if (!res.ok) {
-    throw new Error("Failed to fetch match data.");
-  }
-  return await res.json();
+  const url = createURL("/api/matches", { ranked: true });
+  return fetch(url, {
+    cache: "no-store",
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Failed to fetch match data.");
+      }
+      return response.json();
+    })
+    .catch((error) => {
+      throw new Error(error);
+    });
 }
 
 export default async function RankedPage() {
-  // const isDev = process.env.NODE_ENV === "development";
-  const isDev = false;
+  const isDev = process.env.NODE_ENV === "development";
   if (isDev) {
-    const data = await getRankedMatches().catch((error) => {
-      console.error(error);
-      return undefined;
-    });
-    if (!data) {
+    const matches = await getRankedMatches()
+      .then((data) => data.results)
+      .catch((error) => {
+        console.error(error);
+        return undefined;
+      });
+    if (!matches) {
       return (
         <main className="container">
           <h1 className="p-4 text-3xl font-extrabold">
@@ -30,7 +37,6 @@ export default async function RankedPage() {
         </main>
       );
     }
-    const matches = data?.matches;
     return (
       <div>
         <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
