@@ -3,6 +3,12 @@ import { Button } from "@/components/ui/button";
 
 import Image from "next/image";
 
+const videos = [
+  {
+    title: "Top 10 December 2022",
+    src: "https://www.youtube.com/embed/iAyr1I3iNlg?si=TZ2B-w-6fGonroKS",
+  },
+];
 // export const connectToDB = async () => {
 //   try {
 //     const client = await clientPromise;
@@ -53,6 +59,31 @@ export default function Home() {
           technology, is blurred. Join the shadows, forge alliances, and let the
           games begin.
         </p>
+      </div>
+      <div className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
+        <main>
+          <div className="mt-12 mb-4 text-3xl font-bold text-center text-white md:text-5xl not-prose">
+            <h1>Featured Video</h1>
+          </div>
+          <div>
+            {videos.map((video, index) => (
+              <section key={index} className="relative mx-4 md:mx-8">
+                <iframe
+                  className="rounded-md aspect-video"
+                  src={video.src}
+                  frameBorder="0"
+                  allowFullScreen
+                  style={{ width: "100%" }}
+                ></iframe>
+                <div className="text-center text-white">
+                  <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
+                    {video.title}
+                  </h2>
+                </div>
+              </section>
+            ))}
+          </div>
+        </main>
       </div>
     </>
   );
