@@ -1,0 +1,53 @@
+[
+  {
+    "matchId": "8a6b7c8d-9e1f-2g3h-4i5j-6k7l8m9n0o1p",
+    "gameMode": "Extraction",
+    "queueId": "8a6b1234-9e1f-2g3h-4i5j-6k7l8m0n1p2q",
+    "ranked": false,
+    "status": "voting",
+    "maps": [
+      {
+        "mapName": "Pinnacle",
+        "gameMode": "Extraction"
+      },
+      {
+        "mapName": "Nerve Center Small",
+        "gameMode": "Extraction"
+      },
+      {
+        "mapName": "Lobby",
+        "gameMode": "Extraction"
+      }
+    ],
+    "players": [
+      {
+        "playerId": "Player1",
+        "discordId": "player1"
+      },
+      {
+        "playerId": "Player2",
+        "discordId": "player2"
+      }
+    ],
+    "teamSize": 1
+  },
+  {
+    "matchId": "8a6d9c50-5g3h-12j9-8k6l-9m8n7o6p5q4r",
+    "gameMode": "Extraction",
+    "queueId": "8a6d1234-5g3h-12j9-8k6l-9m8n7o6p5q1s",
+    "ranked": false,
+    "maps": [],
+    "status": "queue",
+    "players": [
+      {
+        "playerId": "Player3",
+        "discordId": "player3"
+      },
+      {
+        "playerId": "Player4",
+        "discordId": "player4"
+      }
+    ],
+    "teamSize": 2
+  }
+]

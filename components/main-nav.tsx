@@ -13,64 +13,57 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
-import { useEffect } from "react";
+
+import ResponsitveTitle from "./navigation/responsive-title";
+import { BookText, Menu, HelpCircle } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
     title: "Play Ranked",
-    href: "/ranked",
+    href: "/games/ranked",
     description: "Ranked pick up games.",
   },
   {
     title: "Play Casual",
-    href: "/casual",
+    href: "/games/casual",
     description: "Join a casual pick up game!",
   },
   {
     title: "Leaderboard",
-    href: "/leaderboard",
+    href: "/games/leaderboard",
     description: "A leaderboard of the highest ranked players.",
   },
   {
-    title: "Stats look up",
-    href: "/stats",
+    title: "Stats Look-up",
+    href: "/games/stats",
     description: "View stats by player name.",
   },
   {
-    title: "Rules",
-    href: "/rules",
+    title: "Ranked Rules",
+    href: "/docs/rules",
     description: "Rules to play in the pick up games.",
   },
   {
     title: "Tutorials",
-    href: "/tutorials",
+    href: "/docs/tutorials",
     description: "Shadowrun tutorials and content.",
   },
 ];
 
 export function MainNavMenu() {
-  useEffect(() => {
-    const getMatchData = async () => {
-      const res = await fetch(
-        process.env.NEXT_PUBLIC_API_URL + "/api/matches?ranked=true"
-      );
-      if (!res.ok) {
-        throw new Error("Failed to fetch data");
-      }
-      const data = await res.json();
-      console.log("data: ", data);
-    };
+  // TODO create mobile friendly nav menu that takes up less width
+  // use shadcn/ui dropdown menu https://ui.shadcn.com/docs/components/dropdown-menu
 
-    getMatchData();
-  }, []);
   return (
     <NavigationMenu>
       <NavigationMenuList>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Getting started</NavigationMenuTrigger>
+          <NavigationMenuTrigger>
+            <ResponsitveTitle title={"Getting Started"} icon={<BookText />} />
+          </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid gap-3 p-6 md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
-              <li className="row-span-3">
+            <ul className="grid gap-3 p-6 w-[250px] md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
+              <li className="row-span-4">
                 <NavigationMenuLink asChild>
                   <a
                     className="flex flex-col justify-end w-full h-full p-6 no-underline rounded-md outline-none select-none bg-gradient-to-b from-muted/50 to-muted focus:shadow-md"
@@ -87,22 +80,27 @@ export function MainNavMenu() {
                   </a>
                 </NavigationMenuLink>
               </li>
-              <ListItem href="/docs" title="Introduction">
+              <ListItem href="/docs/introduction" title="Introduction">
                 Join up to play on PC for free!
               </ListItem>
-              <ListItem href="/docs/installation" title="Installation">
+              <ListItem href="/docs/install" title="Installation">
                 How to install the game for PC.
               </ListItem>
               <ListItem href="/docs/troubleshoot" title="Troubleshooting">
                 How to fix common errors with the game.
               </ListItem>
+              <ListItem href="/docs/support" title="Support">
+                Support
+              </ListItem>
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
         <NavigationMenuItem>
-          <NavigationMenuTrigger>Play</NavigationMenuTrigger>
+          <NavigationMenuTrigger>
+            <ResponsitveTitle title={"Play"} icon={<Menu />} />
+          </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
+            <ul className="grid w-[250px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               {components.map((component) => (
                 <ListItem
                   key={component.title}
@@ -114,13 +112,6 @@ export function MainNavMenu() {
               ))}
             </ul>
           </NavigationMenuContent>
-        </NavigationMenuItem>
-        <NavigationMenuItem>
-          <Link href="/support" legacyBehavior passHref>
-            <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-              Support
-            </NavigationMenuLink>
-          </Link>
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>

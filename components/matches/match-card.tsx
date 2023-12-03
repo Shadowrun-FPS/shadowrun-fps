@@ -8,10 +8,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { Player, MatchResult } from "@/types/types";
-
+import { Player, PlayerStats, Match, EloRankGroup } from "@/types/types";
+import { createGetURL } from "@/lib/utils";
+import JoinButton from "./join-button";
+import LeaveButton from "./leave-button";
 interface MatchCardProps {
-  match: MatchResult;
+  match: Match;
+  className?: string;
 }
 
 const rankIcons: { [char: string]: string } = {
@@ -22,35 +25,57 @@ const rankIcons: { [char: string]: string } = {
   platinum: "platinum_v002",
 };
 
-function getPlayerRank(player: Player, matchTeamSize: number): string {
-  const getTeamSizeStats = player.stats.find(
-    (stat) => stat.teamSize === matchTeamSize
-  );
-  const elo = getTeamSizeStats?.elo ?? 0;
-  if (elo >= 0 && elo <= 1099) {
-    return "Bronze";
-  } else if (elo >= 1100 && elo <= 1299) {
-    return "Silver";
-  } else if (elo >= 1300 && elo <= 1499) {
-    return "Gold";
-  } else if (elo >= 1500 && elo <= 1799) {
-    return "Platinum";
-  } else if (elo >= 1800 && elo <= 3000) {
-    return "Diamond";
-  } else {
-    return "Unknown";
-  }
-}
+// function getTeamSizeStats(playerId: string, teamSize: number) {
+//   const url = createURL("/api/stats", {
+//     playerId,
+//   });
+//   console.log(url);
+//   return fetch(url, {
+//     cache: "no-cache",
+//   })
+//     .then((response) => {
+//       return response.json();
+//     })
+//     .then((data) => {
+//       if (data.results !== undefined) {
+//         return data.results.stats.find(
+//           (playerStats: PlayerStats) => playerStats.teamSize === teamSize
+//         );
+//       } else return undefined;
+//     })
+//     .catch((error) => console.error(error));
+// }
 
-export default function MatchCard({ match }: MatchCardProps) {
+// async function getPlayerRank(
+//   player: Player,
+//   matchTeamSize: number
+// ): Promise<EloRankGroup> {
+//   const playerStats = await getTeamSizeStats(player.playerId, matchTeamSize);
+//   const elo = playerStats?.elo ?? 0;
+//   if (elo >= 0 && elo <= 1099) {
+//     return "Bronze";
+//   } else if (elo >= 1100 && elo <= 1299) {
+//     return "Silver";
+//   } else if (elo >= 1300 && elo <= 1499) {
+//     return "Gold";
+//   } else if (elo >= 1500 && elo <= 1799) {
+//     return "Platinum";
+//   } else if (elo >= 1800 && elo <= 3000) {
+//     return "Diamond";
+//   }
+//   return "Bronze";
+// }
+
+export default function MatchCard({ match, className }: MatchCardProps) {
   const { players } = match;
+  const isMatchFull = match.teamSize * 2 === players.length;
+
   return (
-    <Card>
+    <Card key={match.matchId} className={className}>
       <CardHeader>
-        <CardTitle>{match.matchId}</CardTitle>
+        <CardTitle>{match.gameMode}</CardTitle>
         <CardDescription>
-          {match.gameMode}
-          <p>Elapsed time: 10:32</p>
+          <p>Team Size: {match.teamSize}</p>
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -58,8 +83,9 @@ export default function MatchCard({ match }: MatchCardProps) {
           <div className="grid grid-cols-2 gap-x-4">
             <h5 className="p-2">Team 1</h5>
             <h5 className="p-2">Team 2</h5>
-            {players.map((player: Player) => {
-              const playerRank = getPlayerRank(player, match.teamSize);
+            {players.map(async (player: Player) => {
+              const playerRank = "Bronze"; // TODO figure out infinite loop here
+              // console.log("playerRank: ", playerRank);
               const playerRankIcon = rankIcons[playerRank.toLowerCase()];
               return (
                 <div
@@ -87,8 +113,8 @@ export default function MatchCard({ match }: MatchCardProps) {
       </CardContent>
 
       <CardFooter className="grid grid-cols-2 gap-4">
-        <Button>Join</Button>
-        <Button variant="secondary">Leave</Button>
+        <JoinButton matchId={match.matchId} isMatchFull={isMatchFull} />
+        <LeaveButton matchId={match.matchId} players={players} />
       </CardFooter>
     </Card>
   );
