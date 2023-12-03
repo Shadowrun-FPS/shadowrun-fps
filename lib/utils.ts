@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function createURL(
+export function createGetURL(
   apiEndpoint: string,
   requestParams: { [key: string]: any }
 ) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { socketServer } from "@/lib/socket-server";
+import { Db } from "mongodb";
+import { Player } from "@/types/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,9 +26,17 @@ export async function POST(request: NextRequest) {
   try {
     const client = await clientPromise;
     const body = await request.json();
-    const match = body.match;
-    const { matchId } = match;
     const db = client.db("ShadowrunWeb");
+    const action = body.action;
+    let response;
+    if (action === "addPlayer") {
+      const { matchId, player } = body;
+      response = handleAddPlayer(db, matchId, player);
+    } else if (action === "removePlayer") {
+      const { matchId, playerId } = body;
+      response = handleRemovePlayer(db, matchId, playerId);
+    }
+
     // const result = await db
     //   .collection("Matches")
     //   .updateOne({ matchId: matchId }, match);
@@ -35,7 +44,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      match,
+      response,
       status: 201,
     });
   } catch (error) {
@@ -45,4 +54,29 @@ export async function POST(request: NextRequest) {
       status: 500,
     });
   }
+}
+
+async function handleAddPlayer(db: Db, matchId: string, newPlayer: Player) {
+  const result = await db
+    .collection("Matches")
+    .updateOne({ matchId: matchId }, { $push: { players: newPlayer } });
+
+  console.log("handleAddPlayer result: ", result);
+  return result;
+}
+
+async function handleRemovePlayer(
+  db: Db,
+  matchId: string,
+  playerIdToRemove: string
+) {
+  const result = await db
+    .collection("Matches")
+    .updateOne(
+      { matchId: matchId },
+      { $pull: { players: { playerId: playerIdToRemove } } }
+    );
+
+  console.log("handleRemovePlayer result: ", result);
+  return result;
 }
