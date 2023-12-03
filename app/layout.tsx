@@ -1,7 +1,10 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+
 import { ThemeProvider } from "@/components/theme-provider";
+import NextAuthProvider from "./providers/next-auth-provider";
+
 import Header from "@/components/header";
 import Footer from "@/components/footer";
 
@@ -19,12 +22,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Header />
-          {children}
-          <Footer />
-        </ThemeProvider>
+      <body className={`min-h-screen flex flex-col ${inter.className}`}>
+        <NextAuthProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+            <Header />
+            <main className="flex-1 overflow-y-auto">{children}</main>
+            <Footer />
+          </ThemeProvider>
+        </NextAuthProvider>
       </body>
     </html>
   );
