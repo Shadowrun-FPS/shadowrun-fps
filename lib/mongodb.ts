@@ -24,6 +24,7 @@ if (process.env.NODE_ENV === "development") {
   console.log("DEVELOPMENT MODE - Connected to MongoDB");
 } else {
   // In production mode, it's best to not use a global variable.
+  console.log("PRODUCTION MODE - Connecting to", uri);
   client = new MongoClient(uri, options);
   clientPromise = client.connect();
   console.log("PRODUCTION MODE - Connected to MongoDB");
