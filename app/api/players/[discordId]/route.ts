@@ -28,7 +28,6 @@ export async function POST(request: NextRequest, {params}: {params: {discordId: 
   const body = await request.json();
   const action = body.action;
   const data = body.data;
-  console.log("MONBODG_UIR", process.env.MONGODB_URI)
   if (!action || !data) return NextResponse.json({
     ok: false,
     message: "Must include an 'action' and some 'data' in the body",
