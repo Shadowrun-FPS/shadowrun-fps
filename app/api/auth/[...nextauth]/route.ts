@@ -1,3 +1,4 @@
+import { BASE_URL } from "@/lib/baseurl";
 import NextAuth from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 
@@ -25,7 +26,7 @@ const handler = NextAuth({
       // Persist the OAuth access_token and or the user id to the token right after signin
       if (account) {
         token.accessToken = account.access_token;
-      }
+              }
       return token;
     },
     async session({session, token}) {
@@ -35,32 +36,39 @@ const handler = NextAuth({
           const discordFetchResult = await fetch(
               'https://discord.com/api/users/@me/guilds/930362820627943495/member',
               {
-                  method: 'GET',
-                  headers: {
-                      "Authorization": bearerMsg,
-                  },
-                  cache: 'no-cache'
+                method: 'GET',
+                headers: {
+                  "Authorization": bearerMsg,
+                },
+                cache: 'no-cache'
               }
           )
           if (!discordFetchResult.ok) {
               throw new Error("Failed to fetch discord info from callback");
           }
           const discordMemberInfo = await discordFetchResult.json();
+
           const mongoFetchResult = await fetch(
-            process.env.NEXT_PUBLIC_API_URL +
+            BASE_URL +
               `/api/players/${discordMemberInfo.user.id}`,
             {
-              method: 'PUT',
+              method: 'POST',
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
               },
-              body: JSON.stringify({discordNickname: discordMemberInfo.nick}),
+              body: JSON.stringify({
+                action: 'update',
+                data: 
+                  {
+                    discordNickname: discordMemberInfo.nick,
+                    discordProfilePicture: session.user.image
+                  }
+                }),
             }
           );
           if (!discordFetchResult.ok) {
-            throw new Error("Failed to update MongoDB with latest nickname");
+            throw new Error("Failed to update MongoDB with latest Discord Info");
           }
-          // console.log(mongoFetchResult.json());
 
         } catch(error) {
             console.log(error);

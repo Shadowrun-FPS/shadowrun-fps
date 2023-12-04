@@ -22,12 +22,12 @@ export async function GET(request: NextRequest) {
     const db = client.db("ShadowrunWeb");
     console.log("CHECKPOINT 2");
     const data =
-      await db.collection('Stats')
+      await db.collection('Players')
       .aggregate([
           {
             $project: {
               _id: 0,
-              playerId: 1,
+              discordId: 1,
               discordNickname: 1,
               "stats": {
                 $filter: {
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
           {$unwind: "$stats"},
           {
             $project: {
-              playerId: 1,
+              discordId: 1,
               discordNickname: 1,
               lastMatchDate: "$stats.lastMatchDate",
               elo: "$stats.elo",
