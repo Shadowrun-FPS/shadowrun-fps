@@ -87,7 +87,6 @@ export default async function Leaderboard({
     teamSize: string;
   };
 }) {
-  console.log("MONBODG_UIR", process.env.MONGODB_URI)
   const page = Math.max(searchParams.page || 1, 1);
   const sortOption = searchParams?.sort ? searchParams.sort : sortOptionDefault;
   const dirOption = searchParams?.dir ? searchParams.dir : dirOptionDefault;
