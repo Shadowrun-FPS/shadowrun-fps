@@ -3,8 +3,6 @@ import { NextApiRequest } from "next";
 import clientPromise from "@/lib/mongodb";
 import { rowsDefault,  teamSizeDefault} from "@/app/games/leaderboard/common";
 
-export const dynamic = 'force-dynamic'
-
 export async function GET(request: NextRequest) {
   try {
     console.log("RUNNING GET");
