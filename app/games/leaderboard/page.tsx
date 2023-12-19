@@ -35,35 +35,23 @@ const getStats = async (searchParams: {
   const rows = searchParams?.rows;
   const teamSizeOption = searchParams?.teamSize;
   try {
+    const fetch_url = BASE_URL +
+      "/api/players/?page=" +
+      String(page) +
+      "&sort=" +
+      sortOption +
+      "&dir=" +
+      dirOption +
+      "&teamSize=" +
+      teamSizeOption +
+      "&rows=" +
+      rows;
     console.log(
-      "FETCHING PLAYERS FROM: " +
-        BASE_URL +
-        "/api/players/?page=" +
-        String(page) +
-        "&sort=" +
-        sortOption +
-        "&dir=" +
-        dirOption +
-        "&teamSize=" +
-        teamSizeOption +
-        "&rows=" +
-        rows
+      "FETCHING PLAYERS FROM: " + fetch_url
     );
     const res = await fetch(
-      BASE_URL +
-        "/api/players/?page=" +
-        String(page) +
-        "&sort=" +
-        sortOption +
-        "&dir=" +
-        dirOption +
-        "&teamSize=" +
-        teamSizeOption +
-        "&rows=" +
-        rows,
-      {
-        cache: "no-store",
-      }
+      fetch_url,
+      { next: { revalidate: 0 } }
     );
     console.log("Done fetching.... allegedly");
     if (!res.ok) {
