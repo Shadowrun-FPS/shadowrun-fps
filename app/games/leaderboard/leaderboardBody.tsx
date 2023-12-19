@@ -19,7 +19,7 @@ export default function formatPlayerStats(
   const directionModifier = descending ? 1 : -1;
 
   for (var i = 0; i < (playerStats?.length ? playerStats.length : 0); i++) {
-    const player_stat_url = BASE_URL + "/stats/" + playerStats[i].discordId;
+    const player_stat_url = BASE_URL + "/games/stats/" + playerStats[i].discordId;
     rows.push(
       <tr
         className="border-b odd:bg-white odd:dark:bg-slate-900 even:bg-gray-100 even:dark:bg-slate-800 dark:border-slate-700"

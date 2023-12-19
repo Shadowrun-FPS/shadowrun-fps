@@ -5,6 +5,8 @@ export type PlayerStats = {
   deaths: number;
   resurrects: number;
   avgMoney: number;
+  wins: number;
+  losses: number;
   lastMatchDate: Date;
 };
 

@@ -62,6 +62,7 @@ const getStats = async (searchParams: {
         "&rows=" +
         rows,
       {
+        cache: "no-store",
       }
     );
     console.log("Done fetching.... allegedly");
