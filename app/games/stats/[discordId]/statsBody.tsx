@@ -5,7 +5,7 @@ import RankIcon from "@/components/rankicon";
 
 export default function StatsBody (params: {stats: PlayerStats[]}) {
     const stats = params.stats;
-    if (stats.length == 0) return (<></>)
+    if (!stats || stats.length == 0) return (<></>)
 
     let highestEloStat = stats[0];
     for (const stat of stats) {
