@@ -49,6 +49,7 @@ const getStats = async (searchParams: {
     console.log(
       "FETCHING PLAYERS FROM: " + fetch_url
     );
+    console.log("MongoDB_URI:", process.env.MONGODB_URI);
     const res = await fetch(
       fetch_url,
       { next: { revalidate: 0 } }
