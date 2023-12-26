@@ -1,5 +1,3 @@
-'use client'
-
 import "@/app/globals.css";
 import "./leaderboardStyles.css";
 import Pagination from "./pagination";
@@ -13,6 +11,7 @@ import {
   sortOptionDefault,
   dirOptionDefault,
 } from "./common";
+import { PlayerQuery } from "./serverPlayerQuery";
 
 import React from "react";
 
@@ -88,20 +87,20 @@ export default async function Leaderboard({
   const teamSizeOption = searchParams?.teamSize
     ? searchParams.teamSize
     : teamSizeDefault;
-  const playerStatsFetch = (await getStats({
+  const playerStatsQuery = await PlayerQuery({
     page: page,
     sort: sortOption,
     dir: dirOption,
     rows: rowsPerPage,
     teamSize: teamSizeOption,
-  })) || { players: [] };
-  const playerStatsQuery = playerStatsFetch.players;
-  const playerCount = playerStatsFetch.playerCount;
+  });
+  const playerStats = playerStatsQuery.players;
+  const playerCount = playerStatsQuery.playerCount;
   const startingRankNumber = descending
     ? (page - 1) * rowsPerPage
     : playerCount - (page - 1) * rowsPerPage;
   const leaderboardBody = formatPlayerStats(
-    playerStatsQuery,
+    playerStats,
     startingRankNumber,
     descending
   );
