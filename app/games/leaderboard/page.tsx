@@ -1,3 +1,5 @@
+'use client'
+
 import "@/app/globals.css";
 import "./leaderboardStyles.css";
 import Pagination from "./pagination";
