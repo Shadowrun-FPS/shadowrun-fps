@@ -2,29 +2,16 @@ import { BASE_URL } from "@/lib/baseurl";
 import Image from "next/image";
 import RankIcon from "@/components/rankicon";
 import StatsBody from "./statsBody";
+import clientPromise from "@/lib/mongodb";
 
 const getPlayerInfo = (async (discordId: string | string[] | undefined) => {
   try {
-    console.log(
-      "FETCHING PLAYERS FROM: " +
-        BASE_URL +
-        "/api/players/" +
-        discordId
-    );
-    const res = await fetch(
-      BASE_URL +
-      "/api/players/" +
-      discordId,
-      {
-        cache: "no-store",
-      }
-    );
-    if (!res.ok) {
-      throw new Error("Failed to fetch single player's stats");
-    }
-    return res.json();
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
+    const player = await db.collection("Players").findOne({discordId: discordId});
+    return player;
   } catch (error) {
-    console.log("Error loading single player's stats", error);
+    return {discordNickname: "", discordProfilePicture: "", stats: []};
   }
 });
 
@@ -32,8 +19,8 @@ const getPlayerInfo = (async (discordId: string | string[] | undefined) => {
 export default async function PlayerStatPage({params}: {params: {discordId: string}}) {
   const {discordId} = params;
   const playerInfo = await getPlayerInfo(discordId);
-  const discordNickname = playerInfo?.player.discordNickname;
-  const discordProfilePicture = playerInfo?.player.discordProfilePicture;
+  const discordNickname = playerInfo?.discordNickname;
+  const discordProfilePicture = playerInfo?.discordProfilePicture;
   return (
     <>
         <div className="flex items-center justify-center bg-slate-900">
@@ -42,7 +29,7 @@ export default async function PlayerStatPage({params}: {params: {discordId: stri
                     <Image src={discordProfilePicture} width='254' height='254' alt={discordNickname + "Profile Picture"} className="rounded-full"/>
                     <div className="my-4 text-3xl text">{discordNickname}</div>
                 </div>
-                <StatsBody stats={playerInfo?.player.stats}/>
+                <StatsBody stats={playerInfo?.stats}/>
             </div>
         </div>
         </>
