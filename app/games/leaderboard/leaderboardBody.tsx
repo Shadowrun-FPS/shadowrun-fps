@@ -34,7 +34,7 @@ export default function formatPlayerStats(
             {playerStats[i].discordNickname}
           </a>
         </th>
-        <td className="px-6 py-4">
+        <td className="flex items-center px-6 py-4">
           {RankIcon(playerStats[i].elo)} {playerStats[i].elo}
         </td>
         <td className="px-6 py-4">{playerStats[i].wins}</td>

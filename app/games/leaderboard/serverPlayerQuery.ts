@@ -13,7 +13,6 @@ export async function PlayerQuery(searchParams: {
     teamSize: string;
   }) {
   try {
-    console.log("RUNNING PLAYER QUERY", searchParams);
     const page = searchParams.page;
     const sortOption = getSortOption(searchParams.sort + '');
     const querySortDirection = (searchParams.dir == "asc" ? 1 : -1);
@@ -22,10 +21,8 @@ export async function PlayerQuery(searchParams: {
     const skipAmount = Math.max(playersPerLBPage * (Number(page) - 1), 0);
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - 2);
-    console.log("CHECKPOINT 1");
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
-    console.log("CHECKPOINT 2");
     const data =
       await db.collection('Players')
       .aggregate([
@@ -71,14 +68,12 @@ export async function PlayerQuery(searchParams: {
           }}
         ])
         .toArray();
-      console.log("CHECKPOINT 3");
 
     // console.log(data[0].players[0]);
 
     return {players: data[0].players, playerCount: data[0].playerCount[0].total};
   } catch (error) {
-    console.log("CHECKPOINT 4");
-    console.log("FAILED TO FETCH FROM MONGO", error)
+    console.log("Error fetching from DB for leaderboard stats", error);
     return {players: [], playerCount: 0};
   }
 }

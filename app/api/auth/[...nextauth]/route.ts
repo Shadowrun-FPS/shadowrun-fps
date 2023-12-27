@@ -44,7 +44,7 @@ const handler = NextAuth({
               }
           )
           if (!discordFetchResult.ok) {
-              throw new Error("Failed to fetch discord info from callback");
+              console.log("Failed to fetch discord info from callback");
           }
           const discordMemberInfo = await discordFetchResult.json();
 

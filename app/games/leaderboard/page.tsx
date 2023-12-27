@@ -23,49 +23,6 @@ const leaderboard_categories = [
   ["W/L Ratio", "r", ""],
 ];
 
-const getStats = async (searchParams: {
-  page: number;
-  sort: string;
-  dir: string;
-  rows: number;
-  teamSize: string;
-}) => {
-  const sortOption = searchParams?.sort;
-  const dirOption = searchParams?.dir;
-  const page = searchParams?.page;
-  const rows = searchParams?.rows;
-  const teamSizeOption = searchParams?.teamSize;
-  try {
-    const fetch_url = BASE_URL +
-      "/api/players/?page=" +
-      String(page) +
-      "&sort=" +
-      sortOption +
-      "&dir=" +
-      dirOption +
-      "&teamSize=" +
-      teamSizeOption +
-      "&rows=" +
-      rows;
-    console.log(
-      "FETCHING PLAYERS FROM: " + fetch_url
-    );
-    console.log("MongoDB_URI:", process.env.MONGODB_URI);
-    const res = await fetch(
-      fetch_url,
-      { next: { revalidate: 0 } }
-    );
-    console.log("Done fetching.... allegedly");
-    if (!res.ok) {
-      console.log("Fetch stats error response:", res);
-      throw new Error("Failed to fetch stats");
-    }
-    return res.json();
-  } catch (error) {
-    console.log("Error loading stats", error);
-  }
-};
-
 export default async function Leaderboard({
   searchParams,
 }: {
@@ -114,8 +71,8 @@ export default async function Leaderboard({
         <table className="w-full text-sm text-left text-gray-500 rtl:text-right dark:text-gray-400">
           <thead className="sticky top-0 text-xs text-gray-700 bg-gray-300 dark:bg-slate-700 dark:text-gray-400">
             <tr key="header">
-              <th scope="col" className="px-6 py-3" key="Player ID">
-                Player ID
+              <th scope="col" className="px-6 py-3" key="Discord Name">
+                Discord Name
               </th>
               {leaderboard_categories.map((category) => (
                 <th scope="col" className="px-6 py-3" key={category[0]}>

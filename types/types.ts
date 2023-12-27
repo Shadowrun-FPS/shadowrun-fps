@@ -14,6 +14,7 @@ export type Player = {
   playerId: string;
   discordId: string;
   discordNickname: string;
+  discordProfilePicture: string;
   stats: PlayerStats[];
 };
 
