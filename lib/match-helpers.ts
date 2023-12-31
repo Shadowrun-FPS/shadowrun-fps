@@ -1,22 +1,14 @@
 import { createGetURL, getApiUrl } from "@/lib/utils";
 import { AddPlayerRequest } from "@/types/request-types";
-import { Player } from "@/types/types";
+import { Match, Player } from "@/types/types";
 
-export function getRankedMatches() {
-  const url = createGetURL("/api/matches", { ranked: true });
-  return fetch(url, {
-    cache: "no-store",
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Failed to fetch match data.");
-      }
-      return response.json();
-    })
-    .then((data) => data.results)
-    .catch((error) => {
-      throw new Error(error);
-    });
+import clientPromise from "@/lib/mongodb";
+
+export async function getRankedMatches() {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const matches = await db.collection("Matches").find().toArray();
+  return matches as unknown as Match[];
 }
 
 export function updateMatchPlayers(matchId: string, player: Player) {

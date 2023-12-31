@@ -1,6 +1,6 @@
 import ComingSoon from "../../coming-soon";
 import MatchList from "@/components/matches/match-list";
-import { createGetURL } from "@/lib/utils";
+import { getRankedMatches } from "@/lib/match-helpers";
 
 // async function updateMatch(match: Match) {
 //   const url = createURL("/api/matches", { match: match });
@@ -18,25 +18,9 @@ import { createGetURL } from "@/lib/utils";
 //     });
 // }
 
-export async function getRankedMatches() {
-  try {
-    const url = createGetURL("/api/matches", { ranked: true });
-    const response = await fetch(url, {
-      next: { revalidate: 10, tags: ["matches"] },
-    });
-    if (!response.ok)
-      throw new Error(`Request to get ranked matches ${response.status}`);
-    const data = await response.json();
-    return data.results;
-  } catch (error) {
-    console.error("Error ", error);
-    throw error;
-  }
-}
-
 export default async function RankedPage() {
   const matches = await getRankedMatches();
-  console.log("matchData:", matches);
+
   const isDev = process.env.NODE_ENV === "development";
   if (isDev) {
     return (
