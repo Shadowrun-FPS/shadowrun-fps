@@ -1,4 +1,4 @@
-import ComingSoon from "../../coming-soon";
+import ComingSoon from "../coming-soon";
 import MatchList from "@/components/matches/match-list";
 import { getRankedMatches } from "@/lib/match-helpers";
 
@@ -18,7 +18,7 @@ import { getRankedMatches } from "@/lib/match-helpers";
 //     });
 // }
 
-export default async function RankedPage() {
+export default async function GamesPage() {
   const matches = await getRankedMatches();
 
   return (
