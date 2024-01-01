@@ -5,7 +5,7 @@ import DiscordSignIn from "./discord/discord-sign-in";
 
 function Header() {
   return (
-    <header className="flex p-6 lg:px-8 bg-background">
+    <header className="flex gap-4 p-6 lg:px-8 bg-background">
       <MainLogo />
       <nav className="flex flex-1">
         <MainNavMenu />

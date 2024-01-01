@@ -5,6 +5,10 @@ import { DocHero } from "@/components/doc-hero";
 // Array of video data
 const videos = [
   {
+    title: "Top 10 December 2022",
+    src: "https://www.youtube.com/embed/iAyr1I3iNlg?si=TZ2B-w-6fGonroKS",
+  },
+  {
     title: "Optimizing Your Bloom Reduction",
     src: "https://www.youtube.com/embed/i824loqDsYI",
   },
