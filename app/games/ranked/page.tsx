@@ -21,20 +21,10 @@ import { getRankedMatches } from "@/lib/match-helpers";
 export default async function RankedPage() {
   const matches = await getRankedMatches();
 
-  const isDev = process.env.NODE_ENV === "development";
-  if (isDev) {
-    return (
-      <div className="grid gap-8">
-        <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
-        <MatchList matches={matches} />
-      </div>
-    );
-  } else {
-    return (
-      <ComingSoon
-        title={"Ranked pick up games"}
-        description="Here is where you will be able to sign up for ranked pick up games, similar to the discord bot."
-      />
-    );
-  }
+  return (
+    <div className="grid gap-8">
+      <h1 className="p-4 text-3xl font-extrabold">Play Ranked</h1>
+      <MatchList matches={matches} />
+    </div>
+  );
 }

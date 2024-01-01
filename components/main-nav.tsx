@@ -19,14 +19,9 @@ import { BookText, Menu, HelpCircle } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Play Ranked",
-    href: "/games/ranked",
-    description: "Ranked pick up games.",
-  },
-  {
-    title: "Play Casual",
-    href: "/games/casual",
-    description: "Join a casual pick up game!",
+    title: "Play Games",
+    href: "/games",
+    description: "Play ranked or casual pick up games.",
   },
   {
     title: "Leaderboard",
