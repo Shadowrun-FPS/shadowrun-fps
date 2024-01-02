@@ -1,9 +1,9 @@
 import MatchList from "@/components/matches/match-list";
-import { getRankedMatches } from "@/lib/match-helpers";
+import { getMatches } from "@/lib/match-helpers";
 import CreateMatchDialog from "./creatematchdialog";
 
 export default async function GamesPage() {
-  const matches = await getRankedMatches();
+  const matches = await getMatches();
 
   return (
     <div className="grid gap-8">

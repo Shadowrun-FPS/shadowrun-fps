@@ -40,13 +40,13 @@ export type Map = {
 
 export type Match = {
   matchId: string;
-  gameMode: string;
-  queueId: string;
-  ranked: boolean;
-  status: "queue" | "voting" | "in-progress" | "complete";
+  gameType: "ranked" | "casual" | "public";
+  status: "queue" | "in-progress" | "complete";
   maps: Map[];
   players: Player[];
   teamSize: number;
+  eloTier: "low" | "medium" | "high";
+  anonymous: boolean;
   winner?: string;
 };
 

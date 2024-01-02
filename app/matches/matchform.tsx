@@ -23,10 +23,10 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
+import { handleSubmit } from "./actions";
 
 const formSchema = z.object({
   gameType: z.enum(["ranked", "casual", "public"]),
-  createdBy: z.string().min(2).max(24),
   teamSize: z.number().array(),
   eloTier: z.enum(["low", "medium", "high"]),
   anonymous: z.boolean(),
@@ -37,20 +37,23 @@ export function MatchForm() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       gameType: "ranked",
-      createdBy: "grimz", // TODO get current user username
       teamSize: [2],
       eloTier: "medium",
       anonymous: false,
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    console.log("onSubmit form", values);
+    await handleSubmit(values);
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        onSubmit={form.handleSubmit((data) => onSubmit(data))}
+        className="space-y-8"
+      >
         <FormField
           control={form.control}
           name="gameType"
