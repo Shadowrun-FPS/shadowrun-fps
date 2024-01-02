@@ -12,6 +12,7 @@ export default async function GamesPage() {
         <CreateMatchDialog />
       </div>
       {/* TODO add filters for match parameters, can come from url params */}
+      {/* TODO add rows for carousel of game types based on player */}
       <MatchList matches={matches} />
     </div>
   );
