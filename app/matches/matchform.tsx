@@ -123,8 +123,8 @@ export function MatchForm() {
               <FormLabel>Team Size</FormLabel>
               <FormControl>
                 <Slider
-                  {...field}
-                  defaultValue={[2]}
+                  onChange={field.onChange}
+                  defaultValue={field.value}
                   max={5}
                   min={1}
                   step={1}
