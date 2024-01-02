@@ -8,7 +8,7 @@ export async function handleSubmit(values) {
     matchId: uuid(),
     teamSize: values["teamSize"][0],
     status: "queue",
-    createdBy: "grimz",
+    createdBy: "grimz", // TODO grab current users username
     maps: [],
     players: [],
   };
