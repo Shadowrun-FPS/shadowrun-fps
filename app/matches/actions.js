@@ -9,6 +9,7 @@ export async function handleSubmit(values) {
     teamSize: values["teamSize"][0],
     status: "queue",
     createdBy: "grimz", // TODO grab current users username
+    createdTS: Date.now(),
     maps: [],
     players: [],
   };

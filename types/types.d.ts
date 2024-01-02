@@ -45,6 +45,8 @@ export type Match = {
   maps: Map[];
   players: Player[];
   teamSize: number;
+  createdBy: string;
+  createdTS: number;
   eloTier: "low" | "medium" | "high";
   anonymous: boolean;
   winner?: string;
