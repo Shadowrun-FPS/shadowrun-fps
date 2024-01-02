@@ -58,7 +58,10 @@ export function MatchForm() {
             <FormItem>
               <FormLabel>Game Type</FormLabel>
               <FormControl>
-                <Select {...field}>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Game Type" />
                   </SelectTrigger>
@@ -88,9 +91,12 @@ export function MatchForm() {
             <FormItem>
               <FormLabel>Allowed Elo Tiers</FormLabel>
               <FormControl>
-                <Select {...field}>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
                   <SelectTrigger className="w-[320px]">
-                    <SelectValue placeholder="Elo Tier" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low (0-1600)</SelectItem>
