@@ -12,7 +12,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Shadowrun FPS",
-  description: "Build by gamers for gamers.",
+  description: "Built by Shadowrun fans for Shadowrun fans.",
 };
 
 export default function RootLayout({

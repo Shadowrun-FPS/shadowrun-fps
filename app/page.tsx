@@ -1,34 +1,10 @@
 // import clientPromise from "../lib/mongodb";
 import { Button } from "@/components/ui/button";
-
+import clientPromise from "../lib/mongodb";
 import Image from "next/image";
+import FeaturedVideos from "./featured-videos";
 
-const videos = [
-  {
-    title: "Top 10 January 2023",
-    src: "https://www.youtube.com/embed/XzWH-QhCD-k?si=uyo6gQUR8qE2qAhl",
-  },
-];
-// export const connectToDB = async () => {
-//   try {
-//     const client = await clientPromise;
-//     // Example connection to the mongo db
-//     const db = client.db("ShadowrunWeb");
-//     const results = await db
-//       .collection("Matches")
-//       .find({ match_id: "SR12345" })
-//       .toArray();
-//     console.log("results ", results);
-//     return client;
-//   } catch (e) {
-//     console.error(e);
-//     return false;
-//   }
-// };
-
-export default function Home() {
-  // TODO make main take up rest of height on page
-  // ensuring footer is always at the bottom of the page
+export default function Home({}: {}) {
   return (
     <>
       <div className="px-4 py-32 mx-auto bg-center bg-no-repeat bg-cover max-w-screen-2xl bg-hero-image sm:px-6 lg:flex lg:items-center lg:px-8">
@@ -65,24 +41,7 @@ export default function Home() {
           <div className="mt-12 mb-4 text-3xl font-bold text-center text-white md:text-5xl not-prose">
             <h1>Featured Video</h1>
           </div>
-          <div>
-            {videos.map((video, index) => (
-              <section key={index} className="relative mx-4 md:mx-8">
-                <iframe
-                  className="rounded-md aspect-video"
-                  src={video.src}
-                  frameBorder="0"
-                  allowFullScreen
-                  style={{ width: "100%" }}
-                ></iframe>
-                <div className="text-center text-white">
-                  <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
-                    {video.title}
-                  </h2>
-                </div>
-              </section>
-            ))}
-          </div>
+          <FeaturedVideos />
         </main>
       </div>
     </>
