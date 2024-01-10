@@ -1,8 +1,7 @@
-// import clientPromise from "../lib/mongodb";
 import { Button } from "@/components/ui/button";
-import clientPromise from "../lib/mongodb";
-import Image from "next/image";
 import FeaturedVideos from "./featured-videos";
+
+export const dynamic = "force-dynamic";
 
 export default function Home() {
   return (

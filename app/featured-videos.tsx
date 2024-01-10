@@ -1,5 +1,4 @@
 import clientPromise from "@/lib/mongodb";
-export const dynamic = "force-dynamic";
 
 export type Video = {
   title: string;
