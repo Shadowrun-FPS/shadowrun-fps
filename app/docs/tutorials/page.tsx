@@ -3,20 +3,10 @@ export const dynamic = "force-dynamic";
 import clientPromise from "@/lib/mongodb";
 import { Video } from "@/types/types";
 import VideoList from "@/components/content/video-list";
-
-export async function getTutorialVideos() {
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-  const videos = await db
-    .collection<Video>("Videos")
-    .find({ isTutorial: "yes" })
-    .sort({ featuredOrder: 1 })
-    .toArray();
-  return videos as Video[];
-}
+import { TutorialVideos } from "@/components/content/video-list";
 
 export default async function Tutorials() {
-  const tutorialVideos = await getTutorialVideos();
+  const tutorialVideos = await TutorialVideos();
   return (
     <div className="flex flex-col items-center justify-center md:flex-row">
       <main

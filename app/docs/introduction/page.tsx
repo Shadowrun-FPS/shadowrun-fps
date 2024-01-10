@@ -4,8 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import React from "react";
 import { DocHero } from "@/components/doc-hero";
-import FeaturedPosts from "@/app/featured-posts";
-import StaffRoster from "@/app/staff-roster";
+import FeaturedPosts from "@/app/docs/introduction/featured-posts";
+import StaffRoster from "@/app/docs/introduction/staff-roster";
 
 export default function IntroductionPage() {
   return (
