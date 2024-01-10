@@ -49,3 +49,10 @@ export type MatchResult = {
   teamSize: number;
   winner: string;
 };
+
+export type Video = {
+  title: string;
+  src: string;
+  isFeatured: string;
+  isTutorial: string;
+};

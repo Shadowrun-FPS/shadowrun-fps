@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import FeaturedVideos from "./featured-videos";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 3600;
 
 export default function Home() {
   return (

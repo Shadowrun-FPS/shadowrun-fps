@@ -1,10 +1,20 @@
-import Link from "next/link";
-import Image from "next/image";
-import { DocHero } from "@/components/doc-hero";
 import clientPromise from "@/lib/mongodb";
-import TutorialVideos from "@/app/tutorial-videos";
+import { Video } from "@/types/types";
+import VideoList from "@/components/content/video-list";
+
+export async function getTutorialVideos() {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const videos = await db
+    .collection<Video>("Videos")
+    .find({ isTutorial: "yes" })
+    .sort({ featuredOrder: 1 })
+    .toArray();
+  return videos as Video[];
+}
 
 export default async function Tutorials() {
+  const tutorialVideos = await getTutorialVideos();
   return (
     <div className="flex flex-col items-center justify-center md:flex-row">
       <main
@@ -17,7 +27,10 @@ export default async function Tutorials() {
           </h1>
         </div>
         <div>
-          <TutorialVideos />
+          <VideoList
+            videos={tutorialVideos}
+            fallbackText="No tutorial videos found."
+          />
         </div>
       </main>
     </div>

@@ -1,24 +1,14 @@
-import clientPromise from "@/lib/mongodb";
+import { Video } from "@/types/types";
 
-export type Video = {
-  title: string;
-  src: string;
-  isFeatured: string;
-  isTutorial: string;
+type VideoListProps = {
+  videos: Video[];
+  fallbackText: string;
 };
 
-export async function getTutorialVideos() {
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-  const videos = await db
-    .collection<Video>("Videos")
-    .find({ isTutorial: "yes" })
-    .sort({ featuredOrder: 1 })
-    .toArray();
-  return videos as Video[];
-}
-export default async function TutorialVideos() {
-  const videos = await getTutorialVideos();
+export default async function VideoList({
+  videos,
+  fallbackText,
+}: VideoListProps) {
   return (
     <div className="grid grid-cols-1 gap-8 mt-8 lg:grid-cols-2 lg:mb-24 lg:mt-0">
       {videos && videos.length > 0 ? (
@@ -39,7 +29,7 @@ export default async function TutorialVideos() {
           </section>
         ))
       ) : (
-        <p className="text-center">No tutorial videos available.</p>
+        <p className="text-center">{fallbackText}</p>
       )}
     </div>
   );
