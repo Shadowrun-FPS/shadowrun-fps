@@ -7,26 +7,25 @@ export type Video = {
   isTutorial: string;
 };
 
-export async function getFeaturedVideos() {
+export async function getTutorialVideos() {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
   const videos = await db
-    .collection("Videos")
-    .find({ isFeatured: "yes" })
+    .collection<Video>("Videos")
+    .find({ isTutorial: "yes" })
     .sort({ featuredOrder: 1 })
     .toArray();
-  return videos as unknown as Video[];
+  return videos as Video[];
 }
-
-export default async function FeaturedVideos() {
-  const videos = await getFeaturedVideos();
+export default async function TutorialVideos() {
+  const videos = await getTutorialVideos();
   return (
-    <div>
+    <div className="grid grid-cols-1 gap-8 mt-8 lg:grid-cols-2 lg:mb-24 lg:mt-0">
       {videos && videos.length > 0 ? (
         videos.map((video, index) => (
-          <section key={index} className="relative mx-4 md:mx-8">
+          <section key={index} className="relative">
             <iframe
-              className="rounded-md aspect-video"
+              className="w-full rounded-md aspect-video"
               src={video.src}
               frameBorder="0"
               allowFullScreen
@@ -40,7 +39,7 @@ export default async function FeaturedVideos() {
           </section>
         ))
       ) : (
-        <p className="text-center">No featured videos available.</p>
+        <p className="text-center">No tutorial videos available.</p>
       )}
     </div>
   );
