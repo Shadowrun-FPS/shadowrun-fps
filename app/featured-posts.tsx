@@ -42,6 +42,7 @@ export default async function FeaturedPosts() {
                       alt={post.altText}
                       width={imageWidth}
                       height={imageHeight}
+                      style={{ height: `${imageHeight}px` }}
                     />
                   </a>
                 ) : (
@@ -50,6 +51,7 @@ export default async function FeaturedPosts() {
                     alt={post.altText}
                     width={imageWidth}
                     height={imageHeight}
+                    style={{ height: `${imageHeight}px` }}
                   />
                 )}
               </div>
