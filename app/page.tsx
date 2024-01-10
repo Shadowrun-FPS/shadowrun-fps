@@ -4,7 +4,7 @@ import clientPromise from "../lib/mongodb";
 import Image from "next/image";
 import FeaturedVideos from "./featured-videos";
 
-export default function Home({}: {}) {
+export default function Home() {
   return (
     <>
       <div className="px-4 py-32 mx-auto bg-center bg-no-repeat bg-cover max-w-screen-2xl bg-hero-image sm:px-6 lg:flex lg:items-center lg:px-8">
