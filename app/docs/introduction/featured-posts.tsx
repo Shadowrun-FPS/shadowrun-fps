@@ -1,17 +1,7 @@
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
 import Link from "next/link";
-
-export type Post = {
-  title: string;
-  src: string;
-  description: string;
-  isTutorial: string;
-  author: string;
-  datePublished: string;
-  linkAddress: string;
-  altText: string;
-};
+import { Post } from "@/types/types";
 
 export async function getFeaturedPosts() {
   const client = await clientPromise;
@@ -19,6 +9,7 @@ export async function getFeaturedPosts() {
   const posts = await db
     .collection("Posts")
     .find({ isPublished: "yes" })
+    .sort({ datePublished: -1 })
     .toArray();
   return posts as unknown as Post[];
 }

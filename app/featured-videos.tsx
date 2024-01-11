@@ -1,11 +1,5 @@
 import clientPromise from "@/lib/mongodb";
-
-export type Video = {
-  title: string;
-  src: string;
-  isFeatured: string;
-  isTutorial: string;
-};
+import { Video } from "@/types/types";
 
 export async function getFeaturedVideos() {
   const client = await clientPromise;
@@ -13,7 +7,7 @@ export async function getFeaturedVideos() {
   const videos = await db
     .collection("Videos")
     .find({ isFeatured: "yes" })
-    .sort({ featuredOrder: 1 })
+    .sort({ tutorialOrder: 1 })
     .toArray();
   return videos as unknown as Video[];
 }

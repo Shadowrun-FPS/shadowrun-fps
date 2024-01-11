@@ -3,7 +3,6 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
-import { DocHero } from "@/components/doc-hero";
 import FeaturedPosts from "@/app/docs/introduction/featured-posts";
 import StaffRoster from "@/app/docs/introduction/staff-roster";
 

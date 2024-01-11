@@ -6,14 +6,29 @@ type VideoListProps = {
   fallbackText: string;
 };
 
-export async function TutorialVideos() {
+export async function getTutorialVideos() {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
+  const categoriesToCheck = ["Tutorial", "Montage"];
+
   const videos = await db
     .collection<Video>("Videos")
-    .find({ isTutorial: "yes" })
-    .sort({ featuredOrder: 1 })
+    .aggregate([
+      { $match: { category: { $in: categoriesToCheck } } },
+      {
+        $addFields: {
+          sortableDate: {
+            $dateFromString: {
+              dateString: "$datePublished",
+              format: "%m-%d-%Y",
+            },
+          },
+        },
+      },
+      { $sort: { sortableDate: -1 } },
+    ])
     .toArray();
+
   return videos as Video[];
 }
 
