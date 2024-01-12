@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Ranked Playlist",
+  openGraph: {
+    title: "Ranked Playlist",
+  },
 };
 
 import MatchCard from "@/components/matches/match-card";

@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Ranked Rules",
+  openGraph: {
+    title: "Ranked Rules",
+  },
 };
 
 export default function RankedRulesPage() {

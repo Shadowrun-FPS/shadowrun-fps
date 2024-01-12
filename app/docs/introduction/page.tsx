@@ -3,6 +3,9 @@ export const dynamic = "force-dynamic";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Introduction",
+  openGraph: {
+    title: "Introduction",
+  },
 };
 
 import Link from "next/link";
