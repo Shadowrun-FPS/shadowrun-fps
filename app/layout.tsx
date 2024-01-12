@@ -11,15 +11,19 @@ import Footer from "@/components/footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("http://ShadowrunFPS.com"),
   title: {
     template: "%s | Shadowrun FPS",
     default: "Shadowrun FPS",
   },
   description:
     "A Shadowrun FPS fan site. Built by Shadowrun fans for Shadowrun fans.",
-  keywords: "shadowrun, FPS, gaming, fan site",
+  keywords: "shadowrun, FPS, gaming, fan site, matchmaking",
   openGraph: {
-    title: "Shadowrun FPS",
+    title: {
+      template: "%s - Shadowrun FPS",
+      default: "Shadowrun FPS",
+    },
     description:
       "A Shadowrun FPS fan site. Built by Shadowrun fans for Shadowrun fans.",
     images: [
@@ -27,7 +31,7 @@ export const metadata: Metadata = {
         url: "https://ShadowrunFPS.com/hero.png",
         width: 1200,
         height: 675,
-        alt: "The spinning wheel from the Shadowrun FPS of Magic abilities.",
+        alt: "A city background with the Shadowrun (2007) logo.",
       },
     ],
     siteName: "Shadowrun FPS",
@@ -39,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Shadowrun FPS",
     description: "A Shadowrun FPS fan site.",
-    images: ["https://ShadowrunFPS.com/serverIcon.png"],
+    images: ["https://ShadowrunFPS.com/hero.png"],
   },
 };
 
