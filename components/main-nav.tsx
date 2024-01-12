@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import {
@@ -11,22 +10,16 @@ import {
   NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
-  navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
 
 import ResponsitveTitle from "./navigation/responsive-title";
-import { BookText, Menu, HelpCircle } from "lucide-react";
+import { BookText, Menu } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Play Ranked",
-    href: "/games/ranked",
-    description: "Ranked pick up games.",
-  },
-  {
-    title: "Play Casual",
-    href: "/games/casual",
-    description: "Join a casual pick up game!",
+    title: "Games",
+    href: "/games",
+    description: "Play pick up games.",
   },
   {
     title: "Leaderboard",

@@ -13,7 +13,7 @@ export default async function GamesPage() {
   return (
     <div className="grid gap-8">
       <div className="flex items-center gap-4">
-        <h1 className="p-4 text-3xl font-extrabold">Play Matches</h1>
+        <h1 className="p-4 text-3xl font-extrabold">Play Games!</h1>
         <CreateMatchDialog />
       </div>
       {/* TODO add filters for match parameters, can come from url params */}
