@@ -1,7 +1,11 @@
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Support",
+};
+
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
-import { DocHero } from "@/components/doc-hero";
 
 export default function SupportPage() {
   return (

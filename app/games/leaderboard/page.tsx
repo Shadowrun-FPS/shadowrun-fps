@@ -1,3 +1,8 @@
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Leaderboard",
+};
+
 import ComingSoon from "../../coming-soon";
 
 const LeaderboardPage: React.FC = () => {

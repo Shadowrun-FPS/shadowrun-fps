@@ -1,15 +1,6 @@
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
-
-export type Roster = {
-  staffName: string;
-  src: string;
-  staffTitle: string;
-  staffNicknames: string;
-  staffAltText: string;
-  staffOrder: string;
-  altText: string;
-};
+import { Roster } from "@/types/types";
 
 export type StaffRosters = {
   adminRoster: Roster[];

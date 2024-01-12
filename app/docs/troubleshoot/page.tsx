@@ -1,6 +1,10 @@
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Troubleshooting",
+};
+
 import Link from "next/link";
 import Image from "next/image";
-import { DocHero } from "@/components/doc-hero";
 import AccordionGroup, { AccoridonType } from "@/components/accordion-group";
 
 const errorAccordions: AccoridonType[] = [

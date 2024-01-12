@@ -1,3 +1,8 @@
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Ranked Playlist",
+};
+
 import MatchCard from "@/components/matches/match-card";
 import { MatchResult } from "@/types/types";
 import ComingSoon from "../../coming-soon";
