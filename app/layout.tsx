@@ -24,9 +24,9 @@ export const metadata: Metadata = {
       "A Shadowrun FPS fan site. Built by Shadowrun fans for Shadowrun fans.",
     images: [
       {
-        url: "https://ShadowrunFPS.com/serverIcon.png",
+        url: "https://ShadowrunFPS.com/hero.png",
         width: 1200,
-        height: 630,
+        height: 675,
         alt: "The spinning wheel from the Shadowrun FPS of Magic abilities.",
       },
     ],
