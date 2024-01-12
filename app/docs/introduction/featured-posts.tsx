@@ -21,13 +21,7 @@ export default async function FeaturedPosts() {
       <h2 className="mb-12 text-3xl font-bold text-center">Latest articles</h2>
       <div className="grid grid-cols-1 gap-6 mx-auto mb-16 rounded lg:grid-cols-2">
         {posts && posts.length > 0 ? (
-          posts.map((post, index) => (
-            <PostCard
-              key={index}
-              post={post}
-              imageStyle={{ height: 430, width: 650 }}
-            />
-          ))
+          posts.map((post, index) => <PostCard key={index} post={post} />)
         ) : (
           <p className="text-center">No featured posts available.</p>
         )}
