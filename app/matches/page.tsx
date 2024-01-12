@@ -2,6 +2,11 @@ import MatchList from "@/components/matches/match-list";
 import { getMatches } from "@/lib/match-helpers";
 import CreateMatchDialog from "./creatematchdialog";
 
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Play Pick Up Games",
+};
+
 export default async function GamesPage() {
   const matches = await getMatches();
 
