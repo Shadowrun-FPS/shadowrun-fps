@@ -1,34 +1,7 @@
-// import clientPromise from "../lib/mongodb";
 import { Button } from "@/components/ui/button";
-
-import Image from "next/image";
-
-const videos = [
-  {
-    title: "Top 10 December 2022",
-    src: "https://www.youtube.com/embed/iAyr1I3iNlg?si=TZ2B-w-6fGonroKS",
-  },
-];
-// export const connectToDB = async () => {
-//   try {
-//     const client = await clientPromise;
-//     // Example connection to the mongo db
-//     const db = client.db("ShadowrunWeb");
-//     const results = await db
-//       .collection("Matches")
-//       .find({ match_id: "SR12345" })
-//       .toArray();
-//     console.log("results ", results);
-//     return client;
-//   } catch (e) {
-//     console.error(e);
-//     return false;
-//   }
-// };
+import FeaturedVideos from "./featured-videos";
 
 export default function Home() {
-  // TODO make main take up rest of height on page
-  // ensuring footer is always at the bottom of the page
   return (
     <>
       <div className="px-4 py-32 mx-auto bg-center bg-no-repeat bg-cover max-w-screen-2xl bg-hero-image sm:px-6 lg:flex lg:items-center lg:px-8">
@@ -61,29 +34,13 @@ export default function Home() {
         </p>
       </div>
       <div className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
-        <main>
-          <div className="mt-12 mb-4 text-3xl font-bold text-center text-white md:text-5xl not-prose">
+        <div>
+          <div className="mt-12 text-3xl font-bold text-center text-white md:text-5xl not-prose">
             <h1>Featured Video</h1>
           </div>
-          <div>
-            {videos.map((video, index) => (
-              <section key={index} className="relative mx-4 md:mx-8">
-                <iframe
-                  className="rounded-md aspect-video"
-                  src={video.src}
-                  frameBorder="0"
-                  allowFullScreen
-                  style={{ width: "100%" }}
-                ></iframe>
-                <div className="text-center text-white">
-                  <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">
-                    {video.title}
-                  </h2>
-                </div>
-              </section>
-            ))}
-          </div>
-        </main>
+          <p className="mb-4 text-center">(Updated January 2024)</p>
+          <FeaturedVideos />
+        </div>
       </div>
     </>
   );

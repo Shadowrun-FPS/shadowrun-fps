@@ -1,6 +1,7 @@
-import Link from "next/link";
-import Image from "next/image";
-import { DocHero } from "@/components/doc-hero";
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Ranked Rules",
+};
 
 export default function RankedRulesPage() {
   return (

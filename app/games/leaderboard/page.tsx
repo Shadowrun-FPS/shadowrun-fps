@@ -1,10 +1,8 @@
-import "@/app/globals.css";
-import "./leaderboardStyles.css";
+import React from "react";
 import Pagination from "./pagination";
 import formatPlayerStats from "./leaderboardBody";
 import LeaderboardCategory from "./leaderboardCategory";
 import TeamSizeMenu from "./teamSizeSelection";
-import { BASE_URL } from "@/lib/baseurl";
 import {
   teamSizeDefault,
   rowsDefault,
@@ -12,8 +10,14 @@ import {
   dirOptionDefault,
 } from "./common";
 import { PlayerQuery } from "./serverPlayerQuery";
+import { Metadata } from "next";
 
-import React from "react";
+import "@/app/globals.css";
+import "./leaderboardStyles.css";
+
+export const metadata: Metadata = {
+  title: "Leaderboard",
+};
 
 const leaderboard_categories = [
   // [Category, Query Abbreviation, Tailwind class names specific to that category]
