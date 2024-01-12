@@ -5,11 +5,17 @@ export type PlayerStats = {
   deaths: number;
   resurrects: number;
   avgMoney: number;
+  wins: number;
+  losses: number;
+  lastMatchDate: Date;
 };
 
 export type Player = {
   playerId: string;
   discordId: string;
+  discordNickname: string;
+  discordProfilePicture: string;
+  stats: PlayerStats[];
 };
 
 export type MapScore = {
