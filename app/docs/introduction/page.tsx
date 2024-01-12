@@ -1,5 +1,10 @@
 export const dynamic = "force-dynamic";
 
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Introduction",
+};
+
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";

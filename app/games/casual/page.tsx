@@ -1,3 +1,8 @@
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Casual Games",
+};
+
 import ComingSoon from "../../coming-soon";
 
 const CasualPage: React.FC = () => {

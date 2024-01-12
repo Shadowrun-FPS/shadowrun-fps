@@ -1,7 +1,12 @@
+export const metadata: Metadata = {
+  title: "PC Install",
+};
+
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
-import { DocHero } from "@/components/doc-hero";
+
+import { Metadata } from "next";
 
 export default function InstallationPage() {
   return (

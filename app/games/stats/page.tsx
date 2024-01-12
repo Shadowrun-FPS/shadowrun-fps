@@ -1,3 +1,8 @@
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Stats Look Up",
+};
+
 import ComingSoon from "../../coming-soon";
 
 const StatsPage: React.FC = () => {
