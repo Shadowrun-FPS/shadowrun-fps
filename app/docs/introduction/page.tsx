@@ -354,12 +354,42 @@ export default function IntroductionPage() {
       </div>
       <br />
 
-      <div className="text-center">
-        <h2 className="mb-4">Stay Connected</h2>
-        <p className="mb-4">
+      <div className="mt-8 text-center">
+        <h2>Stay Connected</h2>
+        <p>
           Follow us on social media for updates and announcements about our
           progress:
         </p>
+        <ul>
+          <br />
+          <li>
+            <a
+              href="https://twitter.com/i/communities/1688188047064470011"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Twitter
+            </a>
+          </li>
+          {/* <li>
+            <a
+              href="https://www.facebook.com/example"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Facebook
+            </a>
+          </li> */}
+          {/* <li>
+            <a
+              href="https://www.instagram.com/example"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Instagram
+            </a>
+          </li> */}
+        </ul>
       </div>
     </div>
   );
