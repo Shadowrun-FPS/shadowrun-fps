@@ -1,7 +1,7 @@
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
-import Link from "next/link";
 import { Post } from "@/types/types";
+import PostCard from "./post-card";
 
 export async function getFeaturedPosts() {
   const client = await clientPromise;
@@ -16,45 +16,17 @@ export async function getFeaturedPosts() {
 
 export default async function FeaturedPosts() {
   const posts = await getFeaturedPosts();
-  const imageWidth = 650;
-  const imageHeight = 430;
   return (
-    <section>
+    <section className="w-auto">
       <h2 className="mb-12 text-3xl font-bold text-center">Latest articles</h2>
       <div className="grid grid-cols-1 gap-6 mx-auto mb-16 rounded lg:grid-cols-2">
         {posts && posts.length > 0 ? (
           posts.map((post, index) => (
-            <section key={index} className="relative group hover:scale-105">
-              <div className="relative overflow-hidden transition rounded-md ">
-                {post.linkAddress ? (
-                  <a href={post.linkAddress} target="_blank">
-                    <Image
-                      src={post.src}
-                      alt={post.altText}
-                      width={imageWidth}
-                      height={imageHeight}
-                      style={{ height: `${imageHeight}px` }}
-                    />
-                  </a>
-                ) : (
-                  <Image
-                    src={post.src}
-                    alt={post.altText}
-                    width={imageWidth}
-                    height={imageHeight}
-                    style={{ height: `${imageHeight}px` }}
-                  />
-                )}
-              </div>
-
-              <div className="absolute bottom-0 left-0 p-4 text-white ">
-                <h5 className="mb-2 text-lg font-bold">{post.title}</h5>
-                <small>
-                  Published {post.datePublished}
-                  {post.description} by {post.author}
-                </small>
-              </div>
-            </section>
+            <PostCard
+              key={index}
+              post={post}
+              imageStyle={{ height: 430, width: 650 }}
+            />
           ))
         ) : (
           <p className="text-center">No featured posts available.</p>
