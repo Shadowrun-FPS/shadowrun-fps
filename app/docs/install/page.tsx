@@ -1,5 +1,8 @@
 export const metadata: Metadata = {
   title: "PC Install",
+  openGraph: {
+    title: "PC Install",
+  },
 };
 
 import Link from "next/link";

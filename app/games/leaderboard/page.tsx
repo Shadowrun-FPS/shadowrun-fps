@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Leaderboard",
+  openGraph: {
+    title: "Leaderboard",
+  },
 };
 
 import ComingSoon from "../../coming-soon";

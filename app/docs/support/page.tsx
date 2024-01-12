@@ -1,6 +1,9 @@
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Support",
+  openGraph: {
+    title: "Support",
+  },
 };
 
 import Link from "next/link";
