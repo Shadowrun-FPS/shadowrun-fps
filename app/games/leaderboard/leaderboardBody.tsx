@@ -1,4 +1,4 @@
-import RankIcon from "@/components/rankicon";
+import RankIcon from "@/components/player/rank-icon";
 import { BASE_URL } from "@/lib/baseurl";
 
 type PlayerStatProps = {
@@ -19,7 +19,8 @@ export default function formatPlayerStats(
   const directionModifier = descending ? 1 : -1;
 
   for (var i = 0; i < (playerStats?.length ? playerStats.length : 0); i++) {
-    const player_stat_url = BASE_URL + "/games/stats/" + playerStats[i].discordId;
+    const player_stat_url =
+      BASE_URL + "/games/stats/" + playerStats[i].discordId;
     rows.push(
       <tr
         className="border-b odd:bg-white odd:dark:bg-slate-900 even:bg-gray-100 even:dark:bg-slate-800 dark:border-slate-700"
@@ -35,7 +36,7 @@ export default function formatPlayerStats(
           </a>
         </th>
         <td className="flex items-center px-6 py-4">
-          {RankIcon(playerStats[i].elo)} {playerStats[i].elo}
+          <RankIcon elo={playerStats[i].elo} showElo={true} />
         </td>
         <td className="px-6 py-4">{playerStats[i].wins}</td>
         <td className="px-6 py-4">{playerStats[i].losses}</td>
