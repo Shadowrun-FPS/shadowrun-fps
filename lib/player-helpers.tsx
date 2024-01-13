@@ -5,7 +5,7 @@ export const getPlayerInfo = async (
   discordId: string | string[] | undefined
 ) => {
   try {
-    console.log("getPlayerInfo: ", discordId);
+    // console.log("getPlayerInfo: ", discordId);
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
     const player = await db

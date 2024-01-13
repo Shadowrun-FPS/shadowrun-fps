@@ -34,10 +34,12 @@ export default async function MatchDetailsPage({
     );
   }
   return (
-    <div className="grid items-center gap-4">
-      <h1 className="p-4 text-3xl font-extrabold">View Match Details</h1>
+    <div className="grid items-center gap-4 bg-muted rounded-xl">
+      <h1 className="p-4 text-3xl font-extrabold prose dark:prose-invert">
+        View Match Details
+      </h1>
       <div className="grid grid-cols-3 gap-4 p-4">
-        <div className="p-4 prose rounded-md dark:prose-invert bg-muted">
+        <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <p>
             <strong>Match ID:</strong> {matchData.matchId}
           </p>
@@ -58,7 +60,7 @@ export default async function MatchDetailsPage({
           </p>
         </div>
 
-        <div className="mb-6">
+        <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <h2 className="mb-2 text-xl font-semibold">Maps</h2>
           <ul>
             {matchData.maps.map((map: Map, index: number) => (
@@ -69,7 +71,7 @@ export default async function MatchDetailsPage({
           </ul>
         </div>
 
-        <div>
+        <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <h2 className="mb-2 text-xl font-semibold">Players</h2>
           <ul>
             {matchData.players.map((player: Player, index: number) => (
