@@ -1,3 +1,4 @@
+import PlayerItem from "@/components/player/player-item";
 import clientPromise from "@/lib/mongodb";
 import { Map, Player } from "@/types/types";
 import { Metadata } from "next";
@@ -25,7 +26,6 @@ export default async function MatchDetailsPage({
   params: { matchId: string };
 }) {
   const matchId = params.matchId;
-  console.log("matchId: ", matchId);
   const matchData = await getMatchDetails(matchId);
   console.log("match: ", matchData);
   if (matchData === null) {
@@ -36,7 +36,7 @@ export default async function MatchDetailsPage({
   return (
     <div className="grid items-center gap-4">
       <h1 className="p-4 text-3xl font-extrabold">View Match Details</h1>
-      <div className="container gap-4 p-4 mx-auto">
+      <div className="grid grid-cols-3 gap-4 p-4">
         <div className="p-4 prose rounded-md dark:prose-invert bg-muted">
           <p>
             <strong>Match ID:</strong> {matchData.matchId}
@@ -74,7 +74,10 @@ export default async function MatchDetailsPage({
           <ul>
             {matchData.players.map((player: Player, index: number) => (
               <li key={index} className="mb-1">
-                {player.discordNickname}
+                <PlayerItem
+                  discordId={player.discordId}
+                  matchTeamSize={matchData.teamSize}
+                />
               </li>
             ))}
           </ul>
