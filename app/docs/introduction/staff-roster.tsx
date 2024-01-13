@@ -1,10 +1,10 @@
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
-import { Roster } from "@/types/types";
+import { staffRoster } from "@/types/types";
 
 export type StaffRosters = {
-  adminRoster: Roster[];
-  moderatorRoster: Roster[];
+  adminRoster: staffRoster[];
+  moderatorRoster: staffRoster[];
 };
 
 export async function getStaffRoster(): Promise<StaffRosters> {
@@ -21,8 +21,8 @@ export async function getStaffRoster(): Promise<StaffRosters> {
     .toArray();
 
   return {
-    adminRoster: adminRoster as unknown as Roster[],
-    moderatorRoster: moderatorRoster as unknown as Roster[],
+    adminRoster: adminRoster as unknown as staffRoster[],
+    moderatorRoster: moderatorRoster as unknown as staffRoster[],
   };
 }
 

@@ -90,3 +90,10 @@ export type EloRankGroup =
   | "Gold"
   | "Platinum"
   | "Diamond";
+
+export type staffRoster = {
+  staffName: string;
+  staffNicknames: string;
+  src: string;
+  altText: string;
+};
