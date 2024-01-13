@@ -1,4 +1,5 @@
 import clientPromise from "@/lib/mongodb";
+import { Map, Player } from "@/types/types";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "View Match Details",
@@ -35,8 +36,8 @@ export default async function MatchDetailsPage({
   return (
     <div className="grid items-center gap-4">
       <h1 className="p-4 text-3xl font-extrabold">View Match Details</h1>
-      <div className="container p-4 mx-auto">
-        <div className="mb-6">
+      <div className="container gap-4 p-4 mx-auto">
+        <div className="p-4 prose rounded-md dark:prose-invert bg-muted">
           <p>
             <strong>Match ID:</strong> {matchData.matchId}
           </p>
@@ -60,7 +61,7 @@ export default async function MatchDetailsPage({
         <div className="mb-6">
           <h2 className="mb-2 text-xl font-semibold">Maps</h2>
           <ul>
-            {matchData.maps.map((map, index) => (
+            {matchData.maps.map((map: Map, index: number) => (
               <li key={index} className="mb-1">
                 {map.mapName}
               </li>
@@ -71,9 +72,9 @@ export default async function MatchDetailsPage({
         <div>
           <h2 className="mb-2 text-xl font-semibold">Players</h2>
           <ul>
-            {matchData.players.map((player, index) => (
+            {matchData.players.map((player: Player, index: number) => (
               <li key={index} className="mb-1">
-                {player.playerId}
+                {player.discordNickname}
               </li>
             ))}
           </ul>
