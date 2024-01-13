@@ -34,7 +34,7 @@ export default function RankIcon({
   const playerRank = getPlayerRank(elo);
 
   return (
-    <div>
+    <div className="flex flex-row">
       <Image
         className="mr-2 not-prose"
         src={`/rankedicons/${rankIcons[playerRank]}.png`}
@@ -42,7 +42,7 @@ export default function RankIcon({
         width={20}
         height={20}
       />
-      {showElo ?? elo}
+      {showElo && elo}
     </div>
   );
 }

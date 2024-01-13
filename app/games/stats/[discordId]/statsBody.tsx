@@ -27,7 +27,7 @@ export default function StatsBody(params: { stats: PlayerStats[] }) {
           <div className="flex text-xl">
             ELO:&nbsp;
             <div className="flex">
-              {<RankIcon elo={highestEloStat.elo} showElo={true} />}
+              <RankIcon elo={highestEloStat.elo} showElo={true} />
             </div>
           </div>
           <div className="text-xl">Wins: {highestEloStat.wins}</div>
@@ -59,7 +59,8 @@ export default function StatsBody(params: { stats: PlayerStats[] }) {
           </div>
           <br />
           <div className="flex text-xl">
-            ELO:&nbsp;{RankIcon(stat.elo)} {stat.elo}
+            ELO:&nbsp;
+            <RankIcon elo={stat.elo} showElo={true} />
           </div>
           <div className="text-xl">Wins: {stat.wins}</div>
           <div className="text-xl">Losses: {stat.losses}</div>
