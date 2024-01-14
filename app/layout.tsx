@@ -11,6 +11,7 @@ import Footer from "@/components/footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("http://ShadowrunFPS.com"),
   title: {
     template: "%s | Shadowrun FPS",
     default: "Shadowrun FPS",
