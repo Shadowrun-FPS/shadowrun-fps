@@ -127,3 +127,11 @@ export type Roster = {
   staffOrder: string;
   altText: string;
 };
+
+export type rankedMaps = {
+  map: string;
+  captureGameMode: string;
+  rankedMap: boolean;
+  smallOption: boolean;
+  src: string;
+};

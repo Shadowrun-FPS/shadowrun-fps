@@ -1,3 +1,4 @@
+import React from "react";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -7,8 +8,6 @@ export const metadata: Metadata = {
     description: "Shadowrun FPS Support page.",
   },
 };
-
-import React from "react";
 
 export default function SupportPage() {
   return (
