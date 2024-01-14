@@ -40,6 +40,7 @@ export default function MatchCard({ match, className }: MatchCardProps) {
             <h5 className="p-2">Team 2</h5>
             {players.map(async (player: Player) => (
               <PlayerItem
+                key={player.discordId}
                 discordId={player.discordId}
                 matchTeamSize={match.teamSize}
               />

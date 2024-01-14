@@ -97,3 +97,33 @@ export type staffRoster = {
   src: string;
   altText: string;
 };
+
+export type Video = {
+  title: string;
+  src: string;
+  isFeatured: string;
+  isTutorial: string;
+  datePublished: string;
+  category: string;
+};
+
+export type Post = {
+  title: string;
+  src: string;
+  description: string;
+  isTutorial: string;
+  author: string;
+  datePublished: string;
+  linkAddress: string;
+  altText: string;
+};
+
+export type Roster = {
+  staffName: string;
+  src: string;
+  staffTitle: string;
+  staffNicknames: string;
+  staffAltText: string;
+  staffOrder: string;
+  altText: string;
+};
