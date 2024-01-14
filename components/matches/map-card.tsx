@@ -1,5 +1,6 @@
 import React, { ReactNode } from "react";
 import clientPromise from "@/lib/mongodb";
+import Image from "next/image";
 
 type rankedMaps = {
   map: string;
@@ -73,7 +74,7 @@ export default async function MapCardComponent() {
               <MapCardTitle>{map.map}</MapCardTitle>
             </MapCardHeader>
             <MapCardContent>
-              <img
+              <Image
                 alt={`${map.map} Map`}
                 height={200}
                 src={map.src}
