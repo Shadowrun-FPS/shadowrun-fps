@@ -1,14 +1,9 @@
-<<<<<<< HEAD
-=======
+import React from "react";
+
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Support",
 };
-
-import Link from "next/link";
-import Image from "next/image";
->>>>>>> 84f10e6a6b47511cff8daa10493bdb559ae350bb
-import React from "react";
 
 export default function SupportPage() {
   return (
