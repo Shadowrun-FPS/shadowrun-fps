@@ -73,7 +73,7 @@ export default function MatchCard({ match, className }: MatchCardProps) {
   return (
     <Card key={match.matchId} className={className}>
       <CardHeader>
-        <CardTitle>{match.gameMode}</CardTitle>
+        <CardTitle>{match.gameType}</CardTitle>
         <CardDescription>Team Size: {match.teamSize}</CardDescription>
       </CardHeader>
       <CardContent>
