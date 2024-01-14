@@ -4,6 +4,9 @@ import { Player } from "@/types/types";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Stats Look Up",
+  openGraph: {
+    title: "Stats Look Up",
+  },
 };
 
 async function playerSearch(searchString: string) {

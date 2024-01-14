@@ -3,6 +3,9 @@ export const dynamic = "force-dynamic";
 import { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Tutorials",
+  openGraph: {
+    title: "Tutorials",
+  },
 };
 
 import VideoList from "@/components/content/video-list";

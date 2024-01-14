@@ -17,6 +17,9 @@ import "./leaderboardStyles.css";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
+  openGraph: {
+    title: "Leaderboard",
+  },
 };
 
 const leaderboard_categories = [
