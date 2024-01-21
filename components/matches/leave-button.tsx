@@ -12,7 +12,7 @@ type LeaveButtonProps = {
 
 function isValidLeave(userName: string | undefined | null, players: Player[]) {
   if (!userName) return true;
-  return !players.some((player) => player.playerId === userName);
+  return !players.some((player) => player.discordId === userName);
 }
 
 export default function LeaveButton({ players, matchId }: LeaveButtonProps) {
@@ -20,7 +20,6 @@ export default function LeaveButton({ players, matchId }: LeaveButtonProps) {
   const userName = session?.user?.name;
   const disabled = isValidLeave(userName, players);
   function handleLeave() {
-    console.log("handleLeave", session);
     const url = getApiUrl();
     if (isValidLeave(userName, players)) return;
     fetch(url + "/api/matches", {

@@ -9,9 +9,7 @@ export default function MatchList({ matches }: MatchListProps) {
   return (
     <div className="flex flex-wrap gap-8">
       {matches?.map((match: Match) => {
-        return (
-          <MatchCard key={match.matchId} className="w-[350px]" match={match} />
-        );
+        return <MatchCard key={match.matchId} className="w-72" match={match} />;
       })}
     </div>
   );

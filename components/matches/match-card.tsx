@@ -10,6 +10,7 @@ import { Player, Match } from "@/types/types";
 import JoinButton from "./join-button";
 import LeaveButton from "./leave-button";
 import PlayerItem from "../player/player-item";
+
 import Link from "next/link";
 interface MatchCardProps {
   match: Match;
@@ -22,19 +23,13 @@ export default function MatchCard({ match, className }: MatchCardProps) {
 
   return (
     <Card key={match.matchId} className={className}>
-      <CardHeader>
-        <Link className="hover:text-blue-500" href={`/games/${matchId}`}>
-          <CardTitle className="w-32 truncate" title={match.matchId}>
-            {match.matchId}
-          </CardTitle>
-          <CardDescription>
-            <div>Game Type: {match.gameType}</div>
-            <div>Team Size: {match.teamSize}</div>
-          </CardDescription>
-        </Link>
+      <CardHeader className="prose dark:prose-invert">
+        <CardTitle title={match.title}>{match.title}</CardTitle>
+        <CardDescription>{match.gameType}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto prose dark:prose-invert">
+          <h2>Team Size: {match.teamSize}</h2>
           <div className="grid grid-cols-2 gap-x-4">
             <h5 className="p-2">Team 1</h5>
             <h5 className="p-2">Team 2</h5>

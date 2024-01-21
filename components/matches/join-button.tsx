@@ -13,7 +13,6 @@ type JoinButtonProps = {
 export default function JoinButton({ isMatchFull, matchId }: JoinButtonProps) {
   const { data: session } = useSession();
   function handleJoin() {
-    console.log("handleJoin", session);
     const url = getApiUrl();
     const userName = session?.user?.name;
     if (!userName) return;
