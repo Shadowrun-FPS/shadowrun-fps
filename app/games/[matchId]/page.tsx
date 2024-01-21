@@ -42,17 +42,7 @@ export default async function MatchDetailsPage({
       </h1>
       <div className="flex flex-wrap gap-8">
         <MatchDetailsCard className="w-96" match={matchData} />
-        <MapCardList maps={matchData.maps} />
-        <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
-          <h2 className="mb-2 text-xl font-semibold">Maps</h2>
-          <ul>
-            {matchData.maps.map((map: Map, index: number) => (
-              <li key={index} className="mb-1">
-                {map.name}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <MapCardList className="w-96" maps={matchData.maps} />
 
         <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <h2 className="mb-2 text-xl font-semibold">Players</h2>

@@ -1,19 +1,27 @@
 import MapCard from "./map-card";
 import { Map } from "@/types/types";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 interface MapCardListProps {
   maps: Map[];
+  className?: string;
 }
 
-export default async function MapCardList({ maps }: MapCardListProps) {
+export default async function MapCardList({
+  maps,
+  className,
+}: MapCardListProps) {
   return (
-    <main className="flex flex-col items-center justify-center w-full py-8">
-      <h1 className="mb-8 text-4xl font-bold">Maps</h1>
-      <div className="flex flex-wrap gap-16">
+    <Card className={className}>
+      <CardHeader>
+        <CardTitle title={"Maps"}>Maps</CardTitle>
+      </CardHeader>
+      <CardContent className="prose dark:prose-invert">
         {maps.map((map: Map, index: number) => (
           <MapCard key={index} className="w-64" map={map} />
         ))}
-      </div>
-    </main>
+      </CardContent>
+    </Card>
   );
 }
