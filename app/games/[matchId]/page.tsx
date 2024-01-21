@@ -3,6 +3,7 @@ import clientPromise from "@/lib/mongodb";
 import { Map, Match, Player } from "@/types/types";
 import { Metadata } from "next";
 import MatchDetailsCard from "./match-details-card";
+import MapCardList from "@/components/matches/map-card-list";
 export const metadata: Metadata = {
   title: "View Match Details",
 };
@@ -40,14 +41,14 @@ export default async function MatchDetailsPage({
         View Match Details
       </h1>
       <div className="flex flex-wrap gap-8">
-        <MatchDetailsCard match={matchData} />
-
+        <MatchDetailsCard className="w-96" match={matchData} />
+        <MapCardList maps={matchData.maps} />
         <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <h2 className="mb-2 text-xl font-semibold">Maps</h2>
           <ul>
             {matchData.maps.map((map: Map, index: number) => (
               <li key={index} className="mb-1">
-                {map.mapName}
+                {map.name}
               </li>
             ))}
           </ul>

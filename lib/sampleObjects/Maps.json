@@ -1,0 +1,92 @@
+[
+  {
+    "_id": {
+      "$oid": "659488ff96ead0590d2012ff"
+    },
+    "name": "Nerve Center",
+    "gameMode": "Extraction",
+    "rankedMap": true,
+    "smallOption": true,
+    "src": "/maps/map_nervecenter.png"
+  },
+  {
+    "_id": {
+      "$oid": "659489e996ead0590d201300"
+    },
+    "name": "Lobby",
+    "gameMode": "Extraction",
+    "rankedMap": true,
+    "smallOption": true,
+    "src": "/maps/map_lobby.png"
+  },
+  {
+    "_id": {
+      "$oid": "659489fb96ead0590d201301"
+    },
+    "name": "Pinnacle",
+    "gameMode": "Extraction",
+    "rankedMap": true,
+    "smallOption": false,
+    "src": "/maps/map_pinnacle.png"
+  },
+  {
+    "_id": {
+      "$oid": "65948a0f96ead0590d201302"
+    },
+    "name": "Poco",
+    "gameMode": "Raid",
+    "rankedMap": true,
+    "smallOption": true,
+    "src": "/maps/map_poco.png"
+  },
+  {
+    "_id": {
+      "$oid": "65948a2b96ead0590d201303"
+    },
+    "name": "Favela",
+    "gameMode": "Extraction",
+    "rankedMap": false,
+    "smallOption": false,
+    "src": "/maps/map_favela.png"
+  },
+  {
+    "_id": {
+      "$oid": "65948a7396ead0590d201305"
+    },
+    "name": "Maelstrom",
+    "rankedMap": false,
+    "smallOption": false,
+    "src": "/maps/map_maelstrom.png",
+    "gameMode": "Extraction"
+  },
+  {
+    "_id": {
+      "$oid": "65948a8d96ead0590d201306"
+    },
+    "rankedMap": false,
+    "smallOption": false,
+    "src": "/maps/map_digsite.png",
+    "name": "Dig Site",
+    "gameMode": "Raid"
+  },
+  {
+    "_id": {
+      "$oid": "65948ac096ead0590d201308"
+    },
+    "rankedMap": true,
+    "smallOption": false,
+    "src": "/maps/map_powerstation.png",
+    "name": "Power Station",
+    "gameMode": "Raid"
+  },
+  {
+    "_id": {
+      "$oid": "65948ade96ead0590d201309"
+    },
+    "gameMode": "Raid",
+    "rankedMap": false,
+    "smallOption": false,
+    "src": "/maps/map_temple.png",
+    "name": "Temple Grounds"
+  }
+]

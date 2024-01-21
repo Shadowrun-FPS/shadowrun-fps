@@ -32,7 +32,15 @@ export type PlayerInfo = {
 };
 
 export type Map = {
-  mapName: string;
+  name: string;
+  gameMode: string;
+  rankedMap: boolean;
+  smallOption: boolean;
+  src: string;
+};
+
+export type MapResults = {
+  name: string;
   gameMode: string;
   scoredBy?: MapScore;
   players?: PlayerInfo[];
