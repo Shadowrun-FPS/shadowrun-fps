@@ -45,6 +45,7 @@ export type Map = {
 
 export type Match = {
   matchId: string;
+  title: string;
   gameType: "ranked" | "casual" | "public";
   status: "queue" | "in-progress" | "complete";
   maps: Map[];

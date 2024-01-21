@@ -1,7 +1,8 @@
 import PlayerItem from "@/components/player/player-item";
 import clientPromise from "@/lib/mongodb";
-import { Map, Player } from "@/types/types";
+import { Map, Match, Player } from "@/types/types";
 import { Metadata } from "next";
+import MatchDetailsCard from "./match-details-card";
 export const metadata: Metadata = {
   title: "View Match Details",
 };
@@ -13,7 +14,7 @@ const getMatchDetails = async (matchId: string) => {
     const matchData = await db
       .collection("Matches")
       .findOne({ matchId: matchId });
-    return matchData;
+    return matchData as unknown as Match;
   } catch (error) {
     console.error(error);
     return null;
@@ -34,31 +35,12 @@ export default async function MatchDetailsPage({
     );
   }
   return (
-    <div className="grid items-center gap-4 bg-muted rounded-xl">
+    <div>
       <h1 className="p-4 text-3xl font-extrabold prose dark:prose-invert">
         View Match Details
       </h1>
-      <div className="grid grid-cols-3 gap-4 p-4">
-        <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
-          <p>
-            <strong>Match ID:</strong> {matchData.matchId}
-          </p>
-          <p>
-            <strong>Game Mode:</strong> {matchData.gameMode}
-          </p>
-          <p>
-            <strong>Queue ID:</strong> {matchData.queueId}
-          </p>
-          <p>
-            <strong>Ranked:</strong> {matchData.ranked ? "Yes" : "No"}
-          </p>
-          <p>
-            <strong>Status:</strong> {matchData.status}
-          </p>
-          <p>
-            <strong>Team Size:</strong> {matchData.teamSize}
-          </p>
-        </div>
+      <div className="flex flex-wrap gap-8">
+        <MatchDetailsCard match={matchData} />
 
         <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <h2 className="mb-2 text-xl font-semibold">Maps</h2>
