@@ -42,7 +42,11 @@ export default async function MatchDetailsPage({
       </h1>
       <div className="flex flex-wrap gap-8">
         <MatchDetailsCard className="w-96" match={matchData} />
-        <MapCardList className="w-96" maps={matchData.maps} />
+        <MapCardList
+          className="w-96"
+          style={{ height: "460px" }}
+          maps={matchData.maps}
+        />
 
         <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
           <h2 className="mb-2 text-xl font-semibold">Players</h2>

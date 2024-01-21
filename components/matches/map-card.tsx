@@ -26,21 +26,13 @@ export default async function MapCard({ map, className, style }: MapCardProps) {
   if (mapDetails === null) return <div>Unknown Map!</div>;
 
   return (
-    <div
-      className={`flex flex-col items-center justify-center ${className}`}
-      style={style}
-    >
-      <h2 className="text-xl font-bold">{mapDetails.name}</h2>
+    <div className={`${className}`} style={style}>
+      <h2 className="mt-0 mb-0 text-xl font-bold">{mapDetails.name}</h2>
       <Image
         alt={`${mapDetails.name} Map`}
-        height={200}
         src={mapDetails.src}
-        style={{
-          aspectRatio: "1",
-          objectFit: "cover",
-          marginBottom: "1px",
-        }}
-        width={500}
+        width={1175}
+        height={500}
       />
     </div>
   );
