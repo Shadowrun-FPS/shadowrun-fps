@@ -1,4 +1,4 @@
-import PlayerItem from "@/components/player/player-item";
+import PlayerList from "@/components/player/player-list";
 import clientPromise from "@/lib/mongodb";
 import { Map, Match, Player } from "@/types/types";
 import { Metadata } from "next";
@@ -40,27 +40,10 @@ export default async function MatchDetailsPage({
       <h1 className="p-4 text-3xl font-extrabold prose dark:prose-invert">
         View Match Details
       </h1>
-      <div className="flex flex-wrap gap-8">
+      <div className="flex flex-wrap justify-center gap-16">
         <MatchDetailsCard className="w-96" match={matchData} />
-        <MapCardList
-          className="w-96"
-          style={{ height: "460px" }}
-          maps={matchData.maps}
-        />
-
-        <div className="max-w-sm p-4 prose rounded-lg shadow-lg bg-card dark:prose-invert">
-          <h2 className="mb-2 text-xl font-semibold">Players</h2>
-          <ul>
-            {matchData.players.map((player: Player, index: number) => (
-              <li key={index} className="mb-1">
-                <PlayerItem
-                  discordId={player.discordId}
-                  matchTeamSize={matchData.teamSize}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
+        <PlayerList match={matchData} />
+        <MapCardList className="mx-4 w-96" maps={matchData.maps} />
       </div>
     </div>
   );

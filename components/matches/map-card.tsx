@@ -2,6 +2,7 @@ import React, { ReactNode } from "react";
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
 import { Map } from "@/types/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface MapCardProps {
   map: Map;
@@ -26,14 +27,18 @@ export default async function MapCard({ map, className, style }: MapCardProps) {
   if (mapDetails === null) return <div>Unknown Map!</div>;
 
   return (
-    <div className={`${className}`} style={style}>
-      <h2 className="mt-0 mb-0 text-xl font-bold">{mapDetails.name}</h2>
-      <Image
-        alt={`${mapDetails.name} Map`}
-        src={mapDetails.src}
-        width={1175}
-        height={500}
-      />
-    </div>
+    <Card className={`${className}`}>
+      <CardHeader>
+        <CardTitle>{mapDetails.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Image
+          alt={`${mapDetails.name} Map`}
+          src={mapDetails.src}
+          width={1175}
+          height={500}
+        />
+      </CardContent>
+    </Card>
   );
 }
