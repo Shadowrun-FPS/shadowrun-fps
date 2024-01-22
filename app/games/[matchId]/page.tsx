@@ -46,7 +46,10 @@ export default async function MatchDetailsPage({
       </div>
       <div className="grid justify-center">
         <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2>
-        <MapCardList className="max-w-sm md:max-w-xl" maps={matchData.maps} />
+        <MapCardList
+          className="w-[250px] md:w-auto md:max-w-xl"
+          maps={matchData.maps}
+        />
       </div>
     </div>
   );
