@@ -2,7 +2,7 @@ import { PlayerStats } from "@/types/types";
 import moment from "moment";
 import RankIcon from "@/components/player/rank-icon";
 
-export default function StatsBody(params: { stats: PlayerStats[] }) {
+export default function StatsBody(params: { stats?: PlayerStats[] }) {
   const stats = params.stats;
   if (!stats || stats.length == 0) return <></>;
 

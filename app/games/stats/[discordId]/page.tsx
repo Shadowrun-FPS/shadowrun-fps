@@ -10,7 +10,8 @@ export default async function PlayerStatPage({
   const { discordId } = params;
   const playerInfo = await getPlayerInfo(discordId);
   const discordNickname = playerInfo?.discordNickname;
-  const discordProfilePicture = playerInfo?.discordProfilePicture;
+  const discordProfilePicture =
+    playerInfo?.discordProfilePicture ?? "/defaultAvatar.png";
   return (
     <>
       <div className="flex items-center justify-center bg-slate-900">

@@ -22,8 +22,8 @@ export default async function MapCardList({
     <Carousel className={`${className}`}>
       <CarouselContent>
         {maps.map((map: Map, index: number) => (
-          <CarouselItem>
-            <MapCard key={index} map={map} />
+          <CarouselItem key={index}>
+            <MapCard map={map} />
           </CarouselItem>
         ))}
       </CarouselContent>
