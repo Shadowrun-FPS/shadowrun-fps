@@ -27,7 +27,7 @@ export default async function PlayerItem({
       <div className="flex p-2 transition duration-300 rounded hover:bg-accent">
         <RankIcon elo={elo} />
         <div
-          className="font-semibold overflow-hidden whitespace-nowrap max-w-[10ch]"
+          className="font-semibold overflow-hidden whitespace-nowrap max-w-[24ch]"
           title={playerData.discordNickname}
         >
           {playerData.discordNickname}

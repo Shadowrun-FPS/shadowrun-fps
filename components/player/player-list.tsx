@@ -2,9 +2,14 @@ import PlayerItem from "@/components/player/player-item";
 import { Match, Player } from "@/types/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export default function PlayerList({ match }: { match: Match }) {
+interface PlayerListProps {
+  match: Match;
+  className?: string;
+}
+
+export default function PlayerList({ match, className }: PlayerListProps) {
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle>Players</CardTitle>
       </CardHeader>

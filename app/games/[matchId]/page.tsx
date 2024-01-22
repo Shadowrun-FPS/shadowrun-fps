@@ -36,14 +36,17 @@ export default async function MatchDetailsPage({
     );
   }
   return (
-    <div>
+    <div className="grid gap-8 mb-12">
       <h1 className="p-4 text-3xl font-extrabold prose dark:prose-invert">
         View Match Details
       </h1>
-      <div className="flex flex-wrap justify-center gap-16">
-        <MatchDetailsCard className="w-96" match={matchData} />
+      <div className="grid justify-center gap-8 md:grid-cols-2">
+        <MatchDetailsCard match={matchData} />
         <PlayerList match={matchData} />
-        <MapCardList className="mx-4 w-96" maps={matchData.maps} />
+      </div>
+      <div className="grid justify-center">
+        <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2>
+        <MapCardList className="max-w-sm md:max-w-xl" maps={matchData.maps} />
       </div>
     </div>
   );
