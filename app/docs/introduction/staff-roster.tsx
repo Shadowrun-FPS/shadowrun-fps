@@ -43,6 +43,8 @@ export default async function StaffRoster() {
     await getStaffRoster();
   const imageWidth = 120;
   const imageHeight = 100;
+  const defaultImageSrc = "/SRlogo.png";
+
   return (
     <div>
       <h2 className="mb-12 text-3xl font-bold text-center">Admin</h2>
@@ -53,7 +55,7 @@ export default async function StaffRoster() {
               <div key={index} className="mb-12 text-center hover:scale-110">
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
-                  src={roster.src}
+                  src={roster.src || defaultImageSrc}
                   alt={roster.altText}
                   width={imageWidth}
                   height={imageHeight}
@@ -74,7 +76,7 @@ export default async function StaffRoster() {
               <div key={index} className="mb-12 text-center hover:scale-110">
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
-                  src={roster.src}
+                  src={roster.src || defaultImageSrc}
                   alt={roster.altText}
                   width={imageWidth}
                   height={imageHeight}
@@ -94,12 +96,16 @@ export default async function StaffRoster() {
           <h2 className="mt-12 mb-12 text-3xl font-bold text-center">
             Moderator
           </h2>
-          <div className="grid grid-cols-2 lg:gap-xl-12 gap-x-6 sm:gap-x-0 md:grid-cols-3 xl:grid-cols-5">
+          <div className="flex flex-wrap justify-center mx-auto mb-16 rounded sm:gap-x-12 gap-x-6 lg:gap-x-4 xl:gap-x-4">
             {moderatorRoster.map((roster, index) => (
-              <div key={index} className="mb-12 text-center hover:scale-110">
+              <div
+                key={index}
+                className="mb-12 text-center hover:scale-110"
+                style={{ flex: "0 0 18%" }}
+              >
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
-                  src={roster.src}
+                  src={roster.src || defaultImageSrc}
                   alt={roster.altText}
                   width={imageWidth}
                   height={imageHeight}
