@@ -56,7 +56,7 @@ export default async function StaffRoster() {
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                   src={roster.src || defaultImageSrc}
-                  alt={roster.altText}
+                  alt={roster.staffAltText}
                   width={imageWidth}
                   height={imageHeight}
                 />
@@ -77,7 +77,7 @@ export default async function StaffRoster() {
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                   src={roster.src || defaultImageSrc}
-                  alt={roster.altText}
+                  alt={roster.staffAltText}
                   width={imageWidth}
                   height={imageHeight}
                 />
@@ -106,7 +106,7 @@ export default async function StaffRoster() {
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
                   src={roster.src || defaultImageSrc}
-                  alt={roster.altText}
+                  alt={roster.staffAltText}
                   width={imageWidth}
                   height={imageHeight}
                 />

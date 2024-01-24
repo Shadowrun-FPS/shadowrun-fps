@@ -42,7 +42,6 @@ export default function IntroductionPage() {
           progress:
         </p>
         <ul>
-          <br />
           <li>
             <a
               href="https://twitter.com/i/communities/1688188047064470011"
