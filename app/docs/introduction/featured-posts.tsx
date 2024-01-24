@@ -17,9 +17,9 @@ export async function getFeaturedPosts() {
 export default async function FeaturedPosts() {
   const posts = await getFeaturedPosts();
   return (
-    <section className="w-auto">
+    <section className="max-w-full">
       <h2 className="mb-12 text-3xl font-bold text-center">Latest articles</h2>
-      <div className="grid grid-cols-1 gap-6 mx-auto mb-16 rounded lg:grid-cols-2">
+      <div className="grid justify-center grid-cols-1 gap-6 mx-auto mb-16 rounded lg:grid-cols-2 xl:grid-cols-3">
         {posts && posts.length > 0 ? (
           posts.map((post, index) => <PostCard key={index} post={post} />)
         ) : (

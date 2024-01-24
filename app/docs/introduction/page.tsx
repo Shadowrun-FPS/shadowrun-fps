@@ -32,7 +32,7 @@ export default function IntroductionPage() {
           </p>
         </section>
       </div>
-      <div className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
+      <div className="" style={{ maxWidth: "1400px" }}>
         <FeaturedPosts />
       </div>
       <div className="text-center">
