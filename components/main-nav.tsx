@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import {
   NavigationMenu,
@@ -62,6 +62,15 @@ export function MainNavMenu() {
                     className="flex flex-col justify-end w-full h-full p-6 no-underline rounded-md outline-none select-none bg-gradient-to-b from-muted/50 to-muted focus:shadow-md"
                     href="/"
                   >
+                    <div className="flex items-center justify-center mb-2">
+                      <Image
+                        className="rounded-full shadow-lg dark:shadow-black/20"
+                        src="/teleport_2.gif"
+                        alt=""
+                        width={100}
+                        height={100}
+                      />
+                    </div>
                     <div className="mt-4 mb-2 text-lg font-medium">
                       Shadowrun FPS
                     </div>
