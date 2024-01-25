@@ -7,8 +7,9 @@ type PostProps = {
 
 export default function PostCard({ post }: PostProps) {
   return (
-    <section className="w-96">
+    <section className="w-96" style={{ width: "425px" }}>
       <div className="mb-4">
+        <p className="mb-2 ml-2 font-medium">{post.category}</p>
         <div className="relative mb-2 overflow-hidden transition rounded-md h-72 hover:scale-105">
           <PostImage
             src={post.src}
