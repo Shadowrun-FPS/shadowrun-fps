@@ -27,8 +27,9 @@ export const formSchema = z.object({
 });
 
 export function SubmitScoresForm({ index }: { index: number }) {
-  const { data: session } = useSession();
-  const userName = session?.user?.name ?? "unknown";
+  const { data } = useSession();
+  console.log(data);
+  const userName = data?.user?.name ?? "unknown";
   const params = useParams<{ matchId: string }>();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

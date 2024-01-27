@@ -49,7 +49,7 @@ export default function MatchCard({ match, className }: MatchCardProps) {
 
       <CardFooter className="grid grid-cols-2 gap-4">
         <Button className="col-span-2">
-          <Link href={`/games/${matchId}`}>View Match</Link>
+          <Link href={`/matches/${matchId}`}>View Match</Link>
         </Button>
         <JoinButton matchId={matchId} isMatchFull={isMatchFull} />
         <LeaveButton matchId={matchId} players={players} />

@@ -35,7 +35,7 @@ export default function LeaderboardCategory({
     descending ? params.set("dir", "asc") : params.set("dir", "desc");
     params.set("page", "1");
     params.set("sort", sortingAbbreviation);
-    router.push("/games/leaderboard/?" + params);
+    router.push("/matches/leaderboard/?" + params);
   }
   return (
     <>

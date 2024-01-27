@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import SubmitScoresDialog from "@/app/games/[matchId]/submit-scores-dialog";
+import SubmitScoresDialog from "@/app/matches/[matchId]/submit-scores-dialog";
 
 interface MapCardProps {
   className?: string;

@@ -23,7 +23,7 @@ export default async function PlayerItem({
   );
   const elo = teamSizeStats?.elo ?? 0;
   return (
-    <Link href={`/games/stats/${discordId}`}>
+    <Link href={`/matches/stats/${discordId}`}>
       <div className="flex p-2 transition duration-300 rounded hover:bg-accent">
         <RankIcon elo={elo} />
         <div

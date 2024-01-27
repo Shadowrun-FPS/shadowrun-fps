@@ -23,12 +23,12 @@ const components: { title: string; href: string; description: string }[] = [
   },
   {
     title: "Leaderboard",
-    href: "/games/leaderboard",
+    href: "/matches/leaderboard",
     description: "A leaderboard of the highest ranked players.",
   },
   {
     title: "Stats Look-up",
-    href: "/games/stats",
+    href: "/matches/stats",
     description: "View stats by player name.",
   },
   {
