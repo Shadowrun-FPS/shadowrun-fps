@@ -18,18 +18,20 @@ import {
 import { handleSubmit } from "./actions";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useToast } from "@/components/ui/use-toast";
+import { DialogClose } from "@/components/ui/dialog";
 
 export const formSchema = z.object({
   finalScores: z.object({
-    team1: z.number(),
-    team2: z.number(),
+    team1: z.coerce.number(),
+    team2: z.coerce.number(),
   }),
 });
 
 export function SubmitScoresForm({ index }: { index: number }) {
-  const { data } = useSession();
-  console.log(data);
-  const userName = data?.user?.name ?? "unknown";
+  const { toast } = useToast();
+  const { data: session } = useSession();
+  const userName = session?.user?.name;
   const params = useParams<{ matchId: string }>();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -43,7 +45,13 @@ export function SubmitScoresForm({ index }: { index: number }) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const matchId = params.matchId;
+    if (userName === null || userName === undefined)
+      return console.error("No user name");
     await handleSubmit(matchId, index, userName, values);
+    toast({
+      title: "Map results submitted successfully",
+      description: `Submitted by: ${userName}`,
+    });
   }
 
   return (
@@ -78,7 +86,9 @@ export function SubmitScoresForm({ index }: { index: number }) {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <DialogClose asChild>
+          <Button type="submit">Submit</Button>
+        </DialogClose>
       </form>
     </Form>
   );

@@ -1,19 +1,27 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { SubmitScoresForm } from "./submit-scores-form";
+import { useSession } from "next-auth/react";
 
-export default async function SubmitScoresDialog({ index }: { index: number }) {
+export default function SubmitScoresDialog({ index }: { index: number }) {
+  const { status } = useSession();
+  const isSignedIn = status === "authenticated";
+
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">Submit Scores</Button>
+        <Button variant="outline" disabled={!isSignedIn}>
+          {isSignedIn ? "Submit Scores" : "Login to Submit Scores"}
+        </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -23,6 +31,9 @@ export default async function SubmitScoresDialog({ index }: { index: number }) {
           </DialogDescription>
           <SubmitScoresForm index={index} />
         </DialogHeader>
+        <DialogFooter>
+          <Button type="submit">Save changes</Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

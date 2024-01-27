@@ -24,6 +24,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
 import { handleSubmit } from "./actions";
+import { DialogClose } from "@/components/ui/dialog";
 
 const formSchema = z.object({
   gameType: z.enum(["ranked", "casual", "public"]),
@@ -162,7 +163,9 @@ export function MatchForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        <DialogClose asChild>
+          <Button type="submit">Submit</Button>
+        </DialogClose>
       </form>
     </Form>
   );

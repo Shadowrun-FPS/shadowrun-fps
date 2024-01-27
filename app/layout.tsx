@@ -7,6 +7,7 @@ import NextAuthProvider from "./providers/next-auth-provider";
 
 import Header from "@/components/header";
 import Footer from "@/components/footer";
+import { Toaster } from "@/components/ui/toaster";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -60,6 +61,7 @@ export default function RootLayout({
             <Header />
             <main className="flex-1 overflow-y-auto">{children}</main>
             <Footer />
+            <Toaster />
           </ThemeProvider>
         </NextAuthProvider>
       </body>

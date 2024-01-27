@@ -1,10 +1,10 @@
 import PlayerList from "@/components/player/player-list";
 import clientPromise from "@/lib/mongodb";
-import { Map, Match, Player } from "@/types/types";
+import { Match } from "@/types/types";
 import { Metadata } from "next";
 import MatchDetailsCard from "./match-details-card";
 import MapCardList from "@/components/matches/map-card-list";
-import { Button } from "@/components/ui/button";
+
 export const metadata: Metadata = {
   title: "View Match Details",
 };
