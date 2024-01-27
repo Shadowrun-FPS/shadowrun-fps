@@ -17,9 +17,9 @@ import { BookText, Menu } from "lucide-react";
 
 const components: { title: string; href: string; description: string }[] = [
   {
-    title: "Games",
-    href: "/games",
-    description: "Play pick up games.",
+    title: "Matches",
+    href: "/matches",
+    description: "Play pick up matches.",
   },
   {
     title: "Leaderboard",
@@ -34,7 +34,7 @@ const components: { title: string; href: string; description: string }[] = [
   {
     title: "Ranked Rules",
     href: "/docs/rules",
-    description: "Rules to play in the pick up games.",
+    description: "Rules to play in the pick up matches.",
   },
   {
     title: "Tutorials",

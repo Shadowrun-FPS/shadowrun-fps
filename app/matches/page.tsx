@@ -4,16 +4,16 @@ import CreateMatchDialog from "./create-match-dialog";
 
 import { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "Play Pick Up Games",
+  title: "Play Pick Up Matches",
 };
 
-export default async function GamesPage() {
+export default async function MatchesPage() {
   const matches = await getMatches();
 
   return (
     <div className="grid gap-8">
       <div className="flex items-center gap-4">
-        <h1 className="p-4 text-3xl font-extrabold">Play Games!</h1>
+        <h1 className="p-4 text-3xl font-extrabold">Play Matches!</h1>
         <CreateMatchDialog />
       </div>
       {/* TODO add filters for match parameters, can come from url params */}
