@@ -2,12 +2,20 @@ import React, { ReactNode } from "react";
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
 import { Map } from "@/types/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import SubmitScoresDialog from "@/app/games/[matchId]/submit-scores-dialog";
 
 interface MapCardProps {
-  map: Map;
   className?: string;
   style?: React.CSSProperties;
+  map: Map;
+  index: number;
 }
 
 export async function getMapData(name: string): Promise<Map | null> {
@@ -22,7 +30,12 @@ export async function getMapData(name: string): Promise<Map | null> {
   }
 }
 
-export default async function MapCard({ map, className, style }: MapCardProps) {
+export default async function MapCard({
+  className,
+  style,
+  map,
+  index,
+}: MapCardProps) {
   const mapDetails = await getMapData(map.name);
   if (mapDetails === null) return <div>Unknown Map!</div>;
 
@@ -39,6 +52,9 @@ export default async function MapCard({ map, className, style }: MapCardProps) {
           height={500}
         />
       </CardContent>
+      <CardFooter>
+        <SubmitScoresDialog index={index} />
+      </CardFooter>
     </Card>
   );
 }

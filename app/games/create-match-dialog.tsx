@@ -7,7 +7,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { MatchForm } from "./matchform";
+import { MatchForm } from "./match-form";
 
 export default async function CreateMatchDialog() {
   return (

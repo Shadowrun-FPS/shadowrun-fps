@@ -4,6 +4,7 @@ import { Map, Match, Player } from "@/types/types";
 import { Metadata } from "next";
 import MatchDetailsCard from "./match-details-card";
 import MapCardList from "@/components/matches/map-card-list";
+import { Button } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "View Match Details",
 };
@@ -29,7 +30,7 @@ export default async function MatchDetailsPage({
 }) {
   const matchId = params.matchId;
   const matchData = await getMatchDetails(matchId);
-  console.log("match: ", matchData);
+  // console.log("match: ", matchData);
   if (matchData === null) {
     return (
       <div className="grid items-center gap-4">No Match Found {matchId}</div>

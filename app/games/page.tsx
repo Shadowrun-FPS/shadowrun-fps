@@ -1,6 +1,6 @@
 import MatchList from "@/components/matches/match-list";
 import { getMatches } from "@/lib/match-helpers";
-import CreateMatchDialog from "./creatematchdialog";
+import CreateMatchDialog from "./create-match-dialog";
 
 import { Metadata } from "next";
 export const metadata: Metadata = {

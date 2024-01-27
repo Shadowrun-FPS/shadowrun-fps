@@ -23,7 +23,7 @@ export default async function MapCardList({
       <CarouselContent>
         {maps.map((map: Map, index: number) => (
           <CarouselItem key={index}>
-            <MapCard map={map} />
+            <MapCard map={map} index={index} />
           </CarouselItem>
         ))}
       </CarouselContent>

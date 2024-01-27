@@ -40,16 +40,17 @@ export type Map = {
 };
 
 export type MapResults = {
-  name: string;
-  gameMode: string;
-  scoredBy?: MapScore;
-  players?: PlayerInfo[];
-  result?: string;
-  finalScores?: {
-    team1: number;
-    team2: number;
+  map: 1 | 2 | 3;
+  scoredBy: MapScore;
+  finalScores: {
+    team1: TeamScore;
+    team2: TeamScore;
   };
 };
+
+export type TeamScore = { rounds: number; team: Team };
+
+export type Team = "RNA" | "Lineage";
 
 export type Match = {
   matchId: string;
@@ -63,6 +64,7 @@ export type Match = {
   createdTS: number;
   eloTier: "low" | "medium" | "high";
   anonymous: boolean;
+  results?: MapResults;
   winner?: string;
 };
 

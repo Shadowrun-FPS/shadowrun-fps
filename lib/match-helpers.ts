@@ -1,6 +1,6 @@
 import { createGetURL, getApiUrl } from "@/lib/utils";
 import { AddPlayerRequest } from "@/types/request-types";
-import { Match, Player } from "@/types/types";
+import { MapResults, Match, Player } from "@/types/types";
 
 import clientPromise from "@/lib/mongodb";
 
@@ -37,4 +37,16 @@ export function updateMatchPlayers(matchId: string, player: Player) {
     .catch((error) => {
       throw new Error(error);
     });
+}
+
+export async function submitMapResults(
+  matchId: string,
+  mapResults: MapResults
+) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const result = await db
+    .collection("Matches")
+    .updateOne({ matchId }, { $push: { results: mapResults } });
+  return result;
 }
