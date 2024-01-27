@@ -31,9 +31,6 @@ export default function SubmitScoresDialog({ index }: { index: number }) {
           </DialogDescription>
           <SubmitScoresForm index={index} />
         </DialogHeader>
-        <DialogFooter>
-          <Button type="submit">Save changes</Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

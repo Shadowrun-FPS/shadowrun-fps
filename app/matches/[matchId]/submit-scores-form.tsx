@@ -50,7 +50,19 @@ export function SubmitScoresForm({ index }: { index: number }) {
     await handleSubmit(matchId, index, userName, values);
     toast({
       title: "Map results submitted successfully",
-      description: `Submitted by: ${userName}`,
+      description: (
+        <>
+          <p>
+            <strong>Team 1:</strong> {values.finalScores.team1} rounds.
+          </p>
+          <p>
+            <strong>Team 2:</strong> {values.finalScores.team2} rounds.
+          </p>
+          <p>
+            <strong>Submitted by:</strong> {userName}
+          </p>
+        </>
+      ),
     });
   }
 
