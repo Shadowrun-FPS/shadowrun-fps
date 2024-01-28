@@ -3,6 +3,7 @@
 import * as z from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ControllerRenderProps } from "react-hook-form";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,15 +21,37 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
 import { DialogClose } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export const formSchema = z.object({
-  finalScores: z.object({
-    team1: z.coerce.number(),
-    team2: z.coerce.number(),
-  }),
+type Field = ControllerRenderProps<any, any>;
+
+const TeamScoreSchema = z.object({
+  score: z.coerce.number(),
+  team: z
+    .union([z.literal("RNA"), z.literal("Lineage")])
+    .refine((value) => value !== undefined, {
+      message: "Team is required",
+    }),
 });
 
-export function SubmitScoresForm({ index }: { index: number }) {
+export const formSchema = z.object({
+  team1: TeamScoreSchema,
+  team2: TeamScoreSchema,
+});
+
+export function SubmitScoresForm({
+  index,
+  handleClose,
+}: {
+  index: number;
+  handleClose: () => void;
+}) {
   const { toast } = useToast();
   const { data: session } = useSession();
   const userName = session?.user?.name;
@@ -36,27 +59,39 @@ export function SubmitScoresForm({ index }: { index: number }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      finalScores: {
-        team1: 0,
-        team2: 0,
+      team1: {
+        score: 0,
+        team: undefined,
+      },
+      team2: {
+        score: 0,
+        team: undefined,
       },
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const matchId = params.matchId;
-    if (userName === null || userName === undefined)
+    if (!userName) {
       return console.error("No user name");
+    }
+    if (Object.keys(form.formState.errors).length > 0) {
+      console.error("Cannot submit. Form has errors ", form.formState.errors);
+      return;
+    }
+    // SUCCESS path
     await handleSubmit(matchId, index, userName, values);
     toast({
       title: "Map results submitted successfully",
       description: (
         <>
           <p>
-            <strong>Team 1:</strong> {values.finalScores.team1} rounds.
+            <strong>Team 1:</strong> {values.team1.team} {values.team1.score}{" "}
+            rounds.
           </p>
           <p>
-            <strong>Team 2:</strong> {values.finalScores.team2} rounds.
+            <strong>Team 2:</strong> {values.team2.team} {values.team2.score}{" "}
+            rounds.
           </p>
           <p>
             <strong>Submitted by:</strong> {userName}
@@ -64,6 +99,7 @@ export function SubmitScoresForm({ index }: { index: number }) {
         </>
       ),
     });
+    handleClose();
   }
 
   return (
@@ -74,12 +110,12 @@ export function SubmitScoresForm({ index }: { index: number }) {
       >
         <FormField
           control={form.control}
-          name="finalScores.team1"
+          name="team1.score"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Team 1 Score</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" {...field} min={0} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -87,21 +123,62 @@ export function SubmitScoresForm({ index }: { index: number }) {
         />
         <FormField
           control={form.control}
-          name="finalScores.team2"
+          name="team2.score"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Team 2 Score</FormLabel>
               <FormControl>
-                <Input type="number" {...field} />
+                <Input type="number" {...field} min={0} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <DialogClose asChild>
-          <Button type="submit">Submit</Button>
-        </DialogClose>
+        <FormField
+          control={form.control}
+          name="team1.team"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Team 1</FormLabel>
+              <FormControl>
+                <TeamSelect field={field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="team2.team"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Team 2</FormLabel>
+              <FormControl>
+                <TeamSelect field={field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button variant="default" type="submit">
+          Submit
+        </Button>
       </form>
     </Form>
+  );
+}
+
+function TeamSelect({ field }: { field: Field }) {
+  return (
+    <Select onValueChange={field.onChange} defaultValue={field.value}>
+      <SelectTrigger className="w-[320px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="RNA">RNA</SelectItem>
+        <SelectItem value="Lineage">Lineage</SelectItem>
+      </SelectContent>
+    </Select>
   );
 }
