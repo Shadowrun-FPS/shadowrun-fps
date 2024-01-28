@@ -8,10 +8,11 @@ export async function handleSubmit(
   values: any
 ) {
   const mapResults = {
-    ...values,
-    submittedBy: userName,
-    map: index + 1,
+    scores: { ...values },
+    scoredBy: userName,
+    map: (index + 1) as 1 | 2 | 3, // Update the type of 'map' property
   };
+  console.log("mapResults:", mapResults);
   const response = await submitMapResults(matchId, mapResults);
   return response;
 }

@@ -17,11 +17,6 @@ export type Player = {
   stats: PlayerStats[];
 };
 
-export type MapScore = {
-  team1: string;
-  team2: string;
-};
-
 export type PlayerInfo = {
   playerId: string;
   team: string;
@@ -41,8 +36,8 @@ export type Map = {
 
 export type MapResults = {
   map: 1 | 2 | 3;
-  scoredBy: MapScore;
-  finalScores: {
+  scoredBy: string;
+  scores: {
     team1: TeamScore;
     team2: TeamScore;
   };
@@ -64,7 +59,7 @@ export type Match = {
   createdTS: number;
   eloTier: "low" | "medium" | "high";
   anonymous: boolean;
-  results?: MapResults;
+  results?: MapResults[];
   winner?: string;
 };
 

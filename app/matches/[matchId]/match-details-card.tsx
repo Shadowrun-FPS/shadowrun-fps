@@ -6,7 +6,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Match } from "@/types/types";
-import Link from "next/link";
+
 interface MatchDetailsCardProps {
   match: Match;
   className?: string;

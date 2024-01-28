@@ -32,7 +32,7 @@ import {
 type Field = ControllerRenderProps<any, any>;
 
 const TeamScoreSchema = z.object({
-  score: z.coerce.number(),
+  rounds: z.coerce.number(),
   team: z
     .union([z.literal("RNA"), z.literal("Lineage")])
     .refine((value) => value !== undefined, {
@@ -60,11 +60,11 @@ export function SubmitScoresForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       team1: {
-        score: 0,
+        rounds: 0,
         team: undefined,
       },
       team2: {
-        score: 0,
+        rounds: 0,
         team: undefined,
       },
     },
@@ -86,11 +86,11 @@ export function SubmitScoresForm({
       description: (
         <>
           <p>
-            <strong>Team 1:</strong> {values.team1.team} {values.team1.score}{" "}
+            <strong>Team 1:</strong> {values.team1.team} {values.team1.rounds}{" "}
             rounds.
           </p>
           <p>
-            <strong>Team 2:</strong> {values.team2.team} {values.team2.score}{" "}
+            <strong>Team 2:</strong> {values.team2.team} {values.team2.rounds}{" "}
             rounds.
           </p>
           <p>
@@ -110,10 +110,10 @@ export function SubmitScoresForm({
       >
         <FormField
           control={form.control}
-          name="team1.score"
+          name="team1.rounds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Team 1 Score</FormLabel>
+              <FormLabel>Team 1 Rounds</FormLabel>
               <FormControl>
                 <Input type="number" {...field} min={0} />
               </FormControl>
@@ -123,10 +123,10 @@ export function SubmitScoresForm({
         />
         <FormField
           control={form.control}
-          name="team2.score"
+          name="team2.rounds"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Team 2 Score</FormLabel>
+              <FormLabel>Team 2 Rounds</FormLabel>
               <FormControl>
                 <Input type="number" {...field} min={0} />
               </FormControl>

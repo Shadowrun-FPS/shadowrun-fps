@@ -4,6 +4,8 @@ import { Match } from "@/types/types";
 import { Metadata } from "next";
 import MatchDetailsCard from "./match-details-card";
 import MapCardList from "@/components/matches/map-card-list";
+import DisplayMatchResults from "./display-match-results";
+import { match } from "assert";
 
 export const metadata: Metadata = {
   title: "View Match Details",
@@ -44,11 +46,14 @@ export default async function MatchDetailsPage({
       <div className="grid justify-center gap-8 md:grid-cols-2">
         <MatchDetailsCard match={matchData} />
         <PlayerList match={matchData} />
+        {matchData.results && (
+          <DisplayMatchResults results={matchData.results} />
+        )}
       </div>
       <div className="grid justify-center">
         <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2>
         <MapCardList
-          className="w-[250px] md:w-auto md:max-w-xl"
+          className="w-[250px] m-8 md:w-auto md:max-w-xl"
           maps={matchData.maps}
         />
       </div>
