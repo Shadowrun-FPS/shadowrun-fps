@@ -1,5 +1,6 @@
 "use server";
 import { submitMapResults } from "@/lib/match-helpers";
+import { revalidatePath } from "next/cache";
 
 export async function handleSubmit(
   matchId: string,
@@ -12,7 +13,7 @@ export async function handleSubmit(
     scoredBy: userName,
     map: (index + 1) as 1 | 2 | 3, // Update the type of 'map' property
   };
-  console.log("mapResults:", mapResults);
   const response = await submitMapResults(matchId, mapResults);
+  revalidatePath(`/matches/${matchId}`, "page");
   return response;
 }
