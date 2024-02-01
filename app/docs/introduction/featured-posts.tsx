@@ -8,7 +8,7 @@ export async function getFeaturedPosts() {
   const db = client.db("ShadowrunWeb");
   const posts = await db
     .collection("Posts")
-    .find({ Published: true })
+    .find({ published: true })
     .sort({ datePublished: -1 })
     .toArray();
   return posts as unknown as Post[];

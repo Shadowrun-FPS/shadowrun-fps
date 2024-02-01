@@ -32,7 +32,7 @@ export default function IntroductionPage() {
           </p>
         </section>
       </div>
-      <div className="" style={{ maxWidth: "1400px" }}>
+      <div className="max-w-[1400px]">
         <FeaturedPosts />
       </div>
       <div className="text-center">
