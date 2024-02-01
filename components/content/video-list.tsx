@@ -46,6 +46,7 @@ export default async function VideoList({
               src={video.src}
               frameBorder="0"
               allowFullScreen
+              title={video.title}
               style={{ width: "100%" }}
             ></iframe>
             <div className="text-center text-white">

@@ -107,8 +107,10 @@ export type Post = {
   isTutorial: string;
   author: string;
   datePublished: string;
+  Published: boolean;
   linkAddress: string;
   altText: string;
+  category: string;
 };
 
 export type Roster = {
