@@ -50,9 +50,9 @@ export default async function MatchDetailsPage({
         )}
       </div>
       <div className="grid justify-center">
-        <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2>
+        {/* <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2> */}
         <MapCardList
-          className="w-[250px] m-8 md:w-auto md:max-w-xl"
+          className="w-[300px] m-2 md:w-auto md:max-w-xl"
           maps={matchData.maps}
         />
       </div>

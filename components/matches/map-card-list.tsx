@@ -14,16 +14,18 @@ interface MapCardListProps {
   style?: React.CSSProperties;
 }
 
-export default async function MapCardList({
-  maps,
-  className,
-}: MapCardListProps) {
+export default function MapCardList({ maps, className }: MapCardListProps) {
   return (
     <Carousel className={`${className}`}>
       <CarouselContent>
         {maps.map((map: Map, index: number) => (
-          <CarouselItem key={index}>
-            <MapCard map={map} index={index} />
+          <CarouselItem className="" key={index}>
+            <div>
+              <div className="p-2 text-lg font-bold text-center text-white rounded-full">
+                Map {index + 1}
+              </div>
+              <MapCard map={map} index={index} />
+            </div>
           </CarouselItem>
         ))}
       </CarouselContent>

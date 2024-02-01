@@ -12,7 +12,7 @@ export default function MatchList({ matches }: MatchListProps) {
         return (
           <MatchCard
             key={match.matchId}
-            className="w-[300px] md:w-[400px]"
+            className="w-[350px] md:w-[400px]"
             match={match}
           />
         );
