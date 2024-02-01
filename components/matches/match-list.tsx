@@ -7,12 +7,12 @@ type MatchListProps = {
 
 export default function MatchList({ matches }: MatchListProps) {
   return (
-    <div className="flex flex-wrap justify-center gap-8">
+    <div className="flex flex-wrap justify-center gap-2">
       {matches?.map((match: Match) => {
         return (
           <MatchCard
             key={match.matchId}
-            className="w-84 md:w-[450px]"
+            className="w-[300px] md:w-[400px]"
             match={match}
           />
         );
