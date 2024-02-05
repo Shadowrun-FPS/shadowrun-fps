@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 
 const DiscordSignIn: React.FC = () => {
   const { status, data } = useSession();
-  // console.log({ data });
+  console.log({ data });
   const isSignedIn = status === "authenticated";
 
   const handleSignIn = () => {
