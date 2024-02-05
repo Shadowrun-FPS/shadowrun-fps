@@ -11,6 +11,8 @@ export type PlayerStats = {
 };
 
 export type Player = {
+  userName: string;
+  playerId: string;
   discordId: string;
   discordNickname: string;
   discordProfilePicture: string;
