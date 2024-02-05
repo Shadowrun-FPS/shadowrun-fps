@@ -8,7 +8,7 @@ declare module "next-auth" {
    */
   interface User {
     /** Example of a custom user property */
-    guild?: any;
+    guild: any;
     global_name: string;
     id: string;
   }
