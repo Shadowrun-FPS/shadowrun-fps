@@ -52,14 +52,15 @@ export default function MatchCard({ match, className }: MatchCardProps) {
         </CardContent>
 
         <CardFooter className="grid grid-cols-2 gap-4 mt-auto">
-          <Button className="col-span-2">
-            <Link href={`/matches/${matchId}`}>View Match</Link>
-          </Button>
           <MatchButton
             matchId={matchId}
             teamSize={match.teamSize}
             players={match.players}
+            matchStatus={match.status}
           />
+          <Button variant={"secondary"}>
+            <Link href={`/matches/${matchId}`}>View Match</Link>
+          </Button>
         </CardFooter>
       </div>
     </Card>

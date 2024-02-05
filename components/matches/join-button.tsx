@@ -2,20 +2,16 @@
 import updateMatchAction from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getApiUrl } from "@/lib/utils";
-import { Player } from "@/types/types";
-import { useSession } from "next-auth/react";
 
 type JoinLeaveButtonProps = {
   matchId: string;
-  players?: Player[]; // Make players optional to handle undefined case
+  userName: string | null | undefined;
 };
 
 export default function JoinLeaveButton({
   matchId,
-  players = [],
+  userName,
 }: JoinLeaveButtonProps) {
-  const { data: session } = useSession();
-  const userName = session?.user?.name;
   // const discordId = session?.token?.sub; // Retrieve Discord ID from the token
 
   const handleButtonClick = () => {
@@ -36,5 +32,9 @@ export default function JoinLeaveButton({
     });
   };
 
-  return <Button onClick={handleButtonClick}>{"Join"}</Button>;
+  return (
+    <Button disabled={userName !== undefined} onClick={handleButtonClick}>
+      {"Join"}
+    </Button>
+  );
 }

@@ -2,7 +2,6 @@
 import updateMatchAction from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getApiUrl } from "@/lib/utils";
-import { Player } from "@/types/types";
 import { useSession } from "next-auth/react";
 
 type LeaveButtonProps = {
@@ -28,7 +27,7 @@ export default function LeaveButton({ disabled, matchId }: LeaveButtonProps) {
     });
   }
   return (
-    <Button disabled={disabled} onClick={handleLeave}>
+    <Button variant="destructive" disabled={disabled} onClick={handleLeave}>
       {"Leave"}
     </Button>
   );
