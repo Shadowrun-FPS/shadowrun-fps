@@ -1,8 +1,6 @@
-"use client";
 import updateMatchAction from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getApiUrl } from "@/lib/utils";
-import { useSession } from "next-auth/react";
 
 type LeaveButtonProps = {
   disabled: boolean;

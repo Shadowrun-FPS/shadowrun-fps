@@ -12,6 +12,8 @@ export default async function PlayerStatPage({
   const discordNickname = playerInfo?.discordNickname;
   const discordProfilePicture =
     playerInfo?.discordProfilePicture ?? "/defaultAvatar.png";
+  // TODO: scale discord profile picture accordingly, currently too large and looks stretched
+  // Solution: Place the size you want the avatar to be at the end of the url, ex.?size=1024, ?size=512, ?size=256, ?size=128, ?size=64, ?size=32
   return (
     <>
       <div className="flex items-center justify-center bg-slate-900">

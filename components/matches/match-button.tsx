@@ -21,7 +21,7 @@ export default function MatchButton({
   const discordId = session?.user.id;
   const discordNickname =
     session?.user.guild.nick ?? session?.user.global_name ?? session?.user.name;
-  console.log({ discordId, discordNickname });
+
   const isJoinable = isValidJoin(discordId, players, teamSize, matchStatus);
   const isLeavable = isValidLeave(discordId, players);
 
@@ -42,7 +42,7 @@ export default function MatchButton({
 
 function isValidLeave(discordId: string | undefined | null, players: Player[]) {
   if (!discordId) return true;
-  return !players.some((player) => player.discordId === discordId);
+  return players.some((player) => player.discordId === discordId);
 }
 
 function isValidJoin(
