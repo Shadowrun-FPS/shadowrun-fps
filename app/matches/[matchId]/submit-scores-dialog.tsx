@@ -24,7 +24,11 @@ export default function SubmitScoresDialog({ index }: { index: number }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button disabled={!isSignedIn} onClick={() => setOpen(true)}>
+        <Button
+          variant="outline"
+          disabled={!isSignedIn}
+          onClick={() => setOpen(true)}
+        >
           {isSignedIn ? "Submit Scores" : "Login to Submit Scores"}
         </Button>
       </DialogTrigger>

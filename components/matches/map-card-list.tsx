@@ -19,13 +19,8 @@ export default function MapCardList({ maps, className }: MapCardListProps) {
     <Carousel className={`${className}`}>
       <CarouselContent>
         {maps.map((map: Map, index: number) => (
-          <CarouselItem className="" key={index}>
-            <div>
-              <div className="p-2 text-lg font-bold text-center text-white rounded-full">
-                Map {index + 1}
-              </div>
-              <MapCard map={map} index={index} />
-            </div>
+          <CarouselItem className="md:basis-1/3" key={index}>
+            <MapCard map={map} index={index} />
           </CarouselItem>
         ))}
       </CarouselContent>

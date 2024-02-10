@@ -5,6 +5,7 @@ import { Map } from "@/types/types";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -43,6 +44,7 @@ export default async function MapCard({
     <Card className={`${className}`}>
       <CardHeader>
         <CardTitle>{mapDetails.name}</CardTitle>
+        <CardDescription>{`Map ${index + 1}`}</CardDescription>
       </CardHeader>
       <CardContent>
         <Image

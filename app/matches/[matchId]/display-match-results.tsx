@@ -19,7 +19,7 @@ export default function DisplayMatchResults({
         <CardTitle>Match Results</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-wrap gap-8 overflow-auto max-h-96">
+        <div className="grid gap-8 overflow-auto max-h-96">
           {results.map((result) => (
             <DisplayMapResults key={result.map} result={result} />
           ))}

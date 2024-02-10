@@ -42,19 +42,16 @@ export default async function MatchDetailsPage({
       <h1 className="p-4 text-3xl font-extrabold prose dark:prose-invert">
         View Match Details
       </h1>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <MatchDetailsCard match={matchData} />
         <PlayerList match={matchData} />
         {matchData.results && (
           <DisplayMatchResults results={matchData.results} />
         )}
       </div>
-      <div className="grid justify-center">
+      <div className="grid justify-center m-8">
         {/* <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2> */}
-        <MapCardList
-          className="w-[300px] m-2 md:w-auto md:max-w-xl"
-          maps={matchData.maps}
-        />
+        <MapCardList className="w-[250px] md:w-auto" maps={matchData.maps} />
       </div>
     </div>
   );
