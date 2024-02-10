@@ -1,41 +1,33 @@
-"use client";
 import updateMatchAction from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getApiUrl } from "@/lib/utils";
-import { Player } from "@/types/types";
-import { useSession } from "next-auth/react";
 
 type LeaveButtonProps = {
-  players: Player[];
+  disabled: boolean;
   matchId: string;
+  discordId: string | null | undefined;
 };
 
-function isValidLeave(userName: string | undefined | null, players: Player[]) {
-  if (!userName) return true;
-  return !players.some((player) => player.playerId === userName);
-}
-
-export default function LeaveButton({ players, matchId }: LeaveButtonProps) {
-  const { data: session } = useSession();
-  const userName = session?.user?.name;
-  const disabled = isValidLeave(userName, players);
+export default function LeaveButton({
+  disabled,
+  matchId,
+  discordId,
+}: LeaveButtonProps) {
   function handleLeave() {
-    console.log("handleLeave", session);
     const url = getApiUrl();
-    if (isValidLeave(userName, players)) return;
     fetch(url + "/api/matches", {
       method: "POST",
       body: JSON.stringify({
         action: "removePlayer",
         matchId,
-        playerId: userName,
+        discordId: discordId,
       }),
     }).then(() => {
       updateMatchAction();
     });
   }
   return (
-    <Button disabled={disabled} onClick={handleLeave}>
+    <Button variant="destructive" disabled={disabled} onClick={handleLeave}>
       {"Leave"}
     </Button>
   );

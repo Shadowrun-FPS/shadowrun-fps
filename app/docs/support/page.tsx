@@ -1,8 +1,12 @@
 import React from "react";
-
 import { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "Support",
+  openGraph: {
+    title: "Support",
+    description: "Shadowrun FPS Support page.",
+  },
 };
 
 export default function SupportPage() {

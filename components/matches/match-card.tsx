@@ -6,114 +6,63 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
-import { Player, PlayerStats, Match, EloRankGroup } from "@/types/types";
-import { createGetURL } from "@/lib/utils";
-import JoinButton from "./join-button";
-import LeaveButton from "./leave-button";
+import { Player, Match } from "@/types/types";
+
+import PlayerItem from "../player/player-item";
+
+import Link from "next/link";
+import { Button } from "../ui/button";
+import MatchButton from "./match-button";
 interface MatchCardProps {
   match: Match;
   className?: string;
 }
 
-const rankIcons: { [char: string]: string } = {
-  bronze: "01_bronze",
-  silver: "02_silver",
-  gold: "03_gold",
-  diamond: "diamond_v002",
-  platinum: "platinum_v002",
-};
-
-// function getTeamSizeStats(playerId: string, teamSize: number) {
-//   const url = createURL("/api/stats", {
-//     playerId,
-//   });
-//   console.log(url);
-//   return fetch(url, {
-//     cache: "no-cache",
-//   })
-//     .then((response) => {
-//       return response.json();
-//     })
-//     .then((data) => {
-//       if (data.results !== undefined) {
-//         return data.results.stats.find(
-//           (playerStats: PlayerStats) => playerStats.teamSize === teamSize
-//         );
-//       } else return undefined;
-//     })
-//     .catch((error) => console.error(error));
-// }
-
-// async function getPlayerRank(
-//   player: Player,
-//   matchTeamSize: number
-// ): Promise<EloRankGroup> {
-//   const playerStats = await getTeamSizeStats(player.playerId, matchTeamSize);
-//   const elo = playerStats?.elo ?? 0;
-//   if (elo >= 0 && elo <= 1099) {
-//     return "Bronze";
-//   } else if (elo >= 1100 && elo <= 1299) {
-//     return "Silver";
-//   } else if (elo >= 1300 && elo <= 1499) {
-//     return "Gold";
-//   } else if (elo >= 1500 && elo <= 1799) {
-//     return "Platinum";
-//   } else if (elo >= 1800 && elo <= 3000) {
-//     return "Diamond";
-//   }
-//   return "Bronze";
-// }
-
 export default function MatchCard({ match, className }: MatchCardProps) {
-  const { players } = match;
-  const isMatchFull = match.teamSize * 2 === players.length;
+  const { matchId, players, teamSize, title, gameType } = match;
 
   return (
-    <Card key={match.matchId} className={className}>
-      <CardHeader>
-        <CardTitle>{match.gameType}</CardTitle>
-        <CardDescription>Team Size: {match.teamSize}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="max-w-md mx-auto">
-          <div className="grid grid-cols-2 gap-x-4">
-            <h5 className="p-2">Team 1</h5>
-            <h5 className="p-2">Team 2</h5>
-            {players.map(async (player: Player) => {
-              const playerRank = "Bronze"; // TODO figure out infinite loop here
-              // console.log("playerRank: ", playerRank);
-              const playerRankIcon = rankIcons[playerRank.toLowerCase()];
-              return (
-                <div
-                  key={player.playerId}
-                  className="flex p-2 transition duration-300 rounded hover:bg-accent"
-                >
-                  <Image
-                    className="mr-2 not-prose"
-                    src={`/rankedicons/${playerRankIcon}.png`}
-                    alt={`${playerRank} Rank`}
-                    width={20}
-                    height={20}
-                  />
-                  <div
-                    className="font-semibold overflow-hidden whitespace-nowrap max-w-[10ch]"
-                    title={player.playerId}
-                  >
-                    {player.playerId}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </CardContent>
+    <Card
+      key={matchId}
+      className={`flex flex-col min-h-[535px] m-4 ${className}`}
+    >
+      <div className="flex flex-col h-full">
+        <CardHeader className="prose dark:prose-invert">
+          <CardTitle className="my-2" title={title}>
+            {title}
+          </CardTitle>
+          <CardDescription>{gameType}</CardDescription>
+        </CardHeader>
 
-      <CardFooter className="grid grid-cols-2 gap-4">
-        <JoinButton matchId={match.matchId} isMatchFull={isMatchFull} />
-        <LeaveButton matchId={match.matchId} players={players} />
-      </CardFooter>
+        <CardContent className="flex-grow">
+          <div className="max-w-md mx-auto prose dark:prose-invert">
+            <h2>Team Size: {teamSize}</h2>
+            <div className="grid grid-cols-2 gap-x-4">
+              <h5 className="p-2">Team 1</h5>
+              <h5 className="p-2">Team 2</h5>
+              {players.map(async (player: Player) => (
+                <PlayerItem
+                  key={player.discordId}
+                  discordId={player.discordId}
+                  matchTeamSize={teamSize}
+                />
+              ))}
+            </div>
+          </div>
+        </CardContent>
+
+        <CardFooter className="grid grid-cols-2 gap-4 mt-auto">
+          <MatchButton
+            matchId={matchId}
+            teamSize={match.teamSize}
+            players={match.players}
+            matchStatus={match.status}
+          />
+          <Button variant={"secondary"}>
+            <Link href={`/matches/${matchId}`}>View Match</Link>
+          </Button>
+        </CardFooter>
+      </div>
     </Card>
   );
 }

@@ -21,11 +21,11 @@
     ],
     "players": [
       {
-        "playerId": "Player1",
+        "discordNickname": "Player1",
         "discordId": "player1"
       },
       {
-        "playerId": "Player2",
+        "discordNickname": "Player2",
         "discordId": "player2"
       }
     ],
@@ -40,11 +40,11 @@
     "status": "queue",
     "players": [
       {
-        "playerId": "Player3",
+        "discordNickname": "Player3",
         "discordId": "player3"
       },
       {
-        "playerId": "Player4",
+        "discordNickname": "Player4",
         "discordId": "player4"
       }
     ],

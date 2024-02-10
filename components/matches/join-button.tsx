@@ -1,42 +1,37 @@
-"use client";
 import updateMatchAction from "@/app/actions";
 import { Button } from "@/components/ui/button";
 import { getApiUrl } from "@/lib/utils";
-import { Player } from "@/types/types";
-import { useSession } from "next-auth/react";
 
-type JoinButtonProps = {
-  isMatchFull: boolean;
+type JoinLeaveButtonProps = {
   matchId: string;
+  discordId: string | null | undefined;
+  discordNickname: string | null | undefined;
 };
 
-export default function JoinButton({ isMatchFull, matchId }: JoinButtonProps) {
-  const { data: session } = useSession();
-  function handleJoin() {
-    console.log("handleJoin", session);
+export default function JoinLeaveButton({
+  matchId,
+  discordId,
+  discordNickname,
+}: JoinLeaveButtonProps) {
+  const handleButtonClick = () => {
     const url = getApiUrl();
-    const userName = session?.user?.name;
-    if (!userName) return;
     fetch(url + "/api/matches", {
       method: "POST",
       body: JSON.stringify({
         action: "addPlayer",
         matchId,
         player: {
-          playerId: userName,
-          discordId: userName,
+          discordId: discordId,
+          discordNickname: discordNickname,
         },
       }),
     }).then(() => {
       updateMatchAction();
     });
-  }
+  };
   return (
-    <Button
-      disabled={!(session !== undefined && !isMatchFull)}
-      onClick={handleJoin}
-    >
-      {isMatchFull ? "Full" : "Join"}
+    <Button disabled={discordId === undefined} onClick={handleButtonClick}>
+      {"Join"}
     </Button>
   );
 }

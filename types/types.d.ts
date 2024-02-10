@@ -11,20 +11,13 @@ export type PlayerStats = {
 };
 
 export type Player = {
-  playerId: string;
   discordId: string;
   discordNickname: string;
   discordProfilePicture: string;
   stats: PlayerStats[];
 };
 
-export type MapScore = {
-  team1: string;
-  team2: string;
-};
-
 export type PlayerInfo = {
-  playerId: string;
   team: string;
   kills: number;
   deaths: number;
@@ -33,21 +26,31 @@ export type PlayerInfo = {
 };
 
 export type Map = {
-  mapName: string;
+  name: string;
   gameMode: string;
-  scoredBy?: MapScore;
-  players?: PlayerInfo[];
-  result?: string;
-  finalScores?: {
-    team1: number;
-    team2: number;
+  rankedMap: boolean;
+  smallOption: boolean;
+  src: string;
+};
+
+export type MapResults = {
+  map: 1 | 2 | 3;
+  scoredBy: string;
+  scores: {
+    team1: TeamScore;
+    team2: TeamScore;
   };
 };
 
+export type TeamScore = { rounds: number; team: Team };
+
+export type Team = "RNA" | "Lineage";
+
 export type Match = {
   matchId: string;
+  title: string;
   gameType: "ranked" | "casual" | "public";
-  status: "queue" | "in-progress" | "complete";
+  status: MatchStatus;
   maps: Map[];
   players: Player[];
   teamSize: number;
@@ -55,8 +58,11 @@ export type Match = {
   createdTS: number;
   eloTier: "low" | "medium" | "high";
   anonymous: boolean;
+  results?: MapResults[];
   winner?: string;
 };
+
+export type MatchStatus = "queue" | "in-progress" | "complete";
 
 export type EloRank =
   | "Bronze V"
@@ -91,6 +97,14 @@ export type EloRankGroup =
   | "Gold"
   | "Platinum"
   | "Diamond";
+
+export type staffRoster = {
+  staffName: string;
+  staffNicknames: string;
+  src: string;
+  altText: string;
+};
+
 export type Video = {
   title: string;
   src: string;

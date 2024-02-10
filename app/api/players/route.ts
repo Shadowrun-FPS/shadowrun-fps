@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { NextApiRequest } from "next";
 import clientPromise from "@/lib/mongodb";
-import { rowsDefault,  teamSizeDefault} from "@/app/games/leaderboard/common";
+import { rowsDefault, teamSizeDefault } from "@/app/matches/leaderboard/common";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
     console.log("RUNNING GET for /players");
-    const {searchParams} = new URL(request.url);
-    const page = (searchParams.get("page") ? searchParams.get("page") : 1);
-    const sortOption = getSortOption(searchParams.get("sort") + '');
-    const querySortDirection = (searchParams.get("dir") == "asc" ? 1 : -1);
-    const teamSizeOption = searchParams.get("teamSize") ? searchParams.get("teamSize") : teamSizeDefault;
-    const playersPerLBPage = searchParams.get("rows") ? Number(searchParams.get("rows")) : rowsDefault;
+    const { searchParams } = new URL(request.url);
+    const page = searchParams.get("page") ? searchParams.get("page") : 1;
+    const sortOption = getSortOption(searchParams.get("sort") + "");
+    const querySortDirection = searchParams.get("dir") == "asc" ? 1 : -1;
+    const teamSizeOption = searchParams.get("teamSize")
+      ? searchParams.get("teamSize")
+      : teamSizeDefault;
+    const playersPerLBPage = searchParams.get("rows")
+      ? Number(searchParams.get("rows"))
+      : rowsDefault;
     const skipAmount = Math.max(playersPerLBPage * (Number(page) - 1), 0);
     const cutoffDate = new Date();
     cutoffDate.setMonth(cutoffDate.getMonth() - 2);
@@ -21,52 +25,58 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
     console.log("CHECKPOINT 2");
-    const data =
-      await db.collection('Players')
+    const data = await db
+      .collection("Players")
       .aggregate([
-          {
-            $project: {
-              _id: 0,
-              discordId: 1,
-              discordNickname: 1,
-              "stats": {
-                $filter: {
-                  input: "$stats",
-                  cond: { 
-                    $and: [
-                      {$eq: ["$$this.teamSize", Number(teamSizeOption)]},
-                      {$gte: ["$$this.lastMatchDate", cutoffDate]}
-                    ]
-                  }
-                }
-              }
-            }
+        {
+          $project: {
+            _id: 0,
+            discordId: 1,
+            discordNickname: 1,
+            stats: {
+              $filter: {
+                input: "$stats",
+                cond: {
+                  $and: [
+                    { $eq: ["$$this.teamSize", Number(teamSizeOption)] },
+                    { $gte: ["$$this.lastMatchDate", cutoffDate] },
+                  ],
+                },
+              },
+            },
           },
-          {$unwind: "$stats"},
-          {
-            $project: {
-              discordId: 1,
-              discordNickname: 1,
-              lastMatchDate: "$stats.lastMatchDate",
-              elo: "$stats.elo",
-              wins: "$stats.wins",
-              losses: "$stats.losses"
-            }
+        },
+        { $unwind: "$stats" },
+        {
+          $project: {
+            discordId: 1,
+            discordNickname: 1,
+            lastMatchDate: "$stats.lastMatchDate",
+            elo: "$stats.elo",
+            wins: "$stats.wins",
+            losses: "$stats.losses",
           },
-          {$addFields: {"ratio": {$round: [{$divide: ["$wins", {$add: ["$wins", "$losses"]}]}, 2]}}},
-          {$sort: {[sortOption]: querySortDirection}},
-          {$facet: {
-            playerCount: [
-              {$count: 'total'}
-            ],
-            players: [
-              {$skip: skipAmount},
-              {$limit: playersPerLBPage}
-            ]
-          }}
-        ])
-        .toArray();
-      console.log("CHECKPOINT 3");
+        },
+        {
+          $addFields: {
+            ratio: {
+              $round: [
+                { $divide: ["$wins", { $add: ["$wins", "$losses"] }] },
+                2,
+              ],
+            },
+          },
+        },
+        { $sort: { [sortOption]: querySortDirection } },
+        {
+          $facet: {
+            playerCount: [{ $count: "total" }],
+            players: [{ $skip: skipAmount }, { $limit: playersPerLBPage }],
+          },
+        },
+      ])
+      .toArray();
+    console.log("CHECKPOINT 3");
 
     // console.log(data[0].players[0]);
     return NextResponse.json({
@@ -87,14 +97,14 @@ export async function GET(request: NextRequest) {
 
 const getSortOption = (sortParam: string) => {
   switch (sortParam) {
-    case ("w"):
+    case "w":
       return "wins";
-    case ("l"):
+    case "l":
       return "losses";
-    case ("r"):
+    case "r":
       return "ratio";
-    case ("e"):
+    case "e":
     default:
       return "elo";
   }
-} 
+};
