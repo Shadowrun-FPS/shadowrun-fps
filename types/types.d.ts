@@ -11,6 +11,8 @@ export type PlayerStats = {
 };
 
 export type Player = {
+  userName: string;
+  playerId: string;
   discordId: string;
   discordNickname: string;
   discordProfilePicture: string;
@@ -51,7 +53,7 @@ export type Match = {
   matchId: string;
   title: string;
   gameType: "ranked" | "casual" | "public";
-  status: "queue" | "in-progress" | "complete";
+  status: MatchStatus;
   maps: Map[];
   players: Player[];
   teamSize: number;
@@ -62,6 +64,8 @@ export type Match = {
   results?: MapResults[];
   winner?: string;
 };
+
+export type MatchStatus = "queue" | "in-progress" | "complete";
 
 export type EloRank =
   | "Bronze V"

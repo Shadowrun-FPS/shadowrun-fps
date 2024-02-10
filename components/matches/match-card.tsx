@@ -7,12 +7,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Player, Match } from "@/types/types";
-import JoinButton from "./join-button";
-import LeaveButton from "./leave-button";
+
 import PlayerItem from "../player/player-item";
 
 import Link from "next/link";
 import { Button } from "../ui/button";
+import MatchButton from "./match-button";
 interface MatchCardProps {
   match: Match;
   className?: string;
@@ -20,7 +20,6 @@ interface MatchCardProps {
 
 export default function MatchCard({ match, className }: MatchCardProps) {
   const { matchId, players, teamSize, title, gameType } = match;
-  const isMatchFull = teamSize * 2 === players.length;
 
   return (
     <Card
@@ -53,11 +52,15 @@ export default function MatchCard({ match, className }: MatchCardProps) {
         </CardContent>
 
         <CardFooter className="grid grid-cols-2 gap-4 mt-auto">
-          <Button className="col-span-2">
+          <MatchButton
+            matchId={matchId}
+            teamSize={match.teamSize}
+            players={match.players}
+            matchStatus={match.status}
+          />
+          <Button variant={"secondary"}>
             <Link href={`/matches/${matchId}`}>View Match</Link>
           </Button>
-          <JoinButton matchId={matchId} isMatchFull={isMatchFull} />
-          <LeaveButton matchId={matchId} players={players} />
         </CardFooter>
       </div>
     </Card>
