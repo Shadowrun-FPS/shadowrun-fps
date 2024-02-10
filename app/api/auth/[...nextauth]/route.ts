@@ -1,4 +1,4 @@
-import { getGuildData } from "@/lib/discord-helpers";
+import { getGuildData, upsertPlayerDiscordData } from "@/lib/discord-helpers";
 import NextAuth from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 
@@ -30,6 +30,15 @@ const handler = NextAuth({
       if (trigger === "signIn") {
         const guildData = await getGuildData(token.accessToken as string);
         token.guild = guildData;
+        // upsert player table with guild data
+        const discordId = guildData.user.id;
+        const discordNickname = guildData.nick;
+        const discordProfilePicture = `https://cdn.discordapp.com/avatars/${guildData.user.id}/${guildData.user.avatar}.png`;
+        upsertPlayerDiscordData(
+          discordId,
+          discordNickname,
+          discordProfilePicture
+        );
       }
       return token;
     },
