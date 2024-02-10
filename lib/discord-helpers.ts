@@ -1,3 +1,5 @@
+import clientPromise from "./mongodb";
+
 export async function getGuildData(accessToken: string | undefined) {
   try {
     if (accessToken === undefined) {
@@ -17,6 +19,35 @@ export async function getGuildData(accessToken: string | undefined) {
     if (!response.ok) throw new Error("Failed to fetch guild data");
     const data = await response.json();
     return data;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+export async function upsertPlayerDiscordData(
+  discordId: string,
+  discordNickname: string,
+  discordProfilePicture: string
+) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
+    const result = await db.collection("Players").updateOne(
+      { discordId },
+      {
+        $set: {
+          discordId,
+          discordNickname,
+          discordProfilePicture,
+        },
+        $setOnInsert: {
+          stats: [],
+        },
+      },
+      { upsert: true }
+    );
+    return result;
   } catch (error) {
     console.log(error);
     return null;
