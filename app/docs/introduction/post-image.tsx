@@ -14,7 +14,7 @@ export default function PostImage({ src, alt, href }: PostImageProps) {
       alt={alt}
       fill={true}
       style={{
-        objectFit: "cover", // cover, contain, none
+        objectFit: "cover",
       }}
     />
   );

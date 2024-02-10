@@ -35,7 +35,7 @@ export default function IntroductionPage() {
           </p>
         </section>
       </div>
-      <div className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
+      <div className="max-w-[1400px]">
         <FeaturedPosts />
       </div>
       <div className="text-center">
@@ -45,7 +45,6 @@ export default function IntroductionPage() {
           progress:
         </p>
         <ul>
-          <br />
           <li>
             <a
               href="https://twitter.com/i/communities/1688188047064470011"
