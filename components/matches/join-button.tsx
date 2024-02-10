@@ -5,15 +5,15 @@ import { getApiUrl } from "@/lib/utils";
 
 type JoinLeaveButtonProps = {
   matchId: string;
-  userName: string | null | undefined;
+  discordId: string | null | undefined;
+  discordNickname: string | null | undefined;
 };
 
 export default function JoinLeaveButton({
   matchId,
-  userName,
+  discordId,
+  discordNickname,
 }: JoinLeaveButtonProps) {
-  // const discordId = session?.token?.sub; // Retrieve Discord ID from the token
-
   const handleButtonClick = () => {
     const url = getApiUrl();
     fetch(url + "/api/matches", {
@@ -22,18 +22,16 @@ export default function JoinLeaveButton({
         action: "addPlayer",
         matchId,
         player: {
-          playerId: userName,
-          discordId: userName, // Use the Discord ID from the token
-          discordNickname: userName,
+          discordId: discordId,
+          discordNickname: discordNickname,
         },
       }),
     }).then(() => {
       updateMatchAction();
     });
   };
-
   return (
-    <Button disabled={userName !== undefined} onClick={handleButtonClick}>
+    <Button disabled={discordId === undefined} onClick={handleButtonClick}>
       {"Join"}
     </Button>
   );

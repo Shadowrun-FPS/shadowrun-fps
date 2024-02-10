@@ -18,37 +18,46 @@ export default function MatchButton({
   matchStatus,
 }: MatchButtonProps) {
   const { data: session } = useSession();
-  const userName = session?.user?.name;
-  //   const discordId = session?.token?.sub; // Retrieve Discord ID from the token
-
-  const isJoinable = isValidJoin(userName, players, teamSize, matchStatus);
-  const isLeavable = isValidLeave(userName, players);
+  const discordId = session?.user.id;
+  const discordNickname =
+    session?.user.guild.nick ?? session?.user.global_name ?? session?.user.name;
+  console.log({ discordId, discordNickname });
+  const isJoinable = isValidJoin(discordId, players, teamSize, matchStatus);
+  const isLeavable = isValidLeave(discordId, players);
 
   return isJoinable ? (
-    <JoinButton matchId={matchId} userName={userName} />
+    <JoinButton
+      matchId={matchId}
+      discordId={discordId}
+      discordNickname={discordNickname}
+    />
   ) : (
-    <LeaveButton matchId={matchId} disabled={!isLeavable} />
+    <LeaveButton
+      matchId={matchId}
+      disabled={!isLeavable}
+      discordId={discordId}
+    />
   );
 }
 
-function isValidLeave(userName: string | undefined | null, players: Player[]) {
-  if (!userName) return true;
-  return !players.some((player) => player.playerId === userName);
+function isValidLeave(discordId: string | undefined | null, players: Player[]) {
+  if (!discordId) return true;
+  return !players.some((player) => player.discordId === discordId);
 }
 
 function isValidJoin(
-  userName: string | undefined | null,
+  discordId: string | undefined | null,
   players: Player[],
   teamSize: number,
   matchStatus: string
 ) {
-  if (!userName) {
+  if (!discordId) {
     return false;
   } else if (teamSize * 2 === players.length) {
     return false;
   } else if (matchStatus !== "queue") {
     return false;
-  } else if (players.some((player) => player.userName === userName)) {
+  } else if (players.some((player) => player.discordId === discordId)) {
     return false;
   } else {
     return true;

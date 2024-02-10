@@ -33,8 +33,8 @@ export async function POST(request: NextRequest) {
       const { matchId, player } = body;
       response = handleAddPlayer(db, matchId, player);
     } else if (action === "removePlayer") {
-      const { matchId, playerId } = body;
-      response = handleRemovePlayer(db, matchId, playerId);
+      const { matchId, discordId } = body;
+      response = handleRemovePlayer(db, matchId, discordId);
     }
 
     // const result = await db
@@ -68,13 +68,13 @@ async function handleAddPlayer(db: Db, matchId: string, newPlayer: Player) {
 async function handleRemovePlayer(
   db: Db,
   matchId: string,
-  playerIdToRemove: string
+  discordIdToRemove: string
 ) {
   const result = await db
     .collection("Matches")
     .updateOne(
       { matchId: matchId },
-      { $pull: { players: { playerId: playerIdToRemove } } }
+      { $pull: { players: { discordId: discordIdToRemove } } }
     );
 
   console.log("handleRemovePlayer result: ", result);

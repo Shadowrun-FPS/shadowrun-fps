@@ -5,9 +5,11 @@ export async function GET(request: NextRequest) {
   try {
     const client = await clientPromise;
     const searchParams = request.nextUrl.searchParams;
-    const playerId = searchParams.get("playerId");
+    const discordId = searchParams.get("discordId");
     const db = client.db("ShadowrunWeb");
-    const stats = await db.collection("Stats").findOne({ playerId: playerId });
+    const stats = await db
+      .collection("Stats")
+      .findOne({ discordId: discordId });
     return NextResponse.json({
       ok: true,
       results: stats,

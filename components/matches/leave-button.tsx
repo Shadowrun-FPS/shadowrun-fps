@@ -7,12 +7,14 @@ import { useSession } from "next-auth/react";
 type LeaveButtonProps = {
   disabled: boolean;
   matchId: string;
+  discordId: string | null | undefined;
 };
 
-export default function LeaveButton({ disabled, matchId }: LeaveButtonProps) {
-  const { data: session } = useSession();
-  const userName = session?.user?.name;
-
+export default function LeaveButton({
+  disabled,
+  matchId,
+  discordId,
+}: LeaveButtonProps) {
   function handleLeave() {
     const url = getApiUrl();
     fetch(url + "/api/matches", {
@@ -20,7 +22,7 @@ export default function LeaveButton({ disabled, matchId }: LeaveButtonProps) {
       body: JSON.stringify({
         action: "removePlayer",
         matchId,
-        playerId: userName,
+        discordId: discordId,
       }),
     }).then(() => {
       updateMatchAction();
