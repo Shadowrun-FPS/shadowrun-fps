@@ -49,20 +49,34 @@ export type Team = "RNA" | "Lineage";
 export type Match = {
   matchId: string;
   title: string;
-  gameType: "ranked" | "casual" | "public";
+  gameType: GameType;
   status: MatchStatus;
   maps: Map[];
   players: Player[];
   teamSize: number;
   createdBy: string;
   createdTS: number;
-  eloTier: "low" | "medium" | "high";
+  eloTier: EloTier;
   anonymous: boolean;
   results?: MapResults[];
   winner?: string;
 };
 
-export type MatchStatus = "queue" | "in-progress" | "complete";
+export type Queue = {
+  queueId: string;
+  gameType: GameType;
+  players: Player[];
+  eloTier: EloTier;
+  teamSize: number;
+  minElo: number;
+  maxElo: number;
+};
+
+export type GameType = "ranked" | "casual" | "public";
+
+export type EloTier = "low" | "medium" | "high";
+
+export type MatchStatus = "ready-check" | "in-progress" | "complete";
 
 export type EloRank =
   | "Bronze V"

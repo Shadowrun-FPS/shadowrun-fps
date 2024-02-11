@@ -14,7 +14,7 @@ export default async function MatchesPage() {
   const rankedMatches = matches.filter((match) => match.gameType === "ranked");
 
   return (
-    <div className="container">
+    <div>
       <div className="flex items-center gap-4">
         <h1 className="p-4 text-3xl font-extrabold">Play Matches!</h1>
         <CreateMatchDialog />
