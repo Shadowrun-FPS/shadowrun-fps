@@ -19,7 +19,9 @@ interface MatchCardProps {
 }
 
 export default function MatchCard({ match, className }: MatchCardProps) {
-  const { matchId, players, teamSize, title, gameType } = match;
+  const { matchId, createdTS, teamSize, title, gameType, status, eloTier } =
+    match;
+  const createdDate = new Date(createdTS).toLocaleDateString();
 
   return (
     <Card key={matchId} className={`flex flex-col ${className}`}>
@@ -28,11 +30,14 @@ export default function MatchCard({ match, className }: MatchCardProps) {
           <CardTitle className="my-2" title={title}>
             {title}
           </CardTitle>
-          <CardDescription>{gameType}</CardDescription>
+          <CardDescription>{createdDate}</CardDescription>
         </CardHeader>
 
-        <CardContent className="flex-grow">
-          <h2>Team Size: {teamSize}</h2>
+        <CardContent>
+          <p>Team Size: {teamSize}</p>
+          <p>Game Type: {gameType}</p>
+          <p>Elo Tier: {eloTier}</p>
+          <p>Status: {status}</p>
         </CardContent>
 
         <CardFooter className="grid">

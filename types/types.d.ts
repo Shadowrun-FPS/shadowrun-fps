@@ -54,7 +54,6 @@ export type Match = {
   maps: Map[];
   players: Player[];
   teamSize: number;
-  createdBy: string;
   createdTS: number;
   eloTier: EloTier;
   anonymous: boolean;
