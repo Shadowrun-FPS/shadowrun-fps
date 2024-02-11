@@ -23,7 +23,7 @@ export default function MatchCarousel({
       <CarouselContent>
         <CarouselItem className={"sm:basis-1/2 lg:basis-1/3"}>
           <div className="p-1">
-            <QueueCard teamSize={4} gameType="ranked" />
+            <QueueCard className={"h-[300px]"} teamSize={4} gameType="ranked" />
           </div>
         </CarouselItem>
         {matches.map((match: Match, index: number) => (
@@ -32,7 +32,7 @@ export default function MatchCarousel({
             className={"-ml-4 md:basis-1/2 lg:basis-1/3"}
           >
             <div className="p-1">
-              <MatchCard match={match} />
+              <MatchCard className={"h-[300px]"} match={match} />
             </div>
           </CarouselItem>
         ))}

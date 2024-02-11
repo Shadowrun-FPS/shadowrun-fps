@@ -1,11 +1,4 @@
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "../ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { GameType } from "@/types/types";
 import QueueButton from "./queue-button";
 import { getQueues } from "@/lib/queue-helpers";
@@ -22,7 +15,6 @@ export default async function QueueCard({
   gameType,
 }: QueueCardProps) {
   const queueData = await getQueues(teamSize, gameType);
-  console.log("queue data", { queueData });
   return (
     <Card className={`flex flex-col ${className}`}>
       <div className="flex flex-col h-full">
