@@ -35,13 +35,13 @@ export default async function QueueCard({
             <QueueButton
               key={index}
               eloTier={queue.eloTier}
+              minElo={queue.minElo}
+              maxElo={queue.maxElo}
               playersInQueue={queue.players.length}
               teamSize={queue.teamSize}
             />
           ))}
         </CardContent>
-
-        <CardFooter className="grid grid-cols-2 gap-4 mt-auto"></CardFooter>
       </div>
     </Card>
   );

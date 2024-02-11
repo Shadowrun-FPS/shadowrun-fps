@@ -21,19 +21,19 @@ export default function MatchCarousel({
   return (
     <Carousel className={className} opts={{ align: "start" }}>
       <CarouselContent>
-        <CarouselItem className={"md:basis-1/2 lg:basis-1/3"}>
-          <QueueCard
-            className="h-[300px] w-[260px]"
-            teamSize={4}
-            gameType="ranked"
-          />
+        <CarouselItem className={"sm:basis-1/2 lg:basis-1/3"}>
+          <div className="p-1">
+            <QueueCard teamSize={4} gameType="ranked" />
+          </div>
         </CarouselItem>
         {matches.map((match: Match, index: number) => (
           <CarouselItem
             key={index + 1}
             className={"-ml-4 md:basis-1/2 lg:basis-1/3"}
           >
-            <MatchCard className={"h-[300px] w-[260px]"} match={match} />
+            <div className="p-1">
+              <MatchCard match={match} />
+            </div>
           </CarouselItem>
         ))}
       </CarouselContent>

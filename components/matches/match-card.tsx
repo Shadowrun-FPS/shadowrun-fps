@@ -35,14 +35,8 @@ export default function MatchCard({ match, className }: MatchCardProps) {
           <h2>Team Size: {teamSize}</h2>
         </CardContent>
 
-        <CardFooter className="grid grid-cols-2 gap-4 mt-auto">
-          <MatchButton
-            matchId={matchId}
-            teamSize={match.teamSize}
-            players={match.players}
-            matchStatus={match.status}
-          />
-          <Button variant={"secondary"}>
+        <CardFooter className="grid">
+          <Button variant={"outline"}>
             <Link href={`/matches/${matchId}`}>View Match</Link>
           </Button>
         </CardFooter>

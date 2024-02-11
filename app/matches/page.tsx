@@ -15,10 +15,10 @@ export default async function MatchesPage() {
 
   return (
     <div>
-      <div className="flex items-center gap-4">
+      {/* <div className="flex items-center gap-4">
         <h1 className="p-4 text-3xl font-extrabold">Play Matches!</h1>
         <CreateMatchDialog />
-      </div>
+      </div> */}
       {/* TODO add filters for match parameters, can come from url params */}
       {/* TODO add rows for carousel of game types based on player */}
 

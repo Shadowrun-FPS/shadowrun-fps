@@ -9,7 +9,7 @@ type MatchListProps = {
 export default function MatchList({ matches }: MatchListProps) {
   return (
     <div>
-      <h2 className="text-4xl font-extrabold prose dark:prose-invert">
+      <h2 className="text-2xl font-extrabold prose dark:prose-invert">
         Ranked 4v4
       </h2>
 

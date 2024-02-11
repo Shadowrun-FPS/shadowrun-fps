@@ -4,23 +4,32 @@ import { Users } from "lucide-react";
 
 export default function QueueButton({
   eloTier,
+  minElo,
+  maxElo,
   playersInQueue,
   teamSize,
 }: {
   eloTier: EloTier;
+  minElo: number;
+  maxElo: number;
   playersInQueue: number;
   teamSize: number;
 }) {
   return (
     <div className="flex items-center gap-4">
-      <Users />
+      <span className="hidden sm:block">
+        <Users />
+      </span>
+
       <div className="flex-1">
         <h3 className="font-semibold">{eloTier}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {`In queue ${playersInQueue}/${teamSize * 2}`}
+        <p className="text-xs prose dark:prose-invert">
+          Elo: {minElo}-{maxElo}
         </p>
       </div>
-      <Button size="sm">Queue</Button>
+      <Button className="w-28" variant={"secondary"}>
+        Queue {playersInQueue}/{teamSize * 2}
+      </Button>
     </div>
   );
 }
