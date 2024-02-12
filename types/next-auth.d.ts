@@ -10,6 +10,7 @@ declare module "next-auth" {
     /** Example of a custom user property */
     guild: any;
     global_name: string;
+    nickname: string;
     id: string;
   }
 

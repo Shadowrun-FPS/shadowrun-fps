@@ -30,6 +30,7 @@ const handler = NextAuth({
       if (trigger === "signIn") {
         const guildData = await getGuildData(token.accessToken as string);
         token.guild = guildData;
+        console.log({ guildData });
         // upsert player table with guild data
         const discordId = guildData.user.id;
         const discordNickname = guildData.nick;
@@ -55,6 +56,7 @@ const handler = NextAuth({
           ...session.user,
           id: userId,
           global_name: user.global_name,
+          nickname: guild.nick ?? user.global_name ?? user?.name,
         };
         session.user.guild = guild;
       }

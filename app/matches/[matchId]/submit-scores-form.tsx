@@ -57,7 +57,8 @@ export function SubmitScoresForm({
 }) {
   const { toast } = useToast();
   const { data: session } = useSession();
-  const userName = session?.user?.name;
+  const userName = session?.user.nickname;
+
   const params = useParams<{ matchId: string }>();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
