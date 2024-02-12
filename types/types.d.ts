@@ -89,14 +89,21 @@ export type EloRank =
   | "Diamond IV"
   | "Diamond III"
   | "Diamond II"
-  | "Diamond I";
+  | "Diamond I"
+  | "Diamond I"
+  | "Obsidian V"
+  | "Obsidian IV"
+  | "Obsidian III"
+  | "Obsidian II"
+  | "Obsidian I";
 
 export type EloRankGroup =
   | "Bronze"
   | "Silver"
   | "Gold"
   | "Platinum"
-  | "Diamond";
+  | "Diamond"
+  | "Obsidian";
 
 export type staffRoster = {
   staffName: string;
