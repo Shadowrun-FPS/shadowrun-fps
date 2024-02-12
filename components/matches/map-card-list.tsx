@@ -1,5 +1,5 @@
 import MapCard from "./map-card";
-import { Map, MapResults, MatchPlayer } from "@/types/types";
+import { Map, MapResult, MatchPlayer } from "@/types/types";
 import {
   Carousel,
   CarouselContent,
@@ -11,7 +11,7 @@ import {
 interface MapCardListProps {
   className?: string;
   maps: Map[];
-  results?: MapResults[];
+  results?: MapResult[];
   players: MatchPlayer[];
 }
 

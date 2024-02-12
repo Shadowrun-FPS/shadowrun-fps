@@ -39,7 +39,7 @@ export type Map = {
   src: string;
 };
 
-export type MapResults = {
+export type MapResult = {
   map: 1 | 2 | 3;
   scoredBy: string;
   team?: TeamNumber;
@@ -66,7 +66,7 @@ export type Match = {
   coinFlip: TeamNumber;
   createdTS: number;
   eloTier: EloTier;
-  results?: MapResults[];
+  results?: MapResult[];
   winner?: string;
 };
 

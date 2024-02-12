@@ -31,7 +31,6 @@ import { useToast } from "@/components/ui/use-toast";
 import { handleSubmit } from "./actions";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { MatchPlayer } from "@/types/types";
 
 type Field = ControllerRenderProps<any, any>;
 
@@ -52,16 +51,13 @@ export const formSchema = z.object({
 export function SubmitScoresForm({
   index,
   handleClose,
-  players,
 }: {
   index: number;
   handleClose: () => void;
-  players: MatchPlayer[];
 }) {
   const { toast } = useToast();
   const { data: session } = useSession();
   const userNickname = session?.user.nickname;
-
   const params = useParams<{ matchId: string }>();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -77,20 +73,16 @@ export function SubmitScoresForm({
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(
+    values: z.infer<typeof formSchema>,
+    userNickname: string
+  ) {
     const matchId = params.matchId;
-    if (!userNickname) {
-      return console.error("No user name");
-    }
     if (Object.keys(form.formState.errors).length > 0) {
       console.error("Cannot submit. Form has errors ", form.formState.errors);
       return;
     }
-    // SUCCESS path
-    const userTeam = players.find(
-      (player) => player.discordNickname === userNickname
-    )?.team;
-    await handleSubmit(matchId, index, userNickname, values, userTeam);
+    await handleSubmit(matchId, index, userNickname, values);
     toast({
       title: "Map results submitted successfully",
       description: (
@@ -115,7 +107,12 @@ export function SubmitScoresForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((data) => onSubmit(data))}
+        onSubmit={form.handleSubmit((data) => {
+          if (!userNickname) {
+            return console.error("No user name");
+          }
+          onSubmit(data, userNickname);
+        })}
         className="space-y-8"
       >
         <FormField
