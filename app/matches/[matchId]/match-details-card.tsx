@@ -35,11 +35,6 @@ export default function MatchDetailsCard({
             <strong>{match.winner} Winner!</strong>
           </p>
         )}
-        <div className="grid gap-8 overflow-auto max-h-96">
-          {match.results?.map((result) => (
-            <DisplayMapResults key={result.map} result={result} />
-          ))}
-        </div>
       </CardContent>
     </Card>
   );
