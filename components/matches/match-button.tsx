@@ -2,13 +2,13 @@
 import { useSession } from "next-auth/react";
 import JoinButton from "./join-button";
 import LeaveButton from "./leave-button";
-import { MatchStatus, Player } from "@/types/types";
+import { MatchPlayer, MatchStatus } from "@/types/types";
 
 type MatchButtonProps = {
   matchStatus: MatchStatus;
   teamSize: number;
   matchId: string;
-  players?: Player[]; // Make players optional to handle undefined case
+  players?: MatchPlayer[]; // Make players optional to handle undefined case
 };
 
 export default function MatchButton({
@@ -40,14 +40,17 @@ export default function MatchButton({
   );
 }
 
-function isValidLeave(discordId: string | undefined | null, players: Player[]) {
+function isValidLeave(
+  discordId: string | undefined | null,
+  players: MatchPlayer[]
+) {
   if (!discordId) return true;
   return players.some((player) => player.discordId === discordId);
 }
 
 function isValidJoin(
   discordId: string | undefined | null,
-  players: Player[],
+  players: MatchPlayer[],
   teamSize: number,
   matchStatus: string
 ) {

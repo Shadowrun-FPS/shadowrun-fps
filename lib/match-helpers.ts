@@ -1,4 +1,4 @@
-import { createGetURL, getApiUrl } from "@/lib/utils";
+import { getApiUrl } from "@/lib/utils";
 import { AddPlayerRequest } from "@/types/request-types";
 import { MapResults, Match, Player } from "@/types/types";
 

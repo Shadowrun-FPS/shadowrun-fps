@@ -17,6 +17,12 @@ export type Player = {
   stats: PlayerStats[];
 };
 
+export type MatchPlayer = {
+  discordId: string;
+  discordNickname: string;
+  team?: TeamNumber;
+};
+
 export type PlayerInfo = {
   team: string;
   kills: number;
@@ -44,6 +50,8 @@ export type MapResults = {
 
 export type TeamScore = { rounds: number; team: Team };
 
+export type TeamNumber = "Team 1" | "Team 2";
+
 export type Team = "RNA" | "Lineage";
 
 export type Match = {
@@ -52,9 +60,9 @@ export type Match = {
   gameType: GameType;
   status: MatchStatus;
   maps: Map[];
-  players: Player[];
+  players: MatchPlayer[];
   teamSize: number;
-  coinFlip: "team1" | "team2";
+  coinFlip: TeamNumber;
   createdTS: number;
   eloTier: EloTier;
   results?: MapResults[];
@@ -64,7 +72,7 @@ export type Match = {
 export type Queue = {
   queueId: string;
   gameType: GameType;
-  players: Player[];
+  players: MatchPlayer[];
   eloTier: EloTier;
   teamSize: number;
   minElo: number;

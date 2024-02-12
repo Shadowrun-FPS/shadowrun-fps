@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
-import { Map } from "@/types/types";
+import { Map, MapResults } from "@/types/types";
 import {
   Card,
   CardContent,
@@ -11,12 +11,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import SubmitScoresDialog from "@/app/matches/[matchId]/submit-scores-dialog";
+import { DisplayMapResults } from "@/app/matches/[matchId]/display-map-results";
 
 interface MapCardProps {
   className?: string;
   style?: React.CSSProperties;
   map: Map;
   index: number;
+  results?: MapResults[];
 }
 
 export async function getMapData(name: string): Promise<Map | null> {
@@ -33,12 +35,14 @@ export async function getMapData(name: string): Promise<Map | null> {
 
 export default async function MapCard({
   className,
-  style,
-  map,
   index,
+  map,
+  results,
 }: MapCardProps) {
   const mapDetails = await getMapData(map.name);
   if (mapDetails === null) return <div>Unknown Map!</div>;
+
+  const map1Results = results?.find((result) => result.map === index + 1);
 
   return (
     <Card className={`${className}`}>
@@ -53,10 +57,15 @@ export default async function MapCard({
           width={1175}
           height={500}
         />
-        {/*TODO: show map results here*/}
+        {results && (
+          <div>
+            <h3 className="prose dark:prose-invert">Results</h3>
+            <DisplayMapResults result={undefined} />
+            <DisplayMapResults result={undefined} />
+          </div>
+        )}
       </CardContent>
       <CardFooter className="grid">
-        {/*TODO: show submit scores buttons for each team, team 1 and team 2 */}
         <h2 className="text-xl font-bold text-center">Submit scores</h2>
         <div className="grid grid-cols-2 gap-4">
           <SubmitScoresDialog index={index} team={"Team 1"} />

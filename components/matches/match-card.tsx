@@ -6,9 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Player, Match } from "@/types/types";
-
-import PlayerItem from "../player/player-item";
+import { Match } from "@/types/types";
 
 import Link from "next/link";
 import { Button } from "../ui/button";
