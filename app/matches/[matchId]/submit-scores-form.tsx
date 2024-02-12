@@ -31,6 +31,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { handleSubmit } from "./actions";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { MatchPlayer } from "@/types/types";
 
 type Field = ControllerRenderProps<any, any>;
 
@@ -51,13 +52,15 @@ export const formSchema = z.object({
 export function SubmitScoresForm({
   index,
   handleClose,
+  players,
 }: {
   index: number;
   handleClose: () => void;
+  players: MatchPlayer[];
 }) {
   const { toast } = useToast();
   const { data: session } = useSession();
-  const userName = session?.user.nickname;
+  const userNickname = session?.user.nickname;
 
   const params = useParams<{ matchId: string }>();
   const form = useForm<z.infer<typeof formSchema>>({
@@ -76,7 +79,7 @@ export function SubmitScoresForm({
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     const matchId = params.matchId;
-    if (!userName) {
+    if (!userNickname) {
       return console.error("No user name");
     }
     if (Object.keys(form.formState.errors).length > 0) {
@@ -84,7 +87,10 @@ export function SubmitScoresForm({
       return;
     }
     // SUCCESS path
-    await handleSubmit(matchId, index, userName, values);
+    const userTeam = players.find(
+      (player) => player.discordNickname === userNickname
+    )?.team;
+    await handleSubmit(matchId, index, userNickname, values, userTeam);
     toast({
       title: "Map results submitted successfully",
       description: (
@@ -98,7 +104,7 @@ export function SubmitScoresForm({
             rounds.
           </p>
           <p>
-            <strong>Submitted by:</strong> {userName}
+            <strong>Submitted by:</strong> {userNickname}
           </p>
         </>
       ),

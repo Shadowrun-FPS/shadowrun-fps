@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react";
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
-import { Map, MapResults } from "@/types/types";
+import { Map, MapResults, MatchPlayer } from "@/types/types";
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ interface MapCardProps {
   map: Map;
   index: number;
   results?: MapResults[];
+  players: MatchPlayer[];
 }
 
 export async function getMapData(name: string): Promise<Map | null> {
@@ -38,11 +39,14 @@ export default async function MapCard({
   index,
   map,
   results,
+  players,
 }: MapCardProps) {
   const mapDetails = await getMapData(map.name);
   if (mapDetails === null) return <div>Unknown Map!</div>;
 
-  const map1Results = results?.find((result) => result.map === index + 1);
+  const team1Results = results?.find(
+    (result) => result.map === index + 1 && result.team === "Team 1"
+  );
 
   return (
     <Card className={`${className}`}>

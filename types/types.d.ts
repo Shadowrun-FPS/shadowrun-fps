@@ -42,6 +42,7 @@ export type Map = {
 export type MapResults = {
   map: 1 | 2 | 3;
   scoredBy: string;
+  team?: TeamNumber;
   scores: {
     team1: TeamScore;
     team2: TeamScore;

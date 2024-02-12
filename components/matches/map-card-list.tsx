@@ -1,5 +1,5 @@
 import MapCard from "./map-card";
-import { Map, MapResults } from "@/types/types";
+import { Map, MapResults, MatchPlayer } from "@/types/types";
 import {
   Carousel,
   CarouselContent,
@@ -12,19 +12,26 @@ interface MapCardListProps {
   className?: string;
   maps: Map[];
   results?: MapResults[];
+  players: MatchPlayer[];
 }
 
 export default function MapCardList({
+  className,
   maps,
   results,
-  className,
+  players,
 }: MapCardListProps) {
   return (
     <Carousel className={`${className}`}>
       <CarouselContent>
         {maps.map((map: Map, index: number) => (
           <CarouselItem className="md:basis-1/3" key={index}>
-            <MapCard index={index} map={map} results={results} />
+            <MapCard
+              index={index}
+              map={map}
+              results={results}
+              players={players}
+            />
           </CarouselItem>
         ))}
       </CarouselContent>

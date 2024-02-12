@@ -60,6 +60,7 @@ export default async function MatchDetailsPage({
           className="w-[250px] md:w-auto"
           maps={match.maps}
           results={match.results}
+          players={match.players}
         />
       </div>
     </div>
