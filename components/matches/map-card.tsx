@@ -53,8 +53,10 @@ export default async function MapCard({
           width={1175}
           height={500}
         />
+        {/*TODO: show map results here*/}
       </CardContent>
       <CardFooter>
+        {/*TODO: show submit scores buttons for each team, team 1 and team 2 */}
         <SubmitScoresDialog index={index} />
       </CardFooter>
     </Card>

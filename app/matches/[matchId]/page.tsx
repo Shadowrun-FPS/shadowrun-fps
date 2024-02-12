@@ -1,10 +1,8 @@
-import PlayerList from "@/components/player/player-list";
 import clientPromise from "@/lib/mongodb";
 import { Match } from "@/types/types";
 import { Metadata } from "next";
 import MatchDetailsCard from "./match-details-card";
 import MapCardList from "@/components/matches/map-card-list";
-import DisplayMatchResults from "./display-match-results";
 
 export const metadata: Metadata = {
   title: "View Match Details",
@@ -42,12 +40,8 @@ export default async function MatchDetailsPage({
       <h1 className="p-4 text-3xl font-extrabold prose dark:prose-invert">
         View Match Details
       </h1>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <MatchDetailsCard match={matchData} />
-        <PlayerList match={matchData} />
-        {matchData.results && (
-          <DisplayMatchResults results={matchData.results} />
-        )}
       </div>
       <div className="grid justify-center m-8">
         {/* <h2 className="p-4 mx-4 text-2xl font-extrabold">Maps</h2> */}

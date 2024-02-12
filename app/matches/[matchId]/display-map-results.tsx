@@ -1,6 +1,7 @@
 import { MapResults } from "@/types/types";
 
 export function DisplayMapResults({ result }: { result: MapResults }) {
+  // TODO: Map results example: "Team 1 (6-4)" for team one winning with a score of 6
   return (
     <div className="prose dark:prose-invert">
       <h3>Map: {result.map}</h3>

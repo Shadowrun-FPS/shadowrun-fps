@@ -54,9 +54,9 @@ export type Match = {
   maps: Map[];
   players: Player[];
   teamSize: number;
+  coinFlip: "team1" | "team2";
   createdTS: number;
   eloTier: EloTier;
-  anonymous: boolean;
   results?: MapResults[];
   winner?: string;
 };
