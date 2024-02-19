@@ -26,14 +26,14 @@ export async function handleJoinQueue(queueId, player) {
   const response = await addPlayerToQueue(queueId, player);
   // check if queue is full then start match
   // TODO: remove players from other queues if one they are in starts
-  revalidateTag("matches");
+  revalidateTag("queues");
 
   return response;
 }
 
 export async function handleLeaveQueue(queueId, playerDiscordId) {
   const response = await removePlayerFromQueue(queueId, playerDiscordId);
-  revalidateTag("matches");
+  revalidateTag("queues");
 
   return response;
 }
