@@ -26,10 +26,11 @@ export default async function QueueCard({
           {queueData.map((queue, index) => (
             <QueueButton
               key={index}
+              queueId={queue.queueId}
               eloTier={queue.eloTier}
               minElo={queue.minElo}
               maxElo={queue.maxElo}
-              playersInQueue={queue.players.length}
+              players={queue.players}
               teamSize={queue.teamSize}
             />
           ))}

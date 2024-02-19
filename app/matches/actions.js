@@ -1,5 +1,9 @@
 "use server";
-import { addMatch } from "@/lib/match-helpers";
+import {
+  addMatch,
+  removePlayerFromQueue,
+  addPlayerToQueue,
+} from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 
 export async function handleSubmit(values) {
@@ -14,5 +18,15 @@ export async function handleSubmit(values) {
     players: [],
   };
   const response = await addMatch(newMatch);
+  return response;
+}
+
+export async function handleJoinQueue(queueId, player) {
+  const response = await addPlayerToQueue(queueId, player);
+  return response;
+}
+
+export async function handleLeaveQueue(queueId, playerDiscordId) {
+  const response = await removePlayerFromQueue(queueId, playerDiscordId);
   return response;
 }

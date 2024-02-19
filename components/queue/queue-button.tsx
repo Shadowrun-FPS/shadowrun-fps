@@ -1,24 +1,53 @@
 "use client";
+import { handleJoinQueue, handleLeaveQueue } from "@/app/matches/actions";
 import { Button } from "@/components/ui/button";
-import { EloTier } from "@/types/types";
+import { EloTier, MatchPlayer } from "@/types/types";
 import { Users } from "lucide-react";
+import { useSession } from "next-auth/react";
 
-export default function QueueButton({
-  eloTier,
-  minElo,
-  maxElo,
-  playersInQueue,
-  teamSize,
-}: {
+type QueueButtonProps = {
+  queueId: string;
   eloTier: EloTier;
   minElo: number;
   maxElo: number;
-  playersInQueue: number;
+  players: MatchPlayer[];
   teamSize: number;
-}) {
-  function handleQueue() {
-    console.log("Queueing for", eloTier);
+};
+
+export default function QueueButton({
+  queueId,
+  eloTier,
+  minElo,
+  maxElo,
+  players,
+  teamSize,
+}: QueueButtonProps) {
+  const { data: session } = useSession();
+
+  const discordId = session?.user?.id;
+  const discordNickname = session?.user?.nickname;
+
+  const isPlayerInQueue = players.some(
+    (player) => player.discordId === discordId
+  );
+
+  async function handleClick() {
+    if (isPlayerInQueue) {
+      // Leave queue
+      await handleLeaveQueue(queueId, discordId);
+    } else {
+      // Join queue
+      if (discordId && discordNickname) {
+        const newPlayer: MatchPlayer = {
+          discordId,
+          discordNickname,
+        };
+        await handleJoinQueue(queueId, newPlayer);
+      }
+    }
   }
+
+  const buttonTitle = isPlayerInQueue ? "Leave" : "Queue";
   return (
     <div className="flex items-center gap-4">
       <span className="hidden md:block">
@@ -31,8 +60,12 @@ export default function QueueButton({
           {minElo}-{maxElo}
         </p>
       </div>
-      <Button className="w-28" variant={"secondary"} onClick={handleQueue}>
-        Queue {playersInQueue}/{teamSize * 2}
+      <Button
+        className="w-28"
+        variant={!isPlayerInQueue ? "secondary" : "destructive"}
+        onClick={handleClick}
+      >
+        {buttonTitle} {players.length}/{teamSize * 2}
       </Button>
     </div>
   );

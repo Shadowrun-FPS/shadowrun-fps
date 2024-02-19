@@ -1,8 +1,7 @@
-import { getApiUrl } from "@/lib/utils";
-import { AddPlayerRequest } from "@/types/request-types";
-import { MapResult, Match, Player } from "@/types/types";
+import { MapResult, Match, MatchPlayer, Player } from "@/types/types";
 
 import clientPromise from "@/lib/mongodb";
+import updateMatchAction from "@/app/actions";
 
 export async function getMatches() {
   const client = await clientPromise;
@@ -18,32 +17,51 @@ export async function addMatch(match: Match) {
   return result;
 }
 
-export function updateMatchPlayers(matchId: string, player: Player) {
-  const url = getApiUrl();
-  const body: AddPlayerRequest = {
-    action: "addPlayer",
-    matchId,
-    player,
-  };
-  return fetch(url + "/api/matches", {
-    body: JSON.stringify(body),
-  })
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error("Failed to update match: " + matchId);
-      }
-      return response.json();
-    })
-    .catch((error) => {
-      throw new Error(error);
-    });
-}
-
 export async function submitMapResults(matchId: string, mapResults: MapResult) {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
   const result = await db
     .collection("Matches")
     .updateOne({ matchId }, { $push: { results: mapResults } });
+  return result;
+}
+
+export async function addPlayerToQueue(queueId: string, player: MatchPlayer) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const existingQueue = await db.collection("Queues").findOne({ queueId });
+  if (existingQueue && existingQueue.players.includes(player)) {
+    throw new Error("Player already exists in the queue."); // Add error message
+  }
+  const result = await db
+    .collection("Queues")
+    .updateOne({ queueId }, { $push: { players: player } });
+  console.log("Added player to queue: ", result);
+  updateMatchAction();
+  return result;
+}
+
+export async function removePlayerFromQueue(
+  queueId: string,
+  playerDiscordId: string
+) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const existingQueue = await db.collection("Queues").findOne({ queueId });
+  if (
+    !existingQueue ||
+    !existingQueue.players.some(
+      (p: MatchPlayer) => p.discordId === playerDiscordId
+    )
+  ) {
+    throw new Error("Player does not exist in the queue.");
+  }
+  const result = await db
+    .collection("Queues")
+    .updateOne(
+      { queueId },
+      { $pull: { players: { discordId: playerDiscordId } } }
+    );
+  updateMatchAction();
   return result;
 }
