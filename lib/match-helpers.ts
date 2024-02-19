@@ -1,7 +1,6 @@
 import { MapResult, Match, MatchPlayer, Player } from "@/types/types";
 
 import clientPromise from "@/lib/mongodb";
-import updateMatchAction from "@/app/actions";
 
 export async function getMatches() {
   const client = await clientPromise;
@@ -36,8 +35,6 @@ export async function addPlayerToQueue(queueId: string, player: MatchPlayer) {
   const result = await db
     .collection("Queues")
     .updateOne({ queueId }, { $push: { players: player } });
-  console.log("Added player to queue: ", result);
-  updateMatchAction();
   return result;
 }
 
@@ -62,6 +59,5 @@ export async function removePlayerFromQueue(
       { queueId },
       { $pull: { players: { discordId: playerDiscordId } } }
     );
-  updateMatchAction();
   return result;
 }
