@@ -1,3 +1,4 @@
+"use client";
 import { Button } from "@/components/ui/button";
 import { EloTier } from "@/types/types";
 import { Users } from "lucide-react";
@@ -15,6 +16,9 @@ export default function QueueButton({
   playersInQueue: number;
   teamSize: number;
 }) {
+  function handleQueue() {
+    console.log("Queueing for", eloTier);
+  }
   return (
     <div className="flex items-center gap-4">
       <span className="hidden md:block">
@@ -27,7 +31,7 @@ export default function QueueButton({
           {minElo}-{maxElo}
         </p>
       </div>
-      <Button className="w-28" variant={"secondary"}>
+      <Button className="w-28" variant={"secondary"} onClick={handleQueue}>
         Queue {playersInQueue}/{teamSize * 2}
       </Button>
     </div>

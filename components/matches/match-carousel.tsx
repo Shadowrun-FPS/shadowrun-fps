@@ -7,7 +7,7 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel";
 import { Match } from "@/types/types";
-import QueueCard from "./queue-card";
+import QueueCard from "../queue/queue-card";
 
 export default function MatchCarousel({
   className,
