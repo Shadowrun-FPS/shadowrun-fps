@@ -7,6 +7,7 @@ const rankIcons: { [char: string]: string } = {
   Gold: "03_gold",
   Diamond: "diamond_v002",
   Platinum: "platinum_v002",
+  Obsidian: "obsidian",
 };
 
 function getPlayerRank(elo: number): EloRankGroup {
@@ -18,8 +19,10 @@ function getPlayerRank(elo: number): EloRankGroup {
     return "Gold";
   } else if (elo >= 1500 && elo <= 1799) {
     return "Platinum";
-  } else if (elo >= 1800 && elo <= 3000) {
+  } else if (elo >= 1800 && elo <= 2299) {
     return "Diamond";
+  } else if (elo >= 2300 && elo <= 3000) {
+    return "Obsidian";
   }
   return "Bronze";
 }
