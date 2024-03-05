@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react";
+import React from "react";
 import clientPromise from "@/lib/mongodb";
 import Image from "next/image";
 import { Map, MapResult, MatchPlayer } from "@/types/types";

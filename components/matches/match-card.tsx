@@ -10,7 +10,7 @@ import { Match } from "@/types/types";
 
 import Link from "next/link";
 import { Button } from "../ui/button";
-import MatchButton from "./match-button";
+
 interface MatchCardProps {
   match: Match;
   className?: string;
