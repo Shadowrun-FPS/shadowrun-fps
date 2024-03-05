@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { EloTier, MatchPlayer } from "@/types/types";
 import { Users } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useToast } from "@/components/ui/use-toast";
 
 type QueueButtonProps = {
   queueId: string;
@@ -23,6 +24,7 @@ export default function QueueButton({
   teamSize,
 }: QueueButtonProps) {
   const { data: session } = useSession();
+  const { toast } = useToast();
 
   const discordId = session?.user?.id;
   const discordNickname = session?.user?.nickname;
@@ -32,9 +34,21 @@ export default function QueueButton({
   );
 
   async function handleClick() {
+    if (!discordId) {
+      // display toast notification that the user needs to login to queue
+      toast({
+        title: "Unable to join queue",
+        description: "Please login to join the queue",
+      });
+      return;
+    }
     if (isPlayerInQueue) {
       // Leave queue
       await handleLeaveQueue(queueId, discordId);
+      toast({
+        title: "Successfully left queue",
+        description: "You have been removed from the queue",
+      });
     } else {
       // Join queue
       if (discordId && discordNickname) {
@@ -43,6 +57,10 @@ export default function QueueButton({
           discordNickname,
         };
         await handleJoinQueue(queueId, newPlayer);
+        toast({
+          title: "Successfully joined queue",
+          description: "You have been added to the queue",
+        });
       }
     }
   }
