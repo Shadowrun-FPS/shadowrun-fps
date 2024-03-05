@@ -3,6 +3,7 @@ import { Match } from "@/types/types";
 import { Metadata } from "next";
 import MatchDetailsCard from "./match-details-card";
 import MapCardList from "@/components/matches/map-card-list";
+import PlayerList from "@/components/player/player-list";
 
 export const metadata: Metadata = {
   title: "View Match Details",
@@ -35,13 +36,12 @@ export default async function MatchDetailsPage({
       <div className="grid items-center gap-4">No Match Found {matchId}</div>
     );
   }
+  // TODO: add players in match to header
   return (
     <div className="grid gap-8 mb-12">
-      <div className="grid gap-4 p-4">
-        <h1 className="text-3xl font-extrabold">
-          Match Details: {match.title}
-        </h1>
-        <div>
+      <h1 className="text-3xl font-extrabold">Match Details: {match.title}</h1>
+      <div id="match-detail-header" className="grid gap-4 md:grid-cols-2">
+        <div className="prose dark:prose-invert">
           <p>
             <strong>Status:</strong> {match.status}
           </p>
@@ -54,6 +54,11 @@ export default async function MatchDetailsPage({
             </p>
           )}
         </div>
+        <PlayerList
+          className="grid w-[350px] md:grid-cols-2"
+          players={match.players}
+          teamSize={match.teamSize}
+        />
       </div>
       <div className="grid justify-center m-8">
         <MapCardList

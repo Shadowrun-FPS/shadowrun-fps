@@ -6,7 +6,6 @@ type MatchListProps = {
 };
 
 export default function MatchList({ matches }: MatchListProps) {
-  console.log({ matches });
   // Split up matches by team size, only supports duos, trios and quads for now
   const duos = matches.filter((match) => match.teamSize === 2);
   const trios = matches.filter((match) => match.teamSize === 3);
