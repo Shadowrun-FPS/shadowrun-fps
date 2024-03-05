@@ -10,6 +10,7 @@ export default async function PlayerItem({
   matchTeamSize: number;
 }) {
   const playerData = await getPlayerInfo(discordId);
+  // TODO: show elo number with difference from last match
   //   console.log("playerData", playerData, discordId);
   if (playerData === null)
     return (

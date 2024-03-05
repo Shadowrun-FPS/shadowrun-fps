@@ -1,30 +1,27 @@
 import PlayerItem from "@/components/player/player-item";
-import { Match, Player } from "@/types/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { MatchPlayer } from "@/types/types";
 
 interface PlayerListProps {
-  match: Match;
   className?: string;
+  players: MatchPlayer[];
+  teamSize: number;
 }
 
-export default function PlayerList({ match, className }: PlayerListProps) {
+export default function PlayerList({
+  className,
+  players,
+  teamSize,
+}: PlayerListProps) {
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle>Players</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul>
-          {match.players.map((player: Player, index: number) => (
-            <li key={index} className="mb-1">
-              <PlayerItem
-                discordId={player.discordId}
-                matchTeamSize={match.teamSize}
-              />
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+    <div className="grid gap-4">
+      <h2 className="text-3xl font-bold">Players</h2>
+      <ul className={className}>
+        {players.map((player: MatchPlayer, index: number) => (
+          <li key={index} className="mb-1">
+            <PlayerItem discordId={player.discordId} matchTeamSize={teamSize} />
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

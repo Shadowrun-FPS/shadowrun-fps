@@ -57,7 +57,7 @@ export function SubmitScoresForm({
 }) {
   const { toast } = useToast();
   const { data: session } = useSession();
-  const userName = session?.user?.name;
+  const userNickname = session?.user.nickname;
   const params = useParams<{ matchId: string }>();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,17 +73,16 @@ export function SubmitScoresForm({
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(
+    values: z.infer<typeof formSchema>,
+    userNickname: string
+  ) {
     const matchId = params.matchId;
-    if (!userName) {
-      return console.error("No user name");
-    }
     if (Object.keys(form.formState.errors).length > 0) {
       console.error("Cannot submit. Form has errors ", form.formState.errors);
       return;
     }
-    // SUCCESS path
-    await handleSubmit(matchId, index, userName, values);
+    await handleSubmit(matchId, index, userNickname, values);
     toast({
       title: "Map results submitted successfully",
       description: (
@@ -97,7 +96,7 @@ export function SubmitScoresForm({
             rounds.
           </p>
           <p>
-            <strong>Submitted by:</strong> {userName}
+            <strong>Submitted by:</strong> {userNickname}
           </p>
         </>
       ),
@@ -108,7 +107,12 @@ export function SubmitScoresForm({
   return (
     <Form {...form}>
       <form
-        onSubmit={form.handleSubmit((data) => onSubmit(data))}
+        onSubmit={form.handleSubmit((data) => {
+          if (!userNickname) {
+            return console.error("No user name");
+          }
+          onSubmit(data, userNickname);
+        })}
         className="space-y-8"
       >
         <FormField

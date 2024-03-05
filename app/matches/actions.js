@@ -1,6 +1,11 @@
 "use server";
-import { addMatch } from "@/lib/match-helpers";
+import {
+  addMatch,
+  removePlayerFromQueue,
+  addPlayerToQueue,
+} from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
+import { revalidateTag } from "next/cache";
 
 export async function handleSubmit(values) {
   const newMatch = {
@@ -14,5 +19,21 @@ export async function handleSubmit(values) {
     players: [],
   };
   const response = await addMatch(newMatch);
+  return response;
+}
+
+export async function handleJoinQueue(queueId, player) {
+  const response = await addPlayerToQueue(queueId, player);
+  // check if queue is full then start match
+  // TODO: remove players from other queues if one they are in starts
+  revalidateTag("queues");
+
+  return response;
+}
+
+export async function handleLeaveQueue(queueId, playerDiscordId) {
+  const response = await removePlayerFromQueue(queueId, playerDiscordId);
+  revalidateTag("queues");
+
   return response;
 }

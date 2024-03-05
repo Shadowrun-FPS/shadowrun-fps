@@ -55,6 +55,7 @@ const handler = NextAuth({
           ...session.user,
           id: userId,
           global_name: user.global_name,
+          nickname: guild.nick ?? user.global_name ?? user?.name,
         };
         session.user.guild = guild;
       }

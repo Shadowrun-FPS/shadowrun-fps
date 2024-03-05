@@ -1,16 +1,19 @@
-import { MapResults } from "@/types/types";
+import { MapResult } from "@/types/types";
 
-export function DisplayMapResults({ result }: { result: MapResults }) {
+export function DisplayMapResults({ result }: { result?: MapResult }) {
+  if (!result) return null;
+  const winner =
+    result.scores.team1.rounds > result.scores.team2.rounds
+      ? "Team 1"
+      : "Team 2";
+  const scoredBy = result.scoredBy;
+  const team1Rounds = result.scores.team1.rounds;
+  const team2Rounds = result.scores.team2.rounds;
   return (
     <div className="prose dark:prose-invert">
-      <h3>Map: {result.map}</h3>
-      <p>Scored By: {result.scoredBy}</p>
-      <div>
-        Team 1: {result.scores.team1.team} {result.scores.team1.rounds} rounds.
-      </div>
-      <div>
-        Team 2: {result.scores.team2.team} {result.scores.team2.rounds} rounds.
-      </div>
+      <p className="text-xs">
+        {scoredBy}: {winner} wins {team1Rounds}/{team2Rounds}
+      </p>
     </div>
   );
 }

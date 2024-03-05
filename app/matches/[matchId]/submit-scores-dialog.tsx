@@ -12,7 +12,13 @@ import { SubmitScoresForm } from "./submit-scores-form";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 
-export default function SubmitScoresDialog({ index }: { index: number }) {
+export default function SubmitScoresDialog({
+  index,
+  team,
+}: {
+  index: number;
+  team: string;
+}) {
   const [open, setOpen] = useState(false);
   const { status } = useSession();
   const isSignedIn = status === "authenticated";
@@ -29,7 +35,7 @@ export default function SubmitScoresDialog({ index }: { index: number }) {
           disabled={!isSignedIn}
           onClick={() => setOpen(true)}
         >
-          {isSignedIn ? "Submit Scores" : "Login to Submit Scores"}
+          {team}
         </Button>
       </DialogTrigger>
       <DialogContent>

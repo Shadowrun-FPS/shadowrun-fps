@@ -17,6 +17,12 @@ export type Player = {
   stats: PlayerStats[];
 };
 
+export type MatchPlayer = {
+  discordId: string;
+  discordNickname: string;
+  team?: TeamNumber;
+};
+
 export type PlayerInfo = {
   team: string;
   kills: number;
@@ -33,9 +39,10 @@ export type Map = {
   src: string;
 };
 
-export type MapResults = {
+export type MapResult = {
   map: 1 | 2 | 3;
   scoredBy: string;
+  team?: TeamNumber;
   scores: {
     team1: TeamScore;
     team2: TeamScore;
@@ -44,25 +51,40 @@ export type MapResults = {
 
 export type TeamScore = { rounds: number; team: Team };
 
+export type TeamNumber = "Team 1" | "Team 2";
+
 export type Team = "RNA" | "Lineage";
 
 export type Match = {
   matchId: string;
   title: string;
-  gameType: "ranked" | "casual" | "public";
+  gameType: GameType;
   status: MatchStatus;
   maps: Map[];
-  players: Player[];
+  players: MatchPlayer[];
   teamSize: number;
-  createdBy: string;
+  coinFlip: TeamNumber;
   createdTS: number;
-  eloTier: "low" | "medium" | "high";
-  anonymous: boolean;
-  results?: MapResults[];
+  eloTier: EloTier;
+  results?: MapResult[];
   winner?: string;
 };
 
-export type MatchStatus = "queue" | "in-progress" | "complete";
+export type Queue = {
+  queueId: string;
+  gameType: GameType;
+  players: MatchPlayer[];
+  eloTier: EloTier;
+  teamSize: number;
+  minElo: number;
+  maxElo: number;
+};
+
+export type GameType = "ranked" | "casual" | "public";
+
+export type EloTier = "low" | "medium" | "high";
+
+export type MatchStatus = "ready-check" | "in-progress" | "complete";
 
 export type EloRank =
   | "Bronze V"
