@@ -120,3 +120,19 @@ export async function removePlayersFromQueue(
     .updateOne({ queueId }, { $pull: { players: { $in: players } } });
   return result;
 }
+
+export async function markPlayerAsReady(
+  matchId: string,
+  discordId: string,
+  isReady: boolean
+) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const result = await db
+    .collection("Matches")
+    .updateOne(
+      { matchId, "players.discordId": discordId },
+      { $set: { "players.$.isReady": isReady } }
+    );
+  return result;
+}

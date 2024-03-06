@@ -3,6 +3,7 @@ import {
   addMatch,
   removePlayerFromQueue,
   addPlayerToQueue,
+  markPlayerAsReady,
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
@@ -33,6 +34,11 @@ export async function handleJoinQueue(queueId, player) {
 export async function handleLeaveQueue(queueId, playerDiscordId) {
   const response = await removePlayerFromQueue(queueId, playerDiscordId);
   revalidateTag("queues");
+  return response;
+}
 
+export async function handleReadyCheck(matchId, player, isReady) {
+  const response = await markPlayerAsReady(matchId, player, isReady);
+  revalidateTag("readycheck_" + matchId);
   return response;
 }

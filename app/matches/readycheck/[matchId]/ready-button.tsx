@@ -1,9 +1,13 @@
 "use client";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, CircleSlash } from "lucide-react";
-import { useEffect, useState } from "react";
+import { handleReadyCheck } from "@/app/matches/actions";
+import { useSession } from "next-auth/react";
 
-export default function ReadyButton() {
+export default function ReadyButton({ matchId }: { matchId: string }) {
+  const { data: session } = useSession();
+
   const [isReady, setIsReady] = useState(false);
   // TODO: have countdown timer started on match start and distributed to all clients
   const [timeLeft, setTimeLeft] = useState(240); // 4 minutes in seconds
@@ -20,6 +24,7 @@ export default function ReadyButton() {
   const handleReadyClick = () => {
     setIsReady(!isReady);
     // Update the current player's ready status
+    handleReadyCheck(matchId, session?.user.id, isReady);
   };
   return (
     <div className="flex flex-col items-center justify-center gap-4">
@@ -30,11 +35,11 @@ export default function ReadyButton() {
       >
         {isReady ? (
           <div className="flex items-center gap-2">
-            Ready <CheckCircle />
+            Ready <CheckCircle color="#10B981" />
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            Unready <CircleSlash />
+            Unready <CircleSlash color="#EF4444" />
           </div>
         )}
       </Button>
