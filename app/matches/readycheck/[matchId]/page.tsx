@@ -32,7 +32,7 @@ export default async function ReadyCheckPage({
     <div className="container grid gap-4">
       <h1 className="text-5xl font-bold">Ready Check</h1>
       <div className="grid gap-16 md:grid-cols-2">
-        <ReadyButton matchId={matchId} />
+        <ReadyButton matchId={matchId} players={match.players} />
         <div>
           <h2 className="text-3xl font-bold">Players</h2>
           {players.map((player, index) => (
