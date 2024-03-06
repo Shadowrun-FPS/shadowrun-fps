@@ -1,5 +1,6 @@
 "use client";
 import { Button } from "@/components/ui/button";
+import { CheckCircle, CircleSlash } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ReadyButton() {
@@ -17,14 +18,25 @@ export default function ReadyButton() {
   }, [isReady, timeLeft]);
 
   const handleReadyClick = () => {
-    setIsReady(true);
+    setIsReady(!isReady);
     // Update the current player's ready status
   };
   return (
     <div className="flex flex-col items-center justify-center gap-4">
       <p>You have {timeLeft} seconds to mark yourself as ready.</p>
-      <Button onClick={handleReadyClick} disabled={isReady}>
-        {isReady ? "Ready" : "Mark as Ready"}
+      <Button
+        onClick={handleReadyClick}
+        variant={isReady ? "default" : "destructive"}
+      >
+        {isReady ? (
+          <div className="flex items-center gap-2">
+            Ready <CheckCircle />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            Unready <CircleSlash />
+          </div>
+        )}
       </Button>
     </div>
   );
