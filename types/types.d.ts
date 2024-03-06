@@ -63,7 +63,7 @@ export type Match = {
   maps: Map[];
   players: MatchPlayer[];
   teamSize: number;
-  coinFlip: TeamNumber;
+  coinFlip?: TeamNumber;
   createdTS: number;
   eloTier: EloTier;
   results?: MapResult[];

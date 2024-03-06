@@ -24,10 +24,9 @@ export async function handleSubmit(values) {
 
 export async function handleJoinQueue(queueId, player) {
   const response = await addPlayerToQueue(queueId, player);
-  // check if queue is full then start match
   // TODO: remove players from other queues if one they are in starts
   revalidateTag("queues");
-
+  console.log("Add Player to Queue Response", response);
   return response;
 }
 
