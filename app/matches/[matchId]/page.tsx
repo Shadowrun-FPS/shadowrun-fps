@@ -1,26 +1,11 @@
-import clientPromise from "@/lib/mongodb";
-import { Match } from "@/types/types";
 import { Metadata } from "next";
 import MapCardList from "@/components/matches/map-card-list";
 import PlayerList from "@/components/player/player-list";
 import MatchDetails from "@/components/matches/match-details";
+import { getMatchDetails } from "@/lib/match-helpers";
 
 export const metadata: Metadata = {
   title: "View Match Details",
-};
-
-const getMatchDetails = async (matchId: string) => {
-  try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
-    const matchData = await db
-      .collection("Matches")
-      .findOne({ matchId: matchId });
-    return matchData as unknown as Match;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
 };
 
 export default async function MatchDetailsPage({

@@ -21,6 +21,7 @@ export type MatchPlayer = {
   discordId: string;
   discordNickname: string;
   team?: TeamNumber;
+  isReady?: boolean;
 };
 
 export type PlayerInfo = {

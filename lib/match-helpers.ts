@@ -10,6 +10,20 @@ export async function getMatches() {
   return matches as unknown as Match[];
 }
 
+export async function getMatchDetails(matchId: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
+    const matchData = await db
+      .collection("Matches")
+      .findOne({ matchId: matchId });
+    return matchData as unknown as Match;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
+
 export async function addMatch(match: Match) {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
