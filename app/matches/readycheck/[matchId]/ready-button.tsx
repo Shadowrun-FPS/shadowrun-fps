@@ -20,7 +20,7 @@ export default function ReadyButton({
   const { toast } = useToast();
   const existingPlayer = players.find((p) => p.discordId === discordId);
   const [isReady, setIsReady] = useState(existingPlayer?.isReady || false);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(-1);
   // TODO: have countdown timer started on match start and distributed to all clients
   const timerStatus = isReady ? "stop" : "start";
 

@@ -5,6 +5,7 @@ import {
   addPlayerToQueue,
   markPlayerAsReady,
   getReadyCheckTime,
+  handleMatchStart,
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
@@ -30,7 +31,7 @@ export async function handleJoinQueue(queueId: string, player: MatchPlayer) {
   // TODO: remove players from other queues if one they are in starts
   revalidateTag("queues");
   console.log("Add Player to Queue Response", response);
-  return response;
+  return JSON.parse(JSON.stringify(response));
 }
 
 export async function handleLeaveQueue(
@@ -38,6 +39,16 @@ export async function handleLeaveQueue(
   playerDiscordId: string
 ) {
   const response = await removePlayerFromQueue(queueId, playerDiscordId);
+  revalidateTag("queues");
+  return response;
+}
+
+export async function triggerMatchStart(
+  queue: any,
+  selectedPlayers: MatchPlayer[]
+) {
+  console.log("Triggering match start", queue, selectedPlayers);
+  const response = await handleMatchStart(queue, selectedPlayers);
   revalidateTag("queues");
   return response;
 }

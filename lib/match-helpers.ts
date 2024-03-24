@@ -2,12 +2,7 @@ import { MapResult, Match, MatchPlayer, Queue } from "@/types/types";
 
 import clientPromise from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
-
-type TimerMap = {
-  [matchId: string]: number;
-};
-
-const activeTimers: TimerMap = {};
+import { getTimer, setTimer } from "@/app/matches/timers";
 
 export async function getMatches() {
   const client = await clientPromise;
@@ -56,15 +51,13 @@ export async function addPlayerToQueue(queueId: string, player: MatchPlayer) {
     }
     console.log("Adding player to queue", existingQueue, player);
     const players = existingQueue.players.concat(player);
-    // Check if queue is full, if so, start the match
-    if (players.length + 1 >= existingQueue.teamSize * 2) {
-      console.log("Queue is full, starting match");
-      const selectedPlayers = players.slice(0, existingQueue.teamSize * 2);
-      handleMatchStart(existingQueue as unknown as Queue, selectedPlayers);
-    }
     const result = await db
       .collection("Queues")
-      .updateOne({ queueId }, { $set: { players: players } });
+      .findOneAndUpdate(
+        { queueId },
+        { $set: { players: players } },
+        { returnDocument: "after" }
+      );
     return result;
   }
 }
@@ -111,6 +104,7 @@ export async function handleMatchStart(
     results: [],
   };
   await addMatch(match);
+
   // Remove players from queue
   // TODO: comment back in after testing
   // await removePlayersFromQueue(queue.queueId, selectedPlayers);
@@ -118,6 +112,7 @@ export async function handleMatchStart(
   // Start match ready check
   const result = await startReadyCheck(match.matchId);
   console.log("Result of start ready check", result);
+  return match;
 }
 
 export async function removePlayersFromQueue(
@@ -151,21 +146,23 @@ export async function markPlayerAsReady(
 export async function startReadyCheck(matchId: string) {
   console.log("starting match ready check");
   const defaultTime = 300; // 6 minutes
-  activeTimers[matchId] = defaultTime;
+  setTimer(matchId, defaultTime);
   decrementTimer(matchId);
   return { ok: true, message: "Match ready check started", status: 201 };
 }
 
 export async function getReadyCheckTime(matchId: string) {
-  const timeRemaining = activeTimers[matchId];
+  const timeRemaining = getTimer(matchId);
   return { ok: true, timeRemaining, status: 200 };
 }
 
 function decrementTimer(matchId: string) {
   // Decrement the timer for a match ready check
   const timer = setInterval(() => {
-    activeTimers[matchId] -= 1;
-    if (activeTimers[matchId] <= 0) {
+    let activeTimer = getTimer(matchId);
+    let updatedTime = activeTimer - 1;
+    setTimer(matchId, updatedTime);
+    if (activeTimer <= 0) {
       clearInterval(timer);
     }
   }, 1000);
