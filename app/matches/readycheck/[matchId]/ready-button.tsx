@@ -21,14 +21,11 @@ export default function ReadyButton({
   const existingPlayer = players.find((p) => p.discordId === discordId);
   const [isReady, setIsReady] = useState(existingPlayer?.isReady || false);
   const [timeLeft, setTimeLeft] = useState(-1);
-  // TODO: have countdown timer started on match start and distributed to all clients
-  const timerStatus = isReady ? "stop" : "start";
-
+  const timerStatus = isReady || timeLeft === -1 ? "stop" : "start";
   useEffect(() => {
     // Get the current time remaining
     async function getTimeRemaining() {
       const response = await getMatchReadyCheck(matchId);
-      console.log("Ready check time remaining", response);
       setTimeLeft(response.timeRemaining);
     }
     getTimeRemaining();
@@ -50,8 +47,13 @@ export default function ReadyButton({
   return (
     <div className="flex flex-col items-center justify-center gap-4">
       <p>
-        You have <Timer initialCount={timeLeft} status={timerStatus} /> seconds
-        to mark yourself as ready.
+        You have{" "}
+        <Timer
+          timeLeft={timeLeft}
+          setTimeLeft={setTimeLeft}
+          status={timerStatus}
+        />{" "}
+        seconds to mark yourself as ready.
       </p>
       <Button
         onClick={handleReadyClick}

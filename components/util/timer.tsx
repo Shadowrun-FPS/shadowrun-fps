@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
 
 interface TimerProps {
-  initialCount: number;
+  timeLeft: number;
+  setTimeLeft: React.Dispatch<React.SetStateAction<number>>;
   status: "start" | "stop";
 }
 
-const Timer: React.FC<TimerProps> = ({ initialCount, status }) => {
-  const [count, setCount] = useState(initialCount);
-
+const Timer: React.FC<TimerProps> = ({ timeLeft, setTimeLeft, status }) => {
   useEffect(() => {
     let timerId: NodeJS.Timeout;
 
     if (status === "start") {
       timerId = setInterval(() => {
-        setCount((prevCount) => prevCount - 1);
+        setTimeLeft((prevTimeLeft) => prevTimeLeft - 1);
       }, 1000);
     }
 
@@ -22,9 +21,11 @@ const Timer: React.FC<TimerProps> = ({ initialCount, status }) => {
         clearInterval(timerId);
       }
     };
-  }, [status]);
-
-  return <span>{count}</span>;
+  }, [status, setTimeLeft]);
+  if (timeLeft < 0) {
+    return null;
+  }
+  return <span>{timeLeft}</span>;
 };
 
 export default Timer;
