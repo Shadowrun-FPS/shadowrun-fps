@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 
 interface TimerProps {
   timeLeft: number;
@@ -6,7 +6,11 @@ interface TimerProps {
   status: "start" | "stop";
 }
 
-const Timer: React.FC<TimerProps> = ({ timeLeft, setTimeLeft, status }) => {
+const ReadyTimer: React.FC<TimerProps> = ({
+  timeLeft,
+  setTimeLeft,
+  status,
+}) => {
   useEffect(() => {
     let timerId: NodeJS.Timeout;
 
@@ -25,7 +29,7 @@ const Timer: React.FC<TimerProps> = ({ timeLeft, setTimeLeft, status }) => {
   if (timeLeft < 0) {
     return null;
   }
-  return <span>{timeLeft}</span>;
+  return <span>You have {timeLeft} seconds to mark yourself as ready.</span>;
 };
 
-export default Timer;
+export default ReadyTimer;

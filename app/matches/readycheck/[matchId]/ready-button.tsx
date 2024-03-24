@@ -6,7 +6,7 @@ import { getMatchReadyCheck, handleReadyCheck } from "@/app/matches/actions";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
 import { MatchPlayer } from "@/types/types";
-import Timer from "@/components/util/timer";
+import ReadyTimer from "@/components/util/timer";
 
 export default function ReadyButton({
   matchId,
@@ -18,15 +18,21 @@ export default function ReadyButton({
   const { data: session } = useSession();
   const discordId = session?.user.id;
   const { toast } = useToast();
-  const existingPlayer = players.find((p) => p.discordId === discordId);
+  const existingPlayer = players.find(
+    (p) => p.discordId === discordId
+  ) as MatchPlayer;
   const [isReady, setIsReady] = useState(existingPlayer?.isReady || false);
   const [timeLeft, setTimeLeft] = useState(-1);
+  // TODO: handle case where timeLeft hits 0 and all players aren't ready.
   const timerStatus = isReady || timeLeft === -1 ? "stop" : "start";
   useEffect(() => {
     // Get the current time remaining
     async function getTimeRemaining() {
       const response = await getMatchReadyCheck(matchId);
-      setTimeLeft(response.timeRemaining);
+      const timeRemaining = response.timeRemaining;
+      if (timeRemaining !== undefined) {
+        setTimeLeft(timeRemaining);
+      }
     }
     getTimeRemaining();
   }, [matchId]);
@@ -40,21 +46,18 @@ export default function ReadyButton({
       });
       return;
     }
-    setIsReady(!isReady);
+    const updatedReadyStatus = !isReady;
+    setIsReady(updatedReadyStatus);
     // Update the current player's ready status
-    handleReadyCheck(matchId, session?.user.id, isReady);
+    handleReadyCheck(matchId, session?.user.id, updatedReadyStatus);
   };
   return (
     <div className="flex flex-col items-center justify-center gap-4">
-      <p>
-        You have{" "}
-        <Timer
-          timeLeft={timeLeft}
-          setTimeLeft={setTimeLeft}
-          status={timerStatus}
-        />{" "}
-        seconds to mark yourself as ready.
-      </p>
+      <ReadyTimer
+        timeLeft={timeLeft}
+        setTimeLeft={setTimeLeft}
+        status={timerStatus}
+      />
       <Button
         onClick={handleReadyClick}
         variant={isReady ? "destructive" : "default"}
