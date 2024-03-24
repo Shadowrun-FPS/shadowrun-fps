@@ -4,11 +4,13 @@ import {
   removePlayerFromQueue,
   addPlayerToQueue,
   markPlayerAsReady,
+  getReadyCheckTime,
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
+import { MatchPlayer } from "@/types/types";
 
-export async function handleSubmit(values) {
+export async function handleSubmit(values: any) {
   const newMatch = {
     ...values,
     matchId: uuid(),
@@ -23,7 +25,7 @@ export async function handleSubmit(values) {
   return response;
 }
 
-export async function handleJoinQueue(queueId, player) {
+export async function handleJoinQueue(queueId: string, player: MatchPlayer) {
   const response = await addPlayerToQueue(queueId, player);
   // TODO: remove players from other queues if one they are in starts
   revalidateTag("queues");
@@ -31,14 +33,26 @@ export async function handleJoinQueue(queueId, player) {
   return response;
 }
 
-export async function handleLeaveQueue(queueId, playerDiscordId) {
+export async function handleLeaveQueue(
+  queueId: string,
+  playerDiscordId: string
+) {
   const response = await removePlayerFromQueue(queueId, playerDiscordId);
   revalidateTag("queues");
   return response;
 }
 
-export async function handleReadyCheck(matchId, player, isReady) {
-  const response = await markPlayerAsReady(matchId, player, isReady);
+export async function handleReadyCheck(
+  matchId: string,
+  discordId: string,
+  isReady: boolean
+) {
+  const response = await markPlayerAsReady(matchId, discordId, isReady);
   revalidateTag("readycheck_" + matchId);
   return response;
+}
+
+export async function getMatchReadyCheck(matchId: string) {
+  const readyCheck = await getReadyCheckTime(matchId);
+  return readyCheck;
 }

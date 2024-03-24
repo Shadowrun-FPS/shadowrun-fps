@@ -3,6 +3,12 @@ import { MapResult, Match, MatchPlayer, Queue } from "@/types/types";
 import clientPromise from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
 
+type TimerMap = {
+  [matchId: string]: number;
+};
+
+const activeTimers: TimerMap = {};
+
 export async function getMatches() {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
@@ -106,7 +112,12 @@ export async function handleMatchStart(
   };
   await addMatch(match);
   // Remove players from queue
-  await removePlayersFromQueue(queue.queueId, selectedPlayers);
+  // TODO: comment back in after testing
+  // await removePlayersFromQueue(queue.queueId, selectedPlayers);
+
+  // Start match ready check
+  const result = await startReadyCheck(match.matchId);
+  console.log("Result of start ready check", result);
 }
 
 export async function removePlayersFromQueue(
@@ -135,4 +146,27 @@ export async function markPlayerAsReady(
       { $set: { "players.$.isReady": isReady } }
     );
   return result;
+}
+
+export async function startReadyCheck(matchId: string) {
+  console.log("starting match ready check");
+  const defaultTime = 300; // 6 minutes
+  activeTimers[matchId] = defaultTime;
+  decrementTimer(matchId);
+  return { ok: true, message: "Match ready check started", status: 201 };
+}
+
+export async function getReadyCheckTime(matchId: string) {
+  const timeRemaining = activeTimers[matchId];
+  return { ok: true, timeRemaining, status: 200 };
+}
+
+function decrementTimer(matchId: string) {
+  // Decrement the timer for a match ready check
+  const timer = setInterval(() => {
+    activeTimers[matchId] -= 1;
+    if (activeTimers[matchId] <= 0) {
+      clearInterval(timer);
+    }
+  }, 1000);
 }

@@ -10,6 +10,7 @@ type QueueCardProps = {
   gameType: GameType;
 };
 
+// TODO: revalidate queues cache ever 15 seconds
 const getQueueData = unstable_cache(
   // Reference of how to cache server actions with a tag
   async (teamSize, gameType) => getQueues(teamSize, gameType),
