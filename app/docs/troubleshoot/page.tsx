@@ -91,15 +91,15 @@ export default function TroubleshootingPage() {
           If you get the error &quot;This key has been used too many
           times&quot;, then click &quot;Retry&quot;.
         </p>
-        <ul>
-          <p>
-            After that, wait for 5-10 minutes for the window to pop up to allow
-            you to type in your newly acquired key. (We're not sure why this
-            step takes so long. If you believe it fully crashed use Win-Key +
-            Tab and drag Shadowrun to a second desktop. This allows you to open
-            Task Manager and end the process.)
-          </p>
-        </ul>
+
+        <p>
+          After that, wait for 5-10 minutes for the window to pop up to allow
+          you to type in your newly acquired key. (We&apos;re not sure why this
+          step takes so long. If you believe it fully crashed use Win-Key + Tab
+          and drag Shadowrun to a second desktop. This allows you to open Task
+          Manager and end the process.)
+        </p>
+
         <br />
         <h3>Game Performance</h3>
         <p>
@@ -169,25 +169,21 @@ export default function TroubleshootingPage() {
           </li>
         </ul>
 
-        <p>
-          For max graphics quality include:
-          <ul>
-            <li>Anisotropic Filtering - 16x</li>
-            <li> Antialiasing Mode - Enhance the application setting.</li>
-            <li>Antialiasing Setting - 8x</li>
-            <li>
-              Antialiasing Transparency - 8x supersample (big difference on
-              glass floors)
-            </li>
-          </ul>
-        </p>
+        <p>For max graphics quality include:</p>
+        <ul>
+          <li>Anisotropic Filtering - 16x</li>
+          <li> Antialiasing Mode - Enhance the application setting.</li>
+          <li>Antialiasing Setting - 8x</li>
+          <li>
+            Antialiasing Transparency - 8x supersample (big difference on glass
+            floors)
+          </li>
+        </ul>
 
-        <p>
-          Optional recommendations:
-          <ul>
-            <li>Power Management Mode - Prefer Maximum Performance</li>
-          </ul>
-        </p>
+        <p>Optional recommendations:</p>
+        <ul>
+          <li>Power Management Mode - Prefer Maximum Performance</li>
+        </ul>
 
         <br />
         <h2>Getting the game</h2>
@@ -217,6 +213,7 @@ export default function TroubleshootingPage() {
         </p>
 
         <br />
+
         <h2>FPS Limiters</h2>
         <h3>Bandicam</h3>
         <ul>

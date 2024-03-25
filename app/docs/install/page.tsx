@@ -67,7 +67,14 @@ export default function InstallationPage() {
             </h2>
             <p className="mt-o not-prose">
               Parts of the game may malfunction if the fps is not limited. See
-              the Limit FPS section under In Game Preferences below.
+              the FPS Limiters section on the
+              <Link
+                data-te-nav-link-ref
+                className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
+                href="/docs/troubleshoot/#fps-limiters"
+              >
+                Troubleshooting Page
+              </Link>
             </p>
           </section>
           <section id="install-guide">
@@ -141,9 +148,10 @@ export default function InstallationPage() {
               <p>Configure Resolution and in-game Advanced Video Settings.</p>
               <ul>
                 <li>
-                  It's important to set Vertical Sync to "Disable" in the
-                  in-game Advanced Video Settings. The other settings can be
-                  changed to whatever you like, or left alone.
+                  It&apos;s important to set Vertical Sync to
+                  &quot;Disable&quot; in the in-game Advanced Video Settings.
+                  The other settings can be changed to whatever you like, or
+                  left alone.
                 </li>
               </ul>
               <Image
