@@ -36,9 +36,8 @@ export default function Home() {
       <div className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
         <div>
           <div className="mt-12 text-3xl font-bold text-center text-white md:text-5xl not-prose">
-            <h1>Featured Video</h1>
+            <h1 className="mb-4">Featured Video</h1>
           </div>
-          <p className="mb-4 text-center">(Updated January 2024)</p>
           <FeaturedVideos />
         </div>
       </div>

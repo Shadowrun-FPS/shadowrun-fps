@@ -34,10 +34,12 @@ const handler = NextAuth({
         const discordId = guildData.user.id;
         const discordNickname = guildData.nick;
         const discordProfilePicture = `https://cdn.discordapp.com/avatars/${guildData.user.id}/${guildData.user.avatar}.png`;
+        const discordRoleID = guildData.roles;
         upsertPlayerDiscordData(
           discordId,
           discordNickname,
-          discordProfilePicture
+          discordProfilePicture,
+          discordRoleID,
         );
       }
       return token;
@@ -47,7 +49,7 @@ const handler = NextAuth({
       return true;
     },
     async session({ session, token }) {
-      // console.log("session", { session, user, token });
+      console.log("session", { token });
       if (session.user !== undefined && token.guild !== undefined) {
         const { user, ...guild } = token.guild;
         const userId = user.id;
@@ -66,3 +68,4 @@ const handler = NextAuth({
 });
 
 export { handler as GET, handler as POST };
+

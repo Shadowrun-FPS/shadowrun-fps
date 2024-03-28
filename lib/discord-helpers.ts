@@ -28,12 +28,13 @@ export async function getGuildData(accessToken: string | undefined) {
 export async function upsertPlayerDiscordData(
   discordId: string,
   discordNickname: string,
-  discordProfilePicture: string
+  discordProfilePicture: string,
+  discordRoleId: string
 ) {
   try {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
-    const result = await db.collection("Players").updateOne(
+    const playerResult = await db.collection("Players").updateOne(
       { discordId },
       {
         $set: {
@@ -47,7 +48,22 @@ export async function upsertPlayerDiscordData(
       },
       { upsert: true }
     );
-    return result;
+
+    const staffAltText = `${discordNickname}'s Discord Profile Photo.`;
+    const staffResult = await db.collection("Staff").updateOne(
+      { discordId },
+      {
+        $set: {
+          discordId,
+          discordNickname,
+          discordProfilePicture,
+          discordRoleId,
+          staffAltText,
+        },
+      },
+      { upsert: true }
+    );
+    return { playerResult, staffResult };
   } catch (error) {
     console.log(error);
     return null;

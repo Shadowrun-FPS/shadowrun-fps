@@ -10,10 +10,11 @@ function MainLogo({ className }: MainLogoProps) {
   return (
     <Link className={`flex items-center gap-4 shrink-0 ${className}`} href="/">
       <Image
-        src={`/serverIcon.png`}
+        className="rounded-full shadow-lg dark:shadow-black/20"
+        src="/teleport_2.gif"
         alt={`Shadowrun Icon`}
-        width={40}
-        height={40}
+        width={50}
+        height={50}
       />
       <Image
         className="hidden md:block"
