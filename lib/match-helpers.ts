@@ -11,7 +11,7 @@ export async function getMatches() {
   return matches as unknown as Match[];
 }
 
-export async function getMatchDetails(matchId: string) {
+export async function getMatch(matchId: string) {
   try {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");

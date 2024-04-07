@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import MapCardList from "@/components/matches/map-card-list";
 import PlayerList from "@/components/player/player-list";
 import MatchDetails from "@/components/matches/match-details";
-import { getMatchDetails } from "@/lib/match-helpers";
+import { getMatch } from "@/lib/match-helpers";
 
 export const metadata: Metadata = {
   title: "View Match Details",
@@ -14,7 +14,7 @@ export default async function MatchDetailsPage({
   params: { matchId: string };
 }) {
   const matchId = params.matchId;
-  const match = await getMatchDetails(matchId);
+  const match = await getMatch(matchId);
   // console.log("match: ", matchData);
   if (match === null) {
     return (

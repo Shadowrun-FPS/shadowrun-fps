@@ -1,5 +1,5 @@
 import { Metadata } from "next";
-import { getMatchDetails } from "@/lib/match-helpers";
+import { getMatch } from "@/lib/match-helpers";
 import ReadyButton from "./ready-button";
 import PlayerItem from "@/components/player/player-item";
 import { CheckCircle, CircleSlash } from "lucide-react";
@@ -17,7 +17,7 @@ export default async function ReadyCheckPage({
 }) {
   const matchId = params.matchId;
   const getMatchData = unstable_cache(
-    async (matchId) => getMatchDetails(matchId),
+    async (matchId) => getMatch(matchId),
     [],
     { revalidate: 15, tags: ["readycheck_" + matchId] }
   );

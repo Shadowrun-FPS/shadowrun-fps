@@ -6,6 +6,7 @@ import {
   markPlayerAsReady,
   getReadyCheckTime,
   handleMatchStart,
+  getMatch,
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
@@ -59,7 +60,10 @@ export async function handleReadyCheck(
   isReady: boolean
 ) {
   const response = await markPlayerAsReady(matchId, discordId, isReady);
+  console.log("handleReadyCheck response", response);
   revalidateTag("readycheck_" + matchId);
+  // TODO: return updated match data to check if all players are ready
+  const match = await getMatch(matchId);
   return response;
 }
 
