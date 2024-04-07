@@ -5,12 +5,15 @@ import {
   addPlayerToQueue,
   markPlayerAsReady,
   getReadyCheckTime,
-  handleMatchStart,
+  handleCreateMatch,
   getMatch,
+  pickMaps,
+  updateMatch,
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
-import { MatchPlayer } from "@/types/types";
+import { Match, MatchPlayer, Player, TeamNumber, Map } from "@/types/types";
+import { getPlayersInfo } from "@/lib/player-helpers";
 
 export async function handleSubmit(values: any) {
   const newMatch = {
@@ -48,8 +51,7 @@ export async function triggerMatchStart(
   queue: any,
   selectedPlayers: MatchPlayer[]
 ) {
-  console.log("Triggering match start", queue, selectedPlayers);
-  const response = await handleMatchStart(queue, selectedPlayers);
+  const response = await handleCreateMatch(queue, selectedPlayers);
   revalidateTag("queues");
   return response;
 }
@@ -60,10 +62,14 @@ export async function handleReadyCheck(
   isReady: boolean
 ) {
   const response = await markPlayerAsReady(matchId, discordId, isReady);
-  console.log("handleReadyCheck response", response);
   revalidateTag("readycheck_" + matchId);
-  // TODO: return updated match data to check if all players are ready
+  // TODO: initiate start match logic if all players are ready
   const match = await getMatch(matchId);
+  if (match?.players.every((p) => p.isReady)) {
+    console.log("All players are ready, starting match");
+    handleMatchMaking(match);
+    // navigate to match page
+  }
   return response;
 }
 
@@ -71,3 +77,51 @@ export async function getMatchReadyCheck(matchId: string) {
   const readyCheck = await getReadyCheckTime(matchId);
   return readyCheck;
 }
+
+export async function handleMatchMaking(match: Match) {
+  // console.log("Starting match making", match.matchId);
+  const { players, teamSize } = match;
+
+  const matchPlayers = await createBalancedTeams(players, teamSize);
+  match.players = matchPlayers;
+  const maps = (await pickMaps()) as unknown as Map[];
+  match.maps = maps;
+  await updateMatch(match);
+}
+
+async function createBalancedTeams(
+  matchPlayers: MatchPlayer[],
+  teamSize: number
+) {
+  const players = await getPlayersInfo(matchPlayers.map((p) => p.discordId));
+  if (players?.length === 0 || players === null)
+    throw new Error("No players found");
+
+  players.sort(
+    (a, b) => getEloForTeamSize(b, teamSize) - getEloForTeamSize(a, teamSize)
+  );
+
+  const teams: [Player[], Player[]] = [[], []];
+
+  players.forEach((player) => {
+    const teamElos = teams.map((team) =>
+      team.reduce((total, p) => total + getEloForTeamSize(p, teamSize), 0)
+    );
+    const teamIndex = teamElos[0] > teamElos[1] ? 1 : 0;
+    teams[teamIndex].push(player);
+  });
+
+  matchPlayers.forEach((p) => {
+    const teamIndex = teams.findIndex((t) =>
+      t.some((player) => player.discordId === p.discordId)
+    );
+    p.team = `Team ${teamIndex + 1}` as TeamNumber;
+  });
+
+  return matchPlayers;
+}
+
+const getEloForTeamSize = (player: Player, teamSize: number): number => {
+  const stat = player.stats.find((s) => s.teamSize === teamSize);
+  return stat ? stat.elo : 0;
+};

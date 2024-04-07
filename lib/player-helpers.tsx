@@ -16,3 +16,19 @@ export const getPlayerInfo = async (
     return null;
   }
 };
+
+export const getPlayersInfo = async (
+  discordIds: string[] | undefined
+): Promise<Player[] | null> => {
+  try {
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
+    const players = await db
+      .collection("Players")
+      .find({ discordId: { $in: discordIds } })
+      .toArray();
+    return players as unknown as Player[];
+  } catch (error) {
+    return null;
+  }
+};

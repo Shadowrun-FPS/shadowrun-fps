@@ -86,7 +86,7 @@ export async function removePlayerFromQueue(
   return result;
 }
 
-export async function handleMatchStart(
+export async function handleCreateMatch(
   queue: Queue,
   selectedPlayers: MatchPlayer[]
 ) {
@@ -143,6 +143,15 @@ export async function markPlayerAsReady(
   return result;
 }
 
+export async function updateMatch(match: Match) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const result = await db
+    .collection("Matches")
+    .updateOne({ matchId: match.matchId }, { $set: match });
+  return result;
+}
+
 export async function startReadyCheck(matchId: string) {
   console.log("starting match ready check");
   const defaultTime = 300; // 6 minutes
@@ -166,4 +175,14 @@ function decrementTimer(matchId: string) {
       clearInterval(timer);
     }
   }, 1000);
+}
+
+export async function pickMaps() {
+  // Pick 3 random maps
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const maps = await db
+    .collection("Maps")
+    .aggregate([{ $sample: { size: 3 } }]);
+  return maps.toArray();
 }
