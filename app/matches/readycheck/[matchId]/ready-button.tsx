@@ -1,12 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { CheckCircle, CircleSlash } from "lucide-react";
-import { getMatchReadyCheck, handleReadyCheck } from "@/app/matches/actions";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { CheckCircle, CircleSlash } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { MatchPlayer } from "@/types/types";
 import ReadyTimer from "@/components/util/timer";
+
+import {
+  getMatchData,
+  getMatchReadyCheck,
+  handleReadyCheck,
+} from "@/app/matches/actions";
+
+import { Match, MatchPlayer } from "@/types/types";
 
 export default function ReadyButton({
   matchId,
@@ -15,6 +23,7 @@ export default function ReadyButton({
   matchId: string;
   players: MatchPlayer[];
 }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const discordId = session?.user.id;
   const { toast } = useToast();
@@ -37,7 +46,7 @@ export default function ReadyButton({
     getTimeRemaining();
   }, [matchId]);
 
-  const handleReadyClick = () => {
+  const handleReadyClick = async () => {
     if (!discordId) {
       console.error("No discordId found for user");
       toast({
@@ -49,8 +58,14 @@ export default function ReadyButton({
     const updatedReadyStatus = !isReady;
     setIsReady(updatedReadyStatus);
     // Update the current player's ready status
-    handleReadyCheck(matchId, session?.user.id, updatedReadyStatus);
+    await handleReadyCheck(matchId, session?.user.id, updatedReadyStatus);
+    const updatedMatch = await getMatchData(matchId);
+    if (updatedMatch?.status === "in-progress") {
+      // navigate to the match page
+      router.push(`/matches/${matchId}`);
+    }
   };
+
   return (
     <div className="flex flex-col items-center justify-center gap-4">
       <ReadyTimer

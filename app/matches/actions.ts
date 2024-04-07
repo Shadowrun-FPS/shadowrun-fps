@@ -8,12 +8,19 @@ import {
   handleCreateMatch,
   getMatch,
   pickMaps,
-  updateMatch,
+  updateMatchPlayers,
+  updateMatchMaps,
+  updateMatchStatus,
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
 import { Match, MatchPlayer, Player, TeamNumber, Map } from "@/types/types";
 import { getPlayersInfo } from "@/lib/player-helpers";
+
+export async function getMatchData(matchId: string) {
+  const response = await getMatch(matchId);
+  return JSON.parse(JSON.stringify(response));
+}
 
 export async function handleSubmit(values: any) {
   const newMatch = {
@@ -34,7 +41,7 @@ export async function handleJoinQueue(queueId: string, player: MatchPlayer) {
   const response = await addPlayerToQueue(queueId, player);
   // TODO: remove players from other queues if one they are in starts
   revalidateTag("queues");
-  console.log("Add Player to Queue Response", response);
+  // console.log("Add Player to Queue Response", response);
   return JSON.parse(JSON.stringify(response));
 }
 
@@ -67,8 +74,7 @@ export async function handleReadyCheck(
   const match = await getMatch(matchId);
   if (match?.players.every((p) => p.isReady)) {
     console.log("All players are ready, starting match");
-    handleMatchMaking(match);
-    // navigate to match page
+    await handleMatchMaking(match);
   }
   return response;
 }
@@ -83,10 +89,10 @@ export async function handleMatchMaking(match: Match) {
   const { players, teamSize } = match;
 
   const matchPlayers = await createBalancedTeams(players, teamSize);
-  match.players = matchPlayers;
+  await updateMatchPlayers(match.matchId, matchPlayers);
   const maps = (await pickMaps()) as unknown as Map[];
-  match.maps = maps;
-  await updateMatch(match);
+  await updateMatchMaps(match.matchId, maps);
+  await updateMatchStatus(match.matchId, "in-progress");
 }
 
 async function createBalancedTeams(

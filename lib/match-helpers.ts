@@ -143,12 +143,33 @@ export async function markPlayerAsReady(
   return result;
 }
 
-export async function updateMatch(match: Match) {
+export async function updateMatchPlayers(
+  matchId: string,
+  players: MatchPlayer[]
+) {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
   const result = await db
     .collection("Matches")
-    .updateOne({ matchId: match.matchId }, { $set: match });
+    .updateOne({ matchId }, { $set: { players } });
+  return result;
+}
+
+export async function updateMatchMaps(matchId: string, maps: any) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const result = await db
+    .collection("Matches")
+    .updateOne({ matchId }, { $set: { maps } });
+  return result;
+}
+
+export async function updateMatchStatus(matchId: string, status: string) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+  const result = await db
+    .collection("Matches")
+    .updateOne({ matchId }, { $set: { status } });
   return result;
 }
 
