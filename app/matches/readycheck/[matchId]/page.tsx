@@ -19,7 +19,7 @@ export default async function ReadyCheckPage({
   const getMatchData = unstable_cache(
     async (matchId) => getMatchDetails(matchId),
     [],
-    { tags: ["readycheck_" + matchId] }
+    { revalidate: 15, tags: ["readycheck_" + matchId] }
   );
   const match = await getMatchData(matchId);
   // console.log("render ready check page", matchId, match);
