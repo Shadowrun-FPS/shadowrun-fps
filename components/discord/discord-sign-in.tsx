@@ -2,12 +2,20 @@
 import React from "react";
 import { Button } from "@/components/ui/button";
 import Spinner from "@/components/util/spinner";
-
 import IconDiscordLogo from "../icons/discord-logo";
 import { signIn, signOut } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
 import { useSession } from "next-auth/react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuShortcut,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogOut } from "lucide-react";
 
 const DiscordSignIn: React.FC = () => {
   const { data: session, status } = useSession();
@@ -34,18 +42,28 @@ const DiscordSignIn: React.FC = () => {
     }
     return (
       <>
-        <Avatar>
-          <AvatarImage src={avatarSrc} />
-          <AvatarFallback>{user.name}</AvatarFallback>
-        </Avatar>
-        <Button
-          className={"gap-2 min-w-fit bg-red-500"}
-          variant="outline"
-          onClick={handleSignOut}
-        >
-          <IconDiscordLogo height={"2em"} width={"2em"} />
-          <span className="hidden md:block">Sign out</span>
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <Avatar>
+              <AvatarImage src={avatarSrc} />
+              <AvatarFallback>{user.name}</AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <Button
+                className={"gap-2 min-w-fit bg-red-500"}
+                variant="outline"
+                onClick={handleSignOut}
+              >
+                <IconDiscordLogo height={"2em"} width={"2em"} />
+                <span className="hidden md:block">Sign out</span>
+              </Button>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </>
     );
   } else {
