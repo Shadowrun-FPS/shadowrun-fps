@@ -61,7 +61,6 @@ export default function QueueButton({
           discordNickname,
         };
         const queue = await handleJoinQueue(queueId, newPlayer);
-        console.log("handleJoinQueue queue", queue);
         toast({
           title: "Successfully joined queue",
           description: "You have been added to the queue",
@@ -75,7 +74,6 @@ export default function QueueButton({
     const players = queue.players;
     // Check if queue is full, if so, start the match
     if (players.length + 1 >= queue.teamSize * 2) {
-      console.log("Queue is full, starting match");
       const selectedPlayers = players.slice(0, queue.teamSize * 2);
       const match = await triggerMatchStart(
         queue as unknown as Queue,

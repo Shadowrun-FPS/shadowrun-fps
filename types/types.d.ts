@@ -85,7 +85,7 @@ export type GameType = "ranked" | "casual" | "public";
 
 export type EloTier = "low" | "medium" | "high";
 
-export type MatchStatus = "ready-check" | "in-progress" | "complete";
+export type MatchStatus = "ready-check" | "in-progress" | "complete" | "queue";
 
 export type EloRank =
   | "Bronze V"

@@ -104,14 +104,8 @@ export async function handleCreateMatch(
     results: [],
   };
   await addMatch(match);
-
-  // Remove players from queue
-  // TODO: comment back in after testing
-  // await removePlayersFromQueue(queue.queueId, selectedPlayers);
-
-  // Start match ready check
-  const result = await startReadyCheck(match.matchId);
-  console.log("Result of start ready check", result);
+  await removePlayersFromQueue(queue.queueId, selectedPlayers);
+  await startReadyCheck(match.matchId);
   return match;
 }
 

@@ -14,21 +14,36 @@ import {
 } from "@/lib/match-helpers";
 import { uuid } from "uuidv4";
 import { revalidateTag } from "next/cache";
-import { Match, MatchPlayer, Player, TeamNumber, Map } from "@/types/types";
+import {
+  Match,
+  MatchPlayer,
+  Player,
+  TeamNumber,
+  Map,
+  GameType,
+  EloTier,
+} from "@/types/types";
 import { getPlayersInfo } from "@/lib/player-helpers";
+
+type MatchFormValues = {
+  gameType: GameType;
+  teamSize: number[];
+  eloTier: EloTier;
+  anonymous: boolean;
+};
 
 export async function getMatchData(matchId: string) {
   const response = await getMatch(matchId);
   return JSON.parse(JSON.stringify(response));
 }
 
-export async function handleSubmit(values: any) {
-  const newMatch = {
+export async function handleSubmit(values: MatchFormValues) {
+  const newMatch: Match = {
     ...values,
     matchId: uuid(),
+    title: "New Match",
     teamSize: values["teamSize"][0],
     status: "queue",
-    createdBy: "grimz", // TODO grab current users username
     createdTS: Date.now(),
     maps: [],
     players: [],
@@ -41,7 +56,6 @@ export async function handleJoinQueue(queueId: string, player: MatchPlayer) {
   const response = await addPlayerToQueue(queueId, player);
   // TODO: remove players from other queues if one they are in starts
   revalidateTag("queues");
-  // console.log("Add Player to Queue Response", response);
   return JSON.parse(JSON.stringify(response));
 }
 
@@ -70,10 +84,9 @@ export async function handleReadyCheck(
 ) {
   const response = await markPlayerAsReady(matchId, discordId, isReady);
   revalidateTag("readycheck_" + matchId);
-  // TODO: initiate start match logic if all players are ready
   const match = await getMatch(matchId);
   if (match?.players.every((p) => p.isReady)) {
-    console.log("All players are ready, starting match");
+    console.log("All players are ready, starting match. MatchId: ", matchId);
     await handleMatchMaking(match);
   }
   return response;
@@ -85,7 +98,6 @@ export async function getMatchReadyCheck(matchId: string) {
 }
 
 export async function handleMatchMaking(match: Match) {
-  // console.log("Starting match making", match.matchId);
   const { players, teamSize } = match;
 
   const matchPlayers = await createBalancedTeams(players, teamSize);
