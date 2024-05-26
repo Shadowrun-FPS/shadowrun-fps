@@ -1,7 +1,11 @@
 "use client";
-import { handleJoinQueue, handleLeaveQueue } from "@/app/matches/actions";
+import {
+  handleJoinQueue,
+  handleLeaveQueue,
+  triggerMatchStart,
+} from "@/app/matches/actions";
 import { Button } from "@/components/ui/button";
-import { EloTier, MatchPlayer } from "@/types/types";
+import { EloTier, MatchPlayer, Queue } from "@/types/types";
 import { Users } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
@@ -56,12 +60,27 @@ export default function QueueButton({
           discordId,
           discordNickname,
         };
-        await handleJoinQueue(queueId, newPlayer);
+        const queue = await handleJoinQueue(queueId, newPlayer);
         toast({
           title: "Successfully joined queue",
           description: "You have been added to the queue",
         });
+        triggerStart(queue);
       }
+    }
+  }
+
+  async function triggerStart(queue: Queue) {
+    const players = queue.players;
+    // Check if queue is full, if so, start the match
+    if (players.length + 1 >= queue.teamSize * 2) {
+      const selectedPlayers = players.slice(0, queue.teamSize * 2);
+      const match = await triggerMatchStart(
+        queue as unknown as Queue,
+        selectedPlayers
+      );
+      // Open new page with match ready check
+      window.open(`/matches/readycheck/${match.matchId}`);
     }
   }
 

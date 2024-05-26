@@ -21,6 +21,7 @@ export type MatchPlayer = {
   discordId: string;
   discordNickname: string;
   team?: TeamNumber;
+  isReady?: boolean;
 };
 
 export type PlayerInfo = {
@@ -63,7 +64,7 @@ export type Match = {
   maps: Map[];
   players: MatchPlayer[];
   teamSize: number;
-  coinFlip: TeamNumber;
+  coinFlip?: TeamNumber;
   createdTS: number;
   eloTier: EloTier;
   results?: MapResult[];
@@ -84,7 +85,7 @@ export type GameType = "ranked" | "casual" | "public";
 
 export type EloTier = "low" | "medium" | "high";
 
-export type MatchStatus = "ready-check" | "in-progress" | "complete";
+export type MatchStatus = "ready-check" | "in-progress" | "complete" | "queue";
 
 export type EloRank =
   | "Bronze V"
