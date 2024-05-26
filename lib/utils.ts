@@ -27,3 +27,10 @@ export function getApiUrl() {
     return `https://${process.env.VERCEL_URL}`;
   }
 }
+
+export function convertMongoId(document: any) {
+  return {
+    ...document,
+    _id: document._id.toString(),
+  };
+}
