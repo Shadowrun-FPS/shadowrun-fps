@@ -1,42 +1,77 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Shadowrun FPS Website
+
+Welcome to the Shadowrun FPS Website project! This is a comprehensive site for a First-Person Shooter (FPS) game based on the Shadowrun franchise. Shadowrun is a unique blend of science fiction and fantasy, set in a near-future universe where cybernetics, magic, and fantasy creatures coexist. This website provides extensive game information, the latest updates, and fosters community engagement.
+
+## Features
+
+- **Game Information**: Detailed descriptions of game mechanics, lore, and characters.
+- **Updates**: Stay informed with the latest news.
+- **Community Engagement**: Forums, blogs, and social media integration to keep the community active and involved.
+- **Ranked Matchmaking System**: Compete against other players, track your stats, and see who tops the leaderboards.
 
 ## Getting Started
 
-First, run the development server:
+Follow these steps to get the development server up and running:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/Shadowrun-FPS/shadowrun-fps.git
+   ```
+2. **Navigate to the project directory:**
+   ```bash
+   cd shadowrun-fps
+   ```
+3. **Install dependencies:**
+   ```bash
+   npm install
+   # or
+   yarn install
+   # or
+   pnpm install
+   ```
+4. **Run the development server:**
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   # or
+   pnpm dev
+   ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Learn More about Next.js
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+If you're interested in contributing or simply want to learn more about Next.js, here are some valuable resources:
 
-## Learn More
+- [Next.js Documentation](https://nextjs.org/docs) - Explore the features and API of Next.js.
+- [Learn Next.js](https://nextjs.org/learn) - An interactive tutorial to get you started with Next.js.
 
-To learn more about Next.js, take a look at the following resources:
+## Recommended VS Code Extensions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+For an optimal development experience, consider installing these Visual Studio Code extensions:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+- **[Prettier - Code formatter](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)** - Automatically format your code.
+- **[Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)** - Intelligent Tailwind CSS suggestions and autocomplete.
+- **[Headwind](https://marketplace.visualstudio.com/items?itemName=heybourn.headwind)** - Sort your Tailwind CSS classes.
 
-## Deploy on Vercel
+## Contributing
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+We welcome contributions from the community! If you'd like to contribute, please fork the repository and use a feature branch. Pull requests are warmly welcome.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+1. **Fork the repository**
+2. **Create your feature branch:**
+   ```bash
+   git checkout -b feature/YourFeature
+   ```
+3. **Commit your changes:**
+   ```bash
+   git commit -m 'Add some feature'
+   ```
+4. **Push to the branch:**
+   ```bash
+   git push origin feature/YourFeature
+   ```
+5. **Create a new Pull Request**
 
-## Recommended VS code extensions for developers
-
-- Prettier
-- LiveShare
-- Tailwind CSS IntelliSense
-- Headwind
-- MongoDB for VS Code
+Thank you for your interest in contributing to the Shadowrun FPS Website project!
