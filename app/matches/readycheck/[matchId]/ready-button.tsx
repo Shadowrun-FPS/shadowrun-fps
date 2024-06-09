@@ -14,14 +14,16 @@ import {
   handleReadyCheck,
 } from "@/app/matches/actions";
 
-import { Match, MatchPlayer } from "@/types/types";
+import { MatchPlayer } from "@/types/types";
 
 export default function ReadyButton({
   matchId,
   players,
+  onClick,
 }: {
   matchId: string;
   players: MatchPlayer[];
+  onClick: () => void;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
@@ -59,6 +61,7 @@ export default function ReadyButton({
     setIsReady(updatedReadyStatus);
     // Update the current player's ready status
     await handleReadyCheck(matchId, session?.user.id, updatedReadyStatus);
+    onClick();
     const updatedMatch = await getMatchData(matchId);
     if (updatedMatch?.status === "in-progress") {
       // navigate to the match page

@@ -21,7 +21,7 @@ export default async function MatchDetailsPage({
       <div className="grid items-center gap-4">No Match Found {matchId}</div>
     );
   }
-  // TODO: add players in match to header
+
   return (
     <div className="grid gap-8 mb-12">
       <h1 className="text-3xl font-extrabold">Match Details: {match.title}</h1>
