@@ -57,7 +57,29 @@ export function ReadyContent({ matchId }: { matchId: string }) {
       </div>
     );
   } else if (!match) {
-    return <div>Could not find match</div>;
+    return (
+      <div className="grid items-center justify-center mt-8">
+        <div className="flex gap-4">
+          <svg
+            height="3em"
+            width="3em"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={1.5}
+            stroke="currentColor"
+            className="size-4"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
+            />
+          </svg>
+          <div className="text-4xl font-bold">Could not find match</div>
+        </div>
+      </div>
+    );
   } else {
     return (
       <div className="grid gap-16 md:grid-cols-2">
