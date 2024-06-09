@@ -1,4 +1,4 @@
-type TimerMap = {
+export type TimerMap = {
   [matchId: string]: number;
 };
 // Temporary in-memory storage for active timers

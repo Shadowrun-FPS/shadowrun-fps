@@ -1,5 +1,6 @@
 import clientPromise from "@/lib/mongodb";
 import { Player } from "@/types/types";
+import { convertMongoId } from "./utils";
 
 export const getPlayerInfo = async (
   discordId: string | string[] | undefined
@@ -11,7 +12,7 @@ export const getPlayerInfo = async (
     const player = await db
       .collection("Players")
       .findOne({ discordId: discordId });
-    return player as unknown as Player;
+    return convertMongoId(player) as unknown as Player;
   } catch (error) {
     return null;
   }

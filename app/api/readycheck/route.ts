@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-type TimerMap = {
-  [matchId: string]: number;
-};
+import { TimerMap } from "@/app/matches/timers";
 
 const activeTimers: TimerMap = {};
 
