@@ -6,6 +6,7 @@ import { Separator } from "@radix-ui/react-dropdown-menu";
 import { CheckCircle, CircleSlash } from "lucide-react";
 import { Match } from "@/types/types";
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function ReadyContent({ matchId }: { matchId: string }) {
   const [match, setMatch] = useState<Match | null>(null);
@@ -40,14 +41,19 @@ export function ReadyContent({ matchId }: { matchId: string }) {
   if (loading) {
     return (
       <div className="grid gap-4 md:grid-cols-2">
-        <h2 className="text-3xl font-bold">Players</h2>
-        {[...Array(4)].map((_, index) => (
-          <div key={index} className="grid">
-            <div className="flex items-center gap-4 p-2">
-              <PlayerItemSkeleton />
+        <div className="flex flex-col items-center justify-center gap-4">
+          <Button disabled={true}>Loading...</Button>
+        </div>
+        <div id="player-list-container" className="flex flex-col">
+          <h2 className="text-3xl font-bold">Players</h2>
+          {[...Array(4)].map((_, index) => (
+            <div key={index} className="grid">
+              <div className="flex items-center gap-4 p-2">
+                <PlayerItemSkeleton />
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     );
   } else if (!match) {
