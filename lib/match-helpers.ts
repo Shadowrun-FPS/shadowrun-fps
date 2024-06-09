@@ -104,7 +104,7 @@ export async function handleCreateMatch(
     results: [],
   };
   await addMatch(match);
-  // await removePlayersFromQueue(queue.queueId, selectedPlayers);
+  await removePlayersFromQueue(queue.queueId, selectedPlayers);
   await startReadyCheck(match.matchId);
   return match;
 }
