@@ -2,6 +2,8 @@ import clientPromise from "@/lib/mongodb";
 import StatSearchResults from "./statSearchResults";
 import { Player } from "@/types/types";
 import { Metadata } from "next";
+import ComingSoon from "@/app/coming-soon";
+import useFeatureFlag from "@/lib/hooks/useFeatureFlag";
 export const metadata: Metadata = {
   title: "Stats Look Up",
   openGraph: {
@@ -31,6 +33,17 @@ export default async function StatsPage({
 }: {
   searchParams: { search: string };
 }) {
+  const matchMakingFeatureFlag = useFeatureFlag("MATCHMAKING_ENABLED", false);
+  if (!matchMakingFeatureFlag) {
+    return (
+      <ComingSoon
+        title={"Look up player stats"}
+        description={
+          "Search for player stats by name to view their profile, with stats like wins/loss ratio, games played, etc. To be released with the matchmaking feature."
+        }
+      />
+    );
+  }
   const searchString = searchParams?.search;
   const players = searchString ? await playerSearch(searchString) : null;
   return (

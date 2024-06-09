@@ -3,14 +3,27 @@ import { getMatches } from "@/lib/match-helpers";
 import CreateMatchDialog from "./create-match-dialog";
 
 import { Metadata } from "next";
+import useFeatureFlag from "@/lib/hooks/useFeatureFlag";
+import ComingSoon from "../coming-soon";
 
 export const metadata: Metadata = {
   title: "Play Pick Up Matches",
 };
 
 export default async function MatchesPage() {
-  const matches = await getMatches();
+  const matchMakingFeatureFlag = useFeatureFlag("MATCHMAKING_ENABLED", false);
+  if (!matchMakingFeatureFlag) {
+    return (
+      <ComingSoon
+        title={"Ranked Matchmaking"}
+        description={
+          "Here is where you will be able to sign up for ranked pick up games, similar to the discord bot. To be released with the matchmaking feature."
+        }
+      />
+    );
+  }
 
+  const matches = await getMatches();
   const rankedMatches = matches.filter((match) => match.gameType === "ranked");
 
   return (
