@@ -10,9 +10,8 @@ export default function Home() {
             Start playing today
           </h1>
           <p className="text-white">
-            Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a community
-            dedicated to the FASA Studios&apos; 2007 Shadowrun FPS. It works in
-            2023!
+            Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a fan
+            community dedicated to the FASA Studios&apos; 2007 Shadowrun FPS.
           </p>
           <Button variant={"outline"}>Join a Game</Button>
         </div>
@@ -28,8 +27,8 @@ export default function Home() {
         <p>
           In this dystopian future, mercenaries, hackers, and street samurais
           converge. Customize your character, navigate urban sprawls, and
-          experience a world where the line between man and machine, magic and
-          technology, is blurred. Join the shadows, forge alliances, and let the
+          experience a world where the line is blurred between man, machine,
+          magic, and technology. Join the shadows, forge alliances, and let the
           games begin.
         </p>
       </div>
@@ -38,7 +37,7 @@ export default function Home() {
           <div className="mt-12 text-3xl font-bold text-center text-white md:text-5xl not-prose">
             <h1>Featured Video</h1>
           </div>
-          <p className="mb-4 text-center">(Updated January 2024)</p>
+
           <FeaturedVideos />
         </div>
       </div>
