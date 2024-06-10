@@ -159,6 +159,9 @@ export type Post = {
 export type Roster = {
   staffName: string;
   src: string;
+  discordNickname: string;
+  discordProfilePicture: string;
+  discordRoleId: string;
   staffTitle: string;
   staffNicknames: string;
   staffAltText: string;
