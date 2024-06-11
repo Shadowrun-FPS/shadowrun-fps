@@ -14,6 +14,7 @@ import {
 
 import ResponsitveTitle from "./navigation/responsive-title";
 import { BookText, Menu } from "lucide-react";
+import Link from "next/link";
 
 const components: { title: string; href: string; description: string }[] = [
   {
@@ -55,7 +56,7 @@ export function MainNavMenu() {
             <ul className="grid gap-3 p-6 w-[250px] md:w-[400px] lg:w-[500px] lg:grid-cols-[.75fr_1fr]">
               <li className="row-span-4">
                 <NavigationMenuLink asChild>
-                  <a
+                  <Link
                     className="flex flex-col justify-end w-full h-full p-6 no-underline rounded-md outline-none select-none bg-gradient-to-b from-muted/50 to-muted focus:shadow-md"
                     href="/"
                   >
@@ -76,21 +77,27 @@ export function MainNavMenu() {
                       community dedicated to the FASA Studios&apos; 2007
                       Shadowrun FPS. It works in 2023!
                     </p>
-                  </a>
+                  </Link>
                 </NavigationMenuLink>
               </li>
-              <ListItem href="/docs/introduction" title="Introduction">
-                Join up to play on PC for free!
-              </ListItem>
-              <ListItem href="/docs/install" title="Installation">
-                How to install the game for PC.
-              </ListItem>
-              <ListItem href="/docs/troubleshoot" title="Troubleshooting">
-                How to fix common errors with the game.
-              </ListItem>
-              <ListItem href="/docs/support" title="Support">
-                Support
-              </ListItem>
+              <Link href="/docs/introduction" className="w-full">
+                <ListItem title="Introduction">
+                  Join up to play on PC for free!
+                </ListItem>
+              </Link>
+              <Link href="/docs/install">
+                <ListItem title="Installation">
+                  How to install the game for PC.
+                </ListItem>
+              </Link>
+              <Link href="/docs/troubleshoot">
+                <ListItem title="Troubleshooting">
+                  How to fix common errors with the game.
+                </ListItem>
+              </Link>
+              <Link href="/docs/support">
+                <ListItem title="Support">Support</ListItem>
+              </Link>
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
@@ -101,13 +108,11 @@ export function MainNavMenu() {
           <NavigationMenuContent>
             <ul className="grid w-[250px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px] ">
               {components.map((component) => (
-                <ListItem
-                  key={component.title}
-                  title={component.title}
-                  href={component.href}
-                >
-                  {component.description}
-                </ListItem>
+                <Link key={component.title} href={component.href}>
+                  <ListItem title={component.title}>
+                    {component.description}
+                  </ListItem>
+                </Link>
               ))}
             </ul>
           </NavigationMenuContent>

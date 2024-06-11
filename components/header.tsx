@@ -1,7 +1,7 @@
 import { MainNavMenu } from "@/components/main-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import MainLogo from "./icons/main-logo";
-import DiscordSignIn from "./discord/discord-sign-in";
+import AccountDropdown from "./navigation/account-dropdown";
 
 function Header() {
   return (
@@ -11,7 +11,7 @@ function Header() {
         <MainNavMenu />
       </nav>
       <div className="flex justify-end gap-4">
-        <DiscordSignIn />
+        <AccountDropdown />
         <ThemeToggle />
       </div>
     </header>
