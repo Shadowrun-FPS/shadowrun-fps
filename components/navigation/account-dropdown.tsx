@@ -8,16 +8,24 @@ import { useSession } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User } from "lucide-react";
+import { Moon, Sun, User } from "lucide-react";
+import { useTheme } from "next-themes";
+import { Button } from "../ui/button";
+import { DropdownMenuArrow } from "@radix-ui/react-dropdown-menu";
 
 const AccountDropdown: React.FC = () => {
   const { data: session, status } = useSession();
-  console.log("Discord sign in", session, status);
+  const { setTheme } = useTheme();
   const isLoggedIn = status === "authenticated";
 
   useEffect(() => {
@@ -56,6 +64,23 @@ const AccountDropdown: React.FC = () => {
         </DropdownMenuTrigger>
         <DropdownMenuContent>
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => setTheme("light")}>
+                  Light
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("dark")}>
+                  Dark
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTheme("system")}>
+                  System
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className={"flex gap-2"}
