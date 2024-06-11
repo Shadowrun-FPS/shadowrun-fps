@@ -35,6 +35,8 @@
     --radius: 0.5rem;
 
     --discord-brand: rgb(88, 101, 242);
+    --success: rgb(16, 185, 129); /* #10B981 */
+    --danger: rgb(239, 68, 68); /* #EF4444 */
   }
 
   .dark {

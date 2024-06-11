@@ -14,6 +14,8 @@ import { Metadata } from "next";
 
 import "@/app/globals.css";
 import "./leaderboardStyles.css";
+import useFeatureFlag from "@/lib/hooks/useFeatureFlag";
+import ComingSoon from "@/app/coming-soon";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -41,6 +43,18 @@ export default async function Leaderboard({
     teamSize: string;
   };
 }) {
+  const matchMakingFeatureFlag = useFeatureFlag("MATCHMAKING_ENABLED", false);
+  if (!matchMakingFeatureFlag) {
+    return (
+      <ComingSoon
+        title={"Ranked leaderboard"}
+        description={
+          "Check out the top ranked shadowrun fps players in our pick up game system. To be released with the matchmaking feature."
+        }
+      />
+    );
+  }
+
   const page = Math.max(searchParams.page || 1, 1);
   const sortOption = searchParams?.sort ? searchParams.sort : sortOptionDefault;
   const dirOption = searchParams?.dir ? searchParams.dir : dirOptionDefault;

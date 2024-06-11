@@ -45,7 +45,6 @@ export function MatchForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("onSubmit form", values);
     await handleSubmit(values);
   }
 

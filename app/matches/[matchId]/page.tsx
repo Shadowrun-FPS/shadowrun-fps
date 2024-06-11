@@ -1,26 +1,11 @@
-import clientPromise from "@/lib/mongodb";
-import { Match } from "@/types/types";
 import { Metadata } from "next";
 import MapCardList from "@/components/matches/map-card-list";
 import PlayerList from "@/components/player/player-list";
 import MatchDetails from "@/components/matches/match-details";
+import { getMatch } from "@/lib/match-helpers";
 
 export const metadata: Metadata = {
   title: "View Match Details",
-};
-
-const getMatchDetails = async (matchId: string) => {
-  try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
-    const matchData = await db
-      .collection("Matches")
-      .findOne({ matchId: matchId });
-    return matchData as unknown as Match;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
 };
 
 export default async function MatchDetailsPage({
@@ -29,14 +14,14 @@ export default async function MatchDetailsPage({
   params: { matchId: string };
 }) {
   const matchId = params.matchId;
-  const match = await getMatchDetails(matchId);
+  const match = await getMatch(matchId);
   // console.log("match: ", matchData);
   if (match === null) {
     return (
       <div className="grid items-center gap-4">No Match Found {matchId}</div>
     );
   }
-  // TODO: add players in match to header
+
   return (
     <div className="grid gap-8 mb-12">
       <h1 className="text-3xl font-extrabold">Match Details: {match.title}</h1>
