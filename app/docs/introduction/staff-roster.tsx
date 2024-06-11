@@ -14,21 +14,29 @@ export async function getStaffRoster(): Promise<StaffRosters> {
 
   const staffMembers = await db
     .collection("Staff")
-    .find({ staffTitle: { $in: ["Founder", "Admin", "Moderator"] } })
+    .find({
+      discordRoleId: {
+        $in: [
+          "1095126043918082109" /* Founder */,
+          "932585751332421642" /* Admin */,
+          "1042168064805965864" /* Moderator */,
+        ],
+      },
+    })
     .toArray();
 
   const founderRoster = staffMembers.filter((roster) =>
-    roster.staffTitle.includes("Founder")
+    roster.discordRoleId.includes("1095126043918082109")
   );
   const adminRoster = staffMembers.filter(
     (roster) =>
-      roster.staffTitle.includes("Admin") &&
-      !roster.staffTitle.includes("Founder")
+      roster.discordRoleId.includes("932585751332421642") &&
+      !roster.discordRoleId.includes("1095126043918082109")
   );
   const moderatorRoster = staffMembers.filter(
     (roster) =>
-      roster.staffTitle.includes("Moderator") &&
-      !roster.staffTitle.includes("Admin")
+      roster.discordRoleId.includes("1042168064805965864") &&
+      !roster.discordRoleId.includes("932585751332421642")
   );
 
   return {
@@ -55,12 +63,12 @@ export default async function StaffRoster() {
               <div key={index} className="mb-12 text-center hover:scale-110">
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
-                  src={roster.src || defaultImageSrc}
+                  src={roster.discordProfilePicture || defaultImageSrc}
                   alt={roster.staffAltText}
                   width={imageWidth}
                   height={imageHeight}
                 />
-                <h5 className="mb-2 font-bold">{roster.staffName}</h5>
+                <h5 className="mb-2 font-bold">{roster.discordNickname}</h5>
                 <p className="text-neutral-500 dark:text-neutral-300">
                   {roster.staffNicknames}
                 </p>
@@ -76,12 +84,12 @@ export default async function StaffRoster() {
               <div key={index} className="mb-12 text-center hover:scale-110">
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
-                  src={roster.src || defaultImageSrc}
+                  src={roster.discordProfilePicture || defaultImageSrc}
                   alt={roster.staffAltText}
                   width={imageWidth}
                   height={imageHeight}
                 />
-                <h5 className="mb-2 font-bold">{roster.staffName}</h5>
+                <h5 className="mb-2 font-bold">{roster.discordNickname}</h5>
                 <p className="text-neutral-500 dark:text-neutral-300">
                   {roster.staffNicknames}
                 </p>
@@ -105,12 +113,12 @@ export default async function StaffRoster() {
               >
                 <Image
                   className="mx-auto mb-4 rounded-full shadow-lg max-w-none dark:shadow-black/20"
-                  src={roster.src || defaultImageSrc}
+                  src={roster.discordProfilePicture || defaultImageSrc}
                   alt={roster.staffAltText}
                   width={imageWidth}
                   height={imageHeight}
                 />
-                <h5 className="mb-2 font-bold">{roster.staffName}</h5>
+                <h5 className="mb-2 font-bold">{roster.discordNickname}</h5>
                 <p className="text-neutral-500 dark:text-neutral-300">
                   {roster.staffNicknames}
                 </p>
