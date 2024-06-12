@@ -78,3 +78,6 @@
     @apply bg-background text-foreground;
   }
 }
+.capitalize-text {
+  text-transform: capitalize;
+}
