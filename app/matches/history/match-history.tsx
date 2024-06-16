@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, SVGProps } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
+import { useState, useMemo, useEffect, useCallback, SVGProps } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +25,12 @@ import {
   PaginationLink,
   PaginationNext,
 } from "@/components/ui/pagination";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar"; // Assuming the path is correct
 import Link from "next/link";
 import { BASE_URL } from "@/lib/baseurl";
 import { Match } from "@/types/types";
@@ -40,16 +44,10 @@ export default function MatchHistory() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [sortColumn, setSortColumn] = useState<MatchKeys>("createdTS");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
-  useEffect(() => {
-    fetchMatches();
-  }, [sortColumn, sortDirection]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm]);
-
-  function fetchMatches() {
+  // useCallback to memoize the fetchMatches function
+  const fetchMatches = useCallback(() => {
     fetch(`/api/matches`)
       .then((res) => res.json())
       .then((data) => {
@@ -68,13 +66,20 @@ export default function MatchHistory() {
           }
         });
 
-        console.log("sorted matches: ", sortedMatches);
         setMatches(sortedMatches);
       })
       .catch((error) => {
         console.error("Error fetching matches: ", error);
       });
-  }
+  }, [sortColumn, sortDirection]); // Dependency array includes sortColumn and sortDirection
+
+  useEffect(() => {
+    fetchMatches(); // Initial fetch when sortColumn or sortDirection changes
+  }, [fetchMatches]); // useEffect depends only on fetchMatches
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedDate]);
 
   const handleSort = (column: MatchKeys) => {
     if (sortColumn === column) {
@@ -86,14 +91,27 @@ export default function MatchHistory() {
   };
 
   const filteredMatches = useMemo(() => {
-    return matches.filter((match) =>
-      Object.values(match).some(
-        (value) =>
-          typeof value === "string" &&
-          value.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    );
-  }, [matches, searchTerm]);
+    return matches.filter((match) => {
+      const matchDate = new Date(match.createdTS);
+      const matchDateOnly = new Date(
+        matchDate.getFullYear(),
+        matchDate.getMonth(),
+        matchDate.getDate()
+      );
+
+      if (selectedDate) {
+        const selectedDateOnly = new Date(
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+          selectedDate.getDate()
+        );
+
+        return matchDateOnly.getTime() === selectedDateOnly.getTime();
+      } else {
+        return true;
+      }
+    });
+  }, [matches, selectedDate]);
 
   const totalPages = Math.ceil(filteredMatches.length / resultsPerPage);
 
@@ -103,6 +121,7 @@ export default function MatchHistory() {
 
   const handleClear = () => {
     setSearchTerm("");
+    setSelectedDate(undefined);
   };
 
   const formatDate = (dateString: string | number | Date) => {
@@ -147,6 +166,20 @@ export default function MatchHistory() {
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-1 mr-4"
         />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="mr-4">
+              Select Date
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent>
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={(day) => setSelectedDate(day ?? undefined)}
+            />
+          </PopoverContent>
+        </Popover>
         <Button variant="outline" size="sm" onClick={handleClear}>
           Clear
         </Button>
@@ -198,7 +231,9 @@ export default function MatchHistory() {
                         View Match Details
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>Download Match Report</DropdownMenuItem>
+                    <DropdownMenuItem disabled={true}>
+                      Download Match Report
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
