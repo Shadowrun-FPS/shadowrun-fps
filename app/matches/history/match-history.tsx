@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect, SVGProps } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,15 +31,19 @@ import Link from "next/link";
 import { BASE_URL } from "@/lib/baseurl";
 import { Match } from "@/types/types";
 
+type MatchKeys = keyof Match;
+
 export default function MatchHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [resultsPerPage] = useState(15);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [sortColumn, setSortColumn] = useState<MatchKeys>("createdTS");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     fetchMatches();
-  }, []);
+  }, [sortColumn, sortDirection]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -48,7 +54,18 @@ export default function MatchHistory() {
       .then((res) => res.json())
       .then((data) => {
         const sortedMatches = data.results.sort((a: Match, b: Match) => {
-          return b.createdTS - a.createdTS;
+          const aValue = a[sortColumn];
+          const bValue = b[sortColumn];
+
+          if (aValue === undefined || bValue === undefined) {
+            return 0;
+          }
+
+          if (sortDirection === "asc") {
+            return aValue > bValue ? 1 : -1;
+          } else {
+            return aValue < bValue ? 1 : -1;
+          }
         });
 
         console.log("sorted matches: ", sortedMatches);
@@ -58,6 +75,15 @@ export default function MatchHistory() {
         console.error("Error fetching matches: ", error);
       });
   }
+
+  const handleSort = (column: MatchKeys) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+  };
 
   const filteredMatches = useMemo(() => {
     return matches.filter((match) =>
@@ -99,6 +125,13 @@ export default function MatchHistory() {
   const endIndex = startIndex + resultsPerPage;
   const currentMatches = filteredMatches.slice(startIndex, endIndex);
 
+  const getSortIndicator = (column: MatchKeys) => {
+    if (sortColumn === column) {
+      return sortDirection === "asc" ? "\u2191" : "\u2193";
+    }
+    return null;
+  };
+
   return (
     <div className="p-4 md:p-6 lg:p-8">
       <div className="flex items-center justify-between mb-4">
@@ -121,12 +154,24 @@ export default function MatchHistory() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>ELO Tier</TableHead>
-            <TableHead>Team Size</TableHead>
-            <TableHead>Winner</TableHead>
-            <TableHead>Date and Time</TableHead>
+            <TableHead onClick={() => handleSort("title")}>
+              Title {getSortIndicator("title")}
+            </TableHead>
+            <TableHead onClick={() => handleSort("status")}>
+              Status {getSortIndicator("status")}
+            </TableHead>
+            <TableHead onClick={() => handleSort("eloTier")}>
+              ELO Tier {getSortIndicator("eloTier")}
+            </TableHead>
+            <TableHead onClick={() => handleSort("teamSize")}>
+              Team Size {getSortIndicator("teamSize")}
+            </TableHead>
+            <TableHead onClick={() => handleSort("winner")}>
+              Winner {getSortIndicator("winner")}
+            </TableHead>
+            <TableHead onClick={() => handleSort("createdTS")}>
+              Date and Time {getSortIndicator("createdTS")}
+            </TableHead>
             <TableHead className="text-right"></TableHead>
           </TableRow>
         </TableHeader>
