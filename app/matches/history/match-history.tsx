@@ -30,56 +30,113 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar"; // Assuming the path is correct
+import { Calendar } from "@/components/ui/calendar";
 import Link from "next/link";
 import { BASE_URL } from "@/lib/baseurl";
 import { Match } from "@/types/types";
+import { DateRange } from "react-day-picker";
 
 type MatchKeys = keyof Match;
 
 export default function MatchHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [previousPage, setPreviousPage] = useState(1);
   const [resultsPerPage] = useState(15);
   const [matches, setMatches] = useState<Match[]>([]);
   const [sortColumn, setSortColumn] = useState<MatchKeys>("createdTS");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedRange, setSelectedRange] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined,
+  });
 
-  // useCallback to memoize the fetchMatches function
-  const fetchMatches = useCallback(() => {
-    fetch(`/api/matches`)
-      .then((res) => res.json())
-      .then((data) => {
-        const sortedMatches = data.results.sort((a: Match, b: Match) => {
-          const aValue = a[sortColumn];
-          const bValue = b[sortColumn];
+  useEffect(() => {
+    const fetchMatches = () => {
+      fetch(`/api/matches`)
+        .then((res) => res.json())
+        .then((data) => {
+          const sortedMatches = data.results.sort((a: Match, b: Match) => {
+            const aValue = a[sortColumn];
+            const bValue = b[sortColumn];
 
-          if (aValue === undefined || bValue === undefined) {
-            return 0;
-          }
+            if (typeof aValue === "number" && typeof bValue === "number") {
+              return sortDirection === "asc"
+                ? aValue - bValue
+                : bValue - aValue;
+            } else if (
+              typeof aValue === "string" &&
+              typeof bValue === "string"
+            ) {
+              if (sortDirection === "asc") {
+                return aValue.localeCompare(bValue);
+              } else {
+                return bValue.localeCompare(aValue);
+              }
+            } else {
+              return 0;
+            }
+          });
 
-          if (sortDirection === "asc") {
-            return aValue > bValue ? 1 : -1;
-          } else {
-            return aValue < bValue ? 1 : -1;
-          }
+          setMatches(sortedMatches);
+        })
+        .catch((error) => {
+          console.error("Error fetching matches: ", error);
         });
+    };
 
-        setMatches(sortedMatches);
-      })
-      .catch((error) => {
-        console.error("Error fetching matches: ", error);
-      });
-  }, [sortColumn, sortDirection]); // Dependency array includes sortColumn and sortDirection
+    fetchMatches();
+  }, [sortColumn, sortDirection]);
 
   useEffect(() => {
-    fetchMatches(); // Initial fetch when sortColumn or sortDirection changes
-  }, [fetchMatches]); // useEffect depends only on fetchMatches
-
-  useEffect(() => {
+    setPreviousPage(currentPage);
     setCurrentPage(1);
-  }, [searchTerm, selectedDate]);
+  }, [searchTerm, currentPage]);
+
+  const filteredMatches = useMemo(() => {
+    return matches.filter((match) => {
+      const matchesSearchTerm = Object.values(match).some(
+        (value) =>
+          typeof value === "string" &&
+          value.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      const matchDate = new Date(match.createdTS);
+      const matchDateOnly = new Date(
+        matchDate.getFullYear(),
+        matchDate.getMonth(),
+        matchDate.getDate()
+      );
+
+      const selectedDateOnly = selectedDate
+        ? new Date(
+            selectedDate.getFullYear(),
+            selectedDate.getMonth(),
+            selectedDate.getDate()
+          )
+        : null;
+
+      const matchesSelectedDate =
+        !selectedDate ||
+        matchDateOnly.getTime() === selectedDateOnly?.getTime();
+
+      let matchDateRange = true;
+      if (selectedRange && selectedRange.from && selectedRange.to) {
+        matchDateRange =
+          matchDateOnly >= selectedRange.from &&
+          matchDateOnly <= selectedRange.to;
+      }
+
+      return matchesSearchTerm && matchesSelectedDate && matchDateRange;
+    });
+  }, [matches, searchTerm, selectedDate, selectedRange]);
+
+  const totalPages = Math.ceil(filteredMatches.length / resultsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const handleSort = (column: MatchKeys) => {
     if (sortColumn === column) {
@@ -90,38 +147,18 @@ export default function MatchHistory() {
     }
   };
 
-  const filteredMatches = useMemo(() => {
-    return matches.filter((match) => {
-      const matchDate = new Date(match.createdTS);
-      const matchDateOnly = new Date(
-        matchDate.getFullYear(),
-        matchDate.getMonth(),
-        matchDate.getDate()
-      );
-
-      if (selectedDate) {
-        const selectedDateOnly = new Date(
-          selectedDate.getFullYear(),
-          selectedDate.getMonth(),
-          selectedDate.getDate()
-        );
-
-        return matchDateOnly.getTime() === selectedDateOnly.getTime();
-      } else {
-        return true;
-      }
-    });
-  }, [matches, selectedDate]);
-
-  const totalPages = Math.ceil(filteredMatches.length / resultsPerPage);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  const getSortIndicator = (column: MatchKeys) => {
+    if (sortColumn === column) {
+      return sortDirection === "asc" ? "\u2191" : "\u2193";
+    }
+    return null;
   };
 
   const handleClear = () => {
     setSearchTerm("");
     setSelectedDate(undefined);
+    setSelectedRange({ from: undefined, to: undefined });
+    setCurrentPage(previousPage);
   };
 
   const formatDate = (dateString: string | number | Date) => {
@@ -133,8 +170,20 @@ export default function MatchHistory() {
       hour: "numeric",
       minute: "numeric",
     };
-    return date.toLocaleString("en-US", options);
+    return date.toLocaleDateString("en-US", options);
   };
+
+  const formatDateForButton = (dateString: string | number | Date) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    };
+    return date.toLocaleDateString("en-US", options);
+  };
+
+  const initialMonth = selectedRange?.from || selectedDate || new Date();
 
   const formatTeamSize = (teamSize: number) => {
     return `${teamSize}v${teamSize}`;
@@ -143,13 +192,6 @@ export default function MatchHistory() {
   const startIndex = (currentPage - 1) * resultsPerPage;
   const endIndex = startIndex + resultsPerPage;
   const currentMatches = filteredMatches.slice(startIndex, endIndex);
-
-  const getSortIndicator = (column: MatchKeys) => {
-    if (sortColumn === column) {
-      return sortDirection === "asc" ? "\u2191" : "\u2193";
-    }
-    return null;
-  };
 
   return (
     <div className="p-4 md:p-6 lg:p-8">
@@ -169,14 +211,25 @@ export default function MatchHistory() {
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="mr-4">
-              Select Date
+              {selectedRange && selectedRange.from && selectedRange.to
+                ? `${formatDateForButton(selectedRange.from)} ${
+                    selectedRange.from.getTime() !== selectedRange.to.getTime()
+                      ? `- ${formatDateForButton(selectedRange.to)}`
+                      : ""
+                  }`
+                : selectedDate
+                ? formatDateForButton(selectedDate)
+                : "Select Date"}
             </Button>
           </PopoverTrigger>
-          <PopoverContent>
+          <PopoverContent className="calendar-popover">
             <Calendar
-              mode="single"
-              selected={selectedDate}
-              onSelect={(day) => setSelectedDate(day ?? undefined)}
+              mode="range"
+              selected={selectedRange}
+              className="w-72"
+              onSelect={(range) => setSelectedRange(range)}
+              modifiers={{ preventEmptyRange: true }}
+              defaultMonth={initialMonth}
             />
           </PopoverContent>
         </Popover>
@@ -217,6 +270,7 @@ export default function MatchHistory() {
               <TableCell>{formatTeamSize(match.teamSize)}</TableCell>
               <TableCell>{match.winner}</TableCell>
               <TableCell>{formatDate(match.createdTS)}</TableCell>
+
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
