@@ -2,16 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { Db } from "mongodb";
 import { Player } from "@/types/types";
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const matchId = searchParams.get("matchId");
+    const title = searchParams.get("title");
+    const createdTS = searchParams.get("createdTS");
+    const teamSize = searchParams.get("teamSize");
+
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
-    const match = await db.collection("Matches").findOne({ matchId });
+    const query = {
+      ...(matchId && { matchId: matchId }),
+      ...(title && { title: { $regex: title, $options: "i" } }),
+      ...(createdTS && { createdTS: parseInt(createdTS) }),
+      ...(teamSize && { teamSize: parseInt(teamSize) }),
+    } as any;
+    const results = await db.collection("Matches").find(query).toArray();
     return NextResponse.json({
       ok: true,
-      result: match,
+      results: results,
       status: 200,
     });
   } catch (error) {

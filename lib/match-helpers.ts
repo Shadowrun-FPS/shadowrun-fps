@@ -1,15 +1,24 @@
-import { MapResult, Match, MatchPlayer, Queue } from "@/types/types";
+import { EloTier, MapResult, Match, MatchPlayer, Queue } from "@/types/types";
 
 import clientPromise from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { getTimer, setTimer } from "@/app/matches/timers";
 
-export async function getMatches() {
+export async function getMatches(searchParams: any = {}) {
+  const { title, createdTS, teamSize } = searchParams;
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
-  const matches = await db.collection("Matches").find().toArray();
+  const query = {
+    ...(title && { title: { $regex: title, $options: "i" } }),
+    ...(createdTS && { createdTS: createdTS }),
+    ...(teamSize && { teamSize: teamSize }),
+  } as any;
+
+  const matches = await db.collection("Matches").find(query).toArray();
   return matches as unknown as Match[];
 }
+
+// Example call const matchesData = await getMatches({ title: 'example', createdOn: '2024-01-01', teamSize: '5' });
 
 export async function getMatch(matchId: string) {
   try {

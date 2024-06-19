@@ -23,6 +23,11 @@ const components: { title: string; href: string; description: string }[] = [
     description: "Play pick up matches.",
   },
   {
+    title: "Match History",
+    href: "/matches/history",
+    description: "A history of Ranked matches.",
+  },
+  {
     title: "Leaderboard",
     href: "/matches/leaderboard",
     description: "A leaderboard of the highest ranked players.",

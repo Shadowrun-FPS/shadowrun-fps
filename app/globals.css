@@ -78,3 +78,11 @@
     @apply bg-background text-foreground;
   }
 }
+.capitalize-text {
+  text-transform: capitalize;
+}
+
+.calendar-popover {
+  width: 300px;
+  text-align: center;
+}
