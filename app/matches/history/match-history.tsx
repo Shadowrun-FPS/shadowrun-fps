@@ -41,12 +41,12 @@ type MatchKeys = keyof Match;
 export default function MatchHistory() {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [previousPage, setPreviousPage] = useState(1);
   const [resultsPerPage] = useState(15);
   const [matches, setMatches] = useState<Match[]>([]);
   const [sortColumn, setSortColumn] = useState<MatchKeys>("createdTS");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [previousPage, setPreviousPage] = useState(1);
   const [selectedRange, setSelectedRange] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
@@ -91,8 +91,12 @@ export default function MatchHistory() {
 
   useEffect(() => {
     setPreviousPage(currentPage);
+  }, [currentPage, setPreviousPage]); // Include setPreviousPage in dependencies if ESLint requires it
+
+  useEffect(() => {
+    setPreviousPage(currentPage);
     setCurrentPage(1);
-  }, [searchTerm, currentPage]);
+  }, [searchTerm, selectedDate, selectedRange, setCurrentPage, currentPage]); // Include all dependencies needed
 
   const filteredMatches = useMemo(() => {
     return matches.filter((match) => {
@@ -270,7 +274,6 @@ export default function MatchHistory() {
               <TableCell>{formatTeamSize(match.teamSize)}</TableCell>
               <TableCell>{match.winner}</TableCell>
               <TableCell>{formatDate(match.createdTS)}</TableCell>
-
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
