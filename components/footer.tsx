@@ -14,7 +14,10 @@ const Footer = () => {
         >
           About
         </Link>
-        <Link className="no-underline hover:text-blue-600" href="/contact">
+        <Link
+          className="hidden no-underline hover:text-blue-600"
+          href="/contact"
+        >
           Contact
         </Link>
         <Link
