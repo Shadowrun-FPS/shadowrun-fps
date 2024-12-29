@@ -1,16 +1,20 @@
-import clientPromise from "@/lib/mongodb";
 import { Video } from "@/types/types";
 
 export async function getFeaturedVideos() {
-  // A small change to test deployment
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-  const videos = await db
-    .collection("Videos")
-    .find({ isFeatured: "yes" })
-    .sort({ tutorialOrder: 1 })
-    .toArray();
-  return videos as unknown as Video[];
+  return await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/videos?isFeatured=yes`,
+    {
+      next: { revalidate: 300 },
+    }
+  )
+    .then((res) => res.json())
+    .then((data) => {
+      console.log(data);
+      return data.results as Video[];
+    })
+    .catch((error) => {
+      console.error("Error fetching video list: ", error);
+    });
 }
 
 export default async function FeaturedVideos() {
