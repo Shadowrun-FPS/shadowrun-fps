@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import FeaturedVideos from "./featured-videos";
+import { Download } from "lucide-react";
 
 export default function Home() {
   return (
@@ -9,32 +10,29 @@ export default function Home() {
           <h1 className="text-3xl font-extrabold text-white">
             Start playing today
           </h1>
-          <p className="text-white">
-            Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a fan
-            community dedicated to the FASA Studios&apos; 2007 Shadowrun FPS.
-          </p>
-          <Button variant={"outline"}>Join a Game</Button>
+          <a
+            href="/docs/install"
+            // target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block"
+          >
+            <Button className="w-full px-6 py-3 text-center">
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </a>
         </div>
       </div>
       <div className="grid grid-cols-1 gap-12 p-12 mx-auto prose max-w-screen-2xl bg-muted dark:prose-invert md:grid-cols-2">
         <p>
-          Welcome to the Shadowrun FPS website, where corporate espionage
-          collides with intense battles. Whether you&apos;re a seasoned player
-          or a rookie, our ranked playlist offers the perfect playground to hone
-          skills in a unique blend of first-person shooter chaos and strategic
-          RPG elements.
-        </p>
-        <p>
-          In this dystopian future, mercenaries, hackers, and street samurais
-          converge. Customize your character, navigate urban sprawls, and
-          experience a world where the line is blurred between man, machine,
-          magic, and technology. Join the shadows, forge alliances, and let the
-          games begin.
+          Welcome to the Shadowrun FPS website, &lsquo;This Is Shadowrun&rsquo;.
+          We&rsquo;re a fan community dedicated to the preservation of FASA
+          Studios&apos; 2007 Shadowrun FPS.
         </p>
       </div>
       <div className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
         <div>
-          <div className="mt-12 text-3xl font-bold text-center text-white md:text-5xl not-prose">
+          <div className="mt-12 mb-4 text-3xl font-bold text-center text-white md:text-5xl not-prose">
             <h1>Featured Video</h1>
           </div>
 
