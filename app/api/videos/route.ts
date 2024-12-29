@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     const db = client.db("ShadowrunWeb");
     const videos = await db
       .collection("Videos")
-      .find({ isFeatured: isFeatured })
+      .find({ isFeatured: "yes" })
       .sort({ tutorialOrder: 1 })
       .toArray();
     return NextResponse.json({
