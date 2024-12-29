@@ -9,7 +9,6 @@ export async function getFeaturedVideos() {
   )
     .then((res) => res.json())
     .then((data) => {
-      console.log(data);
       return data.results as Video[];
     })
     .catch((error) => {

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { Video } from "@/types/types";
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const isFeatured = searchParams.get("isFeatured");
+    const { searchParams } = new URL(request.url);
+    const isFeatured = searchParams.get("isFeatured") || "no";
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
     const videos = await db
@@ -13,7 +12,6 @@ export async function GET(request: NextRequest) {
       .find({ isFeatured: isFeatured })
       .sort({ tutorialOrder: 1 })
       .toArray();
-    console.log("videos: ", videos);
     return NextResponse.json({
       ok: true,
       results: videos,
