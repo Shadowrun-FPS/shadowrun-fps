@@ -3,21 +3,15 @@ import { getMatches } from "@/lib/match-helpers";
 import CreateMatchDialog from "./create-match-dialog";
 
 import { Metadata } from "next";
+import useFeatureFlag from "@/lib/hooks/useFeatureFlag";
 import ComingSoon from "../coming-soon";
-import { getFeatureFlag } from "@/lib/feature-flag-helpers";
 
 export const metadata: Metadata = {
   title: "Play Pick Up Matches",
 };
 
-export default async function MatchesPage({
-  searchParams,
-}: {
-  searchParams: { MATCHMAKING_ENABLED: string };
-}) {
-  const matchMakingFeatureFlag = getFeatureFlag("MATCHMAKING_ENABLED", false, {
-    MATCHMAKING_ENABLED: searchParams.MATCHMAKING_ENABLED,
-  });
+export default async function MatchesPage() {
+  const matchMakingFeatureFlag = useFeatureFlag("MATCHMAKING_ENABLED", false);
   if (!matchMakingFeatureFlag) {
     return (
       <ComingSoon

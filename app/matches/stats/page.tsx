@@ -3,7 +3,7 @@ import StatSearchResults from "./statSearchResults";
 import { Player } from "@/types/types";
 import { Metadata } from "next";
 import ComingSoon from "@/app/coming-soon";
-import { getFeatureFlag } from "@/lib/feature-flag-helpers";
+import useFeatureFlag from "@/lib/hooks/useFeatureFlag";
 export const metadata: Metadata = {
   title: "Stats Look Up",
   openGraph: {
@@ -31,11 +31,9 @@ async function playerSearch(searchString: string) {
 export default async function StatsPage({
   searchParams,
 }: {
-  searchParams: { search: string; MATCHMAKING_ENABLED: string };
+  searchParams: { search: string };
 }) {
-  const matchMakingFeatureFlag = getFeatureFlag("MATCHMAKING_ENABLED", false, {
-    MATCHMAKING_ENABLED: searchParams.MATCHMAKING_ENABLED,
-  });
+  const matchMakingFeatureFlag = useFeatureFlag("MATCHMAKING_ENABLED", false);
   if (!matchMakingFeatureFlag) {
     return (
       <ComingSoon
