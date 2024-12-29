@@ -17,31 +17,36 @@ import { BookText, Menu } from "lucide-react";
 import Link from "next/link";
 
 const components: { title: string; href: string; description: string }[] = [
-  {
-    title: "Matches",
-    href: "/matches",
-    description: "Play pick up matches.",
-  },
-  {
-    title: "Leaderboard",
-    href: "/matches/leaderboard",
-    description: "A leaderboard of the highest ranked players.",
-  },
-  {
-    title: "Stats Look-up",
-    href: "/matches/stats",
-    description: "View stats by player name.",
-  },
-  {
-    title: "Ranked Rules",
-    href: "/docs/rules",
-    description: "Rules to play in the pick up matches.",
-  },
-  {
-    title: "Tutorials",
-    href: "/docs/tutorials",
-    description: "Shadowrun tutorials and content.",
-  },
+  // {
+  //   title: "Matches",
+  //   href: "/matches",
+  //   description: "Play pick up matches.",
+  // },
+  // {
+  //   title: "Match History",
+  //   href: "/matches/history",
+  //   description: "A history of Ranked matches.",
+  // },
+  // {
+  //   title: "Leaderboard",
+  //   href: "/matches/leaderboard",
+  //   description: "A leaderboard of the highest ranked players.",
+  // },
+  // {
+  //   title: "Stats Look-up",
+  //   href: "/matches/stats",
+  //   description: "View stats by player name.",
+  // },
+  // {
+  //   title: "Ranked Rules",
+  //   href: "/docs/rules",
+  //   description: "Rules to play in the pick up matches.",
+  // },
+  // {
+  //   title: "Tutorials",
+  //   href: "/docs/tutorials",
+  //   description: "Shadowrun tutorials and content.",
+  // },
 ];
 
 export function MainNavMenu() {
@@ -72,16 +77,11 @@ export function MainNavMenu() {
                     <div className="mt-4 mb-2 text-lg font-medium">
                       Shadowrun FPS
                     </div>
-                    <p className="text-sm leading-tight text-muted-foreground">
-                      Welcome to &lsquo;This Is Shadowrun&rsquo;, we&rsquo;re a
-                      community dedicated to the FASA Studios&apos; 2007
-                      Shadowrun FPS. It works in 2023!
-                    </p>
                   </Link>
                 </NavigationMenuLink>
               </li>
-              <Link href="/docs/introduction" className="w-full">
-                <ListItem title="Introduction">
+              <Link href="/docs/events" className="w-full">
+                <ListItem title="Recent Events">
                   Join up to play on PC for free!
                 </ListItem>
               </Link>
@@ -95,13 +95,10 @@ export function MainNavMenu() {
                   How to fix common errors with the game.
                 </ListItem>
               </Link>
-              <Link href="/docs/support">
-                <ListItem title="Support">Support</ListItem>
-              </Link>
             </ul>
           </NavigationMenuContent>
         </NavigationMenuItem>
-        <NavigationMenuItem>
+        <NavigationMenuItem className="hidden">
           <NavigationMenuTrigger>
             <ResponsitveTitle title={"Play"} icon={<Menu />} />
           </NavigationMenuTrigger>
