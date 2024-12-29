@@ -2,7 +2,6 @@ import clientPromise from "@/lib/mongodb";
 import { Video } from "@/types/types";
 
 export async function getFeaturedVideos() {
-  // A small change to test deployment
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
   const videos = await db

@@ -14,8 +14,8 @@ import { Metadata } from "next";
 
 import "@/app/globals.css";
 import "./leaderboardStyles.css";
+import useFeatureFlag from "@/lib/hooks/useFeatureFlag";
 import ComingSoon from "@/app/coming-soon";
-import { getFeatureFlag } from "@/lib/feature-flag-helpers";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
@@ -41,12 +41,9 @@ export default async function Leaderboard({
     dir: string;
     rows: string;
     teamSize: string;
-    MATCHMAKING_ENABLED: string;
   };
 }) {
-  const matchMakingFeatureFlag = getFeatureFlag("MATCHMAKING_ENABLED", false, {
-    MATCHMAKING_ENABLED: searchParams.MATCHMAKING_ENABLED,
-  });
+  const matchMakingFeatureFlag = useFeatureFlag("MATCHMAKING_ENABLED", false);
   if (!matchMakingFeatureFlag) {
     return (
       <ComingSoon
