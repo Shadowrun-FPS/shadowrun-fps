@@ -3,8 +3,6 @@ import clientPromise from "@/lib/mongodb";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const isFeatured = searchParams.get("isFeatured") || "no";
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
     const videos = await db
