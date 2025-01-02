@@ -6,15 +6,6 @@ const Footer = () => {
   return (
     <footer className="py-4 bg-background">
       <div className="container flex items-center justify-center gap-12 mx-auto prose dark:prose-invert">
-        <Link className="no-underline hover:text-blue-600" href="/docs/events">
-          About
-        </Link>
-        <Link
-          className="hidden no-underline hover:text-blue-600"
-          href="/contact"
-        >
-          Contact
-        </Link>
         <Link
           className="no-underline hover:text-blue-600"
           href="discord://discord.com/servers/this-is-shadowrun-930362820627943495"
