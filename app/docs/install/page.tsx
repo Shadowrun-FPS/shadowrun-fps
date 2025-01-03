@@ -279,8 +279,8 @@ export default function InstallationPage() {
             <p>
               A channel for sharing keys has been created for the community to
               use. If you notice a key has been all used up, please alert the
-              staff so it can be removed. Feel free to leave a key too if you'd
-              like to support the community!{" "}
+              staff so it can be removed. Feel free to leave a key too if you
+              would like to support the community!{" "}
               <Link
                 target="_blank"
                 href="https://discord.com/channels/930362820627943495/1233897832587595868"
