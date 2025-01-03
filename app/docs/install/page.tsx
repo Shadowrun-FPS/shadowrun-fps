@@ -29,22 +29,26 @@ export default function InstallationPage() {
                 Trouble Installing? Please use the following channels if you are
                 having issues installing:
               </p>
-              <ul>
-                <li>
-                  <Link href="/docs/troubleshoot">General Errors and Info</Link>
-                </li>
-                <li>
-                  <Link
-                    target="_blank"
-                    href="discord://discord.com/channels/930362820627943495/938788090087088168"
-                  >
-                    Troubleshoot Chat
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/docs/support">Support Ticket</Link>
-                </li>
-              </ul>
+              <div>
+                <ul>
+                  <li>
+                    <Link href="/docs/troubleshoot">
+                      General Errors and Info
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      target="_blank"
+                      href="discord://discord.com/channels/930362820627943495/938788090087088168"
+                    >
+                      Troubleshoot Chat
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/docs/support">Support Ticket</Link>
+                  </li>
+                </ul>
+              </div>
             </article>
             <h2 className="mt-16 mb-0 text-3xl font-bold not-prose">
               File Archiver
@@ -117,7 +121,9 @@ export default function InstallationPage() {
               <ul>
                 <li>
                   Open Shadowrun DXVK (2.3).zip and drag and drop or extract the
-                  Shadowrun folder contained inside.
+                  Shadowrun folder contained inside to your desired location.
+                  Right-click on the Shadowrun.exe to create a Shortcut and
+                  place that on your desktop.
                 </li>
               </ul>
             </section>
@@ -126,9 +132,9 @@ export default function InstallationPage() {
               <p>Launch Shadowrun.exe</p>
               <ul>
                 <li>
-                  Then sign in to your Microsoft account by pressing home or
-                  fn+home on the keyboard. (This is any account that can log in
-                  to{" "}
+                  Once prompted, sign into your Microsoft account by pressing
+                  home or fn+home on the keyboard. (This is any account that can
+                  log into{" "}
                   <Link target="_blank" href="https://www.xbox.com/">
                     Xbox.com
                   </Link>
@@ -138,8 +144,8 @@ export default function InstallationPage() {
               <ul>
                 <li>
                   Enter your key when prompted. The first time login/activation
-                  loading circle may take 5-20 minutes (see Getting a key
-                  section below)
+                  loading circle may take 5-20 minutes. Please be patient. (see
+                  Getting a Key section below)
                 </li>
               </ul>
             </section>
@@ -166,37 +172,71 @@ export default function InstallationPage() {
               <h3 className="pt-4 pb-2 text-xl font-semibold">Getting a Key</h3>
               <p>
                 If you do not have an old GFWL key laying around, you can
-                purchase{" "}
-                <Link
-                  target="_blank"
-                  href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/"
-                >
-                  Warhammer 40,000: Dawn of War II
-                </Link>{" "}
-                from Steam to use its GFWL key to activate Shadowrun.
-              </p>{" "}
-              <p>
-                {" "}
-                Or if you already own{" "}
-                <Link
-                  target="_blank"
-                  href="https://store.steampowered.com/app/12360/FlatOut_Ultimate_Carnage/"
-                >
-                  Flatout Ultimate Carnage
-                </Link>{" "}
-                on Steam, you can use its CD key to activate Shadowrun as well.
+                purchase one of these games from steam to use its respective
+                GFWL key to activate Shadowrun:
               </p>
+              <ul>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/"
+                  >
+                    Warhammer 40,000: Dawn of War II
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="https://store.steampowered.com/app/32420/STAR_WARS_The_Clone_Wars__Republic_Heroes/"
+                  >
+                    STAR WARS™: The Clone Wars - Republic Heroes™
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    target="_blank"
+                    href="https://store.steampowered.com/app/10460/The_Club/"
+                  >
+                    The Club™
+                  </Link>
+                </li>
+              </ul>
+
               <p>
                 This is possible because specific GFWL games can cross
                 authenticate each other - see{" "}
                 <Link href="/docs/troubleshoot">General Errors and Info</Link>
               </p>
-              <Image
-                src="/dawnofwar2.jpg"
-                alt="Installation Guide Image"
-                width={500}
-                height={300}
-              />
+
+              <div className="flex justify-between gap-4">
+                <Link href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/">
+                  <Image
+                    src="/dawnofwar2.jpg"
+                    alt="Warhammer Dawn of War II"
+                    width={300}
+                    height={200}
+                    className="flex-shrink-0"
+                  />
+                </Link>
+                <Link href="https://store.steampowered.com/app/32420/STAR_WARS_The_Clone_Wars__Republic_Heroes/">
+                  <Image
+                    src="/STARWARSRepublicHeroes.jpg"
+                    alt="Star Wars Republic Heroes"
+                    width={300}
+                    height={200}
+                    className="flex-shrink-0"
+                  />
+                </Link>
+                <Link href="https://store.steampowered.com/app/10460/The_Club/">
+                  <Image
+                    src="/TheClub.jpg"
+                    alt="The Club"
+                    width={300}
+                    height={200}
+                    className="flex-shrink-0"
+                  />
+                </Link>
+              </div>
               <p>
                 <strong>Once Purchased</strong>
               </p>
@@ -208,6 +248,10 @@ export default function InstallationPage() {
                 </li>
                 <li>Go to manage - CD keys</li>
                 <li>Copy the Legacy GFWL key</li>
+                <li>
+                  Paste the legacy key into the GFWL Activation screen when
+                  prompted
+                </li>
               </ul>
               <p>
                 <strong>How many uses can I get out of a key?</strong>
@@ -233,11 +277,13 @@ export default function InstallationPage() {
           <section id="sharing-keys">
             <h3 className="pt-4 pb-2 text-xl font-semibold">Sharing Keys</h3>
             <p>
-              A channel for sharing keys. You can give a shout if you notice a
-              key has been all used up. Feel free to leave one!{" "}
+              A channel for sharing keys has been created for the community to
+              use. If you notice a key has been all used up, please alert the
+              staff so it can be removed. Feel free to leave a key too if you
+              would like to support the community!{" "}
               <Link
                 target="_blank"
-                href="https://discord.com/channels/930362820627943495/1130511102938194063"
+                href="https://discord.com/channels/930362820627943495/1233897832587595868"
               >
                 Public Key Share
               </Link>{" "}
