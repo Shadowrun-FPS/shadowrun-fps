@@ -68,6 +68,11 @@ const errorAccordions: AccoridonType[] = [
     content:
       "Xbox settings - system - storage devices - clear local Xbox 360 storage",
   },
+  {
+    title: "Controller doesn't work in-game",
+    content:
+      "Return to the game's main menu screen. Go to Settings > Gamepad and set the input as 'Gamepad'. This MUST be changed in the main menu settings and cannot be changed mid-game.",
+  },
 ];
 
 export default function TroubleshootingPage() {
