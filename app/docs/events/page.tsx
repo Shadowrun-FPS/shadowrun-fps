@@ -2,16 +2,16 @@ export const dynamic = "force-dynamic";
 
 import { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "Introduction",
+  title: "Events",
   openGraph: {
-    title: "Introduction",
+    title: "Events",
   },
 };
 
 import React from "react";
 import FeaturedPosts from "@/app/docs/events/featured-posts";
 
-export default function IntroductionPage() {
+export default function EventsPage() {
   return (
     <div className="flex flex-col items-center justify-center ">
       <div className="mx-auto mt-12 md:px-6"></div>
