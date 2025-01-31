@@ -9,8 +9,19 @@ export async function getFeaturedPosts() {
   const posts = await db
     .collection("Posts")
     .find({ published: true })
-    .sort({ datePublished: -1 })
     .toArray();
+
+  posts.sort((a, b) => {
+    const parseDate = (dateStr: string) => {
+      const [month, day, year] = dateStr.split("-").map(Number);
+      return new Date(year, month - 1, day);
+    };
+
+    const dateA = parseDate(a.datePublished).getTime();
+    const dateB = parseDate(b.datePublished).getTime();
+    return dateB - dateA;
+  });
+
   return posts as unknown as Post[];
 }
 

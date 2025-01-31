@@ -258,14 +258,7 @@ export default function InstallationPage() {
                       Warhammer 40,000: Dawn of War II
                     </Link>
                   </li>
-                  <li>
-                    <Link
-                      target="_blank"
-                      href="https://store.steampowered.com/app/32420/STAR_WARS_The_Clone_Wars__Republic_Heroes/"
-                    >
-                      STAR WARS™: The Clone Wars - Republic Heroes™
-                    </Link>
-                  </li>
+
                   <li>
                     <Link
                       target="_blank"
@@ -287,25 +280,17 @@ export default function InstallationPage() {
                     <Image
                       src="/dawnofwar2.jpg"
                       alt="Warhammer Dawn of War II"
-                      width={300}
+                      width={400}
                       height={200}
                       className="flex-shrink-0"
                     />
                   </Link>
-                  <Link href="https://store.steampowered.com/app/32420/STAR_WARS_The_Clone_Wars__Republic_Heroes/">
-                    <Image
-                      src="/STARWARSRepublicHeroes.jpg"
-                      alt="Star Wars Republic Heroes"
-                      width={300}
-                      height={200}
-                      className="flex-shrink-0"
-                    />
-                  </Link>
+
                   <Link href="https://store.steampowered.com/app/10460/The_Club/">
                     <Image
                       src="/TheClub.jpg"
                       alt="The Club"
-                      width={300}
+                      width={400}
                       height={200}
                       className="flex-shrink-0"
                     />
