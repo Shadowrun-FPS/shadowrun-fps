@@ -7,7 +7,9 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Shadowrun FPS - FASA Studios' 2007 Multiplayer Shooter</title>
+        <title>
+          Shadowrun FPS - FASA Studios&apos; 2007 Multiplayer Shooter
+        </title>
 
         <meta
           property="og:title"
@@ -41,7 +43,7 @@ export default function Home() {
             Download Shadowrun on PC!
           </h1>
           <p className="text-white">
-            Relive FASA Studios&quot; 2007 classic multiplayer shooter.
+            Relive FASA Studios&apos; 2007 classic multiplayer shooter.
           </p>
           <a
             href="/docs/install"
@@ -62,7 +64,7 @@ export default function Home() {
           <h2>About Shadowrun FPS</h2>
           <p>
             Welcome to <strong>This Is Shadowrun</strong>, the ultimate fan site
-            for FASA Studios&quot; 2007 Shadowrun FPS on Xbox 360 and PC.
+            for FASA Studios&apos; 2007 Shadowrun FPS on Xbox 360 and PC.
             Explore game guides, join multiplayer sessions, and connect with
             fans keeping the game alive!
           </p>
