@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /private/
+Allow: /docs/
+Allow: /search/
+Sitemap: https://www.shadowrunfps.com/sitemap.xml

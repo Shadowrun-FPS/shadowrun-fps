@@ -14,8 +14,8 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   metadataBase: new URL("http://ShadowrunFPS.com"),
   title: {
-    template: "%s | Shadowrun FPS Fan Community",
-    default: "Shadowrun FPS Fan Community",
+    template: "%s | Shadowrun FPS - FASA Studios 2007 First Person Shooter",
+    default: "Shadowrun FPS - FASA Studios 2007 First Person Shooter",
   },
   description:
     "Join the ultimate Shadowrun FPS fan community. Explore game content for Shadowrun on Xbox 360 and PC, connect on Discord, and keep the game alive!",
