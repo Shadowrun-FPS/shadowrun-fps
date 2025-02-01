@@ -8,12 +8,13 @@ export default function Home() {
     <>
       <Head>
         <title>
-          Shadowrun FPS - FASA Studios&apos; 2007 Multiplayer Shooter
+          Shadowrun FPS - FASA Studios&apos; 2007 First Person Multiplayer
+          Shooter
         </title>
-
+        <link rel="canonical" href="https://www.shadowrunfps.com" />
         <meta
           property="og:title"
-          content="Shadowrun FPS - FASA Studios' 2007 Multiplayer Shooter"
+          content="Shadowrun FPS - FASA Studios' 2007 First Person Multiplayer Shooter"
         />
         <meta
           property="og:description"
@@ -39,9 +40,9 @@ export default function Home() {
       </Head>
       <section className="px-4 py-32 mx-auto bg-center bg-no-repeat bg-cover max-w-screen-2xl bg-hero-image sm:px-6 lg:flex lg:items-center lg:px-8">
         <div className="grid max-w-sm gap-4 ">
-          <h1 className="text-4xl font-extrabold text-white">
+          <h2 className="text-4xl font-extrabold text-white">
             Download Shadowrun on PC!
-          </h1>
+          </h2>
           <p className="text-white">
             Relive FASA Studios&apos; 2007 classic multiplayer shooter.
           </p>
@@ -61,7 +62,7 @@ export default function Home() {
 
       <section className="grid grid-cols-1 gap-12 p-12 mx-auto prose max-w-screen-2xl bg-muted dark:prose-invert md:grid-cols-2">
         <article>
-          <h2>About Shadowrun FPS</h2>
+          <h3>About Shadowrun FPS</h3>
           <p>
             Welcome to <strong>This Is Shadowrun</strong>, the ultimate fan site
             for FASA Studios&apos; 2007 Shadowrun FPS on Xbox 360 and PC.
@@ -74,7 +75,7 @@ export default function Home() {
       <section className="flex flex-col mx-auto" style={{ maxWidth: "1400px" }}>
         <div>
           <div className="mt-12 mb-4 text-3xl font-bold text-center text-white md:text-5xl not-prose">
-            <h2>Featured Shadowrun Videos</h2>
+            <h3>Featured Shadowrun Videos</h3>
           </div>
 
           <FeaturedVideos />
