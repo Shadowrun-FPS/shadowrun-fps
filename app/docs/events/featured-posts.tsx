@@ -29,7 +29,7 @@ export default async function FeaturedPosts() {
   const posts = await getFeaturedPosts();
   return (
     <section className="max-w-full">
-      <h2 className="mb-12 text-3xl font-bold text-center">Recent Events</h2>
+      {/* <h2 className="mb-12 text-3xl font-bold text-center">Recent Events</h2> */}
       <div className="flex flex-wrap justify-center gap-6 mx-auto mb-16 rounded">
         {posts && posts.length > 0 ? (
           posts.map((post, index) => <PostCard key={index} post={post} />)
