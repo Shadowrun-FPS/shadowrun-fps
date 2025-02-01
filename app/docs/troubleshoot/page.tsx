@@ -1,13 +1,39 @@
 import { Metadata } from "next";
+
 export const metadata: Metadata = {
-  title: "Troubleshooting",
+  title: "Troubleshooting - Shadowrun FPS",
+  description:
+    "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips.",
   openGraph: {
-    title: "Troubleshooting",
+    title: "Troubleshooting - Shadowrun FPS",
+    description:
+      "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips. Join the Shadowrun community for more tips.",
+    url: "https://ShadowrunFPS.com/docs/troubleshooting",
+    images: [
+      {
+        url: "https://ShadowrunFPS.com/shadowrun_invite_banner.png",
+        width: 1200,
+        height: 630,
+        alt: "Troubleshooting Shadowrun FPS",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Troubleshooting - Shadowrun FPS",
+    description:
+      "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips. Join the Shadowrun community for more tips.",
+    images: [
+      {
+        url: "https://ShadowrunFPS.com/shadowrun_invite_banner.png",
+        width: 1200,
+        height: 630,
+        alt: "Troubleshooting Shadowrun FPS",
+      },
+    ],
   },
 };
 
-import Link from "next/link";
-import Image from "next/image";
 import AccordionGroup, { AccoridonType } from "@/components/accordion-group";
 
 const errorAccordions: AccoridonType[] = [

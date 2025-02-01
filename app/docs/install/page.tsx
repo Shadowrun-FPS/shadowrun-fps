@@ -1,4 +1,4 @@
-import Head from "next/head"; // Import Next.js Head component
+import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
@@ -23,7 +23,21 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/shadowrun-install-cover.jpg",
+        url: "/hero.png",
+        width: 1200,
+        height: 630,
+        alt: "Shadowrun FPS Installation Guide",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Install Shadowrun FPS on PC | Easy Setup Guide",
+    description:
+      "Follow our simple step-by-step guide to install Shadowrun FPS on PC. Get download links, setup tips, and join the community!",
+    images: [
+      {
+        url: "/hero.png",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Installation Guide",
@@ -35,40 +49,6 @@ export const metadata: Metadata = {
 export default function InstallationPage() {
   return (
     <>
-      <Head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "HowTo",
-              name: "Install Shadowrun FPS on PC",
-              description:
-                "Step-by-step guide to install the 2007 Shadowrun FPS game on PC.",
-              image: "https://yourwebsite.com/shadowrun-install-cover.jpg",
-              totalTime: "PT15M",
-              tool: ["7-Zip", "Games for Windows Live"],
-              step: [
-                {
-                  "@type": "HowToStep",
-                  name: "Download Games for Windows Live",
-                  url: "https://yourwebsite.com/install#step-1",
-                  image: "https://yourwebsite.com/gfwl-setup.jpg",
-                  text: "Download and install Games for Windows Live. Run gfwllivesetup.exe.",
-                },
-                {
-                  "@type": "HowToStep",
-                  name: "Install Shadowrun FPS",
-                  url: "https://yourwebsite.com/install#step-2",
-                  image: "https://yourwebsite.com/shadowrun-zip.jpg",
-                  text: "Download and extract Shadowrun - DXVK (2.3).zip. Create a desktop shortcut for Shadowrun.exe.",
-                },
-              ],
-            }),
-          }}
-        />
-      </Head>
-
       <div className="mt-8 lg:grid-cols-3 lg:flex dark:prose-invert">
         <div className="prose xl:mx-auto lg:prose-xl dark:prose-invert">
           <div
