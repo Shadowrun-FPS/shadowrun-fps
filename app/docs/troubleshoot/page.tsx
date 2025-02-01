@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     url: "https://ShadowrunFPS.com/docs/troubleshooting",
     images: [
       {
-        url: "https://ShadowrunFPS.com/images/troubleshooting-banner.jpg", // Ensure this image exists
+        url: "https://ShadowrunFPS.com/shadowrun_invite_banner.png",
         width: 1200,
         height: 630,
         alt: "Troubleshooting Shadowrun FPS",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
       "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips. Join the Shadowrun community for more tips.",
     images: [
       {
-        url: "https://ShadowrunFPS.com/images/troubleshooting-banner.jpg", // Ensure this image exists
+        url: "https://ShadowrunFPS.com/shadowrun_invite_banner.png",
         width: 1200,
         height: 630,
         alt: "Troubleshooting Shadowrun FPS",
