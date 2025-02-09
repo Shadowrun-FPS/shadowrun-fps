@@ -5,32 +5,51 @@ type PostProps = {
   post: Post;
 };
 
+interface PostImageProps {
+  src: string;
+  alt: string;
+  href: string;
+  className?: string;
+}
+
 export default function PostCard({ post }: PostProps) {
   return (
-    <section className="md:w-[425px]">
-      <div className="mb-4">
-        <p className="mb-2 ml-2 font-medium">{post.category}</p>
-        <div className="relative mb-2 overflow-hidden transition rounded-md h-72 hover:scale-105">
-          <PostImage
-            src={post.src}
-            alt={post.altText}
-            href={post.linkAddress}
-          />
+    <article className="bg-card rounded-lg overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group">
+      {/* Image Container */}
+      <div className="relative aspect-video overflow-hidden">
+        <PostImage
+          src={post.src}
+          alt={post.altText}
+          href={post.linkAddress}
+          className="transition-transform duration-500 group-hover:scale-105"
+        />
+      </div>
+
+      {/* Content */}
+      <div className="p-6">
+        {/* Category Badge */}
+        <div className="mb-4">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+            {post.category}
+          </span>
         </div>
-        <div className="flex flex-col justify-between mx-2">
-          <div>
-            <h5 className="mb-2 text-lg font-bold">{post.title}</h5>
-            <p className="overflow-hidden text-sm leading-snug max-h-20">
-              {post.description}
-            </p>
-          </div>
-          <div className="text-right">
-            <small>
-              Published {post.datePublished} by {post.author}
-            </small>
-          </div>
+
+        {/* Title and Description */}
+        <div className="space-y-3 mb-6">
+          <h2 className="text-xl font-bold group-hover:text-primary transition-colors">
+            {post.title}
+          </h2>
+          <p className="text-sm text-muted-foreground">{post.description}</p>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>By {post.author}</span>
+          <time dateTime={post.datePublished?.toString()}>
+            {post.datePublished}
+          </time>
         </div>
       </div>
-    </section>
+    </article>
   );
 }

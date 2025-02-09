@@ -2,51 +2,71 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
-import { ThemeProvider } from "@/components/theme-provider";
-import NextAuthProvider from "./providers/next-auth-provider";
-
-import Header from "@/components/header";
-import Footer from "@/components/footer";
-import { Toaster } from "@/components/ui/toaster";
+import { ClientLayout } from "@/components/ClientLayout";
+import { AuthProvider } from "@/components/providers/auth-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("http://ShadowrunFPS.com"),
+  metadataBase: new URL("https://ShadowrunFPS.com"),
   title: {
-    template: "%s | Shadowrun FPS - FASA Studios 2007 First Person Shooter",
-    default: "Shadowrun FPS - FASA Studios 2007 First Person Shooter",
+    default: "Shadowrun FPS - Classic Multiplayer Shooter",
+    template: "%s | Shadowrun FPS",
   },
   description:
-    "Join the ultimate Shadowrun FPS fan community. Explore game content for Shadowrun on Xbox 360 and PC, connect on Discord, and keep the game alive!",
-  keywords:
-    "Shadowrun, Shadowrun FPS, Shadowrun 360, Shadowrun PC, Shadowrun Discord, Shadowrun Xbox 360, Shadowrun multiplayer, FASA Studios, Shadowrun fan site",
+    "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
+  keywords: [
+    "Shadowrun FPS",
+    "competitive FPS",
+    "multiplayer shooter",
+    "cyberpunk FPS",
+    "fantasy FPS",
+    "FASA Studios",
+    "classic FPS games",
+    "team-based shooter",
+    "esports",
+    "gaming community",
+    "cross-platform FPS",
+    "Xbox 360 FPS",
+    "PC FPS games",
+    "tactical shooter",
+    "hero shooter",
+  ],
   openGraph: {
-    title: {
-      template: "%s - Shadowrun FPS Fan Community",
-      default: "Shadowrun FPS Fan Community",
-    },
+    title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
-      "Explore Shadowrun FPS content for Xbox 360 and PC. Join the fan community, connect on Discord, and experience classic FASA Studios gameplay.",
+      "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
+    url: "https://shadowrunfps.com",
+    siteName: "Shadowrun FPS",
     images: [
       {
-        url: "https://ShadowrunFPS.com/hero.png",
+        url: "/hero.png",
         width: 1200,
-        height: 675,
-        alt: "Shadowrun FPS game cover with Xbox 360 and PC elements.",
+        height: 630,
+        alt: "Shadowrun FPS Gameplay",
       },
     ],
-    siteName: "Shadowrun FPS Fan Community",
-    url: "https://ShadowrunFPS.com",
-    locale: "en_US",
+    locale: "en-US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shadowrun FPS Fan Community",
+    title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
-      "Join the Shadowrun FPS fan site for Xbox 360 and PC. Connect on Discord and rediscover the classic FASA Studios shooter.",
-    images: ["https://ShadowrunFPS.com/hero.png"],
+      "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
+    images: ["/hero.png"],
+    creator: "@ShadowrunFPS",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -56,16 +76,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#000000" />
+        <link rel="canonical" href="https://shadowrunfps.com" />
+        <meta
+          name="google-site-verification"
+          content="your-verification-code"
+        />
+        <meta property="og:site_name" content="Shadowrun FPS" />
+        <meta name="application-name" content="Shadowrun FPS" />
+        <link rel="manifest" href="/manifest.json" />
+      </head>
       <body className={`min-h-screen flex flex-col ${inter.className}`}>
-        <NextAuthProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <Header />
-            <main className="flex-1 overflow-y-auto">{children}</main>
-            <Footer />
-            <Toaster />
-          </ThemeProvider>
-        </NextAuthProvider>
+        <AuthProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </AuthProvider>
       </body>
     </html>
   );

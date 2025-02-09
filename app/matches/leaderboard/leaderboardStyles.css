@@ -1,7 +1,0 @@
-.ascending::after {
-    content: ' ▲'
-}
-
-.descending::after {
-    content: ' ▼'
-}

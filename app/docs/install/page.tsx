@@ -1,8 +1,17 @@
-import Head from "next/head";
 import Link from "next/link";
 import Image from "next/image";
 import React from "react";
 import { Metadata } from "next";
+import { DocLayout } from "@/components/layouts/doc-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { InfoIcon } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "How to Install Shadowrun FPS on PC | Step-by-Step Guide",
@@ -46,376 +55,329 @@ export const metadata: Metadata = {
   },
 };
 
-export default function InstallationPage() {
+export default function InstallPage() {
   return (
-    <>
-      <div className="mt-8 lg:grid-cols-3 lg:flex dark:prose-invert">
-        <div className="prose xl:mx-auto lg:prose-xl dark:prose-invert">
-          <div
-            data-te-spy="scroll"
-            data-te-target="#scrollspy1"
-            data-te-offset="200"
-            className="relative overflow-auto h-500"
-          >
-            <h1 className="text-4xl font-bold">
-              How to Install Shadowrun FPS on PC (2007) – Full Guide
-            </h1>
-            <p>
-              Ready to experience Shadowrun FPS on PC? This guide will walk you
-              through every step, from downloading the files to launching the
-              game. Let&quot;s dive in!
-            </p>
+    <DocLayout>
+      <article className="space-y-8">
+        <section className="space-y-4">
+          <h1 className="text-4xl font-bold tracking-tight">
+            Install Shadowrun FPS (2007)
+          </h1>
+          <p className="text-xl text-muted-foreground">
+            Complete installation guide for setting up Shadowrun FPS on your PC.
+            Follow these steps carefully to ensure a smooth installation
+            process.
+          </p>
 
-            <section id="preface">
-              <article>
-                <h2 className="pt-6 pb-2 text-xl font-semibold">Preface</h2>
-                <p>
-                  Need help? Visit our{" "}
-                  <Link
-                    href="/docs/troubleshoot"
-                    aria-label="Visit the Troubleshooting Guide"
-                  >
-                    Troubleshooting Guide
-                  </Link>
-                  . Or join the <Link href="/community">Shadowrun Discord</Link>{" "}
-                  for support.
-                </p>
+          <div className="flex flex-wrap gap-4">
+            <Link
+              href="/docs/troubleshoot"
+              className="inline-flex items-center gap-2 text-primary hover:underline"
+            >
+              Troubleshooting Guide
+            </Link>
+          </div>
+        </section>
 
-                <div>
-                  <ul>
+        <section id="getting-started" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">Required Tools</h2>
+          <div className="grid gap-3 sm:gap-4">
+            <Card>
+              <CardHeader className="px-3 sm:px-6">
+                <CardTitle>Essential Downloads</CardTitle>
+              </CardHeader>
+              <CardContent className="px-3 pt-2 sm:px-6">
+                <div className="grid gap-6 sm:grid-cols-3">
+                  <div>
+                    <h3 className="mb-2 text-medium">File Archiver</h3>
+                    <a
+                      href="https://www.7-zip.org/a/7z2201-x64.exe"
+                      className="text-primary hover:underline"
+                    >
+                      7-Zip
+                    </a>
+                    <p className="mt-1 font-medium text-muted-foreground">
+                      Required for extracting game files. Note: WinRAR is not
+                      recommended.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 font-medium">Game Service</h3>
+                    <a
+                      href="https://community.pcgamingwiki.com/files/file/1012-microsoft-games-for-windows-live/"
+                      className="text-primary hover:underline"
+                    >
+                      Games for Windows Live
+                    </a>
+                    <p className="mt-1 font-medium text-muted-foreground">
+                      Required for game activation and online play
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="mb-2 font-medium">Game Files</h3>
+                    <a
+                      href="https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg"
+                      className="text-primary hover:underline"
+                    >
+                      Shadowrun DXVK (2.3)
+                    </a>
+                    <p className="mt-1 font-medium text-muted-foreground">
+                      Pre-installed and updated game package
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <section id="installation-steps" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Installation Steps
+          </h2>
+          <Card>
+            <CardContent className="pt-6">
+              <ol className="space-y-6">
+                <li>
+                  <h3 className="mb-2 text-lg font-medium">
+                    1. Install{" "}
+                    <a
+                      href="https://community.pcgamingwiki.com/files/file/1012-microsoft-games-for-windows-live/"
+                      className="text-primary hover:underline"
+                    >
+                      Games For Windows Live
+                    </a>
+                  </h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>Extract the GFWL folder</li>
+                    <li>Run &quot;gfwllivesetup.exe&quot; as administrator.</li>
+                    <ul>
+                      Note: The &quot;Connection Error&quot; after install is
+                      normal and can be ignored.
+                    </ul>
                     <li>
-                      <Link href="/docs/troubleshoot">
-                        General Errors and Info
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        target="_blank"
-                        href="discord://discord.com/channels/930362820627943495/938788090087088168"
-                      >
-                        Troubleshoot Chat
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/docs/support">Support Ticket</Link>
+                      You don&apos;t need to launch GFWL program after
+                      installing.
                     </li>
                   </ul>
-                </div>
-              </article>
-              <h2 className="mt-16 mb-0 text-3xl font-bold not-prose">
-                File Archiver
-              </h2>
-              <p className="mt-0 mb-0">
-                In order to extract any .7z file, download and install:{" "}
-                <Link href="https://www.7-zip.org/a/7z2201-x64.exe">7-Zip</Link>{" "}
-                or{" "}
-                <Link href="https://github.com/peazip/PeaZip/releases/download/8.9.0/peazip-8.9.0.WIN64.exe">
-                  Peazip
-                </Link>
-              </p>
-              <p className="mt-0 not-prose">
-                <b>
-                  <em>Extracting with Winrar is known to cause issues.</em>
-                </b>
-              </p>
-              <h2 className="mt-16 mb-0 text-3xl font-bold not-prose">
-                FPS Limitations
-              </h2>
-              <p className="mt-o not-prose">
-                Parts of the game may malfunction if the fps is not limited. See
-                the FPS Limiters section on the
-                <Link
-                  data-te-nav-link-ref
-                  className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                  href="/docs/troubleshoot/#fps-limiters"
-                >
-                  Troubleshooting Page
-                </Link>
-              </p>
-            </section>
-            <section id="install-guide">
-              <h2 className="pt-5">Installation Guide</h2>
-            </section>
-            <section id="step-1">
-              <h3 className="pt-6 pb-2 text-xl font-semibold">Step 1</h3>
-              <p>
-                Download & Install:{" "}
-                <Link href="https://community.pcgamingwiki.com/files/file/1012-microsoft-games-for-windows-live/?do=download&r=3736&confirm=1&t=1&csrfKey=72a35fbfd8ae582fe891f867e376ddcc">
-                  Games For Windows Live
-                </Link>
-              </p>
-              <ul>
-                <li>Extract the folder</li>
-                <li>
-                  Run <u>gfwllivesetup.exe</u>
                 </li>
                 <li>
-                  <em>
-                    When prompted, select Launch and the GFWL program will
-                    launch showing Connection Error. This is to be expected and
-                    can be ignored. You DO NOT need to launch this program after
-                    installing!
-                  </em>
+                  <h3 className="mb-2 text-lg font-medium">
+                    2. Install{" "}
+                    <a
+                      href="https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg"
+                      className="text-primary hover:underline"
+                    >
+                      Shadowrun DXVK
+                    </a>
+                  </h3>
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>
+                      Extract &quot;Shadowrun DXVK (2.3).zip&quot; using 7-Zip.
+                    </li>
+                    <li>
+                      Drag and drop or extract the Shadowrun folder to your
+                      desired location.
+                      <ul>
+                        Create shortcut of Shadowrun.exe if you want a desktop
+                        shortcut.
+                      </ul>
+                    </li>
+                    <li>
+                      Install any required DirectX components, if prompted.
+                    </li>
+                  </ul>
                 </li>
-              </ul>
-              <section id="step-2">
-                <h3 className="pt-4 pb-2 text-xl font-semibold">Step 2</h3>
-                <p>
-                  Download{" "}
-                  <Link
-                    href="https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg"
-                    target="_blank"
-                  >
-                    Shadowrun - DXVK (2.3).zip
-                  </Link>{" "}
-                  version of the Pre-installed and updated game.
-                </p>
-                <ul>
-                  <li>
-                    Open Shadowrun DXVK (2.3).zip and drag and drop or extract
-                    the Shadowrun folder contained inside to your desired
-                    location. Right-click on the Shadowrun.exe to create a
-                    Shortcut and place that on your desktop.
-                  </li>
+                <li>
+                  <h3 className="mb-2 text-lg font-medium">3. First Launch</h3>e
+                  <ul className="space-y-2 text-muted-foreground">
+                    <li>Launch Shadowrun.exe</li>
+                    <li>
+                      Configure Windows compatibility settings by clicking
+                      &apos;Run&apos;, if prompted.
+                    </li>
+                    <li>
+                      Press Home or Fn+Home to sign in to your Microsoft
+                      account.
+                    </li>
+                    <li>Enter your key when prompted.</li>
+                    <div className="p-3 rounded-lg bg-muted">
+                      <p className="font-medium text-foreground">
+                        Important Note: First-time activation may take up to 20
+                        minutes to activate after the key entry page.
+                      </p>
+                    </div>
+                  </ul>
+                </li>
+              </ol>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="post-install" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Post-Installation Tips
+          </h2>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4 text-lg font-medium text-muted-foreground">
+                <ul className="space-y-2">
+                  <li>Configure graphics settings for optimal performance</li>
+                  <li>Set up your controls and key bindings</li>
+                  <li>Test your microphone for in-game communication</li>
+                  <li>Join the community Discord for support</li>
                 </ul>
-              </section>
-              <section id="step-3">
-                <h3 className="pt-4 pb-2 text-xl font-semibold">Step 3</h3>
-                <p>Launch Shadowrun.exe</p>
-                <ul>
-                  <li>
-                    Once prompted, sign into your Microsoft account by pressing
-                    home or fn+home on the keyboard. (This is any account that
-                    can log into{" "}
-                    <Link target="_blank" href="https://www.xbox.com/">
-                      Xbox.com
-                    </Link>
-                    )
-                  </li>
-                </ul>
-                <ul>
-                  <li>
-                    Enter your key when prompted. The first time
-                    login/activation loading circle may take 5-20 minutes.
-                    Please be patient. (see Getting a Key section below)
-                  </li>
-                </ul>
-              </section>
-              <section id="step-4">
-                <h3 className="pt-4 pb-2 text-xl font-semibold">Step 4</h3>
-                <p>Configure Resolution and in-game Advanced Video Settings.</p>
-                <ul>
-                  <li>
-                    It&apos;s important to set Vertical Sync to
-                    &quot;Disable&quot; in the in-game Advanced Video Settings.
-                    The other settings can be changed to whatever you like, or
-                    left alone.
-                  </li>
-                </ul>
-                <Image
-                  src="/shadowrunvsync.png"
-                  alt="Shadowrun FPS In-Game Settings for Optimal Performance"
-                  width={500}
-                  height={500}
-                />
-              </section>
-              <br />
-              <section id="getting-a-key">
-                <h3 className="pt-4 pb-2 text-xl font-semibold">
-                  Getting a Key
-                </h3>
-                <p>
-                  If you do not have an old GFWL key laying around, you can
-                  purchase one of these games from steam to use its respective
-                  GFWL key to activate Shadowrun:
-                </p>
-                <ul>
-                  <li>
+                <div className="p-3 rounded-lg bg-muted">
+                  <p className="font-medium">Important Note:</p>
+                  <p>
+                    Make sure to configure your FPS limits and graphics settings
+                    before playing online matches. See our{" "}
                     <Link
-                      target="_blank"
+                      href="/docs/troubleshoot#performance"
+                      className="text-primary hover:underline"
+                    >
+                      performance guide
+                    </Link>{" "}
+                    for detailed settings.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="game-key" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Obtaining a Game Key
+          </h2>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-6">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <a
                       href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/"
+                      className="block transition-opacity hover:opacity-90"
                     >
-                      Warhammer 40,000: Dawn of War II
-                    </Link>
-                  </li>
-
-                  <li>
-                    <Link
-                      target="_blank"
+                      <Image
+                        src="/dawnofwar2.jpg"
+                        alt="Dawn of War II"
+                        width={400}
+                        height={300}
+                        className="object-cover rounded-lg"
+                      />
+                      <p className="mt-2 font-lg text-bold">
+                        Warhammer 40,000: Dawn of War II
+                      </p>
+                    </a>
+                    <a
                       href="https://store.steampowered.com/app/10460/The_Club/"
+                      className="block transition-opacity hover:opacity-90"
                     >
-                      The Club™
-                    </Link>
-                  </li>
-                </ul>
+                      <Image
+                        src="/TheClub.jpg"
+                        alt="The Club"
+                        width={400}
+                        height={300}
+                        className="object-cover rounded-lg"
+                      />
 
-                <p>
-                  This is possible because specific GFWL games can cross
-                  authenticate each other - see{" "}
-                  <Link href="/docs/troubleshoot">General Errors and Info</Link>
-                </p>
+                      <p className="mt-2 font-lg text-bold">The Club</p>
+                    </a>
+                  </div>
 
-                <div className="flex justify-between gap-4">
-                  <Link href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/">
-                    <Image
-                      src="/dawnofwar2.jpg"
-                      alt="Warhammer Dawn of War II"
-                      width={400}
-                      height={200}
-                      className="flex-shrink-0"
-                    />
-                  </Link>
-
-                  <Link href="https://store.steampowered.com/app/10460/The_Club/">
-                    <Image
-                      src="/TheClub.jpg"
-                      alt="The Club"
-                      width={400}
-                      height={200}
-                      className="flex-shrink-0"
-                    />
-                  </Link>
+                  {/* Key Information Below */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Key Information</h3>
+                    <div className="grid gap-4">
+                      <div>
+                        <h4 className="mb-2 font-medium">Getting Your Key:</h4>
+                        <ol className="space-y-2 list-decimal list-inside">
+                          <li>Purchase any compatible game on Steam</li>
+                          <li>Right-click the game in your library</li>
+                          <li>Select Manage → CD Keys</li>
+                          <li>Copy the Legacy GFWL key</li>
+                        </ol>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted">
+                        <p className="font-medium">Key Usage:</p>
+                        <ul className="mt-2 space-y-1">
+                          <li>Each key can be used 10-15 times</li>
+                          <li>No account or computer restrictions</li>
+                          <li>Keys can be shared until depleted</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <p>
-                  <strong>Once Purchased</strong>
-                </p>
-                <ul>
-                  <li>No installation is required</li>
-                  <li>
-                    In your Steam Library, right-click on your newly purchased
-                    game
-                  </li>
-                  <li>Go to manage - CD keys</li>
-                  <li>Copy the Legacy GFWL key</li>
-                  <li>
-                    Paste the legacy key into the GFWL Activation screen when
-                    prompted
-                  </li>
-                </ul>
-                <p>
-                  <strong>How many uses can I get out of a key?</strong>
-                </p>
-                <p>
-                  It is theorized that each individual key can be used between
-                  10-15 times with no ties to account or computer. This means
-                  you can share your key with anyone until the key is
-                  permanently used up.
-                </p>
-                <p>
-                  For further key details, see{" "}
-                  <Link
-                    target="_blank"
-                    href="https://discord.com/channels/930362820627943495/1106078455226957854/1106080395352604723"
-                  >
-                    PC Key Activation
-                  </Link>
-                </p>
-                <br />
-              </section>
-            </section>
-            <section id="sharing-keys">
-              <h3 className="pt-4 pb-2 text-xl font-semibold">Sharing Keys</h3>
-              <p>
-                A channel for sharing keys has been created for the community to
-                use. If you notice a key has been all used up, please alert the
-                staff so it can be removed. Feel free to leave a key too if you
-                would like to support the community!{" "}
-                <Link
-                  target="_blank"
-                  href="https://discord.com/channels/930362820627943495/1233897832587595868"
-                >
-                  Public Key Share
-                </Link>{" "}
-              </p>
-            </section>
-          </div>
-        </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
 
-        <div className="fixed h-16 md:right-4 top-50">
-          <div
-            id="scrollspy1"
-            className="pl-3 text-md scroll-smooth focus:scroll-auto"
-          >
-            <ul data-te-nav-list-ref>
-              <li className="py-1">
-                <a
-                  data-te-nav-link-ref
-                  data-te-nav-link-active
-                  className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                  href="#preface"
-                >
-                  Preface
-                </a>
-              </li>
-              <li className="py-1">
-                <a
-                  data-te-nav-link-ref
-                  className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                  href="#install-guide"
-                >
-                  Install Guide
-                </a>
-              </li>
-              <ul data-te-nav-list-ref className="pl-3">
-                <li className="py-1">
-                  <a
-                    data-te-nav-link-ref
-                    className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                    href="#step-1"
-                  >
-                    Step 1
-                  </a>
-                </li>
-                <li>
-                  <a
-                    data-te-nav-link-ref
-                    className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                    href="#step-2"
-                  >
-                    Step 2
-                  </a>
-                </li>
-                <li>
-                  <a
-                    data-te-nav-link-ref
-                    className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                    href="#step-3"
-                  >
-                    Step 3
-                  </a>
-                </li>
-                <li>
-                  <a
-                    data-te-nav-link-ref
-                    className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                    href="#step-4"
-                  >
-                    Step 4
-                  </a>
-                </li>
-              </ul>
-              <li className="py-1">
-                <a
-                  data-te-nav-link-ref
-                  className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                  href="#getting-a-key"
-                >
-                  Getting a Key
-                </a>
-              </li>
-              <li className="py-1">
-                <a
-                  data-te-nav-link-ref
-                  className="bg-transparent px-[5px] text-neutral-600 shadow-none dark:text-neutral-200"
-                  href="#sharing-keys"
-                >
-                  Sharing Keys
-                </a>
-              </li>
-            </ul>
+        <section id="matchmaking" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Matchmaking Preferences
+          </h2>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4 text-medium text-muted-foreground">
+                <p>Please update your in-game matchmaking preferences:</p>
+                <ul className="ml-4 space-y-2 list-disc">
+                  <li>
+                    Deselect &apos;8&apos; and &apos;12&apos; player options
+                  </li>
+                  <li>Deselect small map variations</li>
+                </ul>
+
+                <div className="p-3 rounded-lg bg-muted">
+                  <p>
+                    These default preferences can limit lobby size
+                    automatically, preventing 16-player matches.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="requirements" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            System Requirements
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Minimum Requirements</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-medium text-muted-foreground">
+                  <li>Windows 7 or later</li>
+                  <li>2GB RAM</li>
+                  <li>DirectX 9.0c</li>
+                  <li>10GB available space</li>
+                  <li>Internet connection for multiplayer</li>
+                  <li>Microsoft account</li>
+                </ul>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Recommended</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-medium text-muted-foreground">
+                  <li>Windows 10/11</li>
+                  <li>4GB RAM</li>
+                  <li>DirectX 11</li>
+                  <li>15GB available space</li>
+                  <li>Stable internet connection</li>
+                </ul>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-      </div>
-    </>
+        </section>
+      </article>
+    </DocLayout>
   );
 }

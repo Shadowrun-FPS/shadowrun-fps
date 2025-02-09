@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import Spinner from "@/components/util/spinner";
 import IconDiscordLogo from "../icons/discord-logo";
 import { signIn, signOut } from "next-auth/react";
@@ -10,105 +10,70 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuPortal,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Moon, Sun, User } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Button } from "../ui/button";
-import { DropdownMenuArrow } from "@radix-ui/react-dropdown-menu";
-import Image from "next/image";
 
-const AccountDropdown: React.FC = () => {
+export function AccountDropdown() {
   const { data: session, status } = useSession();
-  const { setTheme } = useTheme();
   const isLoggedIn = status === "authenticated";
 
-  useEffect(() => {
-    console.log("Account dropdown mounted");
-  }, []);
-
   const handleSignIn = () => {
-    console.log("Discord sign in");
     signIn("discord");
   };
 
   const handleSignOut = () => {
-    console.log("Discord sign out");
     signOut();
   };
 
   if (status === "loading") {
     return <Spinner />;
-  } else {
-    let avatarSrc,
-      user = undefined;
-    if (session) {
-      user = session.user;
-      if (user && user.image) {
-        avatarSrc = user.image;
-      }
-    }
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger>
-          <Avatar>
-            <AvatarImage src={avatarSrc} />
-            <AvatarFallback>{<User />}</AvatarFallback>
-          </Avatar>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="grid grid-cols-[100px_1fr] gap-4 p-4 rounded-md bg-gradient-to-b from-muted/50 focus:shadow-md">
-          <div className="flex items-center justify-center">
-            <Image
-              className="rounded-full shadow-lg dark:shadow-black/20"
-              src="/teleport_2.gif"
-              alt="Teleport GIF"
-              width={80}
-              height={80}
-            />
-          </div>
+  }
 
-          <div>
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
-              <DropdownMenuPortal>
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem onClick={() => setTheme("light")}>
-                    Light
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("dark")}>
-                    Dark
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setTheme("system")}>
-                    System
-                  </DropdownMenuItem>
-                </DropdownMenuSubContent>
-              </DropdownMenuPortal>
-            </DropdownMenuSub>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className={"flex gap-2"}
-              onClick={isLoggedIn ? handleSignOut : handleSignIn}
-            >
-              <IconDiscordLogo height={"2em"} width={"2em"} />
-              {status === "authenticated" ? (
-                <span>Sign out</span>
-              ) : (
-                <span>Sign In</span>
-              )}
-            </DropdownMenuItem>
-          </div>
-        </DropdownMenuContent>
-      </DropdownMenu>
+  // Show Discord Sign In button when not logged in
+  if (!isLoggedIn) {
+    return (
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleSignIn}
+        className="w-8 h-8 transition-colors rounded-full hover:bg-accent"
+      >
+        <IconDiscordLogo className="w-5 h-5" />
+      </Button>
     );
   }
-};
 
-export default AccountDropdown;
+  // Show dropdown when logged in
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="w-8 h-8 transition-all rounded-full hover:bg-accent"
+        >
+          <Avatar className="w-8 h-8">
+            <AvatarImage
+              src={session.user?.image || undefined}
+              className="object-cover"
+            />
+            <AvatarFallback className="bg-primary/10">
+              <IconDiscordLogo className="w-4 h-4" />
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="end" className="p-2 mt-2 w-42">
+        <DropdownMenuItem
+          className="flex items-center justify-center gap-2 mt-2"
+          onClick={handleSignOut}
+        >
+          <IconDiscordLogo className="w-4 h-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}

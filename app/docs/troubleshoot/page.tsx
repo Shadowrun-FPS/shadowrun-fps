@@ -1,4 +1,14 @@
 import { Metadata } from "next";
+import { DocLayout } from "@/components/layouts/doc-layout";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Troubleshooting - Shadowrun FPS",
@@ -34,12 +44,345 @@ export const metadata: Metadata = {
   },
 };
 
-import AccordionGroup, { AccoridonType } from "@/components/accordion-group";
+export default function TroubleshootPage() {
+  return (
+    <DocLayout>
+      <article className="space-y-8">
+        <section id="errors" className="space-y-4">
+          <h2 className="text-3xl font-bold tracking-tight">Common Errors</h2>
+          <p className="text-lg leading-relaxed text-muted-foreground">
+            Find solutions to common issues and error messages below. Click on
+            an error to see its solution.
+          </p>
+          <Accordion type="single" collapsible className="w-full space-y-4">
+            {errorAccordions.map((error, index) => (
+              <AccordionItem
+                key={index}
+                value={`item-${index}`}
+                className={cn(
+                  "group border border-border/40 rounded-lg mb-3 shadow-sm",
+                  "transition-all duration-200 hover:shadow-md hover:border-border/80",
+                  "data-[state=open]:shadow-md data-[state=open]:border-primary/20 data-[state=open]:bg-accent/5"
+                )}
+              >
+                <AccordionTrigger className="px-3 py-4 text-lg text-left sm:px-6 hover:no-underline">
+                  {error.title}
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="px-3 pt-2 pb-4 sm:px-6">
+                    {error.content && (
+                      <p className="leading-relaxed">{error.content}</p>
+                    )}
+                    {error.list && (
+                      <ul className="pl-6 space-y-2 list-disc">
+                        {error.list.map((item, i) => (
+                          <li key={i} className="leading-relaxed">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {error.href && (
+                      <a
+                        href={error.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 mt-2 text-primary hover:underline"
+                      >
+                        {error.link || "Download fix"}
+                        <span className="sr-only">Opens in new tab</span>
+                      </a>
+                    )}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </section>
 
-const errorAccordions: AccoridonType[] = [
+        <section id="activation" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Activation Issues
+          </h2>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <div className="p-3 rounded-lg bg-muted">
+                  <p className="font-medium text-foreground">Important Note:</p>
+                  <p>
+                    First-time activation may take up to 20 minutes to load the
+                    key entry page after logging in.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <p className="font-medium text-foreground">
+                    If you get &quot;This key has been used too many
+                    times&quot;:
+                  </p>
+                  <ol className="space-y-2 list-decimal list-inside">
+                    <li>Click &apos;Retry&apos;</li>
+                    <li>Wait 5-10 minutes for the key entry window</li>
+                    <li>
+                      If it appears frozen:
+                      <ul className="mt-1 ml-6 list-disc">
+                        <li>Use Win-Key + Tab</li>
+                        <li>Drag Shadowrun to a second desktop</li>
+                        <li>Open Task Manager to end the process if needed</li>
+                      </ul>
+                    </li>
+                  </ol>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="performance" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Performance Settings
+          </h2>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>FPS Limitations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 text-sm text-muted-foreground">
+                  <div className="p-3 rounded-lg bg-muted">
+                    <p className="font-medium text-foreground">Important:</p>
+                    <p>
+                      Parts of the game malfunction when FPS is not limited:
+                    </p>
+                    <ul className="mt-2 ml-4 list-disc">
+                      <li>Firing rate of guns (minigun/smg)</li>
+                      <li>In-game physics (gusting/jumping)</li>
+                      <li>
+                        Gust grenades only work if Server host is at 50fps or
+                        under
+                      </li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium">
+                      Recommended FPS Limit: 50-98 fps
+                    </p>
+                    <p className="mt-2">Set this in dxvk.conf:</p>
+                    <pre className="p-2 mt-2 rounded bg-muted">
+                      dxgi.maxFrameRate = 85{"\n"}
+                      d3d9.maxFrameRate = 85
+                    </pre>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>NVIDIA Settings</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4 text-sm text-muted-foreground">
+                  <p>Required Settings:</p>
+                  <ul className="space-y-2">
+                    <li>Background Max Frame Rate - same as Max Frame Rate</li>
+                    <li>Max Frame Rate - up to 98</li>
+                    <li>Vertical Sync - Off</li>
+                  </ul>
+                  <p className="mt-4">Quality Settings:</p>
+                  <ul className="space-y-2">
+                    <li>Anisotropic Filtering - 16x</li>
+                    <li>Antialiasing Mode - Enhance application setting</li>
+                    <li>Antialiasing Setting - 8x</li>
+                    <li>Antialiasing Transparency - 8x supersample</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+        <section id="controller" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Controller Setup
+          </h2>
+          <Card>
+            <CardHeader>
+              <CardTitle>Controller Configuration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <div>
+                  <p className="font-medium">Xbox Controllers:</p>
+                  <ul className="pl-4 mt-2 space-y-2 list-disc">
+                    <li>Natively supported</li>
+                    <li>Must be enabled in main menu settings</li>
+                  </ul>
+                </div>
+                <div>
+                  <p className="font-medium">PlayStation Controllers:</p>
+                  <ol className="mt-2 space-y-2 list-decimal list-inside">
+                    <li>Add Shadowrun as Non-Steam Game</li>
+                    <li>Enable PlayStation Controller Support in Steam</li>
+                    <li>Connect controller via USB or Bluetooth</li>
+                  </ol>
+                </div>
+                <div className="p-3 rounded-lg bg-muted">
+                  <p className="font-medium text-foreground">Important:</p>
+                  <ul className="mt-2 space-y-2">
+                    <li>
+                      Controller settings can ONLY be changed from the main menu
+                    </li>
+                    <li>Cannot switch input methods during a match</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section id="getting-game" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Getting the Game
+          </h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>PC Version</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>
+                    Follow our{" "}
+                    <Link
+                      href="/docs/install"
+                      className="text-primary hover:underline"
+                    >
+                      installation guide
+                    </Link>{" "}
+                    for PC setup
+                  </p>
+                  <p>No Xbox Live Gold membership required</p>
+                  <p>Only needs key activation and Xbox.com account</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Xbox Version</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <a
+                    href="https://www.xbox.com/en-US/games/store/shadowrun/bsnjbk3gbdt3"
+                    className="block mb-2 text-primary hover:underline"
+                  >
+                    Available on Xbox Store ($14.99)
+                  </a>
+                  <p>Xbox Live Gold required for public matchmaking</p>
+                  <p>Private matches may be accessible without Gold</p>
+                  <p className="text-primary">
+                    Game is most active in private lobbies
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        <section id="connection" className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">
+            Connection Issues
+          </h2>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="space-y-4 text-sm text-muted-foreground">
+                <div>
+                  <p className="font-medium">Basic Troubleshooting:</p>
+                  <ul className="pl-4 mt-2 space-y-2 list-disc">
+                    <li>Enable open NAT or UPnP in router settings</li>
+                    <li>
+                      Verify open NAT status in Xbox Console Companion App
+                    </li>
+                    <li>Check for PCID registry conflicts</li>
+                    <li>Contact ISP about Carrier Grade NAT (CGNAT)</li>
+                  </ul>
+                </div>
+                <div className="p-3 rounded-lg bg-muted">
+                  <p className="font-medium">Registry Fix:</p>
+                  <ol className="mt-2 space-y-1 list-decimal list-inside">
+                    <li className="break-words">Uninstall GFWL components</li>
+                    <li className="break-words">
+                      Open regedit as administrator
+                    </li>
+                    <li className="break-words">
+                      Navigate to
+                      C:\Users\USERNAME\AppData\Local\Microsoft\Xlive
+                    </li>
+                    <li className="break-words">Delete the entire folder</li>
+                    <li className="break-words">Reinstall GFWL</li>
+                  </ol>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      </article>
+    </DocLayout>
+  );
+}
+
+const commonIssues = [
+  {
+    title: "Game Won't Launch",
+    description: "If the game fails to start or crashes on launch",
+    steps: [
+      "Verify game files integrity",
+      "Update graphics drivers",
+      "Run as administrator",
+      "Check DirectX installation",
+      "Verify Windows compatibility settings",
+    ],
+  },
+  {
+    title: "Performance Issues",
+    description: "If you're experiencing lag or low FPS",
+    steps: [
+      "Update graphics drivers",
+      "Close background applications",
+      "Check system requirements",
+      "Verify game settings",
+      "Run in compatibility mode",
+    ],
+  },
+  // ... keep other common issues
+];
+
+const errorAccordions = [
+  {
+    title: "Game Won't Launch",
+    content: "If the game fails to start or crashes on launch",
+    list: [
+      "Verify game files integrity",
+      "Update graphics drivers",
+      "Run as administrator",
+      "Check DirectX installation",
+      "Verify Windows compatibility settings",
+    ],
+  },
+  {
+    title: "Performance Issues",
+    content: "If you're experiencing lag or low FPS",
+    list: [
+      "Update graphics drivers",
+      "Close background applications",
+      "Check system requirements",
+      "Verify game settings",
+      "Run in compatibility mode",
+    ],
+  },
   {
     title: "Error: d3dx9 error - install this",
-    content: "Install the DirectX installer to resolve d3dx9 errors. ",
+    content: "Install the DirectX installer to resolve d3dx9 errors.",
     href: "https://www.microsoft.com/en-us/download/details.aspx?id=35",
     link: "DirectX installer",
   },
@@ -60,20 +403,29 @@ const errorAccordions: AccoridonType[] = [
   },
   {
     title: "Error Ordinal 43",
-    content: "Re-extract and reinstall GFWL components.",
+    content: "GFWL wasn't extracted properly.",
+    list: ["Re-extract and reinstall GFWL."],
   },
   {
     title: "Error Unable to create Direct3D Device",
-    content:
-      "Install DirectX or update missing/outdated drivers. Test with the compatibility tool provided.",
+    list: [
+      "Install DirectX or update missing or outdated drivers.",
+      "Test with the compatibility tool provided.",
+    ],
   },
+
   {
     title: "Error 0x8007065b",
-    content:
-      "Microsoft server account issue. Create a new free account and try the original account after a day or so.",
+    content: "Microsoft server account issue.",
+    list: [
+      "Create a new free account at Xbox.com and login with it.",
+      "Try signing into the original account after a day or so.",
+    ],
   },
+
   {
     title: "Xbox Login Issues",
+    content: "Various fixes you can try.",
     list: [
       "Disable 2FA",
       "Turn off VPN",
@@ -99,219 +451,15 @@ const errorAccordions: AccoridonType[] = [
     content:
       "Return to the game's main menu screen. Go to Settings > Gamepad and set the input as 'Gamepad'. This MUST be changed in the main menu settings and cannot be changed mid-game.",
   },
+  {
+    title: "Controller Support",
+    content:
+      "Xbox controllers are supported natively. For ALL controllers (including Xbox):",
+    list: [
+      "Must be configured in the main menu's Gamepad settings",
+      "Cannot switch between Gamepad and Mouse & Keyboard during a match",
+      "Settings changes must be done from the main menu",
+      "For PlayStation controllers, use <Link href='/troubleshoot#controller'>Steam's controller configuration</Link>",
+    ],
+  },
 ];
-
-export default function TroubleshootingPage() {
-  return (
-    <div className="md:ml-16">
-      <div className="prose lg:max-w-7xl lg:prose-xl dark:prose-invert">
-        <br />
-        <h1 className="5xl-text">Errors and Info</h1>
-      </div>
-      <div className="mt-8">
-        <AccordionGroup accordions={errorAccordions} title={"Error Codes"} />
-      </div>
-      <div className="prose lg:max-w-7xl lg:prose-xl dark:prose-invert">
-        <br />
-        <h3 className="">Activation</h3>
-        <p>
-          The first time you activate may take up to 20 minutes to load the key
-          entry page after logging in.
-        </p>
-        <p>
-          If you get the error &quot;This key has been used too many
-          times&quot;, then click &quot;Retry&quot;.
-        </p>
-
-        <p>
-          After that, wait for 5-10 minutes for the window to pop up to allow
-          you to type in your newly acquired key. (We&apos;re not sure why this
-          step takes so long. If you believe it fully crashed use Win-Key + Tab
-          and drag Shadowrun to a second desktop. This allows you to open Task
-          Manager and end the process.)
-        </p>
-
-        <br />
-        <h3>Game Performance</h3>
-        <p>
-          If the pre-installed version in{" "}
-          <a href="https://discord.com/channels/930362820627943495/935953977768558602">
-            PC Install Guide
-          </a>{" "}
-          wont launch, then graphics drivers or associated software need
-          updating for up-to-date Vulkan compatibility.
-        </p>
-        <p>
-          You can check if your hardware is compatible{" "}
-          <a href="https://vulkan.gpuinfo.org/listdevices.php?platform=windows">
-            here
-          </a>{" "}
-          or with this{" "}
-          <a href="https://github.com/skeeto/vulkan-test/releases/download/1.0.2/vulkan_test.exe">
-            compatibility test tool
-          </a>
-          .
-        </p>
-        <p>
-          Make sure you have up-to-date drivers and Geforce Experience for
-          Nvidia.
-        </p>
-        <p>
-          AMD may require updated software from{" "}
-          <a href="https://www.amd.com/en/support">
-            https://www.amd.com/en/support
-          </a>{" "}
-          to receive up-to-date drivers.
-        </p>
-        <p>
-          If frames are not limiting even though you have “dxvk.conf” in your
-          game folder, verify the file wasnt saved as “dxvk.conf.txt” (when you
-          save the file, use “Save as” and when the menu for that pops up, click
-          the “Save as type” bar, and change it to “All Files”).
-        </p>
-        <p>
-          If all else fails, remove d3d9.dll from the game folder and install
-          the out-of-date pink screen fix.
-        </p>
-        <br />
-        <h2>NVIDIA GPUs - Nvidia Control Panel Settings</h2>
-        <p>
-          {" "}
-          Make sure you have an up-to-date Geforce Experience and GPU driver{" "}
-        </p>
-
-        <p>
-          Laptops: make sure your GPU is selected in the drop down menu, and not
-          on-board graphics. Open Nvidia Control Panel, then select &quot;Manage
-          3d Settings&quot; from the left-hand menu. Click &quot;Program
-          Settings&quot; and add &quot;(shadowrun.exe)&quot;
-        </p>
-
-        <p>Required if not using dxvk.conf/preinstalled:</p>
-        <ul>
-          <li>Background Max Frame Rate - same as Max Frame Rate</li>
-          <li>
-            Max Frame Rate - up to 98 (subtle game physics break over this
-            value)
-          </li>
-          <li>
-            Vertical Sync –- Off (verify Vertical Sync is disabled in the in-
-            game Advanced Video Settings as well)
-          </li>
-        </ul>
-
-        <p>For max graphics quality include:</p>
-        <ul>
-          <li>Anisotropic Filtering - 16x</li>
-          <li> Antialiasing Mode - Enhance the application setting.</li>
-          <li>Antialiasing Setting - 8x</li>
-          <li>
-            Antialiasing Transparency - 8x supersample (big difference on glass
-            floors)
-          </li>
-        </ul>
-
-        <p>Optional recommendations:</p>
-        <ul>
-          <li>Power Management Mode - Prefer Maximum Performance</li>
-        </ul>
-
-        <br />
-        <h2>Getting the game</h2>
-        <p>Q. How can I play the game on PC?</p>
-        <p>A. Follow the PC install guide</p>
-
-        <p>Q. How can I play the game on Xbox?</p>
-        <p>
-          A. You need to either own a physical copy of Shadowrun, or purchase it
-          digitally for $14.99 on the Microsoft Store
-        </p>
-
-        <p>Q. Do I need Xbox Live in order to play on Xbox?</p>
-        <p>
-          A. You do need Xbox LIVE in order to play public matchmaking, however
-          you do not need a Live membership to join a private match. (Some have
-          mentioned they could not join a private game without Gold Xbox LIVE
-          membership.) Currently the game is most active in private lobbies.
-        </p>
-
-        <p>
-          Q. Do I need an Xbox Live membership/Gold to play Shadowrun on PC?
-        </p>
-        <p>
-          A. No Gold membership is required for PC, only key activation and a
-          Xbox.com account.
-        </p>
-
-        <br />
-
-        <h2>FPS Limiters</h2>
-        <h3>Bandicam</h3>
-        <ul>
-          <li>
-            Download <a href="https://www.bandicam.com/">Bandicam Free</a>
-          </li>
-          <li>
-            After installing, under Home in the side panel, change to Game
-            Recording Mode (controller icon).
-          </li>
-          <li>
-            Under FPS on the side panel, at the bottom set your FPS Limit hotkey
-            and set whatever FPS you desire.
-          </li>
-          <li>
-            Now once you want to change your frames in-game, press your hotkey
-            and it will enable/disable your FPS limit.
-          </li>
-        </ul>
-
-        <br />
-        <h3>Rivatuner/RTSS FPS Limit</h3>
-        <p>
-          RTSS allows you to adjust your FPS limit without having to restart the
-          game for the changes to take effect.
-        </p>
-        <ul>
-          <li>
-            {" "}
-            Download{" "}
-            <a href="https://www.guru3d.com/files-details/rtss-rivatuner-statistics-server-download.html">
-              Rivatuner Statistics Server
-            </a>
-          </li>
-          <li>Add shadowrun.exe to the program list</li>
-          <li>Set application detection level to high</li>
-          <li>Custom Direct3D support must be OFF</li>
-          <li>
-            {" "}
-            Set a framerate limit (these changes go into effect immediately, no
-            restart required)
-          </li>
-        </ul>
-
-        <br />
-        <h3>DXVK.conf FPS Limit</h3>
-        <p>
-          The most consistent option to limit frames is by creating or editing a
-          text file named dxvk.conf in your game folder [C:\Program Files
-          (x86)\Microsoft Games\Shadowrun]
-        </p>
-        <p>
-          The default dxvk.conf is available here with descriptions of what the
-          options do.
-        </p>
-        <p className="indent-6">
-          Note: d3d9.presentInterval will repeat frames X number of times, which
-          is super handy for games that are locked to 60 FPS. They will still
-          run at 60 FPS, but Vulkan will make the GPU send 120 FPS to the
-          monitor.
-        </p>
-        <p>It is set by either 1 = on or 0 = off</p>
-        <p className="indent-6">
-          Note: # before a line in dxvk.conf disables the setting toggle but
-          keeps the entered info.
-        </p>
-      </div>
-    </div>
-  );
-}

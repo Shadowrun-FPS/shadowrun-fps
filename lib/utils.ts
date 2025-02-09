@@ -34,3 +34,14 @@ export function convertMongoId(document: any) {
     _id: document._id.toString(),
   };
 }
+
+export function formatDate(dateString: string): string {
+  // Ensure consistent timezone handling by explicitly using UTC
+  const date = new Date(dateString + "T00:00:00Z");
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "2-digit",
+    timeZone: "UTC", // Ensure UTC timezone
+  });
+}
