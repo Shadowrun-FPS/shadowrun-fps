@@ -81,7 +81,6 @@ export default function MatchHistoryPage() {
             <TabsTrigger value="all">All Matches</TabsTrigger>
             <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="disputed">Disputed</TabsTrigger>
           </TabsList>
 
           <TabsContent value={activeTab}>
@@ -115,9 +114,9 @@ export default function MatchHistoryPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <p className="mb-2 text-sm text-muted-foreground">
                         Team 1
                       </p>
                       {match.team1Players.map((player) => (
@@ -135,7 +134,7 @@ export default function MatchHistoryPage() {
                       ))}
                     </div>
                     <div>
-                      <p className="text-sm text-muted-foreground mb-2">
+                      <p className="mb-2 text-sm text-muted-foreground">
                         Team 2
                       </p>
                       {match.team2Players.map((player) => (
@@ -155,7 +154,7 @@ export default function MatchHistoryPage() {
                   </div>
 
                   {match.status === "pending" && (
-                    <div className="mt-4 flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 mt-4">
                       <Button variant="outline" onClick={() => {}}>
                         Dispute
                       </Button>

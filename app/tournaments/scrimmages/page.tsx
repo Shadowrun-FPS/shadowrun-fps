@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Navbar } from "@/components/navbar";
 import { cn } from "@/lib/utils";
+import { FeatureGate } from "@/components/feature-gate";
 
 interface Queue {
   _id: string;
@@ -38,58 +39,60 @@ export default function ScrimmagesPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main className="container px-4 py-8 mx-auto">
-        <h1 className="mb-6 text-2xl font-bold">Scrimmages</h1>
+    <FeatureGate feature="scrimmage">
+      <div className="min-h-screen">
+        <Navbar />
+        <main className="container px-4 py-8 mx-auto">
+          <h1 className="mb-6 text-2xl font-bold">Scrimmages</h1>
 
-        <div className="space-y-6">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab("pending")}
-              className={cn(
-                "px-4 py-2 rounded-md transition-colors",
-                activeTab === "pending"
-                  ? "bg-muted/50 font-medium"
-                  : "text-muted-foreground hover:bg-muted/30"
-              )}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setActiveTab("upcoming")}
-              className={cn(
-                "px-4 py-2 rounded-md transition-colors",
-                activeTab === "upcoming"
-                  ? "bg-muted/50 font-medium"
-                  : "text-muted-foreground hover:bg-muted/30"
-              )}
-            >
-              Upcoming
-            </button>
-            <button
-              onClick={() => setActiveTab("completed")}
-              className={cn(
-                "px-4 py-2 rounded-md transition-colors",
-                activeTab === "completed"
-                  ? "bg-muted/50 font-medium"
-                  : "text-muted-foreground hover:bg-muted/30"
-              )}
-            >
-              Completed
-            </button>
-          </div>
+          <div className="space-y-6">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab("pending")}
+                className={cn(
+                  "px-4 py-2 rounded-md transition-colors",
+                  activeTab === "pending"
+                    ? "bg-muted/50 font-medium"
+                    : "text-muted-foreground hover:bg-muted/30"
+                )}
+              >
+                Pending
+              </button>
+              <button
+                onClick={() => setActiveTab("upcoming")}
+                className={cn(
+                  "px-4 py-2 rounded-md transition-colors",
+                  activeTab === "upcoming"
+                    ? "bg-muted/50 font-medium"
+                    : "text-muted-foreground hover:bg-muted/30"
+                )}
+              >
+                Upcoming
+              </button>
+              <button
+                onClick={() => setActiveTab("completed")}
+                className={cn(
+                  "px-4 py-2 rounded-md transition-colors",
+                  activeTab === "completed"
+                    ? "bg-muted/50 font-medium"
+                    : "text-muted-foreground hover:bg-muted/30"
+                )}
+              >
+                Completed
+              </button>
+            </div>
 
-          <div className="rounded-lg border border-border bg-card min-h-[200px] flex items-center justify-center flex-col gap-2">
-            <p className="text-muted-foreground">
-              {tabContent[activeTab].title}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {tabContent[activeTab].description}
-            </p>
+            <div className="rounded-lg border border-border bg-card min-h-[200px] flex items-center justify-center flex-col gap-2">
+              <p className="text-muted-foreground">
+                {tabContent[activeTab].title}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {tabContent[activeTab].description}
+              </p>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </FeatureGate>
   );
 }

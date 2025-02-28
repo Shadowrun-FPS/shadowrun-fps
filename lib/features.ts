@@ -1,4 +1,4 @@
-type FeatureFlag =
+export type FeatureFlag =
   | "queues"
   | "tournaments"
   | "rankings"

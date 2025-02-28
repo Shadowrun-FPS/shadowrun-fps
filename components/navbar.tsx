@@ -4,27 +4,40 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Trophy, Users, Calendar, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isFeatureEnabled } from "@/lib/features";
+import type { FeatureFlag } from "@/lib/features";
 
-const navItems = [
+interface NavItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  feature: FeatureFlag;
+}
+
+const navItems: NavItem[] = [
   {
     name: "Tournaments",
     href: "/tournaments/overview",
     icon: Trophy,
+    feature: "tournaments",
   },
   {
     name: "Teams",
     href: "/tournaments/teams",
     icon: Users,
+    feature: "teams",
   },
   {
     name: "Scrimmages",
     href: "/tournaments/scrimmages",
     icon: Swords,
+    feature: "scrimmage",
   },
   {
     name: "Rankings",
     href: "/tournaments/rankings",
     icon: Calendar,
+    feature: "rankings",
   },
 ];
 
@@ -37,7 +50,11 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           <Link
             href="/tournaments/overview"
-            className="flex items-center gap-2 font-semibold"
+            className={cn(
+              "flex items-center gap-2 font-semibold",
+              !isFeatureEnabled("tournaments") &&
+                "pointer-events-none opacity-50"
+            )}
           >
             <Trophy className="w-6 h-6" />
             <span className="hidden md:inline-block">Tournament Manager</span>
@@ -51,7 +68,9 @@ export function Navbar() {
                   "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
                   pathname === item.href
                     ? "text-primary"
-                    : "text-muted-foreground"
+                    : "text-muted-foreground",
+                  !isFeatureEnabled(item.feature) &&
+                    "pointer-events-none opacity-50"
                 )}
               >
                 <item.icon className="w-4 h-4" />
