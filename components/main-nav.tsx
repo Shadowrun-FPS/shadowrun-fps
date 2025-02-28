@@ -63,12 +63,8 @@ export function MainNav() {
     return true;
   });
 
-  const visibleTournamentItems = tournamentItems.filter((item) => {
-    if (item.href.includes("rankings")) return isFeatureEnabled("rankings");
-    if (item.href.includes("teams")) return isFeatureEnabled("teams");
-    if (item.href.includes("scrimmage")) return isFeatureEnabled("scrimmage");
-    return true;
-  });
+  // Only show tournaments nav if feature is enabled
+  const showTournaments = isFeatureEnabled("tournaments");
 
   return (
     <div className="flex items-center gap-12">
@@ -88,36 +84,39 @@ export function MainNav() {
           </Link>
         ))}
 
-        <NavigationMenu>
-          <NavigationMenuList>
-            <NavigationMenuItem>
-              <NavigationMenuTrigger className="text-sm font-medium">
-                Tournaments
-              </NavigationMenuTrigger>
-              <NavigationMenuContent>
-                <ul className="w-48 p-2">
-                  {visibleTournamentItems.map((item) => (
-                    <li key={item.href}>
-                      <NavigationMenuLink asChild>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
-                            pathname === item.href
-                              ? "bg-accent text-accent-foreground"
-                              : "text-muted-foreground"
-                          )}
-                        >
-                          {item.label}
-                        </Link>
-                      </NavigationMenuLink>
-                    </li>
-                  ))}
-                </ul>
-              </NavigationMenuContent>
-            </NavigationMenuItem>
-          </NavigationMenuList>
-        </NavigationMenu>
+        {/* Only render tournaments menu if feature is enabled */}
+        {showTournaments && (
+          <NavigationMenu>
+            <NavigationMenuList>
+              <NavigationMenuItem>
+                <NavigationMenuTrigger className="text-sm font-medium">
+                  Tournaments
+                </NavigationMenuTrigger>
+                <NavigationMenuContent>
+                  <ul className="w-48 p-2">
+                    {tournamentItems.map((item) => (
+                      <li key={item.href}>
+                        <NavigationMenuLink asChild>
+                          <Link
+                            href={item.href}
+                            className={cn(
+                              "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                              pathname === item.href
+                                ? "bg-accent text-accent-foreground"
+                                : "text-muted-foreground"
+                            )}
+                          >
+                            {item.label}
+                          </Link>
+                        </NavigationMenuLink>
+                      </li>
+                    ))}
+                  </ul>
+                </NavigationMenuContent>
+              </NavigationMenuItem>
+            </NavigationMenuList>
+          </NavigationMenu>
+        )}
       </nav>
     </div>
   );
