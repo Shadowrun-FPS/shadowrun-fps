@@ -14,6 +14,7 @@ import {
   NavigationMenuTrigger,
 } from "@/components/ui/navigation-menu";
 import { ChevronDown } from "lucide-react";
+import { isFeatureEnabled } from "@/lib/features";
 
 const navItems = [
   {
@@ -56,10 +57,23 @@ const tournamentItems = [
 export function MainNav() {
   const pathname = usePathname();
 
+  // Filter nav items based on feature flags
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.href.includes("queues")) return isFeatureEnabled("queues");
+    return true;
+  });
+
+  const visibleTournamentItems = tournamentItems.filter((item) => {
+    if (item.href.includes("rankings")) return isFeatureEnabled("rankings");
+    if (item.href.includes("teams")) return isFeatureEnabled("teams");
+    if (item.href.includes("scrimmage")) return isFeatureEnabled("scrimmage");
+    return true;
+  });
+
   return (
     <div className="flex items-center gap-12">
       <nav className="items-center hidden gap-6 md:flex">
-        {navItems.map((item) => (
+        {visibleNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
@@ -82,7 +96,7 @@ export function MainNav() {
               </NavigationMenuTrigger>
               <NavigationMenuContent>
                 <ul className="w-48 p-2">
-                  {tournamentItems.map((item) => (
+                  {visibleTournamentItems.map((item) => (
                     <li key={item.href}>
                       <NavigationMenuLink asChild>
                         <Link

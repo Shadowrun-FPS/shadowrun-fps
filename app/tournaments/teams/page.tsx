@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
+import { FeatureGate } from "@/components/feature-gate";
 
 interface Team {
   _id: string;
@@ -166,39 +167,41 @@ export default function TeamsPage() {
   );
 
   return (
-    <TooltipProvider>
-      <div className="min-h-screen">
-        <Navbar />
-        <main className="container px-4 py-8 mx-auto">
-          <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl font-bold">Teams</h1>
-            <CreateTeamForm />
-          </div>
-
-          {myTeam && (
-            <>
-              <div className="mb-8">
-                <h2 className="mb-4 text-xl font-semibold">My Team</h2>
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  <TeamCard team={myTeam} isMyTeam={true} />
-                </div>
-              </div>
-              <Separator className="my-8" />
-            </>
-          )}
-
-          <div>
-            <h2 className="mb-4 text-xl font-semibold">Other Teams</h2>
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {Array.isArray(teams) ? (
-                teams.map((team) => <TeamCard key={team._id} team={team} />)
-              ) : (
-                <div>No teams found</div>
-              )}
+    <FeatureGate feature="teams">
+      <TooltipProvider>
+        <div className="min-h-screen">
+          <Navbar />
+          <main className="container px-4 py-8 mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <h1 className="text-3xl font-bold">Teams</h1>
+              <CreateTeamForm />
             </div>
-          </div>
-        </main>
-      </div>
-    </TooltipProvider>
+
+            {myTeam && (
+              <>
+                <div className="mb-8">
+                  <h2 className="mb-4 text-xl font-semibold">My Team</h2>
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <TeamCard team={myTeam} isMyTeam={true} />
+                  </div>
+                </div>
+                <Separator className="my-8" />
+              </>
+            )}
+
+            <div>
+              <h2 className="mb-4 text-xl font-semibold">Other Teams</h2>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.isArray(teams) ? (
+                  teams.map((team) => <TeamCard key={team._id} team={team} />)
+                ) : (
+                  <div>No teams found</div>
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
+      </TooltipProvider>
+    </FeatureGate>
   );
 }
