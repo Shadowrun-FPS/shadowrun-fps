@@ -23,7 +23,9 @@ export interface Post {
 
 export interface Player {
   discordId: string;
+  discordUsername: string;
   discordNickname: string;
+  joinedAt: string | Date;
   discordProfilePicture?: string;
   team?: number;
   stats?: {
@@ -73,11 +75,12 @@ export interface MapResult {
 }
 
 export interface Queue {
+  _id: string;
+  teamSize: number;
+  players: Player[];
   queueId: string;
   gameType: string;
-  teamSize: number;
   eloTier?: string;
-  players: Player[];
 }
 
 export interface MatchPlayer extends Player {

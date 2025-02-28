@@ -1,5 +1,6 @@
 // next-auth.d.ts
 import "next-auth";
+import { DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   /**
@@ -10,13 +11,19 @@ declare module "next-auth" {
     /** Example of a custom user property */
     guild: any;
     global_name: string;
-    nickname: string;
+    nickname?: string;
     id: string;
   }
 
   /** Extends the session object to include the custom user type */
   interface Session {
-    user: User;
+    user: User & {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+      nickname?: string;
+    } & DefaultSession["user"];
   }
 }
 

@@ -19,19 +19,13 @@ if (process.env.NODE_ENV === "development") {
 
   if (!globalWithMongo._mongoClientPromise) {
     client = new MongoClient(uri, options);
-    globalWithMongo._mongoClientPromise = client.connect().catch((err) => {
-      console.error("Failed to connect to MongoDB:", err);
-      throw err;
-    });
+    globalWithMongo._mongoClientPromise = client.connect();
   }
   clientPromise = globalWithMongo._mongoClientPromise;
 } else {
   // In production mode, it's best to not use a global variable.
   client = new MongoClient(uri, options);
-  clientPromise = client.connect().catch((err) => {
-    console.error("Failed to connect to MongoDB:", err);
-    throw err;
-  });
+  clientPromise = client.connect();
 }
 
 export async function connectToDatabase() {

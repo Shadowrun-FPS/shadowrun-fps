@@ -132,3 +132,12 @@
     @apply min-h-[44px] min-w-[44px];
   }
 }
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

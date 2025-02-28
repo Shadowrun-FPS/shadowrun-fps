@@ -1,21 +1,52 @@
-import { MainNavMenu } from "@/components/main-nav";
-import MainLogo from "./icons/main-logo";
-import { AccountDropdown } from "./navigation/account-dropdown";
-import { Button } from "./ui/button";
+"use client";
+
 import Link from "next/link";
-import Image from "next/image";
+import { MainNav } from "@/components/main-nav";
+import { AccountDropdown } from "@/components/navigation/account-dropdown";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import MainLogo from "./icons/main-logo";
 
 export function Header() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex items-center h-14">
-        <MainLogo />
-        <MainNavMenu className="mx-4" />
-        <div className="flex items-center justify-end flex-1 gap-2 sm:gap-4">
+        <MainLogo className="mr-2" />
+        {/* Mobile Menu */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              className="px-2 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+            >
+              <Menu className="w-5 h-5 mr-2" />
+              <span className="text-sm font-medium">Explore</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="pr-0">
+            <MobileNav />
+          </SheetContent>
+        </Sheet>
+
+        {/* Desktop Navigation */}
+        <MainNav />
+
+        {/* Right Side */}
+        <div className="flex items-center justify-end flex-1 space-x-4">
           <Button
-            variant="default"
+            variant="secondary"
             size="sm"
-            className="flex items-center justify-center  gap-2 px-3 py-2 text-white rounded-md sm:flex-initial sm:px-4 bg-[#6A0DAD] hover:bg-[#7D1BC3] transition-colors duration-300"
+            className="hidden text-white transition-colors duration-300 bg-[#6A0DAD] hover:bg-[#7D1BC3] md:flex"
             asChild
           >
             <Link
@@ -23,18 +54,8 @@ export function Header() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <div className="relative w-9 h-9 sm:w-9 sm:h-9">
-                <Image
-                  src="https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/i/7f3de2ba-ac07-415d-bffb-764dde22203f/dc04z09-99e04abe-5c4b-4925-b8e7-4f05e95fb909.png"
-                  alt="GOG Dreamlist Logo"
-                  fill
-                  className="object-contain"
-                  unoptimized
-                />
-              </div>
-              <span className="text-sm font-semibold tracking-tight sm:text-base">
-                <span className="hidden lg:inline">Go Vote on GOG</span>
-                <span className="lg:hidden">Go Vote</span>
+              <span className="text-sm font-semibold tracking-tight">
+                Go Vote on GOG
               </span>
             </Link>
           </Button>
@@ -42,5 +63,77 @@ export function Header() {
         </div>
       </div>
     </header>
+  );
+}
+
+function MobileNav() {
+  const pathname = usePathname();
+
+  return (
+    <>
+      <SheetHeader>
+        <SheetTitle>Navigation Menu</SheetTitle>
+        <SheetDescription>
+          Browse all available sections and pages
+        </SheetDescription>
+      </SheetHeader>
+      <div className="flex flex-col px-6 pt-6 space-y-3">
+        {/* Documentation Links */}
+        <div className="pb-4 border-b">
+          <Link
+            href="/docs/events"
+            className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+          >
+            Events
+          </Link>
+          <Link
+            href="/docs/install"
+            className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+          >
+            Installation
+          </Link>
+          <Link
+            href="/docs/troubleshoot"
+            className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+          >
+            Troubleshooting
+          </Link>
+          <Link
+            href="/matches/queues"
+            className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+          >
+            Queues
+          </Link>
+        </div>
+
+        {/* Main Navigation Links */}
+
+        <Link
+          href="/tournaments/overview"
+          className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+        >
+          Tournament Overview
+        </Link>
+        <Link
+          href="/tournaments/teams"
+          className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+        >
+          Teams
+        </Link>
+        <Link
+          href="/tournaments/scrimmage"
+          className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+        >
+          Scrimmage
+        </Link>
+        <Link
+          href="/tournaments/rankings"
+          className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
+        >
+          Rankings
+        </Link>
+        {/* Tournament Section */}
+      </div>
+    </>
   );
 }

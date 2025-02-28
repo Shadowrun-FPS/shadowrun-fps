@@ -9,7 +9,14 @@ interface DocLayoutProps {
   className?: string;
 }
 
-const getQuickLinks = (pathname: string) => {
+interface QuickLink {
+  title: string;
+  href: string;
+}
+
+function getQuickLinks(pathname: string | null): QuickLink[] {
+  if (!pathname) return []; // Return empty array if pathname is null
+
   if (pathname.includes("/install")) {
     return [
       { title: "Required Downloads", href: "#getting-started" },
@@ -33,13 +40,13 @@ const getQuickLinks = (pathname: string) => {
   }
 
   return [];
-};
+}
 
 export function DocLayout({ children, className }: DocLayoutProps) {
   const pathname = usePathname();
   const quickLinks = getQuickLinks(pathname);
   const showQuickLinks =
-    pathname.includes("/install") || pathname.includes("/troubleshoot");
+    pathname?.includes("/install") || pathname?.includes("/troubleshoot");
 
   return (
     <div className="min-h-screen bg-background">

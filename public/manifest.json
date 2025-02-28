@@ -1,0 +1,9 @@
+{
+  "name": "Shadowrun FPS",
+  "short_name": "Shadowrun",
+  "description": "Shadowrun FPS Tournament Manager",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#6A0DAD"
+}
