@@ -45,7 +45,7 @@ const tournamentItems = [
     label: "Teams",
   },
   {
-    href: "/tournaments/scrimmage",
+    href: "/tournaments/scrimmages",
     label: "Scrimmage",
   },
   {
