@@ -29,9 +29,16 @@ const navItems = [
     href: "/docs/troubleshoot",
     label: "Troubleshooting",
   },
+];
+
+const matchItems = [
   {
     href: "/matches/queues",
-    label: "Queues",
+    label: "Queue",
+  },
+  {
+    href: "/matches/history",
+    label: "Match History",
   },
 ];
 
@@ -46,7 +53,7 @@ const tournamentItems = [
   },
   {
     href: "/tournaments/scrimmages",
-    label: "Scrimmage",
+    label: "Scrimmages",
   },
   {
     href: "/tournaments/rankings",
@@ -59,7 +66,6 @@ export function MainNav() {
 
   // Filter nav items based on feature flags
   const visibleNavItems = navItems.filter((item) => {
-    if (item.href.includes("queues")) return isFeatureEnabled("queues");
     return true;
   });
 
@@ -84,7 +90,39 @@ export function MainNav() {
           </Link>
         ))}
 
-        {/* Only render tournaments menu if feature is enabled */}
+        {/* Matches Menu */}
+        <NavigationMenu>
+          <NavigationMenuList>
+            <NavigationMenuItem>
+              <NavigationMenuTrigger className="text-sm font-medium">
+                Matches
+              </NavigationMenuTrigger>
+              <NavigationMenuContent>
+                <ul className="w-48 p-2">
+                  {matchItems.map((item) => (
+                    <li key={item.href}>
+                      <NavigationMenuLink asChild>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            "block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground",
+                            pathname === item.href
+                              ? "bg-accent text-accent-foreground"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {item.label}
+                        </Link>
+                      </NavigationMenuLink>
+                    </li>
+                  ))}
+                </ul>
+              </NavigationMenuContent>
+            </NavigationMenuItem>
+          </NavigationMenuList>
+        </NavigationMenu>
+
+        {/* Tournaments Menu */}
         {showTournaments && (
           <NavigationMenu>
             <NavigationMenuList>

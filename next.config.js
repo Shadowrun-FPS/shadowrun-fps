@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true, // For local images
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**", // Replace with your specific domain pattern
+        hostname: "**",
       },
     ],
   },

@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-config";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { inviterId, inviteeId } = await req.json();
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -78,17 +85,20 @@ export async function POST(
     // Save the invitation
     await db.collection("TeamInvites").insertOne(invitation);
 
-    // Create a notification for the invitee
-    const notification = {
-      userId: inviteeId,
-      type: "team_invite",
+    // Create notification
+    await db.collection("Notifications").insertOne({
+      type: "TEAM_INVITE",
+      recipientId: inviteeId,
+      senderId: session.user.id,
+      senderName: session.user.name ?? "Unknown User",
       teamId: params.teamId,
-      inviterId,
-      read: false,
-      createdAt: new Date(),
-    };
-
-    await db.collection("Notifications").insertOne(notification);
+      teamName: team.name,
+      status: "PENDING",
+      createdAt: Date.now(),
+      message: `${
+        session.user.name ?? "Unknown User"
+      } has invited you to join ${team.name}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

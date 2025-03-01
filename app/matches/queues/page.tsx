@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDistance } from "date-fns/formatDistance";
 import { FeatureGate } from "@/components/feature-gate";
+import { formatJoinTime } from "@/lib/date-utils";
 
 interface QueuePlayer {
   discordId: string;
@@ -186,24 +186,6 @@ export default function QueuesPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const formatJoinTime = (joinedAt: string | number | Date) => {
-    try {
-      // Handle different date formats and ensure valid date
-      const date =
-        typeof joinedAt === "number" ? new Date(joinedAt) : new Date(joinedAt);
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return "just now";
-      }
-
-      return formatDistance(date, new Date(), { addSuffix: true });
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "just now";
-    }
-  };
-
   // Update the getQueueSections helper to be more dynamic
   const getQueueSections = (queue: Queue) => {
     const requiredPlayers = queue.teamSize * 2; // This will be 8 for 4v4, 2 for 1v1, etc.
@@ -248,7 +230,7 @@ export default function QueuesPage() {
               value={activeTab}
               onValueChange={(v) => setActiveTab(v as typeof activeTab)}
             >
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2">
+              <TabsList className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
                 <TabsTrigger value="4v4">4v4</TabsTrigger>
                 <TabsTrigger value="5v5">5v5</TabsTrigger>
                 <TabsTrigger value="2v2">2v2</TabsTrigger>
@@ -268,7 +250,7 @@ export default function QueuesPage() {
                           className="overflow-hidden min-h-[600px] flex flex-col"
                         >
                           <CardHeader className="bg-muted/50">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                               <div>
                                 <CardTitle className="text-lg">
                                   {queue.eloTier.charAt(0).toUpperCase() +
@@ -316,7 +298,7 @@ export default function QueuesPage() {
                                   /{queue.teamSize * 2})
                                 </span>
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 {getQueueSections(queue).activePlayers.length >
                                 0 ? (
                                   getQueueSections(queue).activePlayers.map(

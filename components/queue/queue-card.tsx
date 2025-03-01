@@ -8,6 +8,8 @@ import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
 import { useState } from "react";
 import { Queue, Player } from "@/types/types";
+import Link from "next/link";
+import { MoreHorizontal } from "lucide-react";
 
 interface QueueCardProps {
   queue: Queue;
@@ -101,6 +103,16 @@ export function QueueCard({ queue, onJoin, onLeave }: QueueCardProps) {
           "Join Queue"
         )}
       </Button>
+
+      {/* View Match button - only show if matchId exists */}
+      {queue.matchId && (
+        <Link href={`/matches/${queue.matchId}`} className="flex items-center">
+          <Button variant="ghost" size="icon">
+            <MoreHorizontal className="w-4 h-4" />
+            <span className="sr-only">View match details</span>
+          </Button>
+        </Link>
+      )}
     </div>
   );
 }

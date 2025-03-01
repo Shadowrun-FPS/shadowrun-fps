@@ -76,11 +76,19 @@ export interface MapResult {
 
 export interface Queue {
   _id: string;
+  matchId?: string;
   teamSize: number;
+  eloTier: string;
   players: Player[];
+  status: string;
+  createdAt: number;
+  createdBy: string;
   queueId: string;
   gameType: string;
-  eloTier?: string;
+  winner?: string;
+  createdTS: number;
+  maps: string[];
+  results: MapResult[];
 }
 
 export interface MatchPlayer extends Player {

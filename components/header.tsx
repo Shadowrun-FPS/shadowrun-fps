@@ -72,7 +72,7 @@ function MobileNav() {
   return (
     <>
       <SheetHeader>
-        <SheetTitle>Navigation Menu</SheetTitle>
+        <SheetTitle>Shadowrun FPS</SheetTitle>
         <SheetDescription>
           Browse all available sections and pages
         </SheetDescription>
@@ -121,7 +121,7 @@ function MobileNav() {
           Teams
         </Link>
         <Link
-          href="/tournaments/scrimmage"
+          href="/tournaments/scrimmages"
           className="block py-2 text-sm font-medium transition-colors text-muted-foreground hover:text-primary"
         >
           Scrimmage
