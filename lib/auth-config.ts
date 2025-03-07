@@ -19,6 +19,7 @@ interface DiscordProfile {
 declare module "next-auth" {
   interface Session {
     user: {
+      isAdmin: boolean;
       id: string;
       name?: string;
       email?: string;

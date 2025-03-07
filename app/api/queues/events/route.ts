@@ -1,62 +1,54 @@
 import { NextRequest } from "next/server";
-import { headers } from "next/headers";
-import clientPromise from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongodb";
+
+export const dynamic = "force-dynamic";
+
+// Track the last update timestamp
+let lastUpdateTimestamp = Date.now();
+let cachedQueues = null;
 
 export async function GET(req: NextRequest) {
-  const headersList = headers();
-  const encoder = new TextEncoder();
-  let changeStream: any = null;
+  const headers = {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+  };
 
+  const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      try {
-        const client = await clientPromise;
-        const db = client.db("ShadowrunWeb");
+      const { db } = await connectToDatabase();
 
-        // Send initial queues data
-        const queues = await db
-          .collection("Queues")
-          .find({ status: "active" })
-          .toArray();
+      // Send initial data
+      const queues = await db.collection("Queues").find({}).toArray();
+      cachedQueues = queues;
+
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(queues)}\n\n`));
+
+      // Set up a change stream to listen for queue updates
+      const changeStream = db.collection("Queues").watch();
+
+      changeStream.on("change", async () => {
+        const updatedQueues = await db.collection("Queues").find({}).toArray();
+        cachedQueues = updatedQueues;
+        lastUpdateTimestamp = Date.now();
 
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(queues)}\n\n`)
+          encoder.encode(`data: ${JSON.stringify(updatedQueues)}\n\n`)
         );
+      });
 
-        // Set up change stream for Queues collection
-        changeStream = db.collection("Queues").watch();
+      // Keep connection alive
+      const keepAliveInterval = setInterval(() => {
+        controller.enqueue(encoder.encode(": keepalive\n\n"));
+      }, 30000);
 
-        // Listen for changes
-        changeStream.on("change", async () => {
-          if (controller.desiredSize === null) return; // Check if controller is still active
-
-          const updatedQueues = await db
-            .collection("Queues")
-            .find({ status: "active" })
-            .toArray();
-
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(updatedQueues)}\n\n`)
-          );
-        });
-      } catch (error) {
-        console.error("SSE Error:", error);
-        controller.close();
-      }
-    },
-    cancel() {
-      // Clean up when the stream is cancelled
-      if (changeStream) {
+      req.signal.addEventListener("abort", () => {
+        clearInterval(keepAliveInterval);
         changeStream.close();
-      }
+      });
     },
   });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return new Response(stream, { headers });
 }

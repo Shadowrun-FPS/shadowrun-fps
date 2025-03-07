@@ -5,6 +5,8 @@ import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 
+export const dynamic = "force-dynamic";
+
 interface QueuePlayer {
   discordId: string;
   discordUsername: string;
@@ -218,6 +220,14 @@ export async function POST(
         { error: "Failed to join queue" },
         { status: 400 }
       );
+    }
+
+    // Fetch all queues to send the updated data
+    const updatedQueues = await db.collection("Queues").find({}).toArray();
+
+    // Emit the update event to all connected clients
+    if (global.io) {
+      global.io.emit("queues:update", updatedQueues);
     }
 
     return NextResponse.json({ success: true });

@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongodb";
 
 export async function GET(req: NextRequest) {
   try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const { db } = await connectToDatabase();
 
-    const queues = await db
-      .collection("Queues")
-      .find({ status: "active" })
-      .toArray();
+    // Fixed: Use "Queues" collection with capital Q
+    const queues = await db.collection("Queues").find({}).toArray();
 
     return NextResponse.json(queues);
   } catch (error) {
-    console.error("Failed to fetch queues:", error);
+    console.error("Error fetching queues:", error);
     return NextResponse.json(
       { error: "Failed to fetch queues" },
       { status: 500 }

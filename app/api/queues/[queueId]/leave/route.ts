@@ -51,7 +51,7 @@ export async function POST(
       );
     }
 
-    // Always return a JSON response
+    // No need for SSE update logic, just return success
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to leave queue:", error);

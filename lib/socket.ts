@@ -1,5 +1,7 @@
 import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
+import { Server as NetServer } from "http";
+import { NextApiRequest } from "next";
 
 export function initSocket(httpServer: HTTPServer) {
   const io = new SocketIOServer(httpServer, {
@@ -38,3 +40,32 @@ export function initSocket(httpServer: HTTPServer) {
 }
 
 export type { SocketIOServer };
+
+export type NextApiResponseWithSocket = {
+  socket: {
+    server: NetServer & {
+      io?: SocketIOServer;
+    };
+  };
+};
+
+export const initSocketServer = (
+  req: NextApiRequest,
+  res: NextApiResponseWithSocket
+) => {
+  if (!res.socket.server.io) {
+    console.log("Initializing Socket.IO server...");
+    const io = new SocketIOServer(res.socket.server);
+    res.socket.server.io = io;
+
+    io.on("connection", (socket) => {
+      console.log(`Client connected: ${socket.id}`);
+
+      socket.on("disconnect", () => {
+        console.log(`Client disconnected: ${socket.id}`);
+      });
+    });
+  }
+
+  return res.socket.server.io;
+};
