@@ -14,3 +14,15 @@ export function formatDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return format(d, "MMMM dd, yyyy");
 }
+
+// Add a helper function to check if a user is an admin
+export function isAdmin(userId: string | undefined): boolean {
+  if (!userId) return false;
+  return userId === "238329746671271936"; // Your Discord ID
+}
+
+// Add a helper function to check if a user is a moderator
+export function isModerator(userId: string | undefined): boolean {
+  if (!userId) return false;
+  return userId === "238329746671271936" || isAdmin(userId); // Your Discord ID
+}

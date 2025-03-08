@@ -1,45 +1,6 @@
-import { Server as SocketIOServer } from "socket.io";
-import { Server as HTTPServer } from "http";
 import { Server as NetServer } from "http";
-import { NextApiRequest } from "next";
-
-export function initSocket(httpServer: HTTPServer) {
-  const io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL,
-      methods: ["GET", "POST"],
-    },
-  });
-
-  io.on("connection", (socket) => {
-    // Join tournament room
-    socket.on("join-tournament", (tournamentId: string) => {
-      socket.join(`tournament-${tournamentId}`);
-    });
-
-    // Join queue room
-    socket.on("join-queue", (queueId: string) => {
-      socket.join(`queue:${queueId}`);
-    });
-
-    // Leave rooms on disconnect
-    socket.on("disconnect", () => {
-      socket.rooms.forEach((room) => socket.leave(room));
-    });
-
-    socket.on("leave-tournament", (tournamentId: string) => {
-      socket.leave(`tournament-${tournamentId}`);
-    });
-
-    socket.on("tournament-update", ({ tournamentId, tournament }) => {
-      io.to(`tournament-${tournamentId}`).emit("tournament-update", tournament);
-    });
-  });
-
-  return io;
-}
-
-export type { SocketIOServer };
+import { Server as SocketIOServer } from "socket.io";
+import type { NextApiRequest } from "next";
 
 export type NextApiResponseWithSocket = {
   socket: {
@@ -49,23 +10,59 @@ export type NextApiResponseWithSocket = {
   };
 };
 
-export const initSocketServer = (
-  req: NextApiRequest,
-  res: NextApiResponseWithSocket
-) => {
-  if (!res.socket.server.io) {
-    console.log("Initializing Socket.IO server...");
-    const io = new SocketIOServer(res.socket.server);
-    res.socket.server.io = io;
+export function getIO() {
+  return (global as any).io as SocketIOServer | null;
+}
+
+export function initSocket(httpServer: NetServer) {
+  if (!(global as any).io) {
+    const io = new SocketIOServer(httpServer, {
+      path: "/api/socketio",
+      addTrailingSlash: false,
+      cors: {
+        origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        methods: ["GET", "POST"],
+      },
+    });
 
     io.on("connection", (socket) => {
-      console.log(`Client connected: ${socket.id}`);
+      console.log("Client connected:", socket.id);
+
+      socket.on("join-match", (matchId: string) => {
+        socket.join(`match:${matchId}`);
+        console.log(`Client ${socket.id} joined match room: ${matchId}`);
+      });
+
+      socket.on("subscribe-matches", () => {
+        socket.join("matches");
+        console.log(`Client ${socket.id} subscribed to matches updates`);
+      });
 
       socket.on("disconnect", () => {
-        console.log(`Client disconnected: ${socket.id}`);
+        console.log("Client disconnected:", socket.id);
       });
     });
-  }
 
-  return res.socket.server.io;
-};
+    (global as any).io = io;
+  }
+  return (global as any).io;
+}
+
+export function emitMatchUpdate(matchData: any) {
+  const socketIO = getIO();
+  if (socketIO) {
+    // Broadcast to all clients in the match room
+    socketIO.to(`match:${matchData.matchId}`).emit("match:update", {
+      ...matchData,
+      timestamp: Date.now(),
+      forceRefresh: matchData.mapScores?.some(
+        (score: any) => score?.scoresMismatch
+      ),
+    });
+
+    // Also emit to the general match updates channel
+    socketIO.emit("matches:update", matchData);
+
+    console.log(`Emitted match update to room match:${matchData.matchId}`);
+  }
+}

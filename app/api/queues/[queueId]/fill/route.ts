@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -12,25 +13,29 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-
-    // Check if user is authenticated
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to fill a queue" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is admin
-    const isAdmin =
-      session.user.id === "238329746671271936" || session.user.isAdmin;
+    // Add debug logging
+    console.log("Session data in fill route:", {
+      user: session.user,
+      userId: session.user.id,
+    });
 
-    if (!isAdmin) {
+    // Check if user is an admin
+    if (!isAdmin(session.user.id)) {
+      console.log("Admin check failed in fill route:", {
+        userId: session.user.id,
+      });
       return NextResponse.json(
         { error: "You don't have permission to fill queues" },
         { status: 403 }
       );
     }
+
+    const searchParams = req.nextUrl.searchParams;
+    const reshuffle = searchParams.get("reshuffle") === "true";
 
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -45,9 +50,7 @@ export async function POST(
     }
 
     // Clear existing players if requested to reshuffle
-    const shouldReshuffle =
-      req.nextUrl.searchParams.get("reshuffle") === "true";
-    if (shouldReshuffle && queue.players.length > 0) {
+    if (reshuffle && queue.players.length > 0) {
       await db
         .collection("Queues")
         .updateOne(

@@ -29,6 +29,7 @@ export default function QueuesTab() {
   const [queues, setQueues] = useState<Queue[]>([]);
   const [activeGameType, setActiveGameType] = useState("4v4");
   const { toast } = useToast();
+  const [joiningQueue, setJoiningQueue] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchQueues = async () => {
@@ -181,22 +182,25 @@ export default function QueuesTab() {
               {session?.user && (
                 <div className="pt-4">
                   {queue.players.some(
-                    (p) => p.discordId === session.user.id
+                    (p) => p.discordId === session?.user?.id
                   ) ? (
                     <Button
                       variant="destructive"
-                      className="w-full"
                       onClick={() => handleLeaveQueue(queue)}
+                      disabled={joiningQueue === queue._id}
+                      className="w-full"
                     >
-                      Leave Queue
+                      {joiningQueue === queue._id
+                        ? "Leaving..."
+                        : "Leave Queue"}
                     </Button>
                   ) : (
                     <Button
-                      className="w-full"
                       onClick={() => handleJoinQueue(queue)}
-                      disabled={queue.status === "full"}
+                      disabled={joiningQueue === queue._id}
+                      className="w-full bg-[#3b82f6] hover:bg-[#2563eb]"
                     >
-                      Join Queue
+                      {joiningQueue === queue._id ? "Joining..." : "Join Queue"}
                     </Button>
                   )}
                 </div>

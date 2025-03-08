@@ -1,9 +1,9 @@
 import { AuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
-import { getGuildData, upsertPlayerDiscordData } from "@/lib/discord-helpers";
+import { getGuildData } from "@/lib/discord-helpers";
 import clientPromise from "@/lib/mongodb";
-import { Account, Profile, User } from "next-auth";
 
+// Only keep the DiscordProfile interface and ROLE_IDs
 interface DiscordProfile {
   id: string;
   username: string;
@@ -16,22 +16,6 @@ interface DiscordProfile {
   banner?: string | null;
 }
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      isAdmin: boolean;
-      id: string;
-      name?: string;
-      email?: string;
-      image?: string;
-      nickname?: string;
-      roles?: string[];
-    };
-    accessToken?: string;
-  }
-}
-
-// Add role IDs as constants
 const ROLE_IDS = {
   ADMIN: "932585751332421642",
   FOUNDER: "1095126043918082109",

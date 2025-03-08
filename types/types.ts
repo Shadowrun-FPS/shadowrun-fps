@@ -22,6 +22,7 @@ export interface Post {
 }
 
 export interface Player {
+  elo: ReactNode;
   discordId: string;
   discordUsername: string;
   discordNickname: string;

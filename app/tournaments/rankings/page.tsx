@@ -79,7 +79,6 @@ export default function RankingsPage() {
   return (
     <FeatureGate feature="rankings">
       <div className="min-h-screen bg-background">
-        <Header />
         <main className="container px-4 py-8 mx-auto">
           <Card className="overflow-hidden">
             <CardHeader className="space-y-4 border-b sm:space-y-6">
@@ -110,7 +109,7 @@ export default function RankingsPage() {
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 {/* Header row - Hide on mobile */}
-                <div className="hidden sm:flex px-6 py-4 bg-muted/50">
+                <div className="hidden px-6 py-4 sm:flex bg-muted/50">
                   <div className="w-8" />
                   <div className="flex-1" />
                   <div className="grid grid-cols-4 gap-6 text-sm font-medium text-muted-foreground w-[400px]">
@@ -125,10 +124,10 @@ export default function RankingsPage() {
                 {teams.map((team, index) => (
                   <div
                     key={team._id.toString()}
-                    className="relative px-4 py-4 sm:px-6 transition-colors group hover:bg-muted/50"
+                    className="relative px-4 py-4 transition-colors sm:px-6 group hover:bg-muted/50"
                   >
                     <div className="absolute inset-y-0 left-0 w-1 bg-primary/10 group-hover:bg-primary/20" />
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                       {/* Rank and Team Info */}
                       <div className="flex items-center">
                         <div className="flex items-center justify-center w-8">
@@ -139,13 +138,13 @@ export default function RankingsPage() {
                               )}`}
                             />
                           ) : (
-                            <span className="text-base sm:text-lg font-semibold text-muted-foreground">
+                            <span className="text-base font-semibold sm:text-lg text-muted-foreground">
                               #{index + 1}
                             </span>
                           )}
                         </div>
                         <div className="ml-4">
-                          <h3 className="text-base sm:text-lg font-semibold">
+                          <h3 className="text-base font-semibold sm:text-lg">
                             {team.name}
                           </h3>
                           <p className="text-sm text-muted-foreground">

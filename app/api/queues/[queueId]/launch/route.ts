@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
+import { isAdmin } from "@/lib/admin";
 
 // Add the QueuePlayer interface at the top of the file
 interface QueuePlayer {
@@ -41,7 +42,16 @@ export async function POST(
           session.user.roles.includes("founder") ||
           session.user.roles.includes("GM")));
 
-    if (!hasRequiredRole) {
+    // Add debug logging
+    console.log("Session data in launch route:", {
+      user: session.user,
+      userId: session.user.id,
+    });
+
+    if (!isAdmin(session.user.id)) {
+      console.log("Admin check failed in launch route:", {
+        userId: session.user.id,
+      });
       return NextResponse.json(
         { error: "You don't have permission to launch matches" },
         { status: 403 }

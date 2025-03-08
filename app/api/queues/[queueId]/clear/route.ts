@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 
 export async function POST(
   req: NextRequest,
@@ -19,11 +20,17 @@ export async function POST(
       );
     }
 
-    // Check if user is admin
-    const isAdmin =
-      session.user.id === "238329746671271936" || session.user.isAdmin;
+    // Add debug logging
+    console.log("Session data in clear route:", {
+      user: session.user,
+      userId: session.user.id,
+    });
 
-    if (!isAdmin) {
+    // Check if user is admin
+    if (!isAdmin(session.user.id)) {
+      console.log("Admin check failed in clear route:", {
+        userId: session.user.id,
+      });
       return NextResponse.json(
         { error: "You don't have permission to clear queues" },
         { status: 403 }

@@ -141,35 +141,12 @@ export async function POST(
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    const teamSizeKey = queue.teamSize;
-
-    // Find the stats object where teamSize matches queue's team size
+    // Find the stats object for the queue's team size
     const statsForTeamSize = player.stats?.find(
-      (stat: any) => stat.teamSize === teamSizeKey
+      (stat: any) => stat.teamSize === queue.teamSize
     );
 
-    const playerElo = statsForTeamSize?.elo;
-
-    // Debug log for player info
-    console.log({
-      attemptingToJoinQueue: {
-        queueId: params.queueId,
-        queueTeamSize: queue.teamSize,
-        queueEloRange: `${queue.minElo}-${queue.maxElo}`,
-        player: {
-          discordId: player.discordId,
-          discordUsername: player.discordUsername,
-          discordNickname: player.discordNickname,
-        },
-        playerStats: {
-          teamSize: teamSizeKey,
-          foundStats: statsForTeamSize,
-          elo: playerElo,
-        },
-      },
-    });
-
-    if (!playerElo) {
+    if (!statsForTeamSize?.elo) {
       return NextResponse.json(
         {
           error: `You don't have an ELO rating for ${queue.teamSize}v${queue.teamSize} yet`,
@@ -178,20 +155,28 @@ export async function POST(
       );
     }
 
-    // Check ELO requirements
-    if (Number(playerElo) > queue.maxElo) {
+    // Debug log
+    console.log("Player ELO check:", {
+      discordId: session.user.id,
+      teamSize: queue.teamSize,
+      foundStats: statsForTeamSize,
+      elo: statsForTeamSize.elo,
+    });
+
+    // Check ELO requirements using the found stats
+    if (statsForTeamSize.elo > queue.maxElo) {
       return NextResponse.json(
         {
-          error: `Your ELO (${playerElo}) is too high for this queue (max: ${queue.maxElo})`,
+          error: `Your ELO (${statsForTeamSize.elo}) is too high for this queue (max: ${queue.maxElo})`,
         },
         { status: 400 }
       );
     }
 
-    if (Number(playerElo) < queue.minElo) {
+    if (statsForTeamSize.elo < queue.minElo) {
       return NextResponse.json(
         {
-          error: `Your ELO (${playerElo}) is too low for this queue (min: ${queue.minElo})`,
+          error: `Your ELO (${statsForTeamSize.elo}) is too low for this queue (min: ${queue.minElo})`,
         },
         { status: 400 }
       );
@@ -216,16 +201,16 @@ export async function POST(
       );
     }
 
-    // Create the player object with proper typing
-    const newPlayer: QueuePlayer = {
+    // Create the player object for the queue
+    const newPlayer = {
       discordId: session.user.id,
       discordUsername: player.discordUsername,
-      discordNickname: player.discordNickname || player.discordUsername, // Fallback to username if nickname is null
+      discordNickname: player.discordNickname || player.discordUsername,
       discordProfilePicture:
         session.user.image ||
         `https://cdn.discordapp.com/avatars/${session.user.id}/avatar.png`,
       joinedAt: Date.now(),
-      elo: Number(playerElo),
+      elo: statsForTeamSize.elo,
     };
 
     // Add player to queue with proper typing

@@ -26,31 +26,17 @@ export function NotificationDropdown() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user?.id) return;
 
     const fetchNotifications = async () => {
       try {
         const response = await fetch(
-          `/api/notifications?userId=${session.user.id}`
+          `/api/notifications?userId=${session?.user?.id}`
         );
         const data = await response.json();
-
-        // Combine and format notifications
-        const allNotifications = [
-          ...data.teamInvites.map((invite: any) => ({
-            _id: invite._id,
-            type: "team_invite" as const,
-            title: "Team Invite",
-            message: `You've been invited to join ${invite.teamName}`,
-            createdAt: new Date(invite.createdAt),
-            read: false,
-          })),
-          ...data.teamNotifications,
-        ];
-
-        setNotifications(allNotifications);
+        setNotifications(data);
       } catch (error) {
-        console.error("Failed to fetch notifications:", error);
+        console.error("Error fetching notifications:", error);
       }
     };
 

@@ -17,12 +17,11 @@ declare module "next-auth" {
 
   /** Extends the session object to include the custom user type */
   interface Session {
-    user: User & {
+    user: {
       id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      nickname?: string;
+      accessToken?: string;
+      roles?: string[];
+      isAdmin?: boolean;
     } & DefaultSession["user"];
   }
 }

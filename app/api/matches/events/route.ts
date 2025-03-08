@@ -1,14 +1,14 @@
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
+import { authOptions } from "@/lib/auth";
+import { ChangeStream, Document } from "mongodb";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return new Response("Unauthorized", { status: 401 });
     }
@@ -16,26 +16,35 @@ export async function GET(req: NextRequest) {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
-    // Create change stream for Queues collection
-    const changeStream = db.collection("Queues").watch();
+    // Create change stream for Matches collection
+    const changeStream = db
+      .collection("Matches")
+      .watch() as ChangeStream<Document>;
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Send initial queues data
-        const initialQueues = await db.collection("Queues").find({}).toArray();
-        controller.enqueue(`data: ${JSON.stringify(initialQueues)}\n\n`);
+        // Send initial heartbeat
+        controller.enqueue(
+          `data: ${JSON.stringify({ type: "heartbeat" })}\n\n`
+        );
 
-        // Watch for queue changes
-        changeStream.on("change", async () => {
+        // Watch for match changes
+        changeStream.on("change", async (change) => {
           try {
-            // Fetch updated queues
-            const updatedQueues = await db
-              .collection("Queues")
-              .find({})
-              .toArray();
-            controller.enqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
+            if (
+              change.operationType === "update" ||
+              change.operationType === "replace"
+            ) {
+              const updatedMatch = await db
+                .collection("Matches")
+                .findOne({ _id: change.documentKey?._id });
+
+              if (updatedMatch) {
+                controller.enqueue(`data: ${JSON.stringify(updatedMatch)}\n\n`);
+              }
+            }
           } catch (error) {
-            console.error("Error sending queue update:", error);
+            console.error("Error processing change:", error);
           }
         });
 

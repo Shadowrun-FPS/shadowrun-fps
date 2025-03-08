@@ -14,10 +14,7 @@ export async function POST(
 
     // Check if user is authenticated
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to update match status" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { status } = await req.json();
@@ -41,12 +38,12 @@ export async function POST(
 
     // Check if the user is part of the match
     const isPlayerInMatch = [...match.team1, ...match.team2].some(
-      (p) => p.discordId === session.user.id
+      (p) => p.discordId === session.user?.id
     );
 
     if (!isPlayerInMatch) {
       return NextResponse.json(
-        { error: "You are not part of this match" },
+        { error: "Only match participants can update status" },
         { status: 403 }
       );
     }

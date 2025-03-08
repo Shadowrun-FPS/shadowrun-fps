@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Card } from "@/components/ui/card";
 import { FeatureGate } from "@/components/feature-gate";
+import { toast } from "@/components/ui/use-toast";
 
 interface Team {
   _id: string;
@@ -39,32 +40,35 @@ export default function TeamsPage() {
   const { data: session } = useSession();
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeam, setMyTeam] = useState<Team | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTeams = async () => {
       try {
         const response = await fetch("/api/teams");
         const data = await response.json();
+        setTeams(data);
 
-        if (session?.user?.id) {
-          // Find user's team
-          const userTeam = data.find((team: Team) =>
-            team.members.some((member) => member.discordId === session.user.id)
-          );
-          setMyTeam(userTeam || null);
+        // Find user's team with optional chaining
+        const userTeam = data.find((team: Team) =>
+          team.members.some((member) => member.discordId === session?.user?.id)
+        );
+        setMyTeam(userTeam || null);
 
-          // Filter out user's team from main list if it exists
-          setTeams(data.filter((team: Team) => team._id !== userTeam?._id));
-        } else {
-          setTeams(data);
-        }
+        setLoading(false);
       } catch (error) {
-        console.error("Failed to fetch teams:", error);
+        console.error("Error fetching teams:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load teams",
+          variant: "destructive",
+        });
+        setLoading(false);
       }
     };
 
     fetchTeams();
-  }, [session]);
+  }, [session?.user?.id]);
 
   const handleManageTeam = (teamId: string) => {
     router.push(`/tournaments/teams/${teamId}/manage`);

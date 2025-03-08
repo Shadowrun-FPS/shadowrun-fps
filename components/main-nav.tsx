@@ -25,6 +25,7 @@ import {
   Clock,
   Menu,
   X,
+  TrendingUp,
 } from "lucide-react";
 import { isFeatureEnabled } from "@/lib/features";
 import {
@@ -155,29 +156,29 @@ export function MainNav() {
                 <NavigationMenuContent>
                   <ul className="grid w-[400px] gap-3 p-4 md:grid-cols-2">
                     <ListItem
-                      href="/tournaments"
+                      href="/tournaments/overview"
                       title="All Tournaments"
                       icon={<Trophy className="w-4 h-4" />}
                     >
                       Browse all tournaments
                     </ListItem>
                     <ListItem
-                      href="/tournaments/upcoming"
-                      title="Upcoming"
+                      href="/tournaments/teams"
+                      title="Teams"
                       icon={<Calendar className="w-4 h-4" />}
                     >
                       View upcoming tournaments
                     </ListItem>
                     <ListItem
-                      href="/tournaments/past"
-                      title="Past"
+                      href="/tournaments/scrimmages"
+                      title="Scrimmages"
                       icon={<Clock className="w-4 h-4" />}
                     >
                       View past tournaments
                     </ListItem>
                     <ListItem
-                      href="/tournaments/rules"
-                      title="Rules"
+                      href="/tournaments/rankings"
+                      title="Rankings"
                       icon={<HelpCircle className="w-4 h-4" />}
                     >
                       Tournament rules and guidelines
@@ -269,7 +270,7 @@ export function MainNav() {
                   </div>
 
                   <Link
-                    href="/tournaments"
+                    href="/tournaments/overview"
                     className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
                     onClick={() => setIsOpen(false)}
                   >
@@ -278,30 +279,30 @@ export function MainNav() {
                   </Link>
 
                   <Link
-                    href="/tournaments/upcoming"
+                    href="/tournaments/teams"
+                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Teams</span>
+                  </Link>
+
+                  <Link
+                    href="/tournaments/scrimmages"
                     className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
                     onClick={() => setIsOpen(false)}
                   >
                     <Calendar className="w-4 h-4" />
-                    <span>Upcoming</span>
+                    <span>Scrimmages</span>
                   </Link>
 
                   <Link
-                    href="/tournaments/past"
+                    href="/tournaments/rankings"
                     className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
                     onClick={() => setIsOpen(false)}
                   >
-                    <Clock className="w-4 h-4" />
-                    <span>Past</span>
-                  </Link>
-
-                  <Link
-                    href="/tournaments/rules"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <HelpCircle className="w-4 h-4" />
-                    <span>Rules</span>
+                    <TrendingUp className="w-4 h-4" />
+                    <span>Rankings</span>
                   </Link>
                 </>
               )}

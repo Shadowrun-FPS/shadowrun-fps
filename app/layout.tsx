@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientLayout } from "@/components/ClientLayout";
 import { AuthProvider } from "@/components/providers/auth-provider";
+import { OnlineStatus } from "@/components/online-status";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -92,6 +93,7 @@ export default function RootLayout({
       </head>
       <body className={`min-h-screen flex flex-col ${inter.className}`}>
         <AuthProvider>
+          <OnlineStatus />
           <ClientLayout>{children}</ClientLayout>
         </AuthProvider>
         <Analytics />

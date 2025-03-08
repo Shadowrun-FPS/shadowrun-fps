@@ -20,28 +20,20 @@ export function QueueCard({ queue, onJoin, onLeave }: QueueCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleAction = async () => {
-    if (!session?.user) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to join queues",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleQueueAction = async () => {
+    if (!session?.user?.id) return;
 
-    setIsLoading(true);
     try {
       const isInQueue = queue.players.some(
-        (p) => p.discordId === session.user.id
+        (p) => p.discordId === session?.user?.id
       );
       if (isInQueue) {
         await onLeave(queue);
       } else {
         await onJoin(queue);
       }
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      console.error("Error handling queue action:", error);
     }
   };
 
@@ -72,6 +64,10 @@ export function QueueCard({ queue, onJoin, onLeave }: QueueCardProps) {
     );
   };
 
+  const isUserInQueue = queue.players.some(
+    (p) => p.discordId === session?.user?.id
+  );
+
   const currentPlayer = queue.players.find(
     (p: Player) => p.discordId === session?.user?.id
   );
@@ -90,12 +86,12 @@ export function QueueCard({ queue, onJoin, onLeave }: QueueCardProps) {
       {/* Join/Leave button */}
       <Button
         className="w-full"
-        onClick={handleAction}
+        onClick={handleQueueAction}
         disabled={isLoading || queue.players.length >= queue.teamSize * 2}
       >
         {isLoading ? (
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-        ) : queue.players.some((p) => p.discordId === session?.user?.id) ? (
+        ) : isUserInQueue ? (
           "Leave Queue"
         ) : (
           "Join Queue"
