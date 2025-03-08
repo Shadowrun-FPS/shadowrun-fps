@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "lucide-react";
-import { Navbar } from "@/components/navbar";
+import { Header } from "@/components/header";
 import { FeatureGate } from "@/components/feature-gate";
 
 export default function TournamentsPage() {
@@ -42,7 +42,7 @@ export default function TournamentsPage() {
   return (
     <FeatureGate feature="tournaments">
       <div className="min-h-screen">
-        <Navbar />
+        <Header />
         <main className="container px-4 py-8 mx-auto">
           <h1 className="mb-6 text-3xl font-bold">Tournaments Overview</h1>
           <div className="flex items-center justify-between mb-4">

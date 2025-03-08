@@ -1,5 +1,4 @@
-import { formatDistanceToNow } from "date-fns/formatDistanceToNow";
-import format from "date-fns/format";
+import { formatDistanceToNow, format } from "date-fns";
 
 export function formatTimeAgo(date: Date | string) {
   const parsedDate = typeof date === "string" ? new Date(date) : date;

@@ -1,172 +1,477 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
-import { Navbar } from "@/components/navbar";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  MoreHorizontal,
+  ArrowUpDown,
+  Calendar,
+  Filter,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 interface Match {
-  _id: string;
-  team1Score: number;
-  team2Score: number;
-  team1Players: string[];
-  team2Players: string[];
-  status: "pending" | "confirmed" | "disputed";
-  createdAt: Date;
-  playerStats: Record<
-    string,
-    { kills: number; deaths: number; assists: number }
-  >;
+  matchId: string;
+  status: string;
+  teamSize: number;
+  eloTier: string;
+  type: string;
+  createdAt: number;
+  winner?: number;
+  completedAt?: number;
+  // Add any other fields you need
 }
 
 export default function MatchHistoryPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [matches, setMatches] = useState<Match[]>([]);
-  const [activeTab, setActiveTab] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortField, setSortField] = useState<string>("createdAt");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [eloTierFilter, setEloTierFilter] = useState<string>("");
+  const [teamSizeFilter, setTeamSizeFilter] = useState<string>("");
+  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
 
+  // Close date picker when clicking outside
   useEffect(() => {
-    if (!session?.user) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        datePickerRef.current &&
+        !datePickerRef.current.contains(event.target as Node)
+      ) {
+        setIsDatePickerOpen(false);
+      }
+    }
 
-    const fetchMatches = async () => {
-      const response = await fetch(`/api/matches?playerId=${session.user.id}`);
-      const data = await response.json();
-      setMatches(data);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
     };
+  }, []);
 
-    fetchMatches();
-  }, [session]);
+  const fetchMatches = async () => {
+    try {
+      setLoading(true);
 
-  const getMatchResult = (match: Match) => {
-    if (!session?.user) return "Unknown";
-    const isTeam1 = match.team1Players.includes(session.user.id);
-    const team1Won = match.team1Score > match.team2Score;
-    return isTeam1
-      ? team1Won
-        ? "Victory"
-        : "Defeat"
-      : team1Won
-      ? "Defeat"
-      : "Victory";
-  };
+      let url = `/api/matches?page=${currentPage}&sort=${sortField}&direction=${sortDirection}`;
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return "text-green-500";
-      case "disputed":
-        return "text-red-500";
-      default:
-        return "text-yellow-500";
+      if (statusFilter && statusFilter !== "all")
+        url += `&status=${statusFilter}`;
+      if (eloTierFilter && eloTierFilter !== "all")
+        url += `&eloTier=${eloTierFilter}`;
+      if (teamSizeFilter && teamSizeFilter !== "all")
+        url += `&teamSize=${teamSizeFilter}`;
+      if (dateFilter) {
+        const formattedDate = format(dateFilter, "yyyy-MM-dd");
+        url += `&date=${formattedDate}`;
+      }
+
+      console.log("Fetching from URL:", url);
+
+      try {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API error response:", errorText);
+          throw new Error(`Error fetching matches: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log("API response data:", data);
+
+        setMatches(data.matches || []);
+        setTotalPages(data.totalPages || 1);
+        setCurrentPage(data.currentPage || 1);
+      } catch (fetchError) {
+        console.error("Fetch error:", fetchError);
+        throw fetchError;
+      }
+    } catch (error) {
+      console.error("Error in fetchMatches:", error);
+      setMatches([]);
+      setTotalPages(1);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredMatches = matches.filter((match) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "pending") return match.status === "pending";
-    if (activeTab === "disputed") return match.status === "disputed";
-    return match.status === "confirmed";
-  });
+  useEffect(() => {
+    fetchMatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    currentPage,
+    sortField,
+    sortDirection,
+    statusFilter,
+    eloTierFilter,
+    teamSizeFilter,
+    dateFilter,
+  ]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const handleViewMatch = (matchId: string) => {
+    router.push(`/matches/${matchId}`);
+  };
+
+  const clearFilters = () => {
+    setStatusFilter("");
+    setEloTierFilter("");
+    setTeamSizeFilter("");
+    setDateFilter(undefined);
+    setIsFilterOpen(false);
+    setIsDatePickerOpen(false);
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "completed":
+        return <Badge className="bg-green-600">Completed</Badge>;
+      case "in-progress":
+        return <Badge className="bg-blue-600">In-Progress</Badge>;
+      case "in_progress":
+        return <Badge className="bg-blue-600">In-Progress</Badge>;
+      case "canceled":
+        return <Badge className="bg-red-600">Canceled</Badge>;
+      case "ready-check":
+        return <Badge className="bg-yellow-600">Ready-Check</Badge>;
+      case "queue":
+        return <Badge className="bg-purple-600">Queue</Badge>;
+      default:
+        return <Badge className="bg-gray-600">Pending</Badge>;
+    }
+  };
+
+  const getWinnerDisplay = (match: Match) => {
+    if (match.status !== "completed") return "Pending";
+
+    if (match.winner === 1) return "Lineage";
+    if (match.winner === 2) return "RNA Corp";
+
+    return "Draw";
+  };
+
+  const getWinnerColor = (match: Match) => {
+    if (match.status !== "completed") return "text-gray-400";
+
+    if (match.winner === 1) return "text-blue-400";
+    if (match.winner === 2) return "text-red-400";
+
+    return "text-gray-400";
+  };
 
   return (
-    <div className="min-h-screen">
-      <Navbar />
-      <main className="container px-4 py-8 mx-auto">
-        <h1 className="mb-8 text-3xl font-bold">Match History</h1>
+    <div className="container py-8">
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-white">Match History</h1>
+          <p className="text-sm text-gray-400">
+            {matches.length} results found
+          </p>
+        </div>
 
-        <Tabs defaultValue="all" onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
-            <TabsTrigger value="all">All Matches</TabsTrigger>
-            <TabsTrigger value="confirmed">Confirmed</TabsTrigger>
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="flex-1">
+            <Select
+              value={statusFilter || "all"}
+              onValueChange={setStatusFilter}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="complete">Complete</SelectItem>
+                <SelectItem value="canceled">Canceled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <TabsContent value={activeTab}>
-            <div className="space-y-4">
-              {filteredMatches.map((match) => (
-                <Card key={match._id} className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-lg font-semibold">
-                        {match.team1Score} - {match.team2Score}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {format(new Date(match.createdAt), "PPp")}
-                      </p>
-                    </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Select
+              value={eloTierFilter || "all"}
+              onValueChange={setEloTierFilter}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
+                <SelectValue placeholder="ELO tier" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
+                <SelectItem value="all">All Tiers</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
 
-                    <div className="text-right">
-                      <p
-                        className={`font-medium ${
-                          getMatchResult(match) === "Victory"
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }`}
-                      >
-                        {getMatchResult(match)}
-                      </p>
-                      <p className={`text-sm ${getStatusColor(match.status)}`}>
-                        {match.status.charAt(0).toUpperCase() +
-                          match.status.slice(1)}
-                      </p>
-                    </div>
+            <Select
+              value={teamSizeFilter || "all"}
+              onValueChange={setTeamSizeFilter}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
+                <SelectValue placeholder="Team Size" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
+                <SelectItem value="all">All Sizes</SelectItem>
+                <SelectItem value="2v2">2v2</SelectItem>
+                <SelectItem value="4v4">4v4</SelectItem>
+                <SelectItem value="5v5">5v5</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <div className="relative" ref={datePickerRef}>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto bg-[#111827] border-[#1f2937] flex items-center"
+                  >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {dateFilter
+                      ? format(dateFilter, "MMM d, yyyy")
+                      : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 bg-[#1f2937] border-[#3b82f6]">
+                  <CalendarComponent
+                    mode="single"
+                    selected={dateFilter}
+                    onSelect={setDateFilter}
+                    initialFocus
+                    className="border-none"
+                  />
+                  <div className="flex items-center justify-between p-3 border-t border-[#3b82f6]">
+                    <Button
+                      variant="ghost"
+                      className="text-sm text-blue-400 hover:text-blue-300"
+                      onClick={() => setDateFilter(undefined)}
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="text-sm text-blue-400 hover:text-blue-300"
+                      onClick={() => setDateFilter(new Date())}
+                    >
+                      Today
+                    </Button>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <p className="mb-2 text-sm text-muted-foreground">
-                        Team 1
-                      </p>
-                      {match.team1Players.map((player) => (
-                        <div
-                          key={player}
-                          className="flex justify-between text-sm"
-                        >
-                          <span>{player}</span>
-                          <span>
-                            {match.playerStats[player]?.kills}/
-                            {match.playerStats[player]?.deaths}/
-                            {match.playerStats[player]?.assists}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      <p className="mb-2 text-sm text-muted-foreground">
-                        Team 2
-                      </p>
-                      {match.team2Players.map((player) => (
-                        <div
-                          key={player}
-                          className="flex justify-between text-sm"
-                        >
-                          <span>{player}</span>
-                          <span>
-                            {match.playerStats[player]?.kills}/
-                            {match.playerStats[player]?.deaths}/
-                            {match.playerStats[player]?.assists}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {match.status === "pending" && (
-                    <div className="flex justify-end gap-2 mt-4">
-                      <Button variant="outline" onClick={() => {}}>
-                        Dispute
-                      </Button>
-                      <Button onClick={() => {}}>Confirm</Button>
-                    </div>
-                  )}
-                </Card>
-              ))}
+                </PopoverContent>
+              </Popover>
             </div>
-          </TabsContent>
-        </Tabs>
-      </main>
+
+            <Button
+              variant="outline"
+              className="bg-[#111827] border-[#1f2937]"
+              onClick={clearFilters}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+
+        <Card className="bg-[#111827] border-[#1f2937] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#1f2937]">
+                  <th className="p-4 text-left">
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                      onClick={() => handleSort("status")}
+                    >
+                      Status
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="p-4 text-left">
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                      onClick={() => handleSort("eloTier")}
+                    >
+                      ELO Tier
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="p-4 text-left">
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                      onClick={() => handleSort("teamSize")}
+                    >
+                      Team Size
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="p-4 text-left">
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                      onClick={() => handleSort("winner")}
+                    >
+                      Winner
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="p-4 text-left">
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                      onClick={() => handleSort("createdAt")}
+                    >
+                      Date and Time
+                      <ArrowUpDown className="w-4 h-4" />
+                    </Button>
+                  </th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-center text-gray-400">
+                      Loading matches...
+                    </td>
+                  </tr>
+                ) : matches.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-4 text-center text-gray-400">
+                      No matches found
+                    </td>
+                  </tr>
+                ) : (
+                  matches.map((match) => (
+                    <tr
+                      key={match.matchId}
+                      className="border-b border-[#1f2937] hover:bg-[#1a2234]"
+                    >
+                      <td className="p-4">{getStatusBadge(match.status)}</td>
+                      <td className="p-4 text-white capitalize">
+                        {match.eloTier}
+                      </td>
+                      <td className="p-4 text-white">
+                        {match.teamSize}v{match.teamSize}
+                      </td>
+                      <td className={`p-4 ${getWinnerColor(match)}`}>
+                        {getWinnerDisplay(match)}
+                      </td>
+                      <td className="p-4 text-gray-400">
+                        {format(
+                          new Date(match.createdAt),
+                          "MMM d, yyyy, h:mm a"
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                          onClick={() => handleViewMatch(match.matchId)}
+                        >
+                          View Match
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="bg-[#111827] border-[#1f2937]"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <Button
+                key={page}
+                variant={page === currentPage ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCurrentPage(page)}
+                className={
+                  page === currentPage
+                    ? "bg-blue-600 hover:bg-blue-700"
+                    : "bg-[#111827] border-[#1f2937]"
+                }
+              >
+                {page}
+              </Button>
+            ))}
+          </div>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() =>
+              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+            }
+            disabled={currentPage === totalPages}
+            className="bg-[#111827] border-[#1f2937]"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

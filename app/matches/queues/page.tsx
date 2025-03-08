@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDistance } from "date-fns/formatDistance";
+import { formatDistance } from "date-fns";
 import { FeatureGate } from "@/components/feature-gate";
 import {
   Dialog,
@@ -79,6 +79,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 interface QueuePlayer {
   discordId: string;
@@ -127,6 +128,7 @@ export default function QueuesPage() {
   const [isCheckingRegistration, setIsCheckingRegistration] =
     useState<boolean>(true);
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const router = useRouter();
 
   // Create queue form
   const form = useForm<z.infer<typeof createQueueSchema>>({
@@ -274,9 +276,6 @@ export default function QueuesPage() {
   };
 
   const handleLaunchMatch = async (queueId: string) => {
-    if (!session?.user) return;
-    setJoiningQueue(queueId);
-
     try {
       const response = await fetch(`/api/queues/${queueId}/launch`, {
         method: "POST",
@@ -287,23 +286,16 @@ export default function QueuesPage() {
         throw new Error(data.error || "Failed to launch match");
       }
 
-      // After successful launch, update the queue to move waitlisted players to active
-      setQueues((prevQueues) =>
-        prevQueues.map((q) => {
-          if (q._id === queueId) {
-            const { waitlistPlayers } = getQueueSections(q);
-            return {
-              ...q,
-              players: waitlistPlayers, // Keep only the waitlisted players
-            };
-          }
-          return q;
-        })
-      );
+      const data = await response.json();
+
+      // Redirect to the match detail page
+      if (data.matchId) {
+        router.push(`/matches/${data.matchId}`);
+      }
 
       toast({
         title: "Match Launched",
-        description: "The match has been launched successfully",
+        description: "The match has been created successfully",
         duration: 3000,
       });
     } catch (error) {
@@ -312,10 +304,8 @@ export default function QueuesPage() {
         description:
           error instanceof Error ? error.message : "Failed to launch match",
         variant: "destructive",
-        duration: 3000, // 3 seconds
+        duration: 3000,
       });
-    } finally {
-      setJoiningQueue(null);
     }
   };
 
@@ -434,10 +424,21 @@ export default function QueuesPage() {
     return { activePlayers, waitlistPlayers };
   };
 
-  // First, let's add a function to check if the user is an admin or has launch permissions
+  // Update the canLaunchMatch function to check for proper roles
   const canLaunchMatch = (queue: Queue) => {
-    const { activePlayers } = getQueueSections(queue);
-    return activePlayers.length === queue.teamSize * 2;
+    // Check if user has the required roles
+    const hasRequiredRole =
+      session?.user?.id === "238329746671271936" || // Your ID
+      (session?.user?.roles &&
+        (session?.user?.roles.includes("admin") ||
+          session?.user?.roles.includes("moderator") ||
+          session?.user?.roles.includes("founder") ||
+          session?.user?.roles.includes("GM")));
+
+    // Check if queue has enough players
+    const hasEnoughPlayers = queue.players.length >= queue.teamSize * 2;
+
+    return hasRequiredRole && hasEnoughPlayers;
   };
 
   // Handle create queue form submission
@@ -569,7 +570,7 @@ export default function QueuesPage() {
   // Wrap checkUserRegistration with useCallback
   const checkUserRegistration = useCallback(async () => {
     if (!session?.user) return;
-    
+
     setIsCheckingRegistration(true);
     try {
       const response = await fetch(`/api/players/check-registration`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDistance } from "date-fns/formatDistance";
+import { formatDistance } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";

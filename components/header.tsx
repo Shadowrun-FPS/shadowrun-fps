@@ -22,23 +22,7 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex items-center h-14">
         <MainLogo className="mr-2" />
-        {/* Mobile Menu */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              className="px-2 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
-            >
-              <Menu className="w-5 h-5 mr-2" />
-              <span className="text-sm font-medium">Explore</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="pr-0">
-            <MobileNav />
-          </SheetContent>
-        </Sheet>
 
-        {/* Desktop Navigation */}
         <MainNav />
 
         {/* Right Side */}

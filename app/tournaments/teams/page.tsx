@@ -79,7 +79,7 @@ export default function TeamsPage() {
   }) => (
     <Card
       key={team._id}
-      className="overflow-hidden transition-colors hover:bg-muted/50 border-l-4 border-l-primary/10 hover:border-l-primary/20"
+      className="overflow-hidden transition-colors border-l-4 hover:bg-muted/50 border-l-primary/10 hover:border-l-primary/20"
     >
       <div className="relative flex-1 p-6 overflow-hidden transition-all duration-300 rounded-t-lg shadow-md group bg-card">
         <div className="absolute inset-0 transition-opacity duration-300 opacity-0 pointer-events-none bg-gradient-to-r from-primary/10 via-primary/5 to-transparent group-hover:opacity-100" />
@@ -170,7 +170,6 @@ export default function TeamsPage() {
     <FeatureGate feature="teams">
       <TooltipProvider>
         <div className="min-h-screen">
-          <Navbar />
           <main className="container px-4 py-8 mx-auto">
             <div className="flex items-center justify-between mb-8">
               <h1 className="text-3xl font-bold">Teams</h1>

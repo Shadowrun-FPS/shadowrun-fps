@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Navbar } from "@/components/navbar";
+import { Header } from "@/components/header";
 import { Trophy, TrendingUp, ArrowUp, ArrowDown, Medal } from "lucide-react";
 import {
   Select,
@@ -79,7 +79,7 @@ export default function RankingsPage() {
   return (
     <FeatureGate feature="rankings">
       <div className="min-h-screen bg-background">
-        <Navbar />
+        <Header />
         <main className="container px-4 py-8 mx-auto">
           <Card className="overflow-hidden">
             <CardHeader className="space-y-4 border-b sm:space-y-6">

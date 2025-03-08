@@ -41,7 +41,6 @@ export default function ScrimmagesPage() {
   return (
     <FeatureGate feature="scrimmage">
       <div className="min-h-screen">
-        <Navbar />
         <main className="container px-4 py-8 mx-auto">
           <h1 className="mb-6 text-2xl font-bold">Scrimmages</h1>
 

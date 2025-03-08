@@ -13,6 +13,7 @@ interface QueuePlayer {
   discordNickname: string;
   elo: number;
   joinedAt: number; // Unix timestamp
+  discordProfilePicture: string;
 }
 
 interface Queue extends WithId<Document> {
@@ -196,11 +197,33 @@ export async function POST(
       );
     }
 
+    // Check if the player is in an active match
+    const activeMatch = await db.collection("Matches").findOne({
+      $or: [
+        { "team1.discordId": session.user.id },
+        { "team2.discordId": session.user.id },
+      ],
+      status: { $in: ["draft", "ready", "in_progress", "map_selection"] },
+    });
+
+    if (activeMatch) {
+      return NextResponse.json(
+        {
+          error: "You are already in an active match",
+          matchId: activeMatch.matchId,
+        },
+        { status: 400 }
+      );
+    }
+
     // Create the player object with proper typing
     const newPlayer: QueuePlayer = {
       discordId: session.user.id,
       discordUsername: player.discordUsername,
-      discordNickname: player.discordNickname,
+      discordNickname: player.discordNickname || player.discordUsername, // Fallback to username if nickname is null
+      discordProfilePicture:
+        session.user.image ||
+        `https://cdn.discordapp.com/avatars/${session.user.id}/avatar.png`,
       joinedAt: Date.now(),
       elo: Number(playerElo),
     };

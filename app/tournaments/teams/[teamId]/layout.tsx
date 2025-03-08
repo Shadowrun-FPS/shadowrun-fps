@@ -7,8 +7,7 @@ export default function TeamLayout({
 }) {
   return (
     <div className="min-h-screen">
-      <Navbar />
-      <main className="container mx-auto px-4 py-8">{children}</main>
+      <main className="container px-4 py-8 mx-auto">{children}</main>
     </div>
   );
 }
