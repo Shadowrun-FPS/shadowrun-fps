@@ -107,17 +107,17 @@ export async function POST(
 
     // Format players for the queue
     const playersToAdd = randomPlayers.map((player) => {
-      // Find the stats for this team size
-      const statsForTeamSize = player.stats.find(
-        (stat: { teamSize: number; elo: number }) =>
-          stat.teamSize === queue.teamSize
-      );
+      const statsForTeamSize = player.stats?.find(
+        (s: { teamSize: number }) => s.teamSize === queue.teamSize
+      ) || { elo: 1500 };
 
       return {
         discordId: player.discordId,
         discordUsername: player.discordUsername,
         discordNickname: player.discordNickname || player.discordUsername,
+        discordProfilePicture: player.discordProfilePicture || null,
         elo: statsForTeamSize.elo,
+        initialElo: statsForTeamSize.elo,
         joinedAt: Date.now(),
       };
     });

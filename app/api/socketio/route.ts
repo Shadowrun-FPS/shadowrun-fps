@@ -6,6 +6,7 @@ let io: ServerIO | null = null;
 
 export async function GET(req: NextRequest) {
   if (!io) {
+    // Create server without immediately listening
     const httpServer = createServer();
 
     io = new ServerIO(httpServer, {
@@ -18,32 +19,42 @@ export async function GET(req: NextRequest) {
       transports: ["websocket", "polling"],
     });
 
-    // Listen on a different port
-    httpServer.listen(3001);
-
-    io.on("connection", (socket) => {
-      console.log("Client connected:", socket.id);
-
-      socket.on("join-match", (matchId: string) => {
-        socket.join(`match:${matchId}`);
-        console.log(`Client ${socket.id} joined match room: ${matchId}`);
-      });
-
-      socket.on("subscribe-matches", () => {
-        socket.join("matches");
-        console.log(`Client ${socket.id} subscribed to matches updates`);
-      });
-
-      socket.on("disconnect", () => {
-        console.log("Client disconnected:", socket.id);
-      });
+    // Add error handler
+    httpServer.on("error", (e: any) => {
+      if (e.code === "EADDRINUSE") {
+        console.log("Socket.IO server already running");
+        io = null;
+      }
     });
 
-    // Make io instance globally available
-    (global as any).io = io;
+    // Try to start server only once
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("Socket.IO server start timeout"));
+        }, 1000);
+
+        httpServer.once("listening", () => {
+          clearTimeout(timeout);
+          console.log("Socket.IO server started successfully");
+          resolve();
+        });
+
+        httpServer.listen(0); // Let OS assign available port
+      });
+
+      // Make io instance globally available
+      (global as any).io = io;
+    } catch (error) {
+      console.error("Failed to start Socket.IO server:", error);
+      io = null;
+    }
   }
 
-  return new Response("Socket.IO server running", {
-    status: 200,
+  return new Response(null, {
+    status: io ? 200 : 500,
+    headers: {
+      "Content-Type": "text/plain",
+    },
   });
 }

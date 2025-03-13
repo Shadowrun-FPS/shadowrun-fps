@@ -20,9 +20,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, CheckCircle2, Trophy } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Trophy,
+  Clock,
+  ArrowLeft,
+} from "lucide-react";
 import { PlayerContextMenu } from "@/components/moderation/player-context-menu";
 import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
+import { TeamCard } from "@/components/match/team-card";
 
 interface MatchPlayer {
   discordId: string;
@@ -30,6 +37,9 @@ interface MatchPlayer {
   discordNickname: string;
   discordProfilePicture?: string;
   elo: number;
+  initialElo: number;
+  finalElo: number;
+  eloChange: number;
 }
 
 interface MatchMap {
@@ -87,6 +97,12 @@ interface ScoreFormValues {
   submittingTeam: number | null;
 }
 
+// First, add an interface for the score discrepancy state
+interface ScoreDiscrepancy {
+  mapIndex: number;
+  message: string;
+}
+
 // Helper function to get player rank badge
 const getPlayerRankBadge = (elo: number) => {
   if (elo >= 2300) return "Obsidian";
@@ -119,6 +135,25 @@ const formatMapNameForImage = (mapName: string) => {
   return `map_${mapName.toLowerCase().replace(/\s+/g, "")}.png`;
 };
 
+function EloChange({ initial, final }: { initial: number; final: number }) {
+  // Guard against undefined/null values
+  if (!initial || !final) return null;
+
+  const change = final - initial;
+  const isPositive = change > 0;
+
+  return (
+    <span
+      className={`ml-2 text-sm font-mono ${
+        isPositive ? "text-green-500" : "text-red-500"
+      }`}
+    >
+      ({isPositive ? "+" : ""}
+      {change})
+    </span>
+  );
+}
+
 export default function MatchDetailPage() {
   const { data: session } = useSession();
   const params = useParams() as { matchId: string };
@@ -132,6 +167,8 @@ export default function MatchDetailPage() {
   const [team1Score, setTeam1Score] = useState("");
   const [team2Score, setTeam2Score] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [scoreDiscrepancy, setScoreDiscrepancy] =
+    useState<ScoreDiscrepancy | null>(null);
 
   // Add the getTeamName function inside the component
   const getTeamName = (teamNumber: number, isQueueMatch: boolean = true) => {
@@ -220,40 +257,62 @@ export default function MatchDetailPage() {
   }, [params.matchId, toast]);
 
   // Update the handleSubmitScore function
-  const handleSubmitScore = async (data: ScoreFormValues) => {
+  const handleSubmitScore = async (formData: ScoreFormValues) => {
     try {
-      const response = await fetch(`/api/matches/${params.matchId}/score`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      setSubmitting(true);
+      const response: Response = await fetch(
+        `/api/matches/${params.matchId}/score`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const responseData = await response.json();
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to submit score");
+        if (responseData.resetStatus) {
+          // Handle score mismatch - show error and reset form
+          setScoreDiscrepancy({
+            mapIndex: responseData.mapIndex,
+            message: responseData.error,
+          });
+          // Reset the form for this map
+          setScoreDialog(false);
+          setTeam1Score("");
+          setTeam2Score("");
+        } else {
+          toast({
+            title: "Error",
+            description: responseData.error || "Failed to submit score",
+            variant: "destructive",
+          });
+        }
+        return;
       }
 
-      // Show success toast
+      // Success handling
+      setScoreDiscrepancy(null);
       toast({
-        title: "Score Submitted",
-        description: "Your score has been submitted successfully",
+        title: "Success",
+        description: "Score submitted successfully",
       });
-
-      // Fetch updated match data
-      await fetchMatchData();
-
-      // Close the dialog
+      setMatch(responseData.match);
       setScoreDialog(false);
+      setTeam1Score("");
+      setTeam2Score("");
     } catch (error) {
       console.error("Error submitting score:", error);
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to submit score",
+        description: "Failed to submit score",
         variant: "destructive",
       });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -330,126 +389,35 @@ export default function MatchDetailPage() {
     if (!session?.user) return;
 
     let socket: any;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
 
     const connectSocket = async () => {
       try {
         const { io } = await import("socket.io-client");
         socket = io(
-          process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3001",
+          process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
           {
             path: "/api/socketio",
-            reconnectionAttempts: 5,
+            reconnection: true,
+            reconnectionAttempts: maxReconnectAttempts,
             reconnectionDelay: 1000,
             reconnectionDelayMax: 5000,
-            transports: ["websocket", "polling"],
+            timeout: 10000,
+            transports: ["polling", "websocket"], // Try polling first
           }
         );
 
         socket.on("connect", () => {
           console.log("Socket connected:", socket.id);
-          // Join match room on connection
+          reconnectAttempts = 0;
           socket.emit("join-match", params.matchId);
         });
 
         socket.on("match:update", (updatedMatch: any) => {
-          console.log("Received match update:", updatedMatch);
           if (updatedMatch.matchId === params.matchId) {
-            // Immediately update the UI with new match data
-            setMatch((prevMatch) => {
-              // Only update if the timestamp is newer
-              if (
-                !prevMatch ||
-                updatedMatch.timestamp > (prevMatch as any).timestamp
-              ) {
-                return updatedMatch;
-              }
-              return prevMatch;
-            });
-
-            // Handle score mismatch
-            if (
-              updatedMatch.mapScores?.some(
-                (score: any) => score?.scoresMismatch
-              )
-            ) {
-              const mismatchMapIndex = updatedMatch.mapScores.findIndex(
-                (score: any) => score?.scoresMismatch
-              );
-
-              // Reset UI state
-              setScoreDialog(false);
-              setTeam1Score("");
-              setTeam2Score("");
-
-              // Show mismatch toast
-              toast({
-                title: "⚠️ Score Mismatch Detected!",
-                description: (
-                  <div className="flex flex-col gap-2">
-                    <p className="font-semibold text-red-400">
-                      Scores for Map {mismatchMapIndex + 1} did not match:
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 p-2 mt-1 border rounded border-red-400/20 bg-red-400/10">
-                      <div>
-                        <p className="text-sm font-semibold">
-                          Team 1 submitted:
-                        </p>
-                        <p className="text-sm">
-                          {updatedMatch.mapScores[mismatchMapIndex]
-                            ?.team1SubmittedByTeam1Score || "?"}{" "}
-                          -{" "}
-                          {updatedMatch.mapScores[mismatchMapIndex]
-                            ?.team2SubmittedByTeam1Score || "?"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">
-                          Team 2 submitted:
-                        </p>
-                        <p className="text-sm">
-                          {updatedMatch.mapScores[mismatchMapIndex]
-                            ?.team1SubmittedByTeam2Score || "?"}{" "}
-                          -{" "}
-                          {updatedMatch.mapScores[mismatchMapIndex]
-                            ?.team2SubmittedByTeam2Score || "?"}
-                        </p>
-                      </div>
-                    </div>
-                    <p className="mt-2 font-medium text-white">
-                      {userTeam
-                        ? "Please communicate with the other team and submit matching scores."
-                        : "Waiting for teams to submit matching scores..."}
-                    </p>
-                  </div>
-                ),
-                variant: "destructive",
-                duration: 10000,
-              });
-
-              // Show action required toast for players
-              if (userTeam) {
-                setTimeout(() => {
-                  toast({
-                    title: "Action Required",
-                    description:
-                      "Click 'Submit Score' when ready to enter new scores.",
-                    variant: "default",
-                    duration: 5000,
-                  });
-                }, 1000);
-              }
-            }
+            setMatch(updatedMatch);
           }
-        });
-
-        // Handle connection errors
-        socket.on("connect_error", (error: Error) => {
-          console.error("Socket connection error:", error);
-          toast({
-            title: "Connection Error",
-            description: "Trying to reconnect...",
-            variant: "destructive",
-          });
         });
       } catch (error) {
         console.error("Error initializing socket:", error);
@@ -460,13 +428,10 @@ export default function MatchDetailPage() {
 
     return () => {
       if (socket) {
-        socket.off("connect");
-        socket.off("connect_error");
-        socket.off("match:update");
-        socket.close();
+        socket.disconnect();
       }
     };
-  }, [session?.user, params.matchId, toast, userTeam]);
+  }, [params.matchId, session?.user]);
 
   if (loading) {
     return (
@@ -492,7 +457,20 @@ export default function MatchDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#0f172a]">
-      <main className="container p-4 mx-auto mt-4 mb-8">
+      {/* Add Back button at the top */}
+      <div className="container p-4 pt-3 mx-auto">
+        <Button
+          variant="outline"
+          size="sm"
+          className="bg-[#1e293b] text-gray-300 hover:bg-[#334155] border-[#334155]"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Return
+        </Button>
+      </div>
+
+      <main className="container p-4 mx-auto mt-2 mb-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold text-blue-400">Match Details</h1>
           {match && (
@@ -619,208 +597,19 @@ export default function MatchDetailPage() {
         </div>
 
         {/* Teams Section */}
-        <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
-          {/* Team 1 */}
-          <Card
-            className={`bg-[#111827] border-[#1f2937] ${
-              match.winner === 1 ? "border-l-4 border-l-[#3b82f6]" : ""
-            }`}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <h3 className="text-lg font-semibold text-white">
-                    Team 1 {match.winner === 1 && "🏆"}
-                  </h3>
-                  {match.firstPick === 1 && (
-                    <Badge className="ml-2 bg-[#3b82f6]">First Pick</Badge>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-400">Team ELO</p>
-                  <p className="font-medium text-white">{team1Elo}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {team1.map((player) => (
-                  <div
-                    key={player.discordId}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      player.discordId === session?.user?.id
-                        ? "bg-[#1e3a8a] border border-[#3b82f6]"
-                        : "bg-[#1f2937]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 mr-3 overflow-hidden bg-gray-700 rounded-full">
-                        {player.discordProfilePicture ? (
-                          <Image
-                            src={player.discordProfilePicture}
-                            alt={player.discordNickname || "Player"}
-                            width={32}
-                            height={32}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-white">
-                            {(
-                              player.discordNickname ||
-                              player.discordUsername ||
-                              ""
-                            )
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <PlayerContextMenu
-                        playerId={player.discordId}
-                        playerName={
-                          player.discordNickname ||
-                          player.discordUsername ||
-                          "Unknown Player"
-                        }
-                      >
-                        <div>
-                          <p className="font-medium text-white">
-                            {player.discordNickname ||
-                              player.discordUsername ||
-                              "Unknown Player"}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            ELO: {player.elo}
-                          </p>
-                        </div>
-                      </PlayerContextMenu>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <Image
-                        src={getRankIconPath(player.elo)}
-                        alt={getPlayerRankBadge(player.elo)}
-                        width={32}
-                        height={32}
-                        className="w-8 h-8"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {match.winner && (
-                <div className="mt-4 text-center">
-                  <Badge
-                    className={`px-4 py-1 text-lg ${
-                      match.winner === 1 ? "bg-[#3b82f6]" : "bg-gray-700"
-                    }`}
-                  >
-                    {match.winner === 1 ? "2 Wins" : "1 Win"}
-                  </Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Team 2 */}
-          <Card
-            className={`bg-[#111827] border-[#1f2937] ${
-              match.winner === 2 ? "border-l-4 border-l-[#3b82f6]" : ""
-            }`}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center">
-                  <h3 className="text-lg font-semibold text-white">
-                    Team 2 {match.winner === 2 && "🏆"}
-                  </h3>
-                  {match.firstPick === 2 && (
-                    <Badge className="ml-2 bg-[#3b82f6]">First Pick</Badge>
-                  )}
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-400">Team ELO</p>
-                  <p className="font-medium text-white">{team2Elo}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                {team2.map((player) => (
-                  <div
-                    key={player.discordId}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      player.discordId === session?.user?.id
-                        ? "bg-[#1e3a8a] border border-[#3b82f6]"
-                        : "bg-[#1f2937]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 mr-3 overflow-hidden bg-gray-700 rounded-full">
-                        {player.discordProfilePicture ? (
-                          <Image
-                            src={player.discordProfilePicture}
-                            alt={player.discordNickname || "Player"}
-                            width={32}
-                            height={32}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <div className="flex items-center justify-center w-full h-full text-white">
-                            {(
-                              player.discordNickname ||
-                              player.discordUsername ||
-                              ""
-                            )
-                              .charAt(0)
-                              .toUpperCase()}
-                          </div>
-                        )}
-                      </div>
-                      <PlayerContextMenu
-                        playerId={player.discordId}
-                        playerName={
-                          player.discordNickname ||
-                          player.discordUsername ||
-                          "Unknown Player"
-                        }
-                      >
-                        <div>
-                          <p className="font-medium text-white">
-                            {player.discordNickname ||
-                              player.discordUsername ||
-                              "Unknown Player"}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            ELO: {player.elo}
-                          </p>
-                        </div>
-                      </PlayerContextMenu>
-                    </div>
-                    <div className="flex-shrink-0">
-                      <Image
-                        src={getRankIconPath(player.elo)}
-                        alt={getPlayerRankBadge(player.elo)}
-                        width={32}
-                        height={32}
-                        className="w-8 h-8"
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {match.winner && (
-                <div className="mt-4 text-center">
-                  <Badge
-                    className={`px-4 py-1 text-lg ${
-                      match.winner === 2 ? "bg-[#3b82f6]" : "bg-gray-700"
-                    }`}
-                  >
-                    {match.winner === 2 ? "2 Wins" : "1 Win"}
-                  </Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <TeamCard
+            team={team1}
+            teamNumber={1}
+            title={getTeamName(1)}
+            matchStatus={match.status}
+          />
+          <TeamCard
+            team={team2}
+            teamNumber={2}
+            title={getTeamName(2)}
+            matchStatus={match.status}
+          />
         </div>
 
         {/* Match Results Section */}
@@ -863,13 +652,23 @@ export default function MatchDetailPage() {
                     value={`map${index + 1}`}
                     className="mt-4"
                   >
+                    {/* Show an alert if there's a discrepancy for this map */}
+                    {scoreDiscrepancy?.mapIndex === index && (
+                      <div className="p-3 mb-4 bg-red-100 border border-red-500 rounded-md dark:bg-red-900/20">
+                        <p className="flex items-center text-red-600 dark:text-red-400">
+                          <AlertCircle className="w-4 h-4 mr-2" />
+                          {scoreDiscrepancy.message}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="relative w-full h-32 mb-3 overflow-hidden rounded-md">
                       <Image
                         src={`/maps/${formatMapNameForImage(map.mapName)}`}
                         alt={map.mapName}
                         fill
                         className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                       <div className="absolute bottom-0 left-0 p-3">
@@ -936,6 +735,16 @@ export default function MatchDetailPage() {
                   </TabsContent>
                 ))}
               </Tabs>
+
+              {/* At the end of the match results section */}
+              <div className="mt-8 text-center">
+                <Button
+                  className="text-white bg-blue-600 hover:bg-blue-700"
+                  onClick={() => router.push("/matches/queues")}
+                >
+                  Return to Queues
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (
@@ -951,77 +760,133 @@ export default function MatchDetailPage() {
             </h3>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {match.maps.map((map, index) => (
-                <Card
-                  key={index}
-                  className="overflow-hidden bg-[#1a2234] border-[#1f2937]"
-                >
-                  <div className="relative">
-                    <div className="relative w-full h-40">
-                      <Image
-                        src={`/maps/${formatMapNameForImage(map.mapName)}`}
-                        alt={map.mapName}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
-                    </div>
+              {match.maps.map((map, index) => {
+                // Show all maps that have been played
+                const team1Wins =
+                  match.mapScores?.filter((s) => s.winner === 1).length || 0;
+                const team2Wins =
+                  match.mapScores?.filter((s) => s.winner === 2).length || 0;
 
-                    {/* Always show team names and scores at the top */}
-                    <div className="absolute top-0 left-0 right-0 px-3 py-1 text-sm font-semibold text-center text-white bg-blue-600">
-                      {match.mapScores?.[index]?.winner
-                        ? `${getTeamName(match.mapScores[index].winner)} Won`
-                        : `${getTeamName(1)} vs ${getTeamName(2)}`}
-                    </div>
-                  </div>
+                // Only hide third map if it wasn't played (match ended 2-0)
+                if (
+                  index === 2 &&
+                  !match.mapScores?.[index]?.winner &&
+                  (team1Wins === 2 || team2Wins === 2)
+                ) {
+                  return null;
+                }
 
-                  <div className="p-4">
-                    <div className="flex flex-col">
-                      <div className="mb-2">
-                        <h4 className="text-lg font-medium text-white">
-                          {map.mapName}
-                        </h4>
-                        <p className="text-sm text-gray-400">{map.gameMode}</p>
+                return (
+                  <Card
+                    key={index}
+                    className="overflow-hidden bg-[#1a2234] border-[#1f2937]"
+                  >
+                    <div className="relative">
+                      <div className="relative w-full h-40">
+                        <Image
+                          src={`/maps/${formatMapNameForImage(map.mapName)}`}
+                          alt={map.mapName}
+                          fill
+                          priority={index === 0} // Add priority to first image
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
+                          className="object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                       </div>
 
-                      {/* Always show team names with scores */}
-                      <div className="mt-2">
-                        <div className="flex justify-between mb-2">
-                          <span className="text-white">{getTeamName(1)}</span>
-                          <span className="text-xl font-bold text-blue-500">
-                            {match.mapScores?.[index]?.team1Score || "0"}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-white">{getTeamName(2)}</span>
-                          <span className="text-xl font-bold text-red-500">
-                            {match.mapScores?.[index]?.team2Score || "0"}
-                          </span>
+                      {/* Winner banner */}
+                      <div
+                        className={`absolute top-0 left-0 right-0 px-3 py-1 text-sm font-semibold text-center text-white ${
+                          match.mapScores?.[index]?.winner === 1
+                            ? "bg-blue-600"
+                            : match.mapScores?.[index]?.winner === 2
+                            ? "bg-red-600"
+                            : "bg-gray-600"
+                        }`}
+                      >
+                        {match.mapScores?.[index]?.winner
+                          ? `${getTeamName(match.mapScores[index].winner)} Won`
+                          : `Map ${index + 1}`}
+                      </div>
+                    </div>
+
+                    {/* Rest of the map card content */}
+                    <div className="p-4">
+                      <div className="flex flex-col">
+                        <div className="mb-2">
+                          <h4 className="text-lg font-medium text-white">
+                            {map.mapName}
+                          </h4>
+                          <p className="text-sm text-gray-400">
+                            {map.gameMode}
+                          </p>
                         </div>
 
-                        {/* Verification status section */}
-                        <div className="flex items-center justify-between mt-3 text-xs text-gray-400">
-                          <div className="flex items-center">
+                        {/* Score display */}
+                        <div className="mt-2">
+                          <div className="flex justify-between mb-2">
+                            <span className="text-white">{getTeamName(1)}</span>
+                            <span
+                              className={`text-xl font-bold ${
+                                match.mapScores?.[index]?.winner === 1
+                                  ? "text-blue-500"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {match.mapScores?.[index]?.team1Score || "0"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-white">{getTeamName(2)}</span>
+                            <span
+                              className={`text-xl font-bold ${
+                                match.mapScores?.[index]?.winner === 2
+                                  ? "text-red-500"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {match.mapScores?.[index]?.team2Score || "0"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Only show Submit Score button if user's team hasn't verified yet */}
+                        {userTeam &&
+                          !match.mapScores?.[index]?.winner &&
+                          !match.mapScores?.[index]?.[
+                            `submittedByTeam${userTeam}`
+                          ] && (
+                            <Button
+                              className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                              onClick={() => handleOpenScoreDialog(index)}
+                            >
+                              Submit Score
+                            </Button>
+                          )}
+
+                        {/* Show verification status */}
+                        <div className="flex justify-between mt-2">
+                          <div className="flex items-center gap-2">
                             {match.mapScores?.[index]?.submittedByTeam1 ? (
-                              <CheckCircle2 className="w-3 h-3 mr-1 text-green-500" />
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
                             ) : (
-                              <AlertCircle className="w-3 h-3 mr-1 text-yellow-500" />
+                              <Clock className="w-4 h-4 text-yellow-500" />
                             )}
                             <span>
-                              {getTeamName(1)}{" "}
+                              Team 1{" "}
                               {match.mapScores?.[index]?.submittedByTeam1
                                 ? "Verified"
                                 : "Pending"}
                             </span>
                           </div>
-                          <div className="flex items-center">
+                          <div className="flex items-center gap-2">
                             {match.mapScores?.[index]?.submittedByTeam2 ? (
-                              <CheckCircle2 className="w-3 h-3 mr-1 text-green-500" />
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
                             ) : (
-                              <AlertCircle className="w-3 h-3 mr-1 text-yellow-500" />
+                              <Clock className="w-4 h-4 text-yellow-500" />
                             )}
                             <span>
-                              {getTeamName(2)}{" "}
+                              Team 2{" "}
                               {match.mapScores?.[index]?.submittedByTeam2
                                 ? "Verified"
                                 : "Pending"}
@@ -1029,37 +894,10 @@ export default function MatchDetailPage() {
                           </div>
                         </div>
                       </div>
-
-                      {userTeam &&
-                        match.status === "in_progress" &&
-                        !match.mapScores?.[index]?.winner &&
-                        ((userTeam === 1 &&
-                          !match.mapScores?.[index]?.submittedByTeam1) ||
-                          (userTeam === 2 &&
-                            !match.mapScores?.[index]?.submittedByTeam2)) && (
-                          <Button
-                            className="w-full mt-3 bg-[#3b82f6] hover:bg-[#2563eb]"
-                            onClick={() => handleOpenScoreDialog(index)}
-                          >
-                            Submit Score
-                          </Button>
-                        )}
-
-                      {userTeam &&
-                        match.status === "in_progress" &&
-                        !match.mapScores?.[index]?.winner &&
-                        ((userTeam === 1 &&
-                          match.mapScores?.[index]?.submittedByTeam1) ||
-                          (userTeam === 2 &&
-                            match.mapScores?.[index]?.submittedByTeam2)) && (
-                          <div className="mt-3 text-sm text-center text-yellow-400">
-                            Waiting for the other team to verify scores
-                          </div>
-                        )}
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { emitMatchUpdate } from "@/lib/socket";
+import { ObjectId } from "mongodb";
 
 export const dynamic = "force-dynamic";
 
@@ -22,26 +23,67 @@ interface QueuePlayer {
   joinedAt: number;
 }
 
-// Add validation helper
+// Add these interfaces for type safety
+interface MatchPlayer {
+  discordId: string;
+  discordUsername: string;
+  discordNickname: string;
+  discordProfilePicture?: string;
+  elo: number;
+  eloChange?: number;
+  updatedElo?: number;
+}
+
+interface MapScore {
+  team1Score: number;
+  team2Score: number;
+  submittedByTeam1?: boolean;
+  submittedByTeam2?: boolean;
+  winner?: number;
+  scoresVerified?: boolean;
+}
+
+// Update the validation helper
 function validateRoundScores(
   team1Score: number,
   team2Score: number
 ): string | null {
-  if (team1Score < 0 || team2Score < 0) {
+  // Convert to numbers to ensure proper comparison
+  const t1Score = Number(team1Score);
+  const t2Score = Number(team2Score);
+
+  // Check for valid numbers
+  if (isNaN(t1Score) || isNaN(t2Score)) {
+    return "Invalid score values";
+  }
+
+  // Check for negative scores
+  if (t1Score < 0 || t2Score < 0) {
     return "Scores cannot be negative";
   }
 
-  if (team1Score > 6 || team2Score > 6) {
+  // Check for scores exceeding maximum
+  if (t1Score > 6 || t2Score > 6) {
     return "Scores cannot exceed 6 rounds";
   }
 
-  if (team1Score === team2Score) {
+  // Check for ties
+  if (t1Score === t2Score) {
     return "Scores cannot be tied";
   }
 
-  // At least one team must have 6 rounds
-  if (team1Score !== 6 && team2Score !== 6) {
+  // Check that exactly one team has 6 rounds
+  if (t1Score === 6 && t2Score === 6) {
+    return "Only one team can have 6 rounds";
+  }
+
+  if (t1Score !== 6 && t2Score !== 6) {
     return "One team must win 6 rounds";
+  }
+
+  // Ensure losing team has less than 6 rounds
+  if ((t1Score === 6 && t2Score >= 6) || (t2Score === 6 && t1Score >= 6)) {
+    return "Only one team can have 6 rounds";
   }
 
   return null;
@@ -50,53 +92,71 @@ function validateRoundScores(
 async function reinsertWinnersIntoQueue(
   db: any,
   match: any,
-  winningTeam: number
-): Promise<void> {
+  matchWinner: number
+) {
   try {
-    // Get the winning team's players
-    const winningPlayers = winningTeam === 1 ? match.team1 : match.team2;
+    // Get the winning team's player IDs
+    const winningTeam = matchWinner === 1 ? match.team1 : match.team2;
+    const winningPlayerIds = winningTeam.map((player: any) => player.discordId);
 
-    // Find the original queue that this match was created from
-    const queue = await db.collection("Queues").findOne({
-      teamSize: match.teamSize,
-      eloTier: match.eloTier,
+    // Fetch the CURRENT player documents to get UPDATED ELO values
+    const playerDocs = await db
+      .collection("Players")
+      .find({ discordId: { $in: winningPlayerIds } })
+      .toArray();
+
+    // Create a map of player IDs to their current ELO values
+    const playerEloMap = new Map();
+    playerDocs.forEach((player: any) => {
+      // Find the stats object with the matching team size
+      const statsObj = player.stats?.find(
+        (stat: any) => Number(stat.teamSize) === Number(match.teamSize)
+      );
+
+      if (statsObj) {
+        playerEloMap.set(player.discordId, statsObj.elo);
+      }
     });
 
-    if (!queue) {
-      console.error("Original queue not found for winners stay");
-      return;
-    }
+    console.log(
+      "Current ELO values for winners:",
+      Array.from(playerEloMap.entries()).reduce<Record<string, number>>(
+        (obj, [key, value]) => {
+          obj[key] = value;
+          return obj;
+        },
+        {}
+      )
+    );
 
-    // Convert winning players to queue player format
-    const winnersToReinsert: QueuePlayer[] = winningPlayers.map(
-      (player: any) => ({
+    // Now build the players to add back to the queue with UPDATED ELO values
+    const playersToAdd = winningTeam.map((player: any) => {
+      // Get the current ELO from our map, fall back to original if not found
+      const currentElo = playerEloMap.get(player.discordId) || player.elo;
+
+      return {
         discordId: player.discordId,
         discordUsername: player.discordUsername,
         discordNickname: player.discordNickname,
         discordProfilePicture: player.discordProfilePicture,
-        elo: player.elo,
-        joinedAt: Date.now(), // Current timestamp for new join
-      })
-    );
+        elo: currentElo, // Use the CURRENT ELO from player document
+        joinedAt: Date.now(),
+      };
+    });
 
-    // Get current players in queue
-    const currentPlayers = queue.players || [];
-
-    // Create new players array with winners at the start
-    const updatedPlayers = [...winnersToReinsert, ...currentPlayers];
-
-    // Update the queue
+    // Add the winning team back to the queue
     await db
       .collection("Queues")
-      .updateOne({ _id: queue._id }, { $set: { players: updatedPlayers } });
+      .updateOne(
+        { _id: match.queueId ? new ObjectId(match.queueId) : null },
+        { $push: { players: { $each: playersToAdd } } }
+      );
 
-    // Fetch all queues to broadcast update
-    const updatedQueues = await db.collection("Queues").find({}).toArray();
-    if (global.io) {
-      global.io.emit("queues:update", updatedQueues);
-    }
+    console.log(
+      `${playersToAdd.length} winners reinserted into queue ${match.queueId}`
+    );
   } catch (error) {
-    console.error("Error reinserting winners into queue:", error);
+    console.error("Error reinserting winners:", error);
   }
 }
 
@@ -126,6 +186,51 @@ function doScoresMatch(mapScore: any): boolean {
   );
 }
 
+// Improved ELO calculation function that considers:
+// 1. Individual player ELO vs opposing team average
+// 2. Round score difference (performance factor)
+// 3. Dynamic K-factor based on player ELO
+function calculateImprovedElo(
+  playerElo: number,
+  opposingTeamAvgElo: number,
+  isWinner: boolean,
+  roundDifference: number
+): number {
+  // Base K-factor (decreases as ELO increases)
+  let kFactor = 32;
+  if (playerElo > 2100) kFactor = 24;
+  if (playerElo > 2400) kFactor = 16;
+
+  // Calculate expected outcome using the standard ELO formula
+  const expectedOutcome =
+    1 / (1 + Math.pow(10, (opposingTeamAvgElo - playerElo) / 400));
+
+  // Actual outcome (1 for win, 0 for loss)
+  const actualOutcome = isWinner ? 1 : 0;
+
+  // Performance factor based on round difference (0.5 to 1.5)
+  // More decisive wins/losses result in larger changes
+  const performanceFactor = Math.min(1.5, 0.5 + roundDifference / 12);
+
+  // Calculate ELO change
+  const eloChange = Math.round(
+    kFactor * (actualOutcome - expectedOutcome) * performanceFactor
+  );
+
+  // Add logging to understand the calculation
+  console.log(`ELO Change Calculation for player with ${playerElo} ELO:`, {
+    opposingTeamAvgElo,
+    expectedOutcome: expectedOutcome.toFixed(4),
+    actualOutcome,
+    kFactor,
+    performanceFactor: performanceFactor.toFixed(2),
+    roundDifference,
+    eloChange,
+  });
+
+  return eloChange;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { matchId: string } }
@@ -139,6 +244,12 @@ export async function POST(
     const data = (await req.json()) as ScoreSubmission;
     const { mapIndex, team1Score, team2Score, submittingTeam } = data;
 
+    // Validate scores before processing
+    const scoreError = validateRoundScores(team1Score, team2Score);
+    if (scoreError) {
+      return NextResponse.json({ error: scoreError }, { status: 400 });
+    }
+
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
@@ -151,11 +262,45 @@ export async function POST(
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    // Create or update the mapScores array
+    // Get the submitting player's info
+    const submittingUser = {
+      discordId: session.user.id,
+      discordUsername: session.user.name,
+      discordNickname: session.user.name,
+    };
+
+    // Get the player document to get their nickname
+    const player = await db.collection("Players").findOne({
+      discordId: session.user.id,
+    });
+
+    if (player) {
+      submittingUser.discordNickname = player.discordNickname;
+    }
+
+    // Initialize mapScores if it doesn't exist
     const mapScores = match.mapScores || [];
+    const existingMapScore = mapScores[mapIndex] || {};
+
+    // Create the update field based on submitting team
+    const updateField =
+      submittingTeam === 1
+        ? {
+            submittedByTeam1: true,
+            submittedByTeam1User: submittingUser,
+            submittedByTeam2: existingMapScore.submittedByTeam2 || false,
+            submittedByTeam2User: existingMapScore.submittedByTeam2User,
+          }
+        : {
+            submittedByTeam1: existingMapScore.submittedByTeam1 || false,
+            submittedByTeam1User: existingMapScore.submittedByTeam1User,
+            submittedByTeam2: true,
+            submittedByTeam2User: submittingUser,
+          };
+
+    // Update the map score
     mapScores[mapIndex] = {
-      ...(mapScores[mapIndex] || {}),
-      // Store each team's submission separately with clear naming
+      ...existingMapScore,
       ...(submittingTeam === 1
         ? {
             team1SubmittedByTeam1Score: team1Score,
@@ -165,47 +310,36 @@ export async function POST(
             team1SubmittedByTeam2Score: team1Score,
             team2SubmittedByTeam2Score: team2Score,
           }),
-      submittedByTeam1:
-        submittingTeam === 1 ? true : mapScores[mapIndex]?.submittedByTeam1,
-      submittedByTeam2:
-        submittingTeam === 2 ? true : mapScores[mapIndex]?.submittedByTeam2,
-      [`submittedByTeam${submittingTeam}User`]: {
-        discordId: session.user.id,
-        discordUsername: session.user.name,
-        discordNickname: session.user.name || session.user.name,
-      },
+      ...updateField,
     };
 
-    // If both teams have submitted scores for this map, check if they match
+    // Check if both teams have submitted and scores match
     if (
       mapScores[mapIndex].submittedByTeam1 &&
       mapScores[mapIndex].submittedByTeam2
     ) {
-      if (doScoresMatch(mapScores[mapIndex])) {
-        // Scores match - validate and set official scores
-        const scoreError = validateRoundScores(
-          mapScores[mapIndex].team1SubmittedByTeam1Score,
-          mapScores[mapIndex].team2SubmittedByTeam1Score
-        );
+      const scoresMatch = doScoresMatch(mapScores[mapIndex]);
+
+      if (scoresMatch) {
+        const scoreError = validateRoundScores(team1Score, team2Score);
         if (!scoreError) {
+          const winner = team1Score === 6 ? 1 : 2;
+
+          // Update just the map scores without ELO changes
           mapScores[mapIndex] = {
             ...mapScores[mapIndex],
-            team1Score: mapScores[mapIndex].team1SubmittedByTeam1Score,
-            team2Score: mapScores[mapIndex].team2SubmittedByTeam1Score,
-            ...determineMapWinner(
-              mapScores[mapIndex].team1SubmittedByTeam1Score,
-              mapScores[mapIndex].team2SubmittedByTeam1Score
-            ),
+            team1Score,
+            team2Score,
+            winner,
             scoresVerified: true,
           };
         }
       } else {
-        // Scores don't match - reset submissions and require resubmission
         mapScores[mapIndex] = {
           submittedByTeam1: false,
           submittedByTeam2: false,
           scoresVerified: false,
-          scoresMismatch: true, // Add flag to show there was a mismatch
+          scoresMismatch: true,
           team1SubmittedByTeam1Score: null,
           team2SubmittedByTeam1Score: null,
           team1SubmittedByTeam2Score: null,
@@ -226,38 +360,157 @@ export async function POST(
       (score: any) => score?.winner === 2
     ).length;
 
-    // Update match with scores and winner if applicable
-    const result = await db.collection("Matches").updateOne(
-      { matchId: params.matchId },
-      {
-        $set: {
-          mapScores,
-          lastUpdatedAt: new Date(),
-          // Set match as completed if a team has won 2 maps
-          ...(team1Wins === 2 || team2Wins === 2
-            ? {
-                status: "completed",
-                winner: team1Wins === 2 ? 1 : 2,
-                completedAt: new Date(),
-                team1MapWins: team1Wins,
-                team2MapWins: team2Wins,
-              }
-            : {}),
-        },
-      }
-    );
-
-    if (result.modifiedCount === 0) {
-      return NextResponse.json(
-        { error: "Failed to update match score" },
-        { status: 400 }
-      );
-    }
-
-    // If match is completed, handle Winners Stay
+    // If match is complete (someone has 2 wins), calculate and update ELOs
     if (team1Wins === 2 || team2Wins === 2) {
-      const winningTeam = team1Wins === 2 ? 1 : 2;
-      await reinsertWinnersIntoQueue(db, match, winningTeam);
+      try {
+        const matchWinner = team1Wins === 2 ? 1 : 2;
+
+        // Calculate team average ELOs
+        const team1AvgElo =
+          match.team1.reduce((sum: number, p: MatchPlayer) => sum + p.elo, 0) /
+          match.team1.length;
+        const team2AvgElo =
+          match.team2.reduce((sum: number, p: MatchPlayer) => sum + p.elo, 0) /
+          match.team2.length;
+
+        // Calculate total round difference across all maps
+        let team1TotalRoundWins = 0;
+        let team2TotalRoundWins = 0;
+
+        mapScores.forEach((score: MapScore) => {
+          team1TotalRoundWins += score.team1Score || 0;
+          team2TotalRoundWins += score.team2Score || 0;
+        });
+
+        const team1RoundDiff = team1TotalRoundWins - team2TotalRoundWins;
+        const team2RoundDiff = team2TotalRoundWins - team1TotalRoundWins;
+
+        // Update each player's ELO with the improved calculation
+        const updatedTeam1 = match.team1.map((player: MatchPlayer) => {
+          const eloChange = calculateImprovedElo(
+            player.elo,
+            team2AvgElo,
+            matchWinner === 1, // true if team1 won
+            Math.abs(team1RoundDiff)
+          );
+
+          return {
+            ...player,
+            eloChange,
+            updatedElo: Math.max(0, player.elo + eloChange), // Ensure ELO never goes below 0
+          };
+        });
+
+        const updatedTeam2 = match.team2.map((player: MatchPlayer) => {
+          const eloChange = calculateImprovedElo(
+            player.elo,
+            team1AvgElo,
+            matchWinner === 2, // true if team2 won
+            Math.abs(team2RoundDiff)
+          );
+
+          return {
+            ...player,
+            eloChange,
+            updatedElo: Math.max(0, player.elo + eloChange), // Ensure ELO never goes below 0
+          };
+        });
+
+        // Update match document with final scores, winner, and ELO changes
+        await db.collection("Matches").updateOne(
+          { matchId: params.matchId },
+          {
+            $set: {
+              mapScores,
+              lastUpdatedAt: new Date(),
+              status: "completed",
+              winner: matchWinner,
+              completedAt: new Date(),
+              team1MapWins: team1Wins,
+              team2MapWins: team2Wins,
+              // Store teams with ELO changes in match document
+              team1: updatedTeam1.map((player: MatchPlayer) => ({
+                ...player,
+                // Keep original elo and eloChange for match history
+                elo: player.elo,
+                eloChange: player.eloChange,
+                // Remove updatedElo as it's not needed in match document
+                updatedElo: undefined,
+              })),
+              team2: updatedTeam2.map((player: MatchPlayer) => ({
+                ...player,
+                // Keep original elo and eloChange for match history
+                elo: player.elo,
+                eloChange: player.eloChange,
+                // Remove updatedElo as it's not needed in match document
+                updatedElo: undefined,
+              })),
+            },
+          }
+        );
+
+        // Update player ELOs in their stats arrays with the new calculated ELO
+        const playerUpdates = [...updatedTeam1, ...updatedTeam2].map(
+          async (player) => {
+            // First get the player document to find the correct stats index
+            const playerDoc = await db
+              .collection("Players")
+              .findOne({ discordId: player.discordId });
+
+            if (!playerDoc || !playerDoc.stats) {
+              console.error(
+                `Player ${player.discordId} not found or has no stats array`
+              );
+              return null;
+            }
+
+            // Find the index of the stats object with the matching teamSize
+            const statsIndex = playerDoc.stats.findIndex(
+              (stat: { teamSize: any }) =>
+                Number(stat.teamSize) === Number(match.teamSize)
+            );
+
+            if (statsIndex === -1) {
+              console.error(
+                `Could not find stats object with teamSize ${match.teamSize} for player ${player.discordId}`
+              );
+              console.log("Available stats:", playerDoc.stats);
+              return null;
+            }
+
+            // Update the correct stats object using its index
+            return db.collection("Players").updateOne(
+              { discordId: player.discordId },
+              {
+                $set: {
+                  [`stats.${statsIndex}.elo`]: player.updatedElo,
+                  [`stats.${statsIndex}.lastMatchDate`]: new Date(),
+                },
+              }
+            );
+          }
+        );
+
+        // Wait for all updates to complete
+        await Promise.all(playerUpdates.filter((update) => update !== null));
+
+        // Handle Winners Stay
+        await reinsertWinnersIntoQueue(db, match, matchWinner);
+      } catch (error) {
+        console.error("Error completing match:", error);
+        throw error;
+      }
+    } else {
+      // Just update map scores if match isn't complete
+      const result = await db.collection("Matches").updateOne(
+        { matchId: params.matchId },
+        {
+          $set: {
+            mapScores,
+            lastUpdatedAt: new Date(),
+          },
+        }
+      );
     }
 
     // Get updated match data

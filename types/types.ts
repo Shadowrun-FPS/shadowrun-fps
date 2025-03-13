@@ -21,6 +21,13 @@ export interface Post {
   category: string;
 }
 
+interface PlayerEloStats {
+  elo: number;
+  wins: number;
+  losses: number;
+  lastMatchDate?: Date;
+}
+
 export interface Player {
   elo: ReactNode;
   discordId: string;
@@ -34,6 +41,11 @@ export interface Player {
     wins?: number;
     losses?: number;
     ratio?: number;
+  };
+  eloStats: {
+    "2v2": PlayerEloStats;
+    "4v4": PlayerEloStats;
+    "5v5": PlayerEloStats;
   };
 }
 
