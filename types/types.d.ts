@@ -1,10 +1,6 @@
 export type PlayerStats = {
   teamSize: number;
   elo: number;
-  kills: number;
-  deaths: number;
-  resurrects: number;
-  avgMoney: number;
   wins: number;
   losses: number;
   lastMatchDate: Date;

@@ -16,7 +16,89 @@ interface QueuePlayer {
   // Add any other properties that QueuePlayer might have
 }
 
+// Add interface for map
+interface QueueMap {
+  name: string;
+  gameMode: string;
+  // Add other properties as needed
+}
+
 export const dynamic = "force-dynamic";
+
+// Function to find the most balanced teams
+function createBalancedTeams(
+  players: QueuePlayer[],
+  teamSize: number
+): [QueuePlayer[], QueuePlayer[]] {
+  const totalPlayers = players.length;
+  if (totalPlayers !== teamSize * 2) {
+    throw new Error(
+      `Expected ${teamSize * 2} players, but got ${totalPlayers}`
+    );
+  }
+
+  // Generate all possible team combinations
+  // We only need to choose team1, as team2 will be the remaining players
+  const indices = Array.from({ length: totalPlayers }, (_, i) => i);
+
+  let bestDifference = Infinity;
+  let bestTeam1Indices: number[] = [];
+
+  // Generate all possible combinations of teamSize players from totalPlayers
+  const allCombinations = generateCombinations(indices, teamSize);
+
+  // Evaluate each combination
+  for (const team1Indices of allCombinations) {
+    const team2Indices = indices.filter((i) => !team1Indices.includes(i));
+
+    // Calculate team ELOs
+    const team1Elo = team1Indices.reduce((sum, i) => sum + players[i].elo, 0);
+    const team2Elo = team2Indices.reduce((sum, i) => sum + players[i].elo, 0);
+
+    // Calculate the absolute difference
+    const difference = Math.abs(team1Elo - team2Elo);
+
+    // Update if this is better than our current best
+    if (difference < bestDifference) {
+      bestDifference = difference;
+      bestTeam1Indices = team1Indices;
+    }
+  }
+
+  // Create the teams based on the best combination found
+  const team1 = bestTeam1Indices.map((i) => players[i]);
+  const team2 = indices
+    .filter((i) => !bestTeam1Indices.includes(i))
+    .map((i) => players[i]);
+
+  console.log(`Created balanced teams with ELO difference: ${bestDifference}`);
+  console.log(`Team 1 total ELO: ${team1.reduce((sum, p) => sum + p.elo, 0)}`);
+  console.log(`Team 2 total ELO: ${team2.reduce((sum, p) => sum + p.elo, 0)}`);
+
+  return [team1, team2];
+}
+
+// Helper function to generate all combinations of size k from array
+function generateCombinations<T>(array: T[], k: number): T[][] {
+  const result: T[][] = [];
+
+  // Helper function for recursive combination generation
+  function backtrack(start: number, current: T[]) {
+    if (current.length === k) {
+      result.push([...current]);
+      return;
+    }
+
+    for (let i = start; i < array.length; i++) {
+      current.push(array[i]);
+      backtrack(i + 1, current);
+      current.pop();
+    }
+  }
+
+  backtrack(0, []);
+  return result;
+}
 
 export async function POST(
   req: NextRequest,
@@ -71,101 +153,19 @@ export async function POST(
     }
 
     // Check if queue has enough players
-    if (queue.players.length < queue.teamSize * 2) {
+    const teamSize = queue.teamSize || 4; // Default to 4 if not specified
+    if (queue.players.length < teamSize * 2) {
       return NextResponse.json(
-        { error: "Not enough players to launch a match" },
+        { error: `Need ${teamSize * 2} players to start a match` },
         { status: 400 }
       );
     }
 
-    // Get 3 random maps from the Maps collection
-    const maps = await db
-      .collection("Maps")
-      .aggregate([{ $match: { rankedMap: true } }, { $sample: { size: 3 } }])
-      .toArray();
+    // Sort players by ELO to optimize initial placement
+    const sortedPlayers = [...queue.players].sort((a, b) => b.elo - a.elo);
 
-    if (maps.length < 3) {
-      return NextResponse.json(
-        { error: "Not enough maps available" },
-        { status: 500 }
-      );
-    }
-
-    // Update the queue clearing logic to preserve waitlisted players
-    // First, get the required number of players for a match
-    const requiredPlayers = queue.teamSize * 2;
-
-    // Take only the first requiredPlayers for the match
-    const activePlayers = queue.players.slice(0, requiredPlayers);
-    const waitlistedPlayers = queue.players.slice(requiredPlayers);
-
-    // Create balanced teams with only the active players
-    const players = [...activePlayers];
-
-    // Improved team balancing algorithm using combinatorial optimization
-    // This finds the most balanced teams possible by trying different combinations
-    const findOptimalTeams = (players: QueuePlayer[], teamSize: number) => {
-      // Sort players by ELO (highest to lowest)
-      players.sort((a, b) => b.elo - a.elo);
-
-      // Calculate total ELO
-      const totalElo = players.reduce((sum, player) => sum + player.elo, 0);
-      const targetElo = totalElo / 2;
-
-      // Initialize with a basic distribution
-      let bestTeam1: QueuePlayer[] = players.slice(0, teamSize);
-      let bestTeam2: QueuePlayer[] = players.slice(teamSize);
-      let bestDifference = Math.abs(
-        bestTeam1.reduce((sum, p) => sum + p.elo, 0) -
-          bestTeam2.reduce((sum, p) => sum + p.elo, 0)
-      );
-
-      // Try different combinations to find the most balanced teams
-      // We'll use a greedy approach with swapping to find better combinations
-      let improved = true;
-      while (improved) {
-        improved = false;
-
-        // Try swapping each player from team1 with each player from team2
-        for (let i = 0; i < bestTeam1.length; i++) {
-          for (let j = 0; j < bestTeam2.length; j++) {
-            // Create new teams with the swap
-            const newTeam1 = [...bestTeam1];
-            const newTeam2 = [...bestTeam2];
-
-            // Swap players
-            const temp = newTeam1[i];
-            newTeam1[i] = newTeam2[j];
-            newTeam2[j] = temp;
-
-            // Calculate new difference
-            const newTeam1Elo = newTeam1.reduce((sum, p) => sum + p.elo, 0);
-            const newTeam2Elo = newTeam2.reduce((sum, p) => sum + p.elo, 0);
-            const newDifference = Math.abs(newTeam1Elo - newTeam2Elo);
-
-            // If this swap improves balance, keep it
-            if (newDifference < bestDifference) {
-              bestTeam1 = newTeam1;
-              bestTeam2 = newTeam2;
-              bestDifference = newDifference;
-              improved = true;
-            }
-          }
-        }
-      }
-
-      return {
-        team1: bestTeam1,
-        team2: bestTeam2,
-        eloDifference: bestDifference,
-      };
-    };
-
-    // Use the optimized team balancing function
-    const { team1, team2, eloDifference } = findOptimalTeams(
-      players,
-      queue.teamSize
-    );
+    // Create balanced teams
+    const [team1, team2] = createBalancedTeams(sortedPlayers, teamSize);
 
     // Ensure all players have valid nicknames
     const ensureValidNicknames = (players: QueuePlayer[]) => {
@@ -186,6 +186,15 @@ export async function POST(
     // Generate a unique match ID
     const matchId = uuidv4();
 
+    // Add this before creating the match document
+    console.log("Queue data:", {
+      queueId: params.queueId,
+      teamSize: queue.teamSize,
+      playerCount: queue.players.length,
+      hasMaps: !!queue.maps,
+      mapsCount: queue.maps?.length || 0,
+    });
+
     // Create the match document
     const match = {
       matchId,
@@ -200,14 +209,45 @@ export async function POST(
         discordUsername: session.user.name || "",
         discordNickname: session.user.nickname || session.user.name || "",
       },
-      maps: maps.map((map) => ({
-        mapName: map.name,
-        gameMode: map.gameMode,
-        selected: false,
+      maps: queue.maps
+        ? queue.maps.map((map: QueueMap) => ({
+            mapName: map.name,
+            gameMode: map.gameMode,
+            selected: false,
+          }))
+        : [
+            // Default maps if none are provided
+            { mapName: "Pinnacle", gameMode: "Attrition", selected: false },
+            {
+              mapName: "Power Station",
+              gameMode: "Attrition",
+              selected: false,
+            },
+            { mapName: "Lobby", gameMode: "Attrition", selected: false },
+          ],
+      team1: team1WithValidNicknames.map((player) => ({
+        discordId: player.discordId,
+        discordUsername: player.discordUsername,
+        discordNickname: player.discordNickname || player.discordUsername,
+        discordProfilePicture: player.discordProfilePicture,
+        initialElo: player.elo,
+        elo: player.elo,
+        eloChange: 0,
+        updatedElo: player.elo,
+        isReady: false,
       })),
-      team1: team1WithValidNicknames,
-      team2: team2WithValidNicknames,
-      eloDifference,
+      team2: team2WithValidNicknames.map((player) => ({
+        discordId: player.discordId,
+        discordUsername: player.discordUsername,
+        discordNickname: player.discordNickname || player.discordUsername,
+        discordProfilePicture: player.discordProfilePicture,
+        initialElo: player.elo,
+        elo: player.elo,
+        eloChange: 0,
+        updatedElo: player.elo,
+        isReady: false,
+      })),
+      eloDifference: 0, // This will be calculated later
       queueId: params.queueId,
     };
 
@@ -219,11 +259,11 @@ export async function POST(
       .collection("Queues")
       .updateOne(
         { _id: new ObjectId(params.queueId) },
-        { $set: { players: waitlistedPlayers } }
+        { $set: { players: queue.players.slice(teamSize * 2) } }
       );
 
     // After creating the match, remove active players from all other queues
-    const activePlayerIds = activePlayers.map(
+    const activePlayerIds = team1.map(
       (player: QueuePlayer) => player.discordId
     );
 

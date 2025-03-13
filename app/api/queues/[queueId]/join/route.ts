@@ -135,6 +135,7 @@ export async function POST(
 
     const player = await db.collection("Players").findOne({
       discordId: session.user.id,
+      "stats.teamSize": queue.teamSize,
     });
 
     if (!player) {
@@ -142,8 +143,8 @@ export async function POST(
     }
 
     // Find the stats object for the queue's team size
-    const statsForTeamSize = player.stats?.find(
-      (stat: any) => stat.teamSize === queue.teamSize
+    const statsForTeamSize = player.stats.find(
+      (stat: { teamSize: any }) => stat.teamSize === queue.teamSize
     );
 
     if (!statsForTeamSize?.elo) {

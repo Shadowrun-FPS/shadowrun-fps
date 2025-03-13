@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       elo: 800, // Default starting ELO
       wins: 0,
       losses: 0,
-      lastMatchDate: null,
+      lastMatchDate: new Date(),
     }));
 
     // Create player document

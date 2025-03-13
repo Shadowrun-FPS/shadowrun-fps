@@ -10,19 +10,25 @@ export type NextApiResponseWithSocket = {
   };
 };
 
+let io: SocketIOServer | null = null;
+
 export function getIO() {
-  return (global as any).io as SocketIOServer | null;
+  return io;
 }
 
 export function initSocket(httpServer: NetServer) {
-  if (!(global as any).io) {
-    const io = new SocketIOServer(httpServer, {
+  if (!io) {
+    io = new SocketIOServer(httpServer, {
       path: "/api/socketio",
       addTrailingSlash: false,
       cors: {
-        origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        origin: "*", // In production, set this to your actual domain
         methods: ["GET", "POST"],
+        credentials: true,
       },
+      connectTimeout: 10000,
+      pingTimeout: 5000,
+      pingInterval: 10000,
     });
 
     io.on("connection", (socket) => {
@@ -41,28 +47,21 @@ export function initSocket(httpServer: NetServer) {
       socket.on("disconnect", () => {
         console.log("Client disconnected:", socket.id);
       });
-    });
 
-    (global as any).io = io;
+      // Send immediate acknowledgment of connection
+      socket.emit("connected", { id: socket.id });
+    });
   }
-  return (global as any).io;
+  return io;
 }
 
 export function emitMatchUpdate(matchData: any) {
-  const socketIO = getIO();
-  if (socketIO) {
-    // Broadcast to all clients in the match room
-    socketIO.to(`match:${matchData.matchId}`).emit("match:update", {
-      ...matchData,
-      timestamp: Date.now(),
-      forceRefresh: matchData.mapScores?.some(
-        (score: any) => score?.scoresMismatch
-      ),
-    });
+  if (!io) return;
 
-    // Also emit to the general match updates channel
-    socketIO.emit("matches:update", matchData);
+  io.to(`match:${matchData.matchId}`).emit("match:update", {
+    ...matchData,
+    timestamp: Date.now(),
+  });
 
-    console.log(`Emitted match update to room match:${matchData.matchId}`);
-  }
+  io.emit("matches:update", matchData);
 }
