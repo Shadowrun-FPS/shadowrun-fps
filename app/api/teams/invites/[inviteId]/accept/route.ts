@@ -1,24 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId, Document, WithId } from "mongodb";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-
-interface TeamInvite extends WithId<Document> {
-  _id: ObjectId;
-  teamId: ObjectId;
-  inviteeId: string;
-  status: string;
-}
-
-interface Team extends WithId<Document> {
-  _id: ObjectId;
-  name: string;
-  members: Array<{
-    discordId: string;
-    role: string;
-  }>;
-}
+import { connectToDatabase } from "@/lib/mongodb";
+import { ObjectId, UpdateFilter, Document } from "mongodb";
 
 export async function POST(
   req: NextRequest,
@@ -30,63 +14,86 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const inviteId = params.inviteId;
+    const { db } = await connectToDatabase();
 
-    // Find and update invite status
-    const invite = await db.collection<TeamInvite>("TeamInvites").findOne({
-      _id: new ObjectId(params.inviteId),
+    // Find the invite
+    const invite = await db.collection("TeamInvites").findOne({
+      _id: new ObjectId(inviteId),
       inviteeId: session.user.id,
       status: "pending",
     });
 
     if (!invite) {
-      return NextResponse.json({ error: "Invite not found" }, { status: 404 });
-    }
-
-    const team = await db.collection<Team>("Teams").findOne({
-      _id: invite.teamId,
-    });
-
-    if (!team) {
-      return NextResponse.json({ error: "Team not found" }, { status: 404 });
-    }
-
-    // Add member to team
-    const result = await db.collection<Team>("Teams").findOneAndUpdate(
-      { _id: invite.teamId },
-      {
-        $addToSet: {
-          members: {
-            discordId: session.user.id,
-            role: "member",
-          },
-        } as any,
-      },
-      { returnDocument: "after" }
-    );
-
-    if (!result || !result.value) {
       return NextResponse.json(
-        { error: "Failed to join team" },
-        { status: 400 }
+        { error: "Invalid or expired invite" },
+        { status: 404 }
       );
     }
 
     // Update invite status
-    await db.collection("TeamInvites").updateOne(
-      { _id: new ObjectId(params.inviteId) },
-      {
-        $set: {
-          status: "accepted",
-          acceptedAt: new Date(),
-        },
-      }
-    );
+    await db
+      .collection("TeamInvites")
+      .updateOne(
+        { _id: new ObjectId(inviteId) },
+        { $set: { status: "accepted", acceptedAt: new Date() } }
+      );
 
-    return NextResponse.json(result.value);
+    // Add user to team with proper profile data
+    const newMember = {
+      discordId: session.user.id,
+      discordNickname: session.user.nickname || session.user.name,
+      discordUsername: session.user.name,
+      discordProfilePicture: session.user.image || "",
+      role: "member",
+      joinedAt: new Date(),
+    };
+
+    // Create the update document
+    const updateDoc = {
+      $push: {
+        members: newMember,
+      },
+    };
+
+    // Cast it to the proper MongoDB type
+    const typedUpdateDoc = updateDoc as unknown as UpdateFilter<Document>;
+
+    // Use the typed update document in the MongoDB operation
+    const teamUpdateResult = await db
+      .collection("Teams")
+      .updateOne({ _id: new ObjectId(invite.teamId) }, typedUpdateDoc);
+
+    // Create notification for team captain
+    const team = await db.collection("Teams").findOne({
+      _id: new ObjectId(invite.teamId),
+    });
+
+    if (team) {
+      await db.collection("Notifications").insertOne({
+        userId: team.captain.discordId,
+        type: "team_invite_accepted",
+        title: "Team Invite Accepted",
+        message: `${
+          session.user.nickname || session.user.name
+        } has joined your team`,
+        read: false,
+        createdAt: new Date(),
+        metadata: {
+          teamId: invite.teamId.toString(),
+          teamName: team.name,
+          memberId: session.user.id,
+          memberName: session.user.nickname || session.user.name,
+        },
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "You have successfully joined the team",
+    });
   } catch (error) {
-    console.error("Failed to accept team invite:", error);
+    console.error("Error accepting team invite:", error);
     return NextResponse.json(
       { error: "Failed to accept team invite" },
       { status: 500 }

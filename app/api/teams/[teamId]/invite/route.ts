@@ -1,49 +1,85 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
 
 export async function POST(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
   try {
-    const { inviterId, inviteeId } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Check if inviter is team captain
+    const { db } = await connectToDatabase();
+    const teamId = params.teamId;
+
+    // Verify user is team captain
     const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(params.teamId),
-      "captain.discordId": inviterId,
+      _id: new ObjectId(teamId),
     });
 
     if (!team) {
+      return NextResponse.json({ error: "Team not found" }, { status: 404 });
+    }
+
+    // Check if the current user is the team captain
+    if (team.captain.discordId !== session.user.id) {
       return NextResponse.json(
         { error: "Only team captain can send invites" },
         { status: 403 }
       );
     }
 
-    // Check team size limit (4 main players + 1 substitute)
-    const currentMemberCount = team.members.length;
-    const pendingInvitesCount = await db
-      .collection("TeamInvites")
-      .countDocuments({
-        teamId: new ObjectId(params.teamId),
-        status: "pending",
-      });
+    // Add debug logging
+    console.log("Current user ID:", session.user.id);
+    console.log("Team captain ID:", team.captain.discordId);
+    console.log(
+      "Is captain match:",
+      team.captain.discordId === session.user.id
+    );
 
-    const totalPotentialMembers = currentMemberCount + pendingInvitesCount;
-    if (totalPotentialMembers >= 5) {
+    const { playerId, playerName } = await req.json();
+
+    // Simply count the members array length
+    const memberCount = team.members.length;
+
+    // Get pending invites for debugging only
+    const pendingInvites = await db
+      .collection("TeamInvites")
+      .find({
+        teamId: new ObjectId(teamId),
+        status: "pending",
+      })
+      .toArray();
+
+    // Add detailed debugging logs
+    console.log("Members array length:", memberCount);
+    console.log("Pending invites count:", pendingInvites.length);
+    console.log(
+      "Pending invites details:",
+      pendingInvites.map((invite) => ({
+        inviteeId: invite.inviteeId,
+        inviteeName: invite.inviteeName,
+        createdAt: invite.createdAt,
+      }))
+    );
+
+    // Check if the team has reached maximum size (4 members)
+    // Without counting pending invites
+    if (memberCount >= 4) {
       return NextResponse.json(
-        { error: "Team has reached maximum size (4 players + 1 substitute)" },
+        { error: "Team has reached maximum size (4 players)" },
         { status: 400 }
       );
     }
 
     // Check if player is already in team
     const isMember = team.members.some(
-      (member: any) => member.discordId === inviteeId
+      (member: any) => member.discordId === playerId
     );
     if (isMember) {
       return NextResponse.json(
@@ -52,11 +88,11 @@ export async function POST(
       );
     }
 
-    // Check if invite already exists
+    // Check if a PENDING invite already exists (not just any status)
     const existingInvite = await db.collection("TeamInvites").findOne({
-      teamId: new ObjectId(params.teamId),
-      inviteeId,
-      status: "pending",
+      teamId: new ObjectId(teamId),
+      inviteeId: playerId,
+      status: "pending", // Only check for pending invites
     });
 
     if (existingInvite) {
@@ -66,31 +102,43 @@ export async function POST(
       );
     }
 
-    // Create the invitation
+    // Allow re-inviting if previous invite was cancelled, rejected or expired
+
+    // Create the invitation document
     const invitation = {
-      teamId: new ObjectId(params.teamId),
-      inviterId,
-      inviteeId,
+      teamId: new ObjectId(teamId),
+      teamName: team.name,
+      inviterId: session.user.id,
+      inviterName: session.user.name,
+      inviteeId: playerId,
+      inviteeName: playerName,
       status: "pending",
       createdAt: new Date(),
     };
 
-    // Save the invitation
-    await db.collection("TeamInvites").insertOne(invitation);
+    // Insert the invitation and capture the result with the generated _id
+    const result = await db.collection("TeamInvites").insertOne(invitation);
 
     // Create a notification for the invitee
-    const notification = {
-      userId: inviteeId,
+    await db.collection("Notifications").insertOne({
+      userId: playerId,
       type: "team_invite",
-      teamId: params.teamId,
-      inviterId,
+      title: "Team Invitation",
+      message: `You have been invited to join ${team.name}`,
       read: false,
       createdAt: new Date(),
-    };
+      inviterName: session.user.name,
+      metadata: {
+        teamId: teamId,
+        teamName: team.name,
+        inviteId: result.insertedId.toString(),
+      },
+    });
 
-    await db.collection("Notifications").insertOne(notification);
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: `Invite sent to ${playerName}`,
+    });
   } catch (error) {
     console.error("Failed to create team invite:", error);
     return NextResponse.json(

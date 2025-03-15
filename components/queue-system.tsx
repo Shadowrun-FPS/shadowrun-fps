@@ -445,6 +445,80 @@ export default function QueueSystem() {
     };
   }, [queues, simulateQueue]);
 
+  // Add this to your queue system initialization
+  useEffect(() => {
+    // Check ban status on mount
+    const checkBanStatus = async () => {
+      try {
+        const response = await fetch("/api/user/status");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.isBanned) {
+            console.log("[QUEUE-SYSTEM] User is banned, removing from queues");
+            // Remove user from any active queues
+            const allQueues = { ...queues };
+            Object.keys(allQueues).forEach((qId) => {
+              leaveQueue(qId);
+            });
+
+            // Show ban notification
+            toast({
+              title: "Account Banned",
+              description: data.banExpiry
+                ? `You cannot join queues until ${new Date(
+                    data.banExpiry
+                  ).toLocaleString()}.`
+                : "Your account is permanently banned from matchmaking.",
+              variant: "destructive",
+            });
+          }
+        }
+      } catch (error) {
+        console.error("[QUEUE-SYSTEM] Failed to check ban status:", error);
+      }
+    };
+
+    checkBanStatus();
+  }, [queues, toast]);
+
+  const leaveQueue = async (queueId: string) => {
+    try {
+      console.log(`Leaving queue ${queueId}`);
+      const response = await fetch(`/api/queue/${queueId}/leave`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Error leaving queue:", errorData);
+        return;
+      }
+
+      // Update local state while handling the nested structure
+      setQueues((prev) => {
+        const updatedQueues = { ...prev };
+
+        // Parse queueId to get teamSize and tier (assuming format like "1v1-high")
+        const [teamSize, tier] = queueId.split("-") as [TeamSize, EloTier];
+
+        if (updatedQueues[teamSize] && updatedQueues[teamSize][tier]) {
+          // Now we're correctly accessing the QueueState object
+          updatedQueues[teamSize][tier].players = updatedQueues[teamSize][
+            tier
+          ].players.filter((p: { name: string }) => p.name !== "You");
+
+          updatedQueues[teamSize][tier].status = "waiting";
+        }
+
+        return updatedQueues;
+      });
+
+      console.log(`Successfully left queue ${queueId}`);
+    } catch (error) {
+      console.error(`Failed to leave queue ${queueId}:`, error);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold">Ranked Matchmaking</h1>
@@ -497,15 +571,15 @@ export default function QueueSystem() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
           {/* Fixed Queue Box */}
           <div className="col-span-1 bg-[#111827] rounded-lg p-6">
-            <h2 className="text-xl font-semibold mb-4">Queues</h2>
+            <h2 className="mb-4 text-xl font-semibold">Queues</h2>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between p-2 rounded hover:bg-[#1a2234]">
                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-blue-400" />
+                  <Users className="w-5 h-5 text-blue-400" />
                   <div>
                     <p className="font-medium">high</p>
                     <p className="text-sm text-gray-400">1800-2500</p>
@@ -532,7 +606,7 @@ export default function QueueSystem() {
 
               <div className="flex items-center justify-between p-2 rounded hover:bg-[#1a2234]">
                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-blue-400" />
+                  <Users className="w-5 h-5 text-blue-400" />
                   <div>
                     <p className="font-medium">medium</p>
                     <p className="text-sm text-gray-400">1200-1800</p>
@@ -559,7 +633,7 @@ export default function QueueSystem() {
 
               <div className="flex items-center justify-between p-2 rounded hover:bg-[#1a2234]">
                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-blue-400" />
+                  <Users className="w-5 h-5 text-blue-400" />
                   <div>
                     <p className="font-medium">low</p>
                     <p className="text-sm text-gray-400">800-1400</p>
@@ -606,7 +680,7 @@ export default function QueueSystem() {
                   </CarouselItem>
                 ))}
               </CarouselContent>
-              <div className="flex justify-center mt-4 gap-2">
+              <div className="flex justify-center gap-2 mt-4">
                 <CarouselPrevious className="static" />
                 <CarouselNext className="static" />
               </div>

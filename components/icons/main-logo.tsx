@@ -24,7 +24,7 @@ function MainLogo({ className }: MainLogoProps) {
         className="w-8 h-8 sm:w-10 sm:h-10"
       />
       <Image
-        className="hidden md:block w-auto h-8 sm:h-10"
+        className="hidden w-auto h-8 xl:block sm:h-10"
         src="/title.png"
         alt="Shadowrun Title"
         width={240}

@@ -1,55 +1,70 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Spinner from "@/components/util/spinner";
-import IconDiscordLogo from "../icons/discord-logo";
-import { signIn, signOut } from "next-auth/react";
+import { IconDiscordLogo } from "../icons/discord-logo";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useSession } from "next-auth/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
-import { NotificationBadge } from "@/components/notification-badge";
-import { Bell } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { Bell, Shield } from "lucide-react";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { getTestRoles } from "@/lib/auth-helpers";
 
-export function AccountDropdown() {
+export default function AccountDropdown() {
   const { data: session, status } = useSession();
-  const isLoggedIn = status === "authenticated";
+  const isLoggedIn = !!session;
+  const [isBanned, setIsBanned] = useState(false);
+  const { notifications, unreadCount } = useNotifications();
 
-  // Function to get role display name
-  const getRoleDisplayName = (roleId: string) => {
-    switch (roleId) {
-      case "932585751332421642":
-        return "Admin";
-      case "1095126043918082109":
-        return "Founder";
-      case "1042168064805965864":
-        return "Mod";
-      case "1080979865345458256":
-        return "GM";
-      default:
-        return null;
-    }
+  // Check if the user has mod access
+  const hasModAccess = () => {
+    if (!session?.user) return false;
+
+    // User has explicit mod role or is specific user
+    if (session.user.id === "238329746671271936") return true;
+
+    const modRoleIds = [
+      "932585751332421642", // Admin
+      "1095126043918082109", // Founder
+      "1042168064805965864", // Mod
+      "1080979865345458256", // GM
+    ];
+
+    const userRoles = getTestRoles(session.user.id);
+    return userRoles.some((role: string) => modRoleIds.includes(role));
   };
 
-  // Temporary: Add test roles for specific Discord ID
-  const getTestRoles = (userId: string) => {
-    if (userId === "238329746671271936") {
-      return [
-        "932585751332421642", // Admin
-      ];
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetch("/api/player/ban-status")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.isBanned) {
+            setIsBanned(true);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching ban status:", err);
+        });
     }
-    return session?.user?.roles || [];
-  };
+  }, [isLoggedIn]);
 
   const handleSignIn = () => {
-    signIn("discord");
+    try {
+      signIn("discord", { callbackUrl: "/" }).catch((err) => {
+        console.error("Sign-in error:", err);
+      });
+    } catch (error) {
+      console.error("Sign-in exception:", error);
+    }
   };
 
   const handleSignOut = () => {
@@ -74,99 +89,75 @@ export function AccountDropdown() {
     );
   }
 
-  // Add these role-specific styles
-  const getRoleBadgeStyle = (roleId: string) => {
-    switch (roleId) {
-      case "932585751332421642": // Admin
-        return "bg-red-500/15 text-red-600 hover:bg-red-500/25 border-red-500/20";
-      case "1095126043918082109": // Founder
-        return "bg-purple-500/15 text-purple-600 hover:bg-purple-500/25 border-purple-500/20";
-      case "1042168064805965864": // Mod
-        return "bg-green-500/15 text-green-600 hover:bg-green-500/25 border-green-500/20";
-      case "1080979865345458256": // GM
-        return "bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-blue-500/20";
-      default:
-        return "";
-    }
-  };
-
-  // Show dropdown when logged in
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="w-8 h-8 transition-all rounded-full hover:bg-accent"
-        >
-          <Avatar className="w-8 h-8">
-            <AvatarImage
-              src={session.user?.image || undefined}
-              className="object-cover"
-            />
-            <AvatarFallback className="bg-primary/10">
-              <IconDiscordLogo className="w-4 h-4" />
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
+    <div className="flex items-center gap-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            className="relative border rounded-full h-9 w-9 border-primary/10"
+          >
+            <Avatar className="h-9 w-9">
+              <AvatarImage
+                src={session?.user?.image || ""}
+                alt={session?.user?.name || "User"}
+              />
+              <AvatarFallback>{session?.user?.name?.[0] || "U"}</AvatarFallback>
+            </Avatar>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56 p-2 mt-2">
-        {/* Roles Section - Enhanced styling */}
-        {session?.user && (
-          <>
-            <div className="px-2 py-1.5">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">
-                Roles
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {getTestRoles(session.user.id).map((roleId) => {
-                  const roleName = getRoleDisplayName(roleId);
-                  if (!roleName) return null;
-
-                  return (
-                    <Badge
-                      key={roleId}
-                      variant="secondary"
-                      className={`text-[10px] font-medium px-2 py-0.5 ${getRoleBadgeStyle(
-                        roleId
-                      )}`}
-                    >
-                      {roleName}
-                    </Badge>
-                  );
-                })}
-              </div>
+        <DropdownMenuContent align="end">
+          <div className="flex items-center justify-start gap-2 p-2">
+            <div className="flex flex-col space-y-0.5 leading-none">
+              <p className="font-medium">
+                {session?.user.nickname || session?.user.name}
+              </p>
             </div>
-            <Separator className="my-2" />
-          </>
-        )}
-
-        {/* Notifications Section - Enhanced styling */}
-        <div className="px-2 py-1.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bell className="w-3.5 h-3.5 text-muted-foreground" />
-              <span className="text-xs font-medium">Notifications</span>
-            </div>
-            <NotificationBadge className="ml-auto" />
           </div>
-          {/* Optional: Add a preview of latest notification */}
-          <div className="mt-1 text-xs text-muted-foreground">
-            You have unread notifications
-          </div>
-        </div>
-        <Separator className="my-2" />
 
-        {/* Sign Out Section */}
-        <DropdownMenuItem
-          className="flex items-center justify-center gap-2 text-sm"
-          onClick={handleSignOut}
-        >
-          <IconDiscordLogo className="w-3.5 h-3.5" />
-          Sign Out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem asChild>
+            <Link href="/notifications" className="flex items-center">
+              <Bell className="mr-2 h-4 w-4" />
+              <span>Notifications</span>
+              {unreadCount > 0 && (
+                <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs font-semibold">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+          </DropdownMenuItem>
+
+          {session?.user.roles?.includes("admin") ||
+          session?.user.roles?.includes("moderator") ? (
+            <DropdownMenuItem asChild>
+              <Link href="/admin/moderation" className="flex items-center">
+                <Shield className="mr-2 h-4 w-4" />
+                <span>Mod Panel</span>
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem
+            className="cursor-pointer"
+            onSelect={(event) => {
+              event.preventDefault();
+              handleSignOut();
+            }}
+          >
+            Sign out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

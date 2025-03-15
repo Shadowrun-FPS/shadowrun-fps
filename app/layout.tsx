@@ -6,7 +6,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientLayout } from "@/components/ClientLayout";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { OnlineStatus } from "@/components/online-status";
+import { NotificationsProvider } from "@/contexts/NotificationsContext";
 
+// Define the Inter font outside the component
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -72,13 +74,30 @@ export const metadata: Metadata = {
   },
 };
 
+// This will help reduce React warnings in development mode
+if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
+  // Suppress console warnings in production
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (
+      typeof args[0] === "string" &&
+      (args[0].includes("Warning:") ||
+        args[0].includes("Error:") ||
+        args[0].includes("Tracking Prevention"))
+    ) {
+      return;
+    }
+    originalConsoleError(...args);
+  };
+}
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
@@ -91,11 +110,16 @@ export default function RootLayout({
         <meta name="application-name" content="Shadowrun FPS" />
         <link rel="manifest" href="/manifest.json" />
       </head>
-      <body className={`min-h-screen flex flex-col ${inter.className}`}>
-        <AuthProvider>
-          <OnlineStatus />
-          <ClientLayout>{children}</ClientLayout>
-        </AuthProvider>
+      <body
+        className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className}`}
+      >
+        <NotificationsProvider>
+          <AuthProvider>
+            <OnlineStatus />
+            <ClientLayout>{children}</ClientLayout>
+          </AuthProvider>
+        </NotificationsProvider>
+
         <Analytics />
         <SpeedInsights />
       </body>

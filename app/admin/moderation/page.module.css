@@ -1,0 +1,11 @@
+.tabsList {
+  position: relative;
+  z-index: 10;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: -1px;
+}
+
+.tabsContent {
+  position: relative;
+  z-index: 5;
+}
