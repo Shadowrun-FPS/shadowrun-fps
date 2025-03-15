@@ -68,3 +68,14 @@
     margin-right: -50vw;
   }
 }
+
+/* Prevent context menu propagation */
+[data-no-context-menu-propagation="true"] {
+  pointer-events: auto;
+}
+
+/* Make sure player rows can receive their own click events */
+.queue-player-row {
+  position: relative;
+  z-index: 10;
+}
