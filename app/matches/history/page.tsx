@@ -139,7 +139,15 @@ export default function MatchHistoryPage() {
         });
       }
 
-      console.log("Fetching from URL:", url);
+      const DEBUG_LOGS = false; // Set to true only when you need debugging
+
+      function conditionalLog(...args: any[]) {
+        if (DEBUG_LOGS && process.env.NODE_ENV === "development") {
+          console.log(...args);
+        }
+      }
+
+      conditionalLog("Fetching from URL:", url);
 
       try {
         const response = await fetch(url, {
@@ -156,7 +164,7 @@ export default function MatchHistoryPage() {
         }
 
         const data = await response.json();
-        console.log("API response data:", data);
+        conditionalLog("API response data:", data);
 
         setMatches(data.matches || []);
         setTotalPages(data.totalPages || 1);
@@ -360,7 +368,7 @@ export default function MatchHistoryPage() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="complete">Complete</SelectItem>
+                <SelectItem value="complete">Completed</SelectItem>
                 <SelectItem value="canceled">Canceled</SelectItem>
               </SelectContent>
             </Select>

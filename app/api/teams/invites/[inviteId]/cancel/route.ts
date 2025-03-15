@@ -1,19 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-
-type InviteStatus = "pending" | "accepted" | "declined" | "cancelled";
-
-interface TeamInvite {
-  _id: ObjectId;
-  teamId: ObjectId;
-  inviteeId: string;
-  status: InviteStatus;
-  createdAt: Date;
-  cancelledAt?: Date;
-}
+import { connectToDatabase } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 export async function POST(
   req: NextRequest,
@@ -25,52 +14,56 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const { db } = await connectToDatabase();
+    const inviteId = params.inviteId;
 
-    // Find the invite and check permissions
+    // Get the invite
     const invite = await db.collection("TeamInvites").findOne({
-      _id: new ObjectId(params.inviteId),
+      _id: new ObjectId(inviteId),
     });
 
     if (!invite) {
       return NextResponse.json({ error: "Invite not found" }, { status: 404 });
     }
 
-    // Check if user is team captain
+    // Get the team to verify captain
     const team = await db.collection("Teams").findOne({
       _id: invite.teamId,
-      "captain.discordId": session.user.id,
     });
 
     if (!team) {
+      return NextResponse.json({ error: "Team not found" }, { status: 404 });
+    }
+
+    // Verify user is team captain
+    if (team.captain.discordId !== session.user.id) {
       return NextResponse.json(
         { error: "Only team captain can cancel invites" },
         { status: 403 }
       );
     }
 
-    // Cancel the invite with proper typing
-    await db.collection<TeamInvite>("TeamInvites").updateOne(
-      { _id: new ObjectId(params.inviteId) },
-      {
-        $set: {
-          status: "cancelled" as const,
-          cancelledAt: new Date(),
-        },
-      }
-    );
+    // Cancel the invite
+    await db
+      .collection("TeamInvites")
+      .updateOne(
+        { _id: new ObjectId(inviteId) },
+        { $set: { status: "cancelled" } }
+      );
 
-    // Delete the notification
-    await db.collection("Notifications").deleteOne({
+    // Delete any associated notifications
+    await db.collection("Notifications").deleteMany({
+      "metadata.inviteId": inviteId,
       type: "team_invite",
-      teamId: invite.teamId.toString(),
       userId: invite.inviteeId,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: "Invite cancelled successfully",
+    });
   } catch (error) {
-    console.error("Failed to cancel invite:", error);
+    console.error("Error cancelling team invite:", error);
     return NextResponse.json(
       { error: "Failed to cancel invite" },
       { status: 500 }

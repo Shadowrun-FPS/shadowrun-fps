@@ -1,26 +1,36 @@
 "use client";
 
-import { useEffect } from "react";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
+import { SessionProvider } from "next-auth/react";
+import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
+import { Header } from "@/components/header";
+
+import { Footer } from "@/components/footer";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
-  className?: string;
 }
 
-export function ClientLayout({ children, className }: ClientLayoutProps) {
-  useEffect(() => {
-    // Put any window/document operations here
-  }, []);
-
+export function ClientLayout({ children }: ClientLayoutProps) {
   return (
-    <div className={className}>
-      <Header />
-      <main className="flex-1 overflow-y-auto">{children}</main>
-      <Footer />
-      <Toaster />
-    </div>
+    <SessionProvider>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="dark"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <div className="flex flex-col w-full min-h-screen">
+          <div className="relative flex-1 w-full">
+            <Header />
+            <main className="container flex-1 px-4 py-6 mx-auto">
+              {children}
+            </main>
+          </div>
+          <Footer />
+          <Toaster />
+        </div>
+      </ThemeProvider>
+    </SessionProvider>
   );
 }

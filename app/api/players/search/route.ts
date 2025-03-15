@@ -1,62 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const query = searchParams.get("q");
-    const teamId = searchParams.get("teamId");
-
-    if (!query) {
-      return NextResponse.json({ players: [] });
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const { searchParams } = new URL(req.url);
+    const searchTerm = searchParams.get("q");
 
-    // Find players matching the search query
+    if (!searchTerm || searchTerm.length < 3) {
+      return NextResponse.json(
+        { error: "Search term must be at least 3 characters" },
+        { status: 400 }
+      );
+    }
+
+    const { db } = await connectToDatabase();
+
+    // Search players by username or nickname
     const players = await db
       .collection("Players")
       .find({
         $or: [
-          { discordUsername: { $regex: query, $options: "i" } },
-          { discordNickname: { $regex: query, $options: "i" } },
+          { discordUsername: { $regex: searchTerm, $options: "i" } },
+          { discordNickname: { $regex: searchTerm, $options: "i" } },
         ],
+        // Don't include the current user in results
+        discordId: { $ne: session.user.id },
       })
       .limit(10)
+      .project({
+        _id: 0,
+        discordId: 1,
+        discordUsername: 1,
+        discordNickname: 1,
+        discordProfilePicture: 1,
+      })
       .toArray();
 
-    // If teamId is provided, check for pending invites
-    if (teamId) {
-      const pendingInvites = await db
-        .collection("TeamInvites")
-        .find({
-          teamId:
-            teamId && /^[0-9a-fA-F]{24}$/.test(teamId)
-              ? new ObjectId(teamId)
-              : null,
-          inviteeId: { $in: players.map((p) => p.discordId) },
-          status: "pending",
-        })
-        .toArray();
-
-      // Add invited flag to players
-      const playersWithInviteStatus = players.map((player) => ({
-        ...player,
-        invited: pendingInvites.some(
-          (invite) => invite.inviteeId === player.discordId
-        ),
-      }));
-
-      return NextResponse.json({ players: playersWithInviteStatus });
-    }
-
-    return NextResponse.json({ players });
+    return NextResponse.json(players);
   } catch (error) {
-    console.error("Failed to search players:", error);
+    console.error("Error searching players:", error);
     return NextResponse.json(
       { error: "Failed to search players" },
       { status: 500 }

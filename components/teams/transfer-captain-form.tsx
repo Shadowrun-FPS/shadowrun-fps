@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,44 +9,106 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/use-toast";
+import { Shield } from "lucide-react";
 
-interface TeamMember {
-  discordId: string;
-  discordNickname: string;
-  role: string;
+interface TransferCaptainFormProps {
+  teamId: string;
+  members: any[];
 }
 
-interface Team {
-  _id: string;
-  members: TeamMember[];
-}
-
-export function TransferCaptainForm({ team }: { team: Team }) {
-  const router = useRouter();
-  const [selectedMember, setSelectedMember] = useState<string>("");
+export function TransferCaptainForm({
+  teamId,
+  members = [],
+}: TransferCaptainFormProps) {
+  const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Define eligible members first before using it in the useEffect
+  const eligibleMembers = useMemo(() => {
+    return Array.isArray(members)
+      ? members
+          .filter((m) => {
+            // Skip undefined members or the captain
+            if (!m) return false;
+
+            // Accept any member with an ID who is not a captain
+            return (
+              m?.discordId && m?.role !== "captain" && m?.role !== "Captain"
+            );
+          })
+          .sort((a, b) =>
+            ((a?.username || a?.discordUsername || "") as string).localeCompare(
+              (b?.username || b?.discordUsername || "") as string
+            )
+          )
+      : [];
+  }, [members]);
+
+  // Now we can safely use eligibleMembers in the useEffect
+  useEffect(() => {
+    // Debug the members array to see what data we're getting
+    console.log("Transfer Captain Form - Received members:", members);
+    console.log("Eligible members:", eligibleMembers);
+
+    // Log each member for debugging
+    if (Array.isArray(members)) {
+      members.forEach((m, i) => {
+        if (m) {
+          console.log("Member check:", {
+            index: i,
+            id: m.discordId,
+            role: m.role,
+            isEligible:
+              m?.discordId && m?.role !== "captain" && m?.role !== "Captain",
+          });
+        }
+      });
+    }
+  }, [eligibleMembers, members]);
 
   const handleTransfer = async () => {
-    if (!selectedMember) return;
-    setIsLoading(true);
+    if (!selectedMemberId) {
+      toast({
+        title: "No member selected",
+        description: "Please select a team member to transfer captain role to.",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    setIsLoading(true);
     try {
-      const response = await fetch(`/api/teams/${team._id}/transfer-captain`, {
+      console.log("Transferring captain to:", selectedMemberId);
+
+      const response = await fetch(`/api/teams/${teamId}/transfer-captain`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ newCaptainId: selectedMember }),
+        body: JSON.stringify({ newCaptainId: selectedMemberId }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to transfer captain role");
+        const data = await response.json();
+        throw new Error(data.error || "Failed to transfer captain role");
       }
 
-      router.refresh();
-    } catch (error) {
-      console.error("Error transferring captain role:", error);
+      toast({
+        title: "Captain Role Transferred",
+        description: "You have successfully transferred the captain role.",
+      });
+
+      // Refresh the page to reflect changes
+      window.location.reload();
+    } catch (error: any) {
+      console.error("Error transferring captain:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to transfer captain role.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -54,33 +116,40 @@ export function TransferCaptainForm({ team }: { team: Team }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="text-sm font-medium text-muted-foreground">
-          Transfer Captain Role To
-        </label>
-        <Select onValueChange={setSelectedMember} value={selectedMember}>
-          <SelectTrigger className="mt-1">
+      <div className="flex flex-col gap-3 md:flex-row">
+        <Select onValueChange={setSelectedMemberId} value={selectedMemberId}>
+          <SelectTrigger className="w-full md:w-[250px]">
             <SelectValue placeholder="Select a member" />
           </SelectTrigger>
           <SelectContent>
-            {team.members
-              .filter((member) => member.role === "member")
-              .map((member) => (
+            {eligibleMembers.length > 0 ? (
+              eligibleMembers.map((member) => (
                 <SelectItem key={member.discordId} value={member.discordId}>
-                  {member.discordNickname}
+                  {member.username ||
+                    member.discordUsername ||
+                    "Unknown member"}
                 </SelectItem>
-              ))}
+              ))
+            ) : (
+              <SelectItem value="no-members" disabled>
+                No eligible members found
+              </SelectItem>
+            )}
           </SelectContent>
         </Select>
+        <Button
+          onClick={handleTransfer}
+          disabled={!selectedMemberId || isLoading}
+          className="gap-2"
+        >
+          <Shield className="w-4 h-4" />
+          {isLoading ? "Transferring..." : "Transfer Captain Role"}
+        </Button>
       </div>
-
-      <Button
-        onClick={handleTransfer}
-        disabled={!selectedMember || isLoading}
-        variant="destructive"
-      >
-        {isLoading ? "Transferring..." : "Transfer Captain Role"}
-      </Button>
+      <p className="text-sm text-muted-foreground">
+        Warning: This will transfer your captain privileges to the selected team
+        member. This action cannot be undone.
+      </p>
     </div>
   );
 }

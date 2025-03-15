@@ -41,6 +41,17 @@ export async function GET(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
+    console.log("Team data being returned:", JSON.stringify(team, null, 2));
+    const session = await getServerSession(authOptions);
+    console.log("Current user ID:", session?.user?.id);
+    console.log(
+      "Team members:",
+      team.members.map((m: { discordId: any; role: any }) => ({
+        id: m.discordId,
+        role: m.role,
+      }))
+    );
+
     return NextResponse.json(team);
   } catch (error) {
     console.error("Failed to fetch team:", error);

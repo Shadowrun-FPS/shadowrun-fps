@@ -91,10 +91,10 @@ export default function MatchPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0e17] text-white p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="mx-auto space-y-8 max-w-7xl">
         <h1 className="text-3xl font-bold">View Match Details</h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {/* Match Info Card */}
           <Card className="bg-[#0d1117] border-[#1f2937] text-white">
             <CardHeader>
@@ -175,7 +175,7 @@ export default function MatchPage() {
         </div>
 
         {/* Maps Section */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {match.maps.map((map: any, index: number) => (
             <Card
               key={map.name}
@@ -186,7 +186,7 @@ export default function MatchPage() {
                 <h3 className="text-xl">{map.name}</h3>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="relative h-48 w-full overflow-hidden rounded-lg">
+                <div className="relative w-full h-48 overflow-hidden rounded-lg">
                   <Image
                     src={`https://hebbkx1anhila5yf.public.blob.vercel-storage.com/match%20page-7O2EpLXPqL5HfOLYZM91MF0WChLPvx.png`}
                     alt={map.name}
@@ -197,7 +197,7 @@ export default function MatchPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm mb-1">Team RNA</label>
+                    <label className="block mb-1 text-sm">Team RNA</label>
                     <Input
                       type="number"
                       value={scores[map.name]?.teamA || 0}
@@ -214,7 +214,7 @@ export default function MatchPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm mb-1">Team Lineage</label>
+                    <label className="block mb-1 text-sm">Team Lineage</label>
                     <Input
                       type="number"
                       value={scores[map.name]?.teamB || 0}
@@ -234,7 +234,7 @@ export default function MatchPage() {
 
                 <Button
                   onClick={() => handleScoreSubmit(index, map.name)}
-                  className="w-full bg-white text-black hover:bg-gray-200"
+                  className="w-full text-black bg-white hover:bg-gray-200"
                 >
                   Submit Scores
                 </Button>

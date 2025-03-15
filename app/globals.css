@@ -141,3 +141,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+[contenteditable]:empty:before {
+  content: attr(placeholder);
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+}
+
+/* Add these rules to ensure no horizontal overflow */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Make all boxes border-box for better sizing */
+* {
+  box-sizing: border-box;
+}
+
+/* Force text to break properly */
+.break-all {
+  word-break: break-all;
+  overflow-wrap: break-word;
+}

@@ -51,6 +51,9 @@ export default function TeamPage({ team }: TeamPageProps) {
     tag: team.tag,
     description: team.description,
   });
+  const [newCaptainId, setNewCaptainId] = useState<string | undefined>(
+    undefined
+  );
 
   // Check if current user is the team captain
   const isCaptain = session?.user?.id === team.captain.discordId;
@@ -90,7 +93,7 @@ export default function TeamPage({ team }: TeamPageProps) {
     };
   }, [team._id, isCaptain]);
 
-  const handleRemoveMember = async (memberId: string) => {
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
     if (!isCaptain) {
       toast({
         title: "Permission Denied",
@@ -100,28 +103,39 @@ export default function TeamPage({ team }: TeamPageProps) {
       return;
     }
 
+    if (
+      !confirm(`Are you sure you want to remove ${memberName} from the team?`)
+    ) {
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/teams/${team._id}/members/${memberId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/teams/${team._id}/remove-member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ memberId }),
+      });
 
-      if (!response.ok) throw new Error("Failed to remove member");
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to remove team member");
+      }
 
       toast({
         title: "Member Removed",
-        description: "Team member has been removed successfully",
+        description: `${memberName} has been removed from the team`,
       });
 
-      // Refresh the page
+      // Reload the page to reflect changes
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error removing member:", error);
       toast({
         title: "Error",
-        description: "Failed to remove team member",
+        description: error.message || "Failed to remove team member",
         variant: "destructive",
       });
     } finally {
@@ -199,42 +213,56 @@ export default function TeamPage({ team }: TeamPageProps) {
     }
   };
 
-  const handleTransferCaptain = async (newCaptainId: string) => {
-    if (!isCaptain) {
+  const handleTransferCaptain = async (newCaptainId: string | undefined) => {
+    if (!newCaptainId) {
       toast({
-        title: "Permission Denied",
-        description: "Only the team captain can transfer leadership",
+        title: "Error",
+        description: "Please select a team member",
         variant: "destructive",
       });
       return;
     }
 
-    if (!window.confirm("Are you sure you want to transfer team leadership?")) {
+    if (
+      !confirm(
+        "Are you sure you want to transfer team captaincy? This cannot be undone."
+      )
+    ) {
       return;
     }
 
     setIsLoading(true);
     try {
+      console.log("Transferring captain role to:", newCaptainId);
+
       const response = await fetch(
-        `/api/teams/${team._id}/transfer-captain/${newCaptainId}`,
+        `/api/teams/${team._id.toString()}/transfer-captain`,
         {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ newCaptainId }),
         }
       );
 
-      if (!response.ok) throw new Error("Failed to transfer leadership");
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to transfer captain role");
+      }
 
       toast({
-        title: "Leadership Transferred",
-        description: "Team leadership has been transferred successfully",
+        title: "Success",
+        description: "Captain role transferred successfully",
       });
 
-      // Refresh the page
+      // Reload the page to reflect changes
       window.location.reload();
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error transferring captain:", error);
       toast({
         title: "Error",
-        description: "Failed to transfer team leadership",
+        description: error.message || "Failed to transfer captain role",
         variant: "destructive",
       });
     } finally {
@@ -390,26 +418,25 @@ export default function TeamPage({ team }: TeamPageProps) {
                       </div>
                     </div>
                     {isCaptain && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              "Are you sure you want to remove this member?"
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            handleRemoveMember(
+                              member.discordId,
+                              member.discordNickname || member.discordUsername
                             )
-                          ) {
-                            handleRemoveMember(member.discordId);
                           }
-                        }}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          "Remove"
-                        )}
-                      </Button>
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Remove"
+                          )}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -418,38 +445,109 @@ export default function TeamPage({ team }: TeamPageProps) {
         </Card>
       </div>
 
-      {/* Transfer Captain Card - Middle Row */}
+      {/* Captain Transfer Card */}
       {isCaptain && (
-        <Card>
+        <Card className="mt-6">
           <CardHeader>
-            <CardTitle>Transfer Team Leadership</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              Transfer Captain Role
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <Select
-                onValueChange={(value) => handleTransferCaptain(value)}
-                disabled={isLoading}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select new captain" />
-                </SelectTrigger>
-                <SelectContent>
-                  {team.members
-                    .filter(
-                      (member) =>
-                        member.discordId !== team.captain.discordId &&
-                        member.role !== "substitute"
-                    )
-                    .map((member) => (
-                      <SelectItem
-                        key={member.discordId}
-                        value={member.discordId}
-                      >
-                        {member.discordNickname || member.discordUsername}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                This will transfer your captain privileges to another team
+                member. This action cannot be undone.
+              </p>
+
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                <div className="w-full space-y-2 sm:w-auto">
+                  <Label htmlFor="new-captain">New Captain</Label>
+                  <Select
+                    value={newCaptainId}
+                    onValueChange={(value) => setNewCaptainId(value)}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger
+                      id="new-captain"
+                      className="w-full sm:w-[250px]"
+                    >
+                      <SelectValue placeholder="Select new captain" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {team.members
+                        .filter(
+                          (member) =>
+                            member.discordId !== team.captain.discordId &&
+                            member.discordId
+                        )
+                        .map((member) => (
+                          <SelectItem
+                            key={member.discordId}
+                            value={member.discordId}
+                          >
+                            {member.discordNickname ||
+                              member.discordUsername ||
+                              "Unknown member"}
+                          </SelectItem>
+                        ))}
+                      {team.members.filter(
+                        (m) => m.discordId !== team.captain.discordId
+                      ).length === 0 && (
+                        <SelectItem value="none" disabled>
+                          No eligible members found
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Transfer button with debugging information */}
+                <Button
+                  onClick={() => {
+                    console.log(
+                      "Transfer captain initiated with ID:",
+                      newCaptainId
+                    );
+                    if (newCaptainId) {
+                      handleTransferCaptain(newCaptainId);
+                    } else {
+                      toast({
+                        title: "Selection Required",
+                        description: "Please select a team member first",
+                      });
+                    }
+                  }}
+                  disabled={!newCaptainId || isLoading}
+                  className="w-full sm:w-auto"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                      Transferring...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4 mr-2" /> Transfer Captain Role
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Selected member display */}
+              {newCaptainId && (
+                <div className="p-3 text-sm rounded bg-accent/50">
+                  <p>
+                    Selected:{" "}
+                    {team.members.find((m) => m.discordId === newCaptainId)
+                      ?.discordNickname ||
+                      team.members.find((m) => m.discordId === newCaptainId)
+                        ?.discordUsername ||
+                      newCaptainId}
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -510,6 +608,190 @@ export default function TeamPage({ team }: TeamPageProps) {
                   ))}
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Team Members Management Card */}
+      {isCaptain && team.members.length > 1 && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Manage Team Members</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium">Team Members</h3>
+              <div className="space-y-2">
+                {team.members
+                  .filter(
+                    (member) => member.discordId !== team.captain.discordId
+                  )
+                  .map((member) => (
+                    <div
+                      key={member.discordId}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                    >
+                      <div>
+                        <p className="font-medium">
+                          {member.discordNickname ||
+                            member.discordUsername ||
+                            "Unknown member"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.role || "member"}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() =>
+                            handleRemoveMember(
+                              member.discordId,
+                              member.discordNickname ||
+                                member.discordUsername ||
+                                "this member"
+                            )
+                          }
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            "Remove"
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setNewCaptainId(member.discordId);
+                            document
+                              .getElementById("new-captain")
+                              ?.scrollIntoView({ behavior: "smooth" });
+                            toast({
+                              title: "Member Selected",
+                              description: `${
+                                member.discordNickname || member.discordUsername
+                              } selected for captain role transfer`,
+                            });
+                          }}
+                        >
+                          Make Captain
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!isCaptain && session?.user?.id && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle className="text-red-500">Leave Team</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                If you leave this team, you&apos;ll need to be invited again to
+                rejoin.
+              </p>
+              <Button
+                variant="destructive"
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to leave this team?")) {
+                    return;
+                  }
+
+                  setIsLoading(true);
+                  try {
+                    const response = await fetch(
+                      `/api/teams/${team._id}/leave`,
+                      {
+                        method: "POST",
+                      }
+                    );
+
+                    if (!response.ok) {
+                      const data = await response.json();
+                      throw new Error(data.error || "Failed to leave team");
+                    }
+
+                    toast({
+                      title: "Success",
+                      description: "You have left the team",
+                    });
+
+                    // Navigate back to teams page
+                    window.location.href = "/tournaments/teams";
+                  } catch (error: any) {
+                    console.error("Error leaving team:", error);
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to leave team",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsLoading(false);
+                  }
+                }}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Leaving...
+                  </>
+                ) : (
+                  "Leave Team"
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {process.env.NODE_ENV === "development" && isCaptain && (
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Developer Debug Info</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="p-3 overflow-auto text-xs rounded bg-slate-800">
+                <p>Team ID: {team._id.toString()}</p>
+                <p>Captain ID: {team.captain.discordId}</p>
+                <p>Current User ID: {session?.user?.id}</p>
+                <p>Is Captain: {isCaptain.toString()}</p>
+                <p>Member Count: {team.members.length}</p>
+                <hr className="my-2 border-slate-700" />
+                <details>
+                  <summary className="cursor-pointer">
+                    Team Members Data
+                  </summary>
+                  <pre>{JSON.stringify(team.members, null, 2)}</pre>
+                </details>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    console.log("Team data:", team);
+                    console.log("Session:", session);
+                    console.log("Members:", team.members);
+                    toast({
+                      title: "Debug Info",
+                      description: "Check console for team data",
+                    });
+                  }}
+                >
+                  Log Data to Console
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

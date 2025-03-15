@@ -196,7 +196,9 @@ export default function TeamsPage() {
               <h2 className="mb-4 text-xl font-semibold">Other Teams</h2>
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.isArray(teams) ? (
-                  teams.map((team) => <TeamCard key={team._id} team={team} />)
+                  teams
+                    .filter((team) => !myTeam || team._id !== myTeam._id)
+                    .map((team) => <TeamCard key={team._id} team={team} />)
                 ) : (
                   <div>No teams found</div>
                 )}

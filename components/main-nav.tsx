@@ -36,6 +36,14 @@ import {
   SheetDescription,
   SheetHeader,
 } from "@/components/ui/sheet";
+import Image from "next/image";
+import { NotificationsDropdown } from "@/components/notifications-dropdown";
+import { UserAccountNav } from "@/components/user-account-nav";
+import { User } from "next-auth";
+
+interface MainNavProps {
+  user?: User;
+}
 
 const ListItem = React.forwardRef<
   React.ElementRef<"a">,
@@ -69,7 +77,7 @@ const ListItem = React.forwardRef<
 });
 ListItem.displayName = "ListItem";
 
-export function MainNav() {
+export function MainNav({ user }: MainNavProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
 
@@ -78,11 +86,12 @@ export function MainNav() {
   const showQueues = isFeatureEnabled("queues");
 
   return (
-    <div className="flex items-center gap-12">
-      {/* Desktop Navigation */}
-      <nav className="items-center hidden gap-6 lg:flex">
-        <NavigationMenu>
-          <NavigationMenuList>
+    <div className="flex items-center justify-between w-full">
+      {/* Left side navigation */}
+      <div className="flex items-center gap-6 md:gap-10">
+        {/* Desktop Navigation */}
+        <NavigationMenu className="hidden lg:flex">
+          <NavigationMenuList className="flex gap-1">
             <NavigationMenuItem>
               <Link href="/docs/events" legacyBehavior passHref>
                 <NavigationMenuLink className={navigationMenuTriggerStyle()}>
@@ -189,7 +198,12 @@ export function MainNav() {
             )}
           </NavigationMenuList>
         </NavigationMenu>
-      </nav>
+      </div>
+
+      {/* Right side - user menu */}
+      <div className="flex items-center gap-2">
+        {user && <UserAccountNav user={user} />}
+      </div>
 
       {/* Mobile Navigation */}
       <div className="lg:hidden">
@@ -210,99 +224,87 @@ export function MainNav() {
             <nav className="flex flex-col gap-4 mt-8">
               <Link
                 href="/docs/events"
-                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground"
                 onClick={() => setIsOpen(false)}
               >
-                <Calendar className="w-5 h-5" />
-                <span>Events</span>
+                <Calendar className="w-4 h-4" />
+                Events
               </Link>
-
               <Link
                 href="/docs/install"
-                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground"
                 onClick={() => setIsOpen(false)}
               >
-                <Download className="w-5 h-5" />
-                <span>Installation</span>
+                <Download className="w-4 h-4" />
+                Installation
               </Link>
-
               <Link
                 href="/docs/troubleshoot"
-                className="flex items-center gap-2 p-2 rounded-md hover:bg-accent"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground"
                 onClick={() => setIsOpen(false)}
               >
-                <HelpCircle className="w-5 h-5" />
-                <span>Troubleshooting</span>
+                <HelpCircle className="w-4 h-4" />
+                Troubleshooting
               </Link>
 
               {showQueues && (
                 <>
-                  <div className="flex items-center gap-2 p-2 font-medium">
-                    <Users className="w-5 h-5" />
-                    <span>Matches</span>
-                  </div>
-
+                  <div className="px-4 py-2 text-sm font-medium">Matches</div>
                   <Link
                     href="/matches/queues"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >
                     <Users className="w-4 h-4" />
-                    <span>Queues</span>
+                    Queues
                   </Link>
-
                   <Link
                     href="/matches/history"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >
                     <Clock className="w-4 h-4" />
-                    <span>Match History</span>
+                    Match History
                   </Link>
                 </>
               )}
 
               {showTournaments && (
                 <>
-                  <div className="flex items-center gap-2 p-2 font-medium">
-                    <Trophy className="w-5 h-5" />
-                    <span>Tournaments</span>
+                  <div className="px-4 py-2 text-sm font-medium">
+                    Tournaments
                   </div>
-
                   <Link
                     href="/tournaments/overview"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >
                     <Trophy className="w-4 h-4" />
-                    <span>All Tournaments</span>
+                    All Tournaments
                   </Link>
-
                   <Link
                     href="/tournaments/teams"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>Teams</span>
-                  </Link>
-
-                  <Link
-                    href="/tournaments/scrimmages"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >
                     <Calendar className="w-4 h-4" />
-                    <span>Scrimmages</span>
+                    Teams
                   </Link>
-
                   <Link
-                    href="/tournaments/rankings"
-                    className="flex items-center gap-2 p-2 pl-6 rounded-md hover:bg-accent"
+                    href="/tournaments/scrimmages"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
                     onClick={() => setIsOpen(false)}
                   >
-                    <TrendingUp className="w-4 h-4" />
-                    <span>Rankings</span>
+                    <Clock className="w-4 h-4" />
+                    Scrimmages
+                  </Link>
+                  <Link
+                    href="/tournaments/rankings"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    Rankings
                   </Link>
                 </>
               )}

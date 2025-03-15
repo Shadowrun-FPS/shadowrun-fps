@@ -1,8 +1,9 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { MainNav } from "@/components/main-nav";
-import { AccountDropdown } from "@/components/navigation/account-dropdown";
+import AccountDropdown from "@/components/navigation/account-dropdown";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -19,31 +20,17 @@ import MainLogo from "./icons/main-logo";
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex items-center h-14">
-        <MainLogo className="mr-2" />
-
+    <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur">
+      <div className="container flex h-14 max-w-screen-2xl items-center">
+        <MainLogo />
         <MainNav />
-
-        {/* Right Side */}
-        <div className="flex items-center justify-end flex-1 space-x-4">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="hidden text-white transition-colors duration-300 bg-[#6A0DAD] hover:bg-[#7D1BC3] md:flex"
-            asChild
-          >
-            <Link
-              href="https://www.gog.com/dreamlist/game/shadowrun-2007"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span className="text-sm font-semibold tracking-tight">
-                Go Vote on GOG
-              </span>
-            </Link>
-          </Button>
-          <AccountDropdown />
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <div className="w-full flex-1 md:w-auto md:flex-none">
+            {/* Search or other components */}
+          </div>
+          <nav className="flex items-center">
+            <AccountDropdown />
+          </nav>
         </div>
       </div>
     </header>

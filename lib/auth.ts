@@ -1,6 +1,7 @@
 import { AuthOptions, DefaultSession } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import type { DefaultJWT } from "next-auth/jwt";
+import { connectToDatabase } from "@/lib/mongodb";
 
 // Add your Discord ID to the list of admin IDs
 const ADMIN_IDS = ["238329746671271936"]; // Your Discord ID
@@ -19,94 +20,137 @@ declare module "next-auth" {
 }
 
 declare module "next-auth/jwt" {
+  // Reduce the size of this type
   type DiscordGuildData = {
-    nick?: string | null;
-    user?: {
-      id: string;
-      username: string;
-      global_name?: string | null;
-      avatar?: string | null;
-    } | null;
-  } | null;
+    id: string;
+    name: string;
+  };
 
   interface JWT extends DefaultJWT {
-    sub?: string;
+    id?: string;
     accessToken?: string;
+    isAdmin?: boolean;
+    nickname?: string;
     roles?: string[];
-    guild: DiscordGuildData;
+    // Store less data in token
+    discordGuilds?: Array<{ id: string; name: string }>;
   }
 }
 
 export const authOptions: AuthOptions = {
   providers: [
     DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID as string,
-      clientSecret: process.env.DISCORD_CLIENT_SECRET as string,
+      clientId: process.env.DISCORD_CLIENT_ID || "",
+      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+      authorization: {
+        params: {
+          // Limit scope to only what's essential
+          scope: "identify",
+        },
+      },
     }),
   ],
+  // Use JWT sessions instead of database
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  // Use smaller cookies
+  cookies: {
+    sessionToken: {
+      name: "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   callbacks: {
     async session({ session, token }) {
-      if (session?.user) {
-        session.user.id = token.sub as string; // Ensure Discord ID is always in session
-        session.user.accessToken = token.accessToken as string;
-        session.user.roles = (token.roles as string[]) || [];
-
-        // Ensure your ID always has admin access regardless of token roles
-        if (session.user.id === "238329746671271936") {
-          if (!session.user.roles) {
-            session.user.roles = [];
-          }
-          if (!session.user.roles.includes("admin")) {
-            session.user.roles.push("admin");
-          }
-          if (!session.user.roles.includes("moderator")) {
-            session.user.roles.push("moderator");
-          }
-          // Add founder role as well for completeness
-          if (!session.user.roles.includes("founder")) {
-            session.user.roles.push("founder");
-          }
-
-          // Add a direct isAdmin flag for simpler checks
-          session.user.isAdmin = true;
-        }
-
-        // Log session creation/update
-        console.log("Session callback:", {
-          userId: session.user.id,
-          timestamp: new Date().toISOString(),
-        });
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        session.user.isAdmin = token.isAdmin;
+        session.user.nickname = token.nickname as string;
+        session.user.roles = token.roles as string[];
       }
       return session;
     },
     async jwt({ token, user, account }) {
-      if (account) {
+      // Initial sign in
+      if (account && user) {
+        token.id = user.id;
         token.accessToken = account.access_token;
-        token.id = user?.id;
 
-        // Assign roles based on Discord ID
-        token.roles = [];
+        // Try to get Discord information
+        if (account.provider === "discord" && account.access_token) {
+          try {
+            // Get user data from Discord API
+            const userResponse = await fetch(
+              "https://discord.com/api/users/@me",
+              {
+                headers: {
+                  Authorization: `Bearer ${account.access_token}`,
+                },
+              }
+            );
 
-        if (ADMIN_IDS.includes(user?.id as string)) {
-          token.roles.push("admin");
+            const userData = await userResponse.json();
+            token.nickname = userData.global_name || userData.username || "";
+
+            // Store Discord ID on the token
+            token.id = userData.id;
+
+            // Only fetch guilds if absolutely needed
+            // And store minimal data
+            /*
+            const guildsResponse = await fetch(
+              "https://discord.com/api/users/@me/guilds",
+              {
+                headers: {
+                  Authorization: `Bearer ${account.access_token}`,
+                },
+              }
+            );
+
+            if (guildsResponse.ok) {
+              const guilds = await guildsResponse.json();
+              token.discordGuilds = guilds.map(g => ({ 
+                id: g.id, 
+                name: g.name 
+              }));
+            }
+            */
+
+            // Initialize roles array
+            token.roles = [];
+
+            // Add admin role if user ID is in ADMIN_IDS
+            if (ADMIN_IDS.includes(userData.id)) {
+              token.roles.push("admin");
+            }
+
+            if (MODERATOR_IDS.includes(userData.id)) {
+              token.roles.push("moderator");
+            }
+
+            if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "true") {
+              console.log("JWT callback:", {
+                userId: userData.id,
+                timestamp: new Date().toISOString(),
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching Discord data:", error);
+          }
         }
-
-        if (MODERATOR_IDS.includes(user?.id as string)) {
-          token.roles.push("moderator");
-        }
-
-        // Add other role assignments as needed
-
-        // Log token creation
-        console.log("JWT callback:", {
-          userId: user?.id,
-          timestamp: new Date().toISOString(),
-        });
       }
       return token;
     },
   },
   pages: {
-    signIn: "/auth/signin",
+    signIn: "/login",
+    error: "/auth/error",
   },
 };
