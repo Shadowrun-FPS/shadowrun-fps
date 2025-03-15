@@ -14,6 +14,15 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { useSession } from "next-auth/react";
+import { Shield, User, UserX, Ban } from "lucide-react";
 
 export type EloTier = "low" | "medium" | "high";
 export type TeamSize = "1v1" | "2v2" | "4v4" | "5v5";
@@ -24,6 +33,7 @@ export interface Player {
   name: string;
   elo: number;
   avatar?: string;
+  joinedAt?: any;
 }
 
 export interface QueueState {
@@ -34,12 +44,157 @@ export interface QueueState {
   maxPlayers: number;
 }
 
+// Fix the type definition for QueuePlayerRow
+interface QueuePlayerRowProps {
+  player: Player;
+  queueId: string;
+  isModOrAdmin: boolean;
+  onKick: (playerId: string) => void;
+}
+
+// Add this component for the player row with context menu
+export function QueuePlayerRow({
+  player,
+  queueId,
+  isModOrAdmin = false,
+  onKick,
+}: QueuePlayerRowProps) {
+  const { toast } = useToast();
+  const { data: session } = useSession();
+
+  const isSelf = session?.user?.id === player.id;
+  const canModerate = isModOrAdmin || isSelf;
+
+  const handleKickPlayer = async () => {
+    try {
+      const response = await fetch(`/api/queue/${queueId}/kick/${player.id}`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Player kicked",
+          description: `${player.name} was removed from the queue.`,
+        });
+        if (onKick) onKick(player.id);
+      } else {
+        throw new Error("Failed to kick player");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to kick player from queue.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBanPlayer = async () => {
+    try {
+      const response = await fetch(`/api/queue/${queueId}/ban/${player.id}`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Player banned",
+          description: `${player.name} was banned from this queue.`,
+        });
+        if (onKick) onKick(player.id);
+      } else {
+        throw new Error("Failed to ban player");
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to ban player.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between py-2">
+      {/* Use Context Menu for player name */}
+      <ContextMenu>
+        <ContextMenuTrigger className="flex items-center space-x-2 text-sm">
+          <span className="text-muted-foreground">{`#${player.id}`}</span>
+          <span>{player.name}</span>
+          {player.elo && (
+            <span className="text-muted-foreground">{player.elo}</span>
+          )}
+        </ContextMenuTrigger>
+
+        {canModerate && (
+          <ContextMenuContent className="w-64">
+            <div className="px-2 py-1.5 text-sm font-semibold">
+              Player Options: {player.name}
+            </div>
+            <ContextMenuSeparator />
+
+            {isModOrAdmin && (
+              <>
+                <ContextMenuItem
+                  onClick={handleKickPlayer}
+                  className="flex items-center cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <UserX className="w-4 h-4 mr-2" />
+                  Kick from queue
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={handleBanPlayer}
+                  className="flex items-center cursor-pointer text-destructive focus:text-destructive"
+                >
+                  <Ban className="w-4 h-4 mr-2" />
+                  Ban from queue
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+              </>
+            )}
+
+            <ContextMenuItem
+              onClick={() => {
+                navigator.clipboard.writeText(player.id);
+                toast({ title: "Copied ID to clipboard" });
+              }}
+              className="flex items-center cursor-pointer"
+            >
+              <User className="w-4 h-4 mr-2" />
+              Copy Player ID
+            </ContextMenuItem>
+
+            {isModOrAdmin && (
+              <ContextMenuItem
+                onClick={() =>
+                  window.open(`/admin/players/${player.id}`, "_blank")
+                }
+                className="flex items-center cursor-pointer"
+              >
+                <Shield className="w-4 h-4 mr-2" />
+                View Admin Panel
+              </ContextMenuItem>
+            )}
+          </ContextMenuContent>
+        )}
+      </ContextMenu>
+
+      <div className="text-xs text-muted-foreground">
+        {/* Assuming player.joinedAt is available in the player object */}
+        {player.joinedAt && (
+          <span>{new Date(player.joinedAt).toLocaleTimeString()}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function QueueSystem() {
   const { toast } = useToast();
   const { addMatch } = useMatchStore();
   const [activeTeamSize, setActiveTeamSize] = useState<TeamSize>("4v4");
   const [currentTier, setCurrentTier] = useState<EloTier>("medium");
   const [isUserQueued, setIsUserQueued] = useState<Record<string, boolean>>({});
+  const { data: session } = useSession();
 
   // Initialize queue states for all combinations of team sizes and tiers
   const [queues, setQueues] = useState<
@@ -143,46 +298,262 @@ export default function QueueSystem() {
   const mockPlayers = useMemo<Record<EloTier, Player[]>>(
     () => ({
       low: [
-        { id: "1", name: "S10Gmz", elo: 900, avatar: "🧙" },
-        { id: "2", name: "Player2", elo: 950, avatar: "🧝" },
-        { id: "3", name: "Player3", elo: 1000, avatar: "🧙‍♀️" },
-        { id: "4", name: "Player4", elo: 1050, avatar: "🧝‍♀️" },
-        { id: "5", name: "Player5", elo: 1100, avatar: "🧙" },
-        { id: "6", name: "Player6", elo: 1150, avatar: "🧝" },
-        { id: "7", name: "Player7", elo: 1200, avatar: "🧙‍♀️" },
-        { id: "8", name: "Player8", elo: 1250, avatar: "🧝‍♀️" },
-        { id: "9", name: "Player9", elo: 1300, avatar: "🧙" },
-        { id: "10", name: "Player10", elo: 1350, avatar: "🧝" },
-        { id: "11", name: "Player11", elo: 1400, avatar: "🧙‍♀️" },
-        { id: "12", name: "Player12", elo: 1450, avatar: "🧝‍♀️" },
+        {
+          id: "1",
+          name: "S10Gmz",
+          elo: 900,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "2",
+          name: "Player2",
+          elo: 950,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "3",
+          name: "Player3",
+          elo: 1000,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "4",
+          name: "Player4",
+          elo: 1050,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "5",
+          name: "Player5",
+          elo: 1100,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "6",
+          name: "Player6",
+          elo: 1150,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "7",
+          name: "Player7",
+          elo: 1200,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "8",
+          name: "Player8",
+          elo: 1250,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "9",
+          name: "Player9",
+          elo: 1300,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "10",
+          name: "Player10",
+          elo: 1350,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "11",
+          name: "Player11",
+          elo: 1400,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "12",
+          name: "Player12",
+          elo: 1450,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
       ],
       medium: [
-        { id: "13", name: "BumJamas", elo: 1500, avatar: "🧙" },
-        { id: "14", name: "Skeebum", elo: 1550, avatar: "🧝" },
-        { id: "15", name: "VertigoSR", elo: 1600, avatar: "🧙‍♀️" },
-        { id: "16", name: "Shadowrun Girl", elo: 1650, avatar: "🧝‍♀️" },
-        { id: "17", name: "Niddlez", elo: 1700, avatar: "🧙" },
-        { id: "18", name: "ManaMyxtery", elo: 1750, avatar: "🧝" },
-        { id: "19", name: "TrooperSuper12", elo: 1800, avatar: "🧙‍♀️" },
-        { id: "20", name: "Sinful Hollowz", elo: 1650, avatar: "🧝‍♀️" },
-        { id: "21", name: "MedPlayer1", elo: 1700, avatar: "🧙" },
-        { id: "22", name: "MedPlayer2", elo: 1750, avatar: "🧝" },
-        { id: "23", name: "MedPlayer3", elo: 1800, avatar: "🧙‍♀️" },
-        { id: "24", name: "MedPlayer4", elo: 1850, avatar: "🧝‍♀️" },
+        {
+          id: "13",
+          name: "BumJamas",
+          elo: 1500,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "14",
+          name: "Skeebum",
+          elo: 1550,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "15",
+          name: "VertigoSR",
+          elo: 1600,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "16",
+          name: "Shadowrun Girl",
+          elo: 1650,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "17",
+          name: "Niddlez",
+          elo: 1700,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "18",
+          name: "ManaMyxtery",
+          elo: 1750,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "19",
+          name: "TrooperSuper12",
+          elo: 1800,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "20",
+          name: "Sinful Hollowz",
+          elo: 1650,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "21",
+          name: "MedPlayer1",
+          elo: 1700,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "22",
+          name: "MedPlayer2",
+          elo: 1750,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "23",
+          name: "MedPlayer3",
+          elo: 1800,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "24",
+          name: "MedPlayer4",
+          elo: 1850,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
       ],
       high: [
-        { id: "25", name: "HighPlayer1", elo: 2000, avatar: "🧙" },
-        { id: "26", name: "HighPlayer2", elo: 2050, avatar: "🧝" },
-        { id: "27", name: "HighPlayer3", elo: 2100, avatar: "🧙‍♀️" },
-        { id: "28", name: "HighPlayer4", elo: 2150, avatar: "🧝‍♀️" },
-        { id: "29", name: "HighPlayer5", elo: 2200, avatar: "🧙" },
-        { id: "30", name: "HighPlayer6", elo: 2250, avatar: "🧝" },
-        { id: "31", name: "HighPlayer7", elo: 2300, avatar: "🧙‍♀️" },
-        { id: "32", name: "HighPlayer8", elo: 2350, avatar: "🧝‍♀️" },
-        { id: "33", name: "HighPlayer9", elo: 2400, avatar: "🧙" },
-        { id: "34", name: "HighPlayer10", elo: 2450, avatar: "🧝" },
-        { id: "35", name: "HighPlayer11", elo: 2500, avatar: "🧙‍♀️" },
-        { id: "36", name: "HighPlayer12", elo: 2550, avatar: "🧝‍♀️" },
+        {
+          id: "25",
+          name: "HighPlayer1",
+          elo: 2000,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "26",
+          name: "HighPlayer2",
+          elo: 2050,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "27",
+          name: "HighPlayer3",
+          elo: 2100,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "28",
+          name: "HighPlayer4",
+          elo: 2150,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "29",
+          name: "HighPlayer5",
+          elo: 2200,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "30",
+          name: "HighPlayer6",
+          elo: 2250,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "31",
+          name: "HighPlayer7",
+          elo: 2300,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "32",
+          name: "HighPlayer8",
+          elo: 2350,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "33",
+          name: "HighPlayer9",
+          elo: 2400,
+          avatar: "🧙",
+          joinedAt: undefined,
+        },
+        {
+          id: "34",
+          name: "HighPlayer10",
+          elo: 2450,
+          avatar: "🧝",
+          joinedAt: undefined,
+        },
+        {
+          id: "35",
+          name: "HighPlayer11",
+          elo: 2500,
+          avatar: "🧙‍♀️",
+          joinedAt: undefined,
+        },
+        {
+          id: "36",
+          name: "HighPlayer12",
+          elo: 2550,
+          avatar: "🧝‍♀️",
+          joinedAt: undefined,
+        },
       ],
     }),
     []
@@ -221,34 +592,34 @@ export default function QueueSystem() {
           currentQueue.status !== "ready"
         ) {
           const matchPlayers = updatedPlayers.slice(0, currentQueue.maxPlayers);
-          const teams = calculateBalancedTeams(matchPlayers, teamSize);
+          const { teamA, teamB } =
+            matchPlayers.length >= currentQueue.maxPlayers
+              ? calculateBalancedTeams(
+                  matchPlayers.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    elo: p.elo,
+                    avatar: p.avatar || "",
+                    joinedAt: p.joinedAt || new Date(),
+                  })),
+                  teamSize
+                )
+              : { teamA: [], teamB: [] };
 
           // Add match to history
           setTimeout(() => {
-            const matchId = `match-${Date.now()}`;
+            const matchId = `${teamSize}-${tier}-${Date.now()}`;
             addMatch({
               id: matchId,
-              status: "Queue",
-              eloTier: tier,
               teamSize: teamSize,
+              eloTier: tier,
+              status: "In-Progress",
               winner: "Pending",
               date: new Date().toISOString(),
-              teams,
+              teams: { teamA, teamB },
               maps: [
                 {
-                  name: "Lobby",
-                  teamAScore: 0,
-                  teamBScore: 0,
-                  reported: false,
-                },
-                {
-                  name: "Nerve Center",
-                  teamAScore: 0,
-                  teamBScore: 0,
-                  reported: false,
-                },
-                {
-                  name: "Power Station",
+                  name: "Random Map",
                   teamAScore: 0,
                   teamBScore: 0,
                   reported: false,
@@ -312,34 +683,34 @@ export default function QueueSystem() {
           const matchPlayers = updatedPlayers.slice(0, maxPlayers);
 
           // Create balanced teams
-          const teams = calculateBalancedTeams(matchPlayers, teamSize);
+          const { teamA, teamB } =
+            matchPlayers.length >= maxPlayers
+              ? calculateBalancedTeams(
+                  matchPlayers.map((p) => ({
+                    id: p.id,
+                    name: p.name,
+                    elo: p.elo,
+                    avatar: p.avatar || "",
+                    joinedAt: p.joinedAt || new Date(),
+                  })),
+                  teamSize
+                )
+              : { teamA: [], teamB: [] };
 
           // Add match to history
           setTimeout(() => {
-            const matchId = `match-${Date.now()}`;
+            const matchId = `${teamSize}-${tier}-${Date.now()}`;
             addMatch({
               id: matchId,
-              status: "Queue",
-              eloTier: tier,
               teamSize: teamSize,
+              eloTier: tier,
+              status: "In-Progress",
               winner: "Pending",
               date: new Date().toISOString(),
-              teams,
+              teams: { teamA, teamB },
               maps: [
                 {
-                  name: "Lobby",
-                  teamAScore: 0,
-                  teamBScore: 0,
-                  reported: false,
-                },
-                {
-                  name: "Nerve Center",
-                  teamAScore: 0,
-                  teamBScore: 0,
-                  reported: false,
-                },
-                {
-                  name: "Power Station",
+                  name: "Random Map",
                   teamAScore: 0,
                   teamBScore: 0,
                   reported: false,
@@ -401,21 +772,19 @@ export default function QueueSystem() {
     }));
 
     // Create a match for the pre-filled queue
-    const matchId = `match-${Date.now()}`;
+    const matchId = `${"4v4"}-medium-${Date.now()}`;
     const teams = calculateBalancedTeams(preFilledPlayers, "4v4");
     addMatch({
       id: matchId,
-      status: "Queue",
-      eloTier: "medium",
       teamSize: "4v4",
+      eloTier: "medium",
+      status: "In-Progress",
       winner: "Pending",
       date: new Date().toISOString(),
-      teams,
+      teams: { teamA: teams.teamA, teamB: teams.teamB },
       maps: [
-        { name: "Lobby", teamAScore: 0, teamBScore: 0, reported: false },
-        { name: "Nerve Center", teamAScore: 0, teamBScore: 0, reported: false },
         {
-          name: "Power Station",
+          name: "Random Map",
           teamAScore: 0,
           teamBScore: 0,
           reported: false,
@@ -518,6 +887,10 @@ export default function QueueSystem() {
       console.error(`Failed to leave queue ${queueId}:`, error);
     }
   };
+
+  const isModOrAdmin = session?.user?.roles?.some((role) =>
+    ["admin", "moderator", "founder"].includes(role)
+  );
 
   return (
     <div className="space-y-8">

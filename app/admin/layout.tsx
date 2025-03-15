@@ -21,91 +21,10 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DirectModerationDialogs } from "@/components/direct-moderation-dialogs";
+import { AdminSidebar } from "@/components/admin-sidebar";
 
 interface AdminLayoutProps {
   children: ReactNode;
-}
-
-// Extract the sidebar content to be reused in both desktop and mobile views
-function SidebarContent({
-  pathname,
-  closeMobileMenu,
-}: {
-  pathname: string | null;
-  closeMobileMenu?: () => void;
-}) {
-  const navItems = [
-    {
-      title: "Moderation",
-      href: "/admin/moderation",
-      icon: <Shield className="w-4 h-4 mr-3" />,
-    },
-    {
-      title: "Players",
-      href: "/admin/players",
-      icon: <Users className="w-4 h-4 mr-3" />,
-    },
-    {
-      title: "Rules",
-      href: "/admin/rules",
-      icon: <BookOpen className="w-4 h-4 mr-3" />,
-    },
-  ];
-
-  const externalLinks = [
-    {
-      title: "Public Mod Log",
-      href: "/moderation-log",
-      icon: <ExternalLink className="w-4 h-4 mr-3" />,
-    },
-  ];
-
-  return (
-    <ScrollArea className="flex-1">
-      <div className="px-3 py-2">
-        <h2 className="px-4 mb-2 text-lg font-semibold">Admin Panel</h2>
-        <div className="space-y-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={closeMobileMenu}
-              className={cn(
-                "flex items-center py-2 px-3 text-sm rounded-md",
-                pathname === item.href
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              {item.icon}
-              {item.title}
-            </Link>
-          ))}
-        </div>
-
-        <Separator className="my-4" />
-
-        <h3 className="px-4 mb-2 text-sm font-medium">External Links</h3>
-        <div className="space-y-1">
-          {externalLinks.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              target="_blank"
-              onClick={closeMobileMenu}
-              className={cn(
-                "flex items-center py-2 px-3 text-sm rounded-md",
-                "hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              {item.icon}
-              {item.title}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </ScrollArea>
-  );
 }
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
@@ -114,6 +33,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Handle authentication and authorization
   useEffect(() => {
@@ -150,26 +70,47 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden">
-      {/* Mobile header */}
-      <div className="fixed top-0 left-0 right-0 z-30 px-3 py-2 border-b md:hidden bg-background">
-        {/* Mobile header content */}
+    <div className="min-h-screen bg-background">
+      {/* Mobile sidebar toggle */}
+      <div className="flex items-center justify-between p-4 md:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+        >
+          <Menu className="h-6 w-6" />
+        </Button>
+        <h1 className="text-xl font-bold">Admin Panel</h1>
+        <div className="w-10"></div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden pt-14 md:pt-0">
-        {/* Sidebar */}
-        <div className="hidden md:flex md:w-64 md:flex-col md:border-r">
-          <SidebarContent pathname={pathname} />
+      {/* Mobile sidebar */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
+          <div className="fixed inset-y-0 left-0 w-64 bg-background shadow-lg">
+            <div className="flex items-center justify-between p-4">
+              <h1 className="text-xl font-bold">Admin Panel</h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(false)}
+              >
+                <X className="h-6 w-6" />
+              </Button>
+            </div>
+            <AdminSidebar />
+          </div>
+        </div>
+      )}
+
+      <div className="flex">
+        {/* Desktop sidebar */}
+        <div className="hidden md:block w-64 p-4 border-r border-slate-800">
+          <AdminSidebar />
         </div>
 
-        {/* Main content with strict overflow control */}
-        <div className="flex flex-col flex-1 w-full overflow-hidden">
-          {/* Main scrollable area with horizontal overflow prevention */}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden w-full">
-            <div className="px-3 py-4 max-w-full">{children}</div>
-          </main>
-          <DirectModerationDialogs />
-        </div>
+        {/* Main content */}
+        <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
     </div>
   );
