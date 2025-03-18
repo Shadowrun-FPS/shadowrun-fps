@@ -1,19 +1,41 @@
 export interface Player {
-  displayName: any;
-  username: any;
-  roles: any;
   _id: string;
-  discordId: string;
-  discordUsername: string;
+  discordId?: string;
+  discordUsername?: string;
   discordNickname?: string;
-  discordAvatar?: string;
-  warnings?: Warning[];
-  bans?: Ban[];
+  discordProfilePicture?: string;
   isBanned?: boolean;
   banExpiry?: Date | string | null;
+  warnings?: Warning[];
+  bans?: Ban[];
+  teamSizeStats?: Array<{
+    teamSize: number;
+    elo: number;
+    wins: number;
+    losses: number;
+    lastMatchDate: string;
+  }>;
+  teamStat?: {
+    teamSize: number;
+    elo: number;
+    wins: number;
+    losses: number;
+    lastMatchDate: string;
+    lastMatchElo?: number;
+  };
+  stats?: Array<{
+    teamSize: number;
+    elo: number;
+    wins: number;
+    losses: number;
+    lastMatchDate: string;
+    lastMatchElo?: number;
+  }>;
+  globalRank?: number;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   registeredAt?: Date | string;
+  lastActive?: string;
 }
 
 export interface Warning {

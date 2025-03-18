@@ -10,20 +10,23 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { AlertTriangle, Ban, History, Shield } from "lucide-react";
+import { AlertTriangle, Ban, History, Shield, User } from "lucide-react";
 import { ModerationDialog } from "@/components/moderation-dialog";
 import { Player, ModerationActionType } from "@/types/moderation";
+import Link from "next/link";
 
-interface PlayerContextMenuProps {
-  children: React.ReactNode;
+export interface PlayerContextMenuProps {
   player: Player;
+  children: React.ReactNode;
   disabled?: boolean;
+  showRank?: boolean;
 }
 
 export function PlayerContextMenu({
   children,
   player,
   disabled = false,
+  showRank = true,
 }: PlayerContextMenuProps) {
   const { data: session } = useSession();
   const router = useRouter();

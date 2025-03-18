@@ -149,6 +149,11 @@ export function MainNav({ user }: MainNavProps) {
                     >
                       View your match history
                     </ListItem>
+                    <ListItem
+                      href="/leaderboard"
+                      title="Leaderboard"
+                      icon={<Trophy className="w-4 h-4" />}
+                    ></ListItem>
                   </ul>
                 </NavigationMenuContent>
               </NavigationMenuItem>
@@ -214,14 +219,18 @@ export function MainNav({ user }: MainNavProps) {
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-[300px] sm:w-[400px]">
+          <SheetContent
+            side="left"
+            className="w-[300px] sm:w-[400px] overflow-y-auto max-h-screen"
+          >
             <SheetHeader>
               <SheetTitle>Navigation Menu</SheetTitle>
               <SheetDescription>
                 Access all sections of the Shadowrun FPS website.
               </SheetDescription>
             </SheetHeader>
-            <nav className="flex flex-col gap-4 mt-8">
+
+            <div className="flex flex-col gap-4 py-8 overflow-y-auto">
               <Link
                 href="/docs/events"
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md hover:bg-accent hover:text-accent-foreground"
@@ -266,6 +275,14 @@ export function MainNav({ user }: MainNavProps) {
                     <Clock className="w-4 h-4" />
                     Match History
                   </Link>
+                  <Link
+                    href="/leaderboard"
+                    className="flex items-center gap-2 px-8 py-2 text-sm rounded-md hover:bg-accent hover:text-accent-foreground"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    <Clock className="w-4 h-4" />
+                    Leaderboard
+                  </Link>
                 </>
               )}
 
@@ -308,7 +325,9 @@ export function MainNav({ user }: MainNavProps) {
                   </Link>
                 </>
               )}
-            </nav>
+
+              <div className="h-6"></div>
+            </div>
           </SheetContent>
         </Sheet>
       </div>

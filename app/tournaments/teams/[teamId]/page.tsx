@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Navbar } from "@/components/navbar";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -663,15 +662,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
         {isTeamCaptain && (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <Card className="md:col-span-2 lg:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="w-5 h-5" />
-                  Recent Invites
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TeamInvitesList teamId={team._id} />
-              </CardContent>
+              <TeamInvitesList teamId={team._id} isCaptain={isTeamCaptain} />
             </Card>
           </div>
         )}

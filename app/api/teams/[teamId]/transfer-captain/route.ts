@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
+import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 // Add an interface for team members at the top of the file
@@ -19,11 +19,15 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "You must be logged in to transfer captaincy" },
+        { status: 401 }
+      );
     }
 
-    const { db } = await connectToDatabase();
+    const client = await clientPromise;
+    const db = client.db();
     const { newCaptainId } = await req.json();
     const teamId = params.teamId;
 
@@ -179,9 +183,9 @@ export async function POST(
       message: "Team captain transferred successfully",
     });
   } catch (error) {
-    console.error("Error transferring team captain:", error);
+    console.error("Error transferring captaincy:", error);
     return NextResponse.json(
-      { error: "Failed to transfer team captain" },
+      { error: "Failed to transfer team captaincy" },
       { status: 500 }
     );
   }

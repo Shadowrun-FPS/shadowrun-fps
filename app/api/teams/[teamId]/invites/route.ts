@@ -2,7 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { ObjectId, Document, WithId } from "mongodb";
+
+// Define an interface for the invite document
+interface TeamInvite {
+  _id: ObjectId;
+  inviteeId: string;
+  inviteeName: string;
+  inviterId: string;
+  inviterName: string;
+  inviterNickname?: string;
+  status: string;
+  createdAt: Date;
+  teamId: ObjectId;
+}
 
 export async function GET(
   req: NextRequest,
@@ -55,6 +68,7 @@ export async function GET(
         inviteeName: invite.inviteeName,
         inviterId: invite.inviterId,
         inviterName: invite.inviterName,
+        inviterNickname: invite.inviterNickname || invite.inviterName,
         status: invite.status,
         createdAt: invite.createdAt,
       })),

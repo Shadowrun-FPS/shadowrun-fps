@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { Navbar } from "@/components/navbar";
 import { cn } from "@/lib/utils";
 import { FeatureGate } from "@/components/feature-gate";
 

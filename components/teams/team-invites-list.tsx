@@ -29,6 +29,7 @@ interface TeamInvite {
   id: string;
   inviteeName: string;
   inviterName: string;
+  inviterNickname?: string;
   status: string;
   createdAt: string;
 }
@@ -42,15 +43,21 @@ interface Team {
 
 interface TeamInvitesListProps {
   teamId: string;
+  isCaptain?: boolean;
 }
 
-export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
+export function TeamInvitesList({
+  teamId,
+  isCaptain = false,
+}: TeamInvitesListProps) {
   const { data: session } = useSession();
   const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelling, setCancelling] = useState<Record<string, boolean>>({});
   const [clearingAll, setClearingAll] = useState(false);
+  const [cancellingPending, setCancellingPending] = useState(false);
+  const [clearingCompleted, setClearingCompleted] = useState(false);
   const { toast } = useToast();
 
   const fetchInvites = useCallback(async () => {
@@ -133,24 +140,22 @@ export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
       });
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to clear invites");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to clear invites");
       }
 
+      // Only consume the response body once
       const data = await response.json();
 
-      // Update all pending invites to cancelled
-      setInvites((prevInvites) =>
-        prevInvites.map((invite) =>
-          invite.status === "pending"
-            ? { ...invite, status: "cancelled" }
-            : invite
-        )
-      );
+      // Update all invites to cancelled
+      setInvites([]); // Just clear the invites array completely
+
+      // Optionally refresh the invites instead
+      // await fetchInvites();
 
       toast({
         title: "Invites Cleared",
-        description: data.message || "All pending invites have been cancelled",
+        description: data.message || "All invites have been cleared",
       });
     } catch (error: any) {
       console.error("Error clearing invites:", error);
@@ -161,6 +166,106 @@ export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
       });
     } finally {
       setClearingAll(false);
+    }
+  };
+
+  const handleCancelPendingInvites = async () => {
+    if (!confirm("Are you sure you want to cancel all pending invites?")) {
+      return;
+    }
+
+    setCancellingPending(true);
+    try {
+      const response = await fetch(`/api/teams/${teamId}/invites/clear`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "cancel_pending",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to cancel pending invites");
+      }
+
+      const data = await response.json();
+
+      // Update all pending invites to cancelled in the UI
+      setInvites((prevInvites) =>
+        prevInvites.map((invite) =>
+          invite.status === "pending"
+            ? { ...invite, status: "cancelled" }
+            : invite
+        )
+      );
+
+      toast({
+        title: "Pending Invites Cancelled",
+        description: data.message || "All pending invites have been cancelled",
+      });
+    } catch (error: any) {
+      console.error("Error cancelling pending invites:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to cancel pending invites",
+        variant: "destructive",
+      });
+    } finally {
+      setCancellingPending(false);
+    }
+  };
+
+  const handleClearCompletedInvites = async () => {
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete all completed, rejected, and cancelled invites?"
+      )
+    ) {
+      return;
+    }
+
+    setClearingCompleted(true);
+    try {
+      const response = await fetch(`/api/teams/${teamId}/invites/clear`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "delete_completed",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || "Failed to delete completed invites"
+        );
+      }
+
+      const data = await response.json();
+
+      // Remove all non-pending invites from the UI
+      setInvites((prevInvites) =>
+        prevInvites.filter((invite) => invite.status === "pending")
+      );
+
+      toast({
+        title: "Completed Invites Deleted",
+        description: data.message || "All completed invites have been deleted",
+      });
+    } catch (error: any) {
+      console.error("Error deleting completed invites:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete completed invites",
+        variant: "destructive",
+      });
+    } finally {
+      setClearingCompleted(false);
     }
   };
 
@@ -216,9 +321,12 @@ export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
     }
   };
 
-  // Check if current user is team captain
-  const isCaptain =
+  // Check if current user is team captain (renamed to avoid conflict with prop)
+  const userIsCaptain =
     team?.captain && session?.user?.id === team.captain.discordId;
+
+  // Use the isCaptain from props or userIsCaptain if available
+  const showCaptainControls = isCaptain || userIsCaptain;
 
   // Check if there are any pending invites
   const hasPendingInvites = invites.some(
@@ -249,14 +357,63 @@ export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          <Mail className="w-5 h-5" />
-          <CardTitle>Recent Invites</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="w-5 h-5" />
+            Recent Invites
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Manage your team&apos;s invitations
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Manage your team&apos;s invitations
-        </p>
+        {showCaptainControls && (
+          <div className="flex gap-2">
+            {invites.some((invite) => invite.status === "pending") && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCancelPendingInvites}
+                disabled={cancellingPending}
+              >
+                {cancellingPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  <>
+                    <X className="w-4 h-4 mr-2" />
+                    Cancel Pending
+                  </>
+                )}
+              </Button>
+            )}
+
+            {invites.some((invite) =>
+              ["completed", "cancelled", "rejected"].includes(invite.status)
+            ) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearCompletedInvites}
+                disabled={clearingCompleted}
+              >
+                {clearingCompleted ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete History
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         {sortedInvites.length === 0 ? (
@@ -273,7 +430,9 @@ export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
                 <div>
                   <div className="font-medium">{invite.inviteeName}</div>
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <p>Invited by: {invite.inviterName}</p>
+                    <p>
+                      Invited by: {invite.inviterNickname || invite.inviterName}
+                    </p>
                     <p>Date: {formatDate(invite.createdAt)}</p>
                   </div>
                 </div>
@@ -281,7 +440,7 @@ export function TeamInvitesList({ teamId }: TeamInvitesListProps) {
                 <div className="flex items-center gap-2">
                   {getStatusBadge(invite.status)}
 
-                  {isCaptain && invite.status === "pending" && (
+                  {showCaptainControls && invite.status === "pending" && (
                     <Button
                       variant="ghost"
                       size="icon"
