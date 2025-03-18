@@ -89,14 +89,14 @@ export function Footer() {
             <nav className="flex flex-wrap justify-center gap-4 sm:gap-6">
               <Link
                 href="/privacy"
-                onClick={(e) => handleComingSoon(e, "Privacy Policy")}
+                prefetch={false}
                 className="text-sm text-gray-400 transition-colors hover:text-white"
               >
                 Privacy Policy
               </Link>
               <Link
                 href="/terms"
-                onClick={(e) => handleComingSoon(e, "Terms")}
+                prefetch={false}
                 className="text-sm text-gray-400 transition-colors hover:text-white"
               >
                 Terms

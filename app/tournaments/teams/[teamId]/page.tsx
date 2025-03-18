@@ -52,6 +52,7 @@ interface Team {
   };
   members: TeamMember[];
   teamElo: number;
+  createdAt?: string;
 }
 
 export default function TeamPage({ params }: { params: { teamId: string } }) {
@@ -234,6 +235,22 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
     }
   };
 
+  // Fix date formatting issue when signed out
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Invalid date";
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -279,7 +296,9 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                 <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card">
                   <TrendingUp className="w-5 h-5 text-primary" />
                   <span className="text-xl font-bold">
-                    {team.teamElo.toLocaleString()}
+                    {team && team.teamElo !== undefined && team.teamElo !== null
+                      ? Number(team.teamElo).toLocaleString()
+                      : "N/A"}
                   </span>
                 </div>
               </div>
@@ -309,8 +328,21 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     <h3 className="mb-2 text-sm font-medium text-muted-foreground">
                       Description
                     </h3>
-                    <p className="text-muted-foreground">{team.description}</p>
+                    <p className="text-muted-foreground">
+                      {team.description || "No description available"}
+                    </p>
                   </div>
+
+                  {team && team.createdAt && (
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                        Created
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {formatDate(team.createdAt)}
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </CardContent>

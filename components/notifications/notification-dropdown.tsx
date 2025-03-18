@@ -24,19 +24,41 @@ interface Notification {
 export function NotificationDropdown() {
   const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (!session?.user?.id) return;
 
     const fetchNotifications = async () => {
+      setLoading(true);
       try {
-        const response = await fetch(
-          `/api/notifications?userId=${session?.user?.id}`
-        );
+        const response = await fetch("/api/notifications");
+
+        if (response.status === 401) {
+          // User is not logged in, handle gracefully
+          setNotifications([]);
+          setUnreadCount(0);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch notifications");
+        }
+
         const data = await response.json();
-        setNotifications(data);
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
       } catch (error) {
-        console.error("Error fetching notifications:", error);
+        // Only log error if user is logged in
+        if (session?.user) {
+          console.error("Error fetching notifications:", error);
+        }
+        // Set empty state
+        setNotifications([]);
+        setUnreadCount(0);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -62,8 +84,6 @@ export function NotificationDropdown() {
       console.error("Failed to mark notification as read:", error);
     }
   };
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <DropdownMenu>

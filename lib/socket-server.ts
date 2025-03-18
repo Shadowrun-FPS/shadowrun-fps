@@ -1,3 +1,5 @@
+"use server";
+
 import { Server as NetServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { NextApiResponse } from "next";
@@ -6,6 +8,7 @@ export const config = {
   api: {
     bodyParser: false,
   },
+  runtime: "nodejs",
 };
 
 export type NextApiResponseWithSocket = NextApiResponse & {
