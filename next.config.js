@@ -29,6 +29,37 @@ const nextConfig = {
       },
     ];
   },
+  reactStrictMode: true,
+  // experimental: {
+  //   optimizeCss: true,
+  // },
+  async redirects() {
+    return [
+      // Handle any RSC requests to privacy/terms with proper redirects
+      {
+        source: "/privacy",
+        has: [
+          {
+            type: "query",
+            key: "_rsc",
+          },
+        ],
+        destination: "/privacy",
+        permanent: false,
+      },
+      {
+        source: "/terms",
+        has: [
+          {
+            type: "query",
+            key: "_rsc",
+          },
+        ],
+        destination: "/terms",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
