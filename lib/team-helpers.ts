@@ -21,7 +21,7 @@ export async function updateTeamElo(teamId: string) {
   // Calculate combined ELO
   const combinedElo = activeMembers.reduce(
     (sum: number, member: TeamMember) =>
-      sum + parseInt(member.elo?.["4v4"] || "1500"),
+      sum + parseInt(String(member.elo?.["4v4"] || "1500")),
     0
   );
 
@@ -52,7 +52,7 @@ export async function recalculateTeamElos() {
 
     const combinedElo = activeMembers.reduce(
       (sum: number, member: any) =>
-        sum + (parseInt(member.elo?.[`4v4`]) || 1500),
+        sum + (parseInt(String(member.elo?.[`4v4`])) || 1500),
       0
     );
 

@@ -20,6 +20,15 @@ const nextConfig = {
     }
     return config;
   },
+  async rewrites() {
+    return [
+      {
+        // Add a rewrite rule to handle the match-specific routes
+        source: "/tournaments/matches/:matchId*",
+        destination: "/tournaments/matches/[matchId]",
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

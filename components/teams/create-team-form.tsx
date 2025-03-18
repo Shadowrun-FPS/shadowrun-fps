@@ -14,8 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { z } from "zod";
 
-export function CreateTeamForm() {
+interface CreateTeamFormProps {
+  onSuccess?: () => void;
+}
+
+export function CreateTeamForm({ onSuccess }: CreateTeamFormProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -65,6 +70,11 @@ export function CreateTeamForm() {
 
       // Optionally refresh the teams list
       window.location.reload();
+
+      // Call the onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       toast({
         title: "Error",

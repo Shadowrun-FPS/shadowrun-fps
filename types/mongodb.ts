@@ -1,13 +1,12 @@
 import { ObjectId } from "mongodb";
+import { StaticImport } from "next/dist/shared/lib/get-img-props";
 
 interface TeamMember {
   discordId: string;
   discordUsername: string;
   discordNickname: string;
   role: "captain" | "member" | "substitute";
-  elo: {
-    [key: string]: string;
-  };
+  elo: Record<string, number>;
   joinedAt: Date | string;
 }
 
@@ -20,6 +19,7 @@ interface BaseTeam {
   wins: number;
   losses: number;
   captain: {
+    discordProfilePicture: string | StaticImport;
     discordId: string;
     discordUsername: string;
     discordNickname: string;
@@ -37,6 +37,7 @@ interface MongoTeam extends BaseTeam {
 
 // Interface for API responses
 interface TeamResponse extends BaseTeam {
+  tournaments: any;
   _id: string;
 }
 
@@ -82,6 +83,73 @@ interface Player {
     losses?: number;
     ratio?: number;
   };
+}
+
+// Replace the problematic interface with this fixed version
+export interface MongoDBPlayer {
+  _id: ObjectId;
+  discordId: string;
+  discordUsername: string;
+  discordNickname?: string;
+  discordProfilePicture?: string;
+  roles?: string[];
+  // Remove string indexer and define specific properties
+  elo: Record<string, number>; // Changed to Record<string, number> instead of { [key: string]: string }
+  wins?: number;
+  losses?: number;
+  registeredAt?: Date;
+  joinedAt: Date | string; // This is fine as a union type without the string indexer
+  stats?: Array<{
+    teamSize: number;
+    elo: number;
+    wins: number;
+    losses: number;
+    lastMatchDate: string;
+  }>;
+  isBanned?: boolean;
+  banExpiry?: Date | null;
+  // Add any other fields your model needs
+}
+
+// Add other MongoDB-related interfaces
+export interface MongoDBMatch {
+  _id: ObjectId;
+  teamSize: number;
+  teams: {
+    teamA: string[]; // Array of player IDs
+    teamB: string[];
+  };
+  scores: {
+    teamA: number;
+    teamB: number;
+  };
+  winner: "teamA" | "teamB" | "draw";
+  playedAt: Date;
+  map?: string;
+  eloChanges?: Record<string, number>; // Player ID to ELO change
+}
+
+export interface MongoDBTeam {
+  _id: ObjectId;
+  name: string;
+  tag: string;
+  captain: string; // Player ID
+  members: string[]; // Array of player IDs
+  createdAt: Date;
+  teamLogo?: string;
+}
+
+export interface MongoDBTournament {
+  _id: ObjectId;
+  name: string;
+  description?: string;
+  startDate: Date;
+  endDate?: Date;
+  teamSize: number;
+  maxTeams?: number;
+  teams: string[]; // Array of team IDs
+  status: "upcoming" | "active" | "completed";
+  brackets?: any; // Define a more specific structure if needed
 }
 
 // Single export statement for all types

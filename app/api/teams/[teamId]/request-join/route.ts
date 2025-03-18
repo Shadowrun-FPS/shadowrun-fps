@@ -1,22 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
+import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { v4 as uuidv4 } from "uuid";
 
 export async function POST(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "You must be logged in to request joining a team" },
+        { status: 401 }
+      );
     }
+
+    const client = await clientPromise;
+    const db = client.db();
 
     const userId = session.user.id;
     const userName = session.user.name || "Unknown User";
-    const { db } = await connectToDatabase();
     const teamId = params.teamId;
 
     // Check that the team exists
@@ -102,7 +108,7 @@ export async function POST(
   } catch (error) {
     console.error("Error requesting to join team:", error);
     return NextResponse.json(
-      { error: "Failed to send join request" },
+      { error: "Failed to submit join request" },
       { status: 500 }
     );
   }

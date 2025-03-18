@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
+import clientPromise from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
 
 export async function POST(
@@ -10,12 +10,16 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "You must be logged in to accept an invite" },
+        { status: 401 }
+      );
     }
 
     const inviteId = params.inviteId;
-    const { db } = await connectToDatabase();
+    const client = await clientPromise;
+    const db = client.db();
 
     // Find the invite
     const invite = await db.collection("TeamInvites").findOne({
