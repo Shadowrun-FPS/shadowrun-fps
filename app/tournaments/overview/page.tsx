@@ -43,6 +43,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreateTournamentDialog } from "@/components/tournaments/create-tournament-dialog";
 
 interface Tournament {
   _id: string;
@@ -67,23 +68,25 @@ export default function TournamentsOverviewPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchTournaments = async () => {
-      try {
-        const response = await fetch("/api/tournaments");
-        if (response.ok) {
-          const data = await response.json();
-          setTournaments(data);
-        } else {
-          console.error("Failed to fetch tournaments");
-        }
-      } catch (error) {
-        console.error("Error fetching tournaments:", error);
-      } finally {
-        setLoading(false);
+  // Move fetchTournaments outside useEffect to component scope
+  const fetchTournaments = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/tournaments");
+      if (response.ok) {
+        const data = await response.json();
+        setTournaments(data);
+      } else {
+        console.error("Failed to fetch tournaments");
       }
-    };
+    } catch (error) {
+      console.error("Error fetching tournaments:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchTournaments();
   }, []);
 
@@ -231,10 +234,9 @@ export default function TournamentsOverviewPage() {
         </div>
         <Button
           onClick={() => setIsCreateDialogOpen(true)}
-          className="w-full md:w-auto"
+          className="flex items-center gap-2"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Tournament
+          <Plus className="w-4 h-4" /> Create Tournament
         </Button>
       </div>
 
@@ -550,6 +552,12 @@ export default function TournamentsOverviewPage() {
           </TabsContent>
         </Tabs>
       )}
+
+      <CreateTournamentDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onSuccess={fetchTournaments}
+      />
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   Play,
   Loader2,
   RotateCcw,
+  UserCircle,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import {
@@ -50,6 +51,7 @@ import {
 import { TournamentBracket } from "@/components/tournament/bracket";
 import { toast } from "@/components/ui/use-toast";
 import Image from "next/image";
+import { EditTournamentDialog } from "@/components/tournaments/edit-tournament-dialog";
 
 // Types
 interface Tournament {
@@ -76,19 +78,18 @@ interface Team {
   createdAt?: string;
   members?: {
     discordId: string;
-    discordUsername?: string;
-    discordNickname?: string | null;
-    discordProfilePicture?: string | null;
-    elo?: number;
+    discordUsername: string;
+    discordNickname: string | null;
+    discordProfilePicture: string | null;
+    elo: number;
     role?: string;
-    joinedAt?: string;
   }[];
   captain?: {
     discordId: string;
-    discordUsername?: string;
-    discordNickname?: string | null;
-    discordProfilePicture?: string | null;
-    elo?: number;
+    discordUsername: string;
+    discordNickname: string | null;
+    discordProfilePicture: string | null;
+    elo: number;
   };
 }
 
@@ -108,6 +109,35 @@ interface Match {
   winner?: "teamA" | "teamB" | "draw";
   status: "upcoming" | "live" | "completed";
 }
+
+// Add type definition for the MemberAvatar props
+interface MemberAvatarProps {
+  profilePicture: string | null;
+  username: string | null | undefined;
+  size: number;
+}
+
+// First, add a custom avatar component for reuse
+const MemberAvatar = ({
+  profilePicture,
+  username,
+  size,
+}: MemberAvatarProps) => {
+  const [imgError, setImgError] = useState(false);
+
+  return imgError || !profilePicture ? (
+    <UserCircle className={`w-${size} h-${size} text-muted-foreground`} />
+  ) : (
+    <Image
+      src={profilePicture}
+      alt={username || "Member"}
+      width={size * 4}
+      height={size * 4}
+      className="transition-colors border rounded-full border-border hover:border-primary"
+      onError={() => setImgError(true)}
+    />
+  );
+};
 
 export default function TournamentDetailsPage() {
   const params = useParams();
@@ -133,6 +163,7 @@ export default function TournamentDetailsPage() {
   const [seeding, setSeeding] = useState(false);
   const [isSeeded, setIsSeeded] = useState(false);
   const [unseeding, setUnseeding] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const fetchTournament = async () => {
     try {
@@ -260,13 +291,13 @@ export default function TournamentDetailsPage() {
         }
 
         try {
-          const response = await fetch(`/api/users/me`);
+          const response = await fetch("/api/user/status");
           if (response.ok) {
-            const userData = await response.json();
-            setIsAdmin(userData.roles?.includes("admin") || false);
+            const data = await response.json();
+            setIsAdmin(data.roles?.includes("admin") || false);
           }
         } catch (error) {
-          console.error("Failed to check admin status:", error);
+          console.error("Error checking admin status:", error);
         }
       }
     };
@@ -281,6 +312,22 @@ export default function TournamentDetailsPage() {
         (match: any) => match.teamA || match.teamB
       );
       setIsSeeded(!!hasSeededTeams);
+    }
+  }, [tournament]);
+
+  useEffect(() => {
+    if (tournament) {
+      console.log("Tournament data:", tournament);
+      if (tournament.registeredTeams && tournament.registeredTeams.length > 0) {
+        const team = tournament.registeredTeams[0];
+        console.log("Team complete object:", JSON.stringify(team));
+        console.log(
+          "Team members type:",
+          Array.isArray(team.members) ? "Array" : typeof team.members
+        );
+        console.log("Captain object:", team.captain);
+        console.log("Team ELO type:", typeof team.teamElo);
+      }
     }
   }, [tournament]);
 
@@ -540,6 +587,14 @@ export default function TournamentDetailsPage() {
     }
   };
 
+  const handleEditSuccess = (updatedTournament: Tournament) => {
+    setTournament(updatedTournament);
+    toast({
+      title: "Success",
+      description: "Tournament updated successfully",
+    });
+  };
+
   if (loading) {
     return (
       <div className="container py-8 mx-auto">
@@ -605,6 +660,16 @@ export default function TournamentDetailsPage() {
             </Link>
           </Button>
           <h1 className="text-2xl font-bold">{tournament.name}</h1>
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsEditDialogOpen(true)}
+              className="ml-auto"
+            >
+              Edit Tournament
+            </Button>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -801,83 +866,103 @@ export default function TournamentDetailsPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {tournament.registeredTeams.map((team, index) => (
-                  <Card key={team._id} className="overflow-hidden border">
-                    <div className="flex items-center justify-between p-4 bg-muted/20">
-                      <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="font-mono bg-background"
-                          title={`Seed #${index + 1}`}
-                        >
-                          #{index + 1}
-                        </Badge>
-                        <h3 className="text-lg font-semibold">{team.name}</h3>
-                        {team.tag && (
-                          <span className="text-sm text-muted-foreground">
-                            [{team.tag}]
-                          </span>
+                  <Card
+                    key={team._id}
+                    className="flex flex-col overflow-hidden"
+                  >
+                    <CardContent className="flex-1 pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="flex items-center font-semibold">
+                            <span className="mr-2 bg-muted px-1.5 py-0.5 rounded-md text-xs">
+                              #{index + 1}
+                            </span>
+                            {team.name}
+                            {team.tag && (
+                              <span className="ml-1 text-muted-foreground">
+                                [{team.tag}]
+                              </span>
+                            )}
+                          </h4>
+                        </div>
+                        {team.teamElo !== undefined && (
+                          <Badge variant="secondary">
+                            ELO: {team.teamElo.toLocaleString()}
+                          </Badge>
                         )}
                       </div>
-                      <Badge>
-                        ELO {team.teamElo !== undefined ? team.teamElo : "N/A"}
-                      </Badge>
-                    </div>
 
-                    <CardContent className="pt-4">
                       <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <span className="font-medium text-foreground">
-                            Team Captain:
-                          </span>
+                        {/* Captain Section with fallbacks */}
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">Team Captain:</p>
                           {team.captain ? (
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center space-x-2">
+                              <MemberAvatar
+                                profilePicture={
+                                  team.captain.discordProfilePicture
+                                }
+                                username={team.captain.discordUsername}
+                                size={6}
+                              />
                               <span>
                                 {team.captain.discordNickname ||
-                                  team.captain.discordUsername}
+                                  team.captain.discordUsername ||
+                                  "Unknown"}
+                                {team.captain.elo !== undefined && (
+                                  <span className="ml-1 text-xs text-muted-foreground"></span>
+                                )}
                               </span>
                             </div>
                           ) : (
-                            "Unknown"
+                            <div className="text-sm text-muted-foreground">
+                              No captain information
+                            </div>
                           )}
                         </div>
 
+                        {/* Team Members section with row layout and tooltips */}
                         <div className="space-y-2">
-                          <h4 className="text-sm font-medium">Team Members</h4>
-                          <div className="grid grid-cols-2 gap-2">
-                            {team.members && team.members.length > 0 ? (
-                              team.members.map((member) => (
-                                <div
-                                  key={member.discordId}
-                                  className="flex items-center gap-2"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    {member.discordProfilePicture ? (
-                                      <Image
-                                        src={member.discordProfilePicture}
-                                        alt={
-                                          member.discordUsername ||
-                                          "Team Member"
-                                        }
-                                        className="w-6 h-6 rounded-full"
-                                        width={24}
-                                        height={24}
-                                      />
-                                    ) : (
-                                      <div className="w-6 h-6 rounded-full bg-muted" />
-                                    )}
-                                    <span className="text-sm truncate">
-                                      {member.discordNickname ||
-                                        member.discordUsername}
-                                    </span>
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <span className="text-sm text-muted-foreground">
-                                No members found
-                              </span>
-                            )}
-                          </div>
+                          <p className="text-sm font-medium">Team Members</p>
+                          {Array.isArray(team.members) &&
+                          team.members.length > 0 ? (
+                            <div>
+                              {/* Avatars in a row */}
+                              <div className="flex flex-wrap gap-2 mb-1">
+                                {team.members.map((member) => (
+                                  <TooltipProvider key={member.discordId}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="relative">
+                                          <MemberAvatar
+                                            profilePicture={
+                                              member.discordProfilePicture
+                                            }
+                                            username={member.discordUsername}
+                                            size={8}
+                                          />
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent
+                                        side="bottom"
+                                        className="text-xs"
+                                      >
+                                        <p className="font-medium">
+                                          {member.discordNickname ||
+                                            member.discordUsername ||
+                                            "Unknown"}
+                                        </p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              No team members found
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -1174,6 +1259,16 @@ export default function TournamentDetailsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Tournament Dialog */}
+        {tournament && (
+          <EditTournamentDialog
+            tournament={tournament}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onSuccess={handleEditSuccess}
+          />
+        )}
       </div>
     </div>
   );

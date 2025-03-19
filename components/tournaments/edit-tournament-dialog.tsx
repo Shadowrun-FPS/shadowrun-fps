@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { format, addDays, startOfHour } from "date-fns";
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,10 +40,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/use-toast";
 
-// Form schema for tournament creation
+// Form schema for tournament editing
 const formSchema = z.object({
   name: z.string().min(3, {
     message: "Tournament name must be at least 3 characters.",
@@ -59,53 +58,74 @@ const formSchema = z.object({
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, {
     message: "Please enter a valid time in 24-hour format (HH:MM).",
   }),
+  status: z.enum(["upcoming", "active", "completed"]),
 });
 
-// Simple label component for radio buttons
-const Label = ({
-  children,
-  className,
-  htmlFor,
-}: {
-  children: React.ReactNode;
-  className?: string;
-  htmlFor?: string;
-}) => (
-  <label className={cn("cursor-pointer", className)} htmlFor={htmlFor}>
-    {children}
-  </label>
-);
+const teamSizeOptions = [1, 2, 3, 4, 5, 6];
+const maxTeamsOptions = [4, 8, 16, 32, 64];
 
-interface CreateTournamentDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+interface Tournament {
+  _id: string;
+  name: string;
+  description?: string;
+  startDate: string;
+  teamSize: number;
+  format: "single_elimination" | "double_elimination";
+  status: "upcoming" | "active" | "completed";
+  maxTeams?: number;
 }
 
-export function CreateTournamentDialog({
+export function EditTournamentDialog({
+  tournament,
   open,
   onOpenChange,
   onSuccess,
-}: CreateTournamentDialogProps) {
-  const router = useRouter();
+}: {
+  tournament: Tournament;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (tournament: any) => void;
+}) {
   const [submitting, setSubmitting] = useState(false);
 
-  // Set default values for the form
-  const tomorrow = startOfHour(addDays(new Date(), 1));
-  tomorrow.setMinutes(0);
+  // Extract time from date
+  const getTimeFromDateString = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${String(date.getHours()).padStart(2, "0")}:${String(
+      date.getMinutes()
+    ).padStart(2, "0")}`;
+  };
 
+  // Set form values from tournament
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      format: "single_elimination",
-      teamSize: 4,
-      maxTeams: 8,
-      startDate: tomorrow,
-      startTime: "18:00",
+      name: tournament.name,
+      description: tournament.description || "",
+      format: tournament.format,
+      teamSize: tournament.teamSize,
+      maxTeams: tournament.maxTeams || 8,
+      startDate: new Date(tournament.startDate),
+      startTime: getTimeFromDateString(tournament.startDate),
+      status: tournament.status,
     },
   });
+
+  // Update form when tournament changes
+  useEffect(() => {
+    if (tournament) {
+      form.reset({
+        name: tournament.name,
+        description: tournament.description || "",
+        format: tournament.format,
+        teamSize: tournament.teamSize,
+        maxTeams: tournament.maxTeams || 8,
+        startDate: new Date(tournament.startDate),
+        startTime: getTimeFromDateString(tournament.startDate),
+        status: tournament.status,
+      });
+    }
+  }, [tournament, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setSubmitting(true);
@@ -116,77 +136,58 @@ export function CreateTournamentDialog({
       const [hours, minutes] = values.startTime.split(":").map(Number);
       startDate.setHours(hours, minutes);
 
-      // Create the tournament payload
-      const tournamentData = {
-        name: values.name,
-        description: values.description || "",
-        format: values.format,
-        teamSize: values.teamSize,
-        maxTeams: values.maxTeams,
-        startDate: startDate.toISOString(),
-        status: "upcoming",
-      };
-
-      // Post to API
-      const response = await fetch("/api/tournaments", {
-        method: "POST",
+      const response = await fetch(`/api/tournaments/${tournament._id}/edit`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(tournamentData),
+        body: JSON.stringify({
+          ...values,
+          startDate: startDate.toISOString(),
+        }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        onOpenChange(false);
-        form.reset();
-        if (onSuccess) {
-          onSuccess();
-        }
-      } else {
-        const error = await response.json();
-        console.error("Error creating tournament:", error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update tournament");
       }
+
+      toast({
+        title: "Success",
+        description: "Tournament updated successfully",
+      });
+
+      if (onSuccess) {
+        onSuccess(data.tournament);
+      }
+
+      onOpenChange(false);
     } catch (error) {
-      console.error("Failed to create tournament:", error);
+      console.error("Error updating tournament:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Format options for tournament format selection
-  const formatOptions = [
-    {
-      id: "single_elimination",
-      title: "Single Elimination",
-      description: "Teams are eliminated after one loss",
-      icon: "🏆",
-    },
-    {
-      id: "double_elimination",
-      title: "Double Elimination",
-      description: "Teams are eliminated after two losses",
-      icon: "🥇",
-    },
-  ];
-
-  // Options for team size and max teams
-  const teamSizeOptions = [1, 2, 3, 4, 5, 6];
-  const maxTeamsOptions = [4, 8, 16, 32, 64];
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-screen overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create a Tournament</DialogTitle>
+          <DialogTitle>Edit Tournament</DialogTitle>
           <DialogDescription>
-            Set up your tournament details and customize settings
+            Update the details for this tournament.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Basic Tournament Information */}
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
               name="name"
@@ -194,7 +195,7 @@ export function CreateTournamentDialog({
                 <FormItem>
                   <FormLabel>Tournament Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Summer Championship 2023" {...field} />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -209,59 +210,74 @@ export function CreateTournamentDialog({
                   <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Enter details about your tournament..."
-                      className="min-h-24"
+                      placeholder="Tournament description..."
                       {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    Provide details about prizes, rules, and other information
+                    Optional description of the tournament.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="format"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tournament Format</FormLabel>
-                  <FormControl>
-                    <RadioGroup
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="format"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tournament Format</FormLabel>
+                    <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
-                      className="grid grid-cols-1 gap-4 sm:grid-cols-2"
                     >
-                      {formatOptions.map((option) => (
-                        <div key={option.id}>
-                          <RadioGroupItem
-                            value={option.id}
-                            id={option.id}
-                            className="sr-only"
-                          />
-                          <Label
-                            htmlFor={option.id}
-                            className={cn(
-                              "flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground",
-                              field.value === option.id && "border-primary"
-                            )}
-                          >
-                            <div className="mb-2 text-2xl">{option.icon}</div>
-                            <div className="font-semibold">{option.title}</div>
-                            <div className="text-xs text-center text-muted-foreground">
-                              {option.description}
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select format" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="single_elimination">
+                          Single Elimination
+                        </SelectItem>
+                        <SelectItem value="double_elimination">
+                          Double Elimination
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="upcoming">Upcoming</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FormField
@@ -282,7 +298,7 @@ export function CreateTournamentDialog({
                       <SelectContent>
                         {teamSizeOptions.map((size) => (
                           <SelectItem key={size} value={size.toString()}>
-                            {size}v{size}
+                            {size} vs {size}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -357,7 +373,6 @@ export function CreateTournamentDialog({
                           selected={field.value}
                           onSelect={field.onChange}
                           initialFocus
-                          disabled={(date) => date < new Date()}
                         />
                       </PopoverContent>
                     </Popover>
@@ -373,7 +388,7 @@ export function CreateTournamentDialog({
                   <FormItem>
                     <FormLabel>Start Time</FormLabel>
                     <FormControl>
-                      <Input type="time" placeholder="18:00" {...field} />
+                      <Input type="time" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -390,7 +405,7 @@ export function CreateTournamentDialog({
                 Cancel
               </Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Creating..." : "Create Tournament"}
+                {submitting ? "Updating..." : "Update Tournament"}
               </Button>
             </DialogFooter>
           </form>

@@ -66,107 +66,151 @@ export async function POST(
 
     // Get random teams
     const maxTeams = tournament.maxTeams || 8;
-    const teams = await db
-      .collection("Teams")
-      .find({})
-      .limit(maxTeams)
-      .toArray();
+    const teamSize = tournament.teamSize || 4;
+
+    // Get all teams first
+    const allTeams = await db.collection("Teams").find({}).toArray();
+
+    // Filter teams to only include those with enough members for the tournament
+    const teamsWithEnoughMembers = allTeams.filter((team) => {
+      // Only look at the members array length
+      return Array.isArray(team.members) && team.members.length >= teamSize;
+    });
+
+    // Take the maximum number of teams needed
+    const teams = teamsWithEnoughMembers.slice(0, maxTeams);
+
+    console.log(
+      `Found ${teamsWithEnoughMembers.length} teams with ${teamSize} or more members, using ${teams.length}`
+    );
 
     if (teams.length === 0) {
       return NextResponse.json(
-        { error: "No teams found in the database" },
+        { error: "No teams available with enough members" },
         { status: 400 }
       );
     }
 
-    // Improved data retrieval for team members
-    const enhancedTeams = await Promise.all(
-      teams.map(async (team) => {
-        // Get team members
-        const teamMembers = await db
-          .collection("TeamMembers")
-          .find({ teamId: team._id })
-          .toArray();
+    // Collect all player IDs from teams
+    const playerIds = teams.flatMap((team) => {
+      const memberIds = team.members.map(
+        (m: { discordId: any }) => m.discordId
+      );
+      if (team.captain && team.captain.discordId) {
+        memberIds.push(team.captain.discordId);
+      }
+      return memberIds;
+    });
 
-        // Fetch players
-        const playerIds = teamMembers.map((member) => member.discordId);
-        const players = await db
-          .collection("Players")
-          .find({ discordId: { $in: playerIds } })
-          .toArray();
+    // Get player data for accurate ELO values
+    const players = await db
+      .collection("Players")
+      .find({ discordId: { $in: playerIds } })
+      .toArray();
 
-        // Format team members first so it's available for ELO calculation
-        const formattedMembers = teamMembers.map((member: any) => {
-          const player = players.find(
-            (p: any) => p.discordId === member.discordId
-          );
+    // Process teams with enhanced data
+    const enhancedTeams = teams.map((team) => {
+      // Team size from tournament
+      const teamSize = tournament.teamSize || 4;
+
+      // Process team members
+      const enhancedMembers = team.members.map(
+        (member: {
+          discordId: any;
+          discordUsername: any;
+          discordNickname: any;
+          discordProfilePicture: any;
+          role: any;
+        }) => {
+          // Find player data for this member
+          const player = players.find((p) => p.discordId === member.discordId);
+
+          // Get the correct ELO for this team size
+          let playerElo = 0;
+          if (player && player.stats && Array.isArray(player.stats)) {
+            const statForSize = player.stats.find(
+              (s) => s.teamSize === teamSize
+            );
+            if (statForSize && typeof statForSize.elo === "number") {
+              playerElo = statForSize.elo;
+            }
+          }
 
           return {
             discordId: member.discordId,
-            discordUsername: member.discordUsername || "Unknown",
-            discordNickname: member.discordNickname || null,
-            discordProfilePicture: member.discordProfilePicture || "",
+            discordUsername:
+              player?.discordUsername || member.discordUsername || "Unknown",
+            discordNickname:
+              player?.discordNickname || member.discordNickname || null,
+            discordProfilePicture:
+              player?.discordProfilePicture ||
+              member.discordProfilePicture ||
+              null,
             role: member.role || "member",
-            joinedAt: member.joinedAt || new Date().toISOString(),
-            elo: player?.elo || 0,
+            elo: playerElo,
           };
-        });
-
-        // Fetch the actual team document to get proper ELO
-        const completeTeam = await db
-          .collection("Teams")
-          .findOne({ _id: team._id });
-
-        // Use team's stored ELO value first
-        let teamElo = completeTeam?.teamElo || 0;
-
-        // If no stored value, calculate from members
-        if (!teamElo) {
-          const teamSize = tournament.teamSize || 5;
-          const sortedByElo = [...formattedMembers].sort(
-            (a, b) => (b.elo || 0) - (a.elo || 0)
-          );
-          const topMembers = sortedByElo.slice(0, teamSize);
-          teamElo = topMembers.reduce(
-            (sum, member) => sum + (member.elo || 0),
-            0
-          );
         }
+      );
 
-        // Format captain data
-        const captain = team.captain || {};
-        const captainPlayer = players.find(
-          (p: any) => p.discordId === captain.discordId
+      // Handle captain data
+      const captain = team.captain;
+      const captainPlayer = players.find(
+        (p) => p.discordId === captain.discordId
+      );
+
+      // Get captain's ELO for the right team size
+      let captainElo = 0;
+      if (
+        captainPlayer &&
+        captainPlayer.stats &&
+        Array.isArray(captainPlayer.stats)
+      ) {
+        const statForSize = captainPlayer.stats.find(
+          (s) => s.teamSize === teamSize
         );
+        if (statForSize && typeof statForSize.elo === "number") {
+          captainElo = statForSize.elo;
+        }
+      }
 
-        const captainData = {
-          discordId: captain.discordId || "",
-          discordUsername: captain.discordUsername || "Unknown",
-          discordNickname: captain.discordNickname || null,
-          discordProfilePicture: captain.discordProfilePicture || "",
-          elo: captainPlayer?.elo || 0,
-        };
+      const captainData = {
+        discordId: captain.discordId || "",
+        discordUsername:
+          captainPlayer?.discordUsername ||
+          captain.discordUsername ||
+          "Unknown",
+        discordNickname:
+          captainPlayer?.discordNickname || captain.discordNickname || null,
+        discordProfilePicture:
+          captainPlayer?.discordProfilePicture ||
+          captain.discordProfilePicture ||
+          null,
+        elo: captainElo,
+      };
 
-        return {
-          _id: team._id.toString(),
-          name: team.name,
-          tag: team.tag || "",
-          description: team.description || "",
-          teamElo,
-          members: formattedMembers,
-          captain: captainData,
-        };
-      })
-    );
+      // Calculate team ELO from top players
+      const sortedByElo = [...enhancedMembers].sort((a, b) => b.elo - a.elo);
+      const topMembers = sortedByElo.slice(0, teamSize);
+      const teamElo = topMembers.reduce((sum, member) => sum + member.elo, 0);
 
-    // Update tournament with teams
-    const teamIds = teams.map((team) => team._id);
+      // Return enhanced team data
+      return {
+        _id: team._id.toString(),
+        name: team.name,
+        tag: team.tag || "",
+        description: team.description || "",
+        teamElo,
+        members: enhancedMembers,
+        captain: captainData,
+      };
+    });
 
+    // Then update your code that inserts these into the tournament
     await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
-          teams: teamIds,
+          teams: teams.map((team) => team._id),
           registeredTeams: enhancedTeams,
           updatedAt: new Date(),
         },

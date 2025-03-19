@@ -416,7 +416,9 @@ function LeaderboardContent() {
                           showRank={false}
                         >
                           <Link
-                            href={`/player/${player._id}`}
+                            href={`/player/stats?playerName=${encodeURIComponent(
+                              player.discordUsername
+                            )}`}
                             className="flex items-center gap-3 hover:underline"
                           >
                             <div className="relative w-8 h-8 overflow-hidden rounded-full">

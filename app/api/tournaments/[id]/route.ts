@@ -22,6 +22,15 @@ interface Team {
   teamElo?: number;
 }
 
+interface TeamMember {
+  discordId?: string;
+  discordUsername?: string;
+  discordNickname?: string | null;
+  discordProfilePicture?: string | null;
+  role?: string;
+  elo?: number;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -47,60 +56,75 @@ export async function GET(
       );
     }
 
-    // Get registered teams
-    let registeredTeams: Team[] = [];
-    if (tournament.teams && Array.isArray(tournament.teams)) {
-      const teamIds = tournament.teams.map((teamId) =>
-        typeof teamId === "string" ? new ObjectId(teamId) : teamId
+    // Important: Fix the registeredTeams structure
+    if (
+      tournament.registeredTeams &&
+      Array.isArray(tournament.registeredTeams)
+    ) {
+      console.log(
+        "Processing registered teams in API:",
+        tournament.registeredTeams.length
       );
 
-      if (teamIds.length > 0) {
-        registeredTeams = (await db
-          .collection("Teams")
-          .find({
-            _id: { $in: teamIds },
-          })
-          .project({
-            _id: 1,
-            name: 1,
-            tag: 1,
-          })
-          .toArray()) as unknown as Team[];
-      }
+      // Enhance each team with proper structure
+      tournament.registeredTeams = tournament.registeredTeams.map((team) => {
+        // Ensure we have an object with proper structure
+        return {
+          _id: team._id ? team._id.toString() : "",
+          name: team.name || "Unknown Team",
+          tag: team.tag || "",
+          description: team.description || "",
+          teamElo: typeof team.teamElo === "number" ? team.teamElo : 0,
+
+          // Ensure members is always an array
+          members: Array.isArray(team.members)
+            ? team.members.map((member: TeamMember) => ({
+                discordId: member.discordId || "",
+                discordUsername: member.discordUsername || "Unknown",
+                discordNickname: member.discordNickname || null,
+                discordProfilePicture: member.discordProfilePicture || null,
+                role: member.role || "member",
+                elo: typeof member.elo === "number" ? member.elo : 0,
+              }))
+            : [],
+
+          // Ensure captain is a valid object
+          captain: team.captain
+            ? {
+                discordId: team.captain.discordId || "",
+                discordUsername: team.captain.discordUsername || "Unknown",
+                discordNickname: team.captain.discordNickname || null,
+                discordProfilePicture:
+                  team.captain.discordProfilePicture || null,
+                elo:
+                  typeof team.captain.elo === "number" ? team.captain.elo : 0,
+              }
+            : {
+                discordId: "",
+                discordUsername: "Unknown",
+                discordNickname: null,
+                discordProfilePicture: null,
+                elo: 0,
+              },
+        };
+      });
+    } else {
+      tournament.registeredTeams = [];
     }
 
-    // Convert ObjectId to string
+    // Convert ObjectId to string for the entire object
     const formattedTournament = {
       ...tournament,
       _id: tournament._id.toString(),
-      registeredTeams: registeredTeams.map((team) => ({
-        ...team,
-        _id: team._id.toString(),
-      })),
+      // For "teams" array (references to team IDs)
+      teams: tournament.teams
+        ? tournament.teams.map((teamId: string | ObjectId) =>
+            typeof teamId === "object" ? teamId.toString() : teamId
+          )
+        : [],
+      // Use the fixed registeredTeams we created above
+      registeredTeams: tournament.registeredTeams,
     };
-
-    if (tournament.registeredTeams && tournament.registeredTeams.length > 0) {
-      const teamIds = tournament.registeredTeams.map((team: any) =>
-        typeof team._id === "string" ? new ObjectId(team._id) : team._id
-      );
-
-      const teamDetails = await db
-        .collection("Teams")
-        .find({
-          _id: { $in: teamIds },
-        })
-        .toArray();
-
-      // Replace team references with full team objects
-      tournament.registeredTeams = tournament.registeredTeams.map(
-        (team: any) => {
-          const details = teamDetails.find(
-            (t: any) => t._id.toString() === team._id.toString()
-          );
-          return { ...team, ...details };
-        }
-      );
-    }
 
     return NextResponse.json(formattedTournament);
   } catch (error) {
