@@ -128,23 +128,15 @@ export function EditTournamentDialog({
   }, [tournament, form]);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setSubmitting(true);
-
     try {
-      // Combine date and time
-      const startDate = new Date(values.startDate);
-      const [hours, minutes] = values.startTime.split(":").map(Number);
-      startDate.setHours(hours, minutes);
+      setSubmitting(true);
 
       const response = await fetch(`/api/tournaments/${tournament._id}/edit`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...values,
-          startDate: startDate.toISOString(),
-        }),
+        body: JSON.stringify(values),
       });
 
       const data = await response.json();
@@ -153,22 +145,16 @@ export function EditTournamentDialog({
         throw new Error(data.error || "Failed to update tournament");
       }
 
-      toast({
-        title: "Success",
-        description: "Tournament updated successfully",
-      });
-
-      if (onSuccess) {
-        onSuccess(data.tournament);
-      }
-
-      onOpenChange(false);
+      // Call the onSuccess handler with fresh data
+      onSuccess && onSuccess(data.tournament || values);
     } catch (error) {
       console.error("Error updating tournament:", error);
       toast({
         title: "Error",
         description:
-          error instanceof Error ? error.message : "An error occurred",
+          error instanceof Error
+            ? error.message
+            : "Failed to update tournament",
         variant: "destructive",
       });
     } finally {

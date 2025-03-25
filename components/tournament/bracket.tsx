@@ -127,6 +127,19 @@ export function TournamentBracket({
     }
   }, [currentRoundData.matches]);
 
+  const getStatusBadge = (match: any) => {
+    // Handle various status formats and naming conventions
+    const status = match.status ? match.status.toLowerCase() : "upcoming";
+
+    if (status === "completed" || status === "complete") {
+      return <Badge className="bg-green-500">Completed</Badge>;
+    } else if (status === "in_progress") {
+      return <Badge className="bg-yellow-500">In Progress</Badge>;
+    } else {
+      return <Badge className="bg-blue-500">Upcoming</Badge>;
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
@@ -208,17 +221,7 @@ export function TournamentBracket({
                 {/* Match header with match number and status */}
                 <div className="flex justify-between px-4 py-2 text-sm bg-muted/50">
                   <span className="font-semibold">Match {idx + 1}</span>
-                  <div>
-                    {match.status === "upcoming" && (
-                      <Badge variant="outline">Upcoming</Badge>
-                    )}
-                    {match.status === "live" && (
-                      <Badge variant="destructive">Live</Badge>
-                    )}
-                    {match.status === "completed" && (
-                      <Badge variant="success">Completed</Badge>
-                    )}
-                  </div>
+                  {getStatusBadge(match)}
                 </div>
 
                 {/* Team A */}
@@ -312,9 +315,7 @@ export function TournamentBracket({
                 {/* Match footer with link to match details */}
                 <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
                   <span className="text-xs text-muted-foreground">
-                    {match.status === "upcoming" && "Match not started"}
-                    {match.status === "live" && "Match in progress"}
-                    {match.status === "completed" && "Match completed"}
+                    {/* {getStatusBadge(match)} */}
                   </span>
 
                   {(match.teamA || match.teamB) && (

@@ -109,6 +109,38 @@ export async function POST(
       );
     }
 
+    // Get maps for tournament
+    const allMaps = await db
+      .collection("Maps")
+      .find({ rankedMap: true })
+      .toArray();
+
+    if (!allMaps || allMaps.length === 0) {
+      return NextResponse.json(
+        { error: "No ranked maps found in the database" },
+        { status: 500 }
+      );
+    }
+
+    // Create the expanded map pool with small variants
+    const mapPool = allMaps.flatMap((map) => {
+      const maps = [
+        {
+          mapName: map.name,
+          gameMode: map.gameMode,
+        },
+      ];
+
+      if (map.smallOption) {
+        maps.push({
+          mapName: `${map.name} (Small)`,
+          gameMode: map.gameMode,
+        });
+      }
+
+      return maps;
+    });
+
     // Generate tournament matches for first round
     const tournamentMatches: TournamentMatch[] = [];
 
@@ -121,6 +153,18 @@ export async function POST(
           const tournamentMatchId = `${tournament._id.toString()}-R1-M${
             index + 1
           }`;
+
+          // Select 3 random maps from the pool without duplicates
+          const selectedMaps = [];
+          const mapPoolCopy = [...mapPool];
+
+          for (let i = 0; i < 3; i++) {
+            if (mapPoolCopy.length === 0) break;
+
+            const randomIndex = Math.floor(Math.random() * mapPoolCopy.length);
+            selectedMaps.push(mapPoolCopy[randomIndex]);
+            mapPoolCopy.splice(randomIndex, 1);
+          }
 
           // Update match and create tournament match entry
           match.tournamentMatchId = tournamentMatchId;
@@ -135,11 +179,7 @@ export async function POST(
             mapScores: [],
             status: "upcoming",
             createdAt: new Date(),
-            maps: [
-              { mapName: "Sanctuary", gameMode: "Extraction" },
-              { mapName: "Foundation", gameMode: "Attrition" },
-              { mapName: "Exchange", gameMode: "Capture the Flag" },
-            ],
+            maps: selectedMaps,
           });
         }
       });

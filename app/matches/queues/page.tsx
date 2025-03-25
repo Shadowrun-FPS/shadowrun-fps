@@ -80,6 +80,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { PlayerContextMenu } from "@/components/player-context-menu";
+import Link from "next/link";
 
 /*
   TODO SIN: Define a single source of truth for the Queue, QueuePlayer, etc. types
@@ -922,9 +924,21 @@ export default function QueuesPage() {
                                               <span className="mr-2 text-xs font-medium text-muted-foreground">
                                                 #{index + 1}
                                               </span>
-                                              <span className="text-sm truncate">
-                                                {player.discordNickname}
-                                              </span>
+                                              <PlayerContextMenu
+                                                player={{
+                                                  ...player,
+                                                  _id: player.discordId,
+                                                }}
+                                              >
+                                                <Link
+                                                  href={`/player/stats?playerName=${encodeURIComponent(
+                                                    player.discordUsername
+                                                  )}`}
+                                                  className="text-sm hover:underline"
+                                                >
+                                                  {player.discordNickname}
+                                                </Link>
+                                              </PlayerContextMenu>
                                             </div>
                                             <span className="text-xs text-muted-foreground">
                                               {formatJoinTime(player.joinedAt)}
@@ -1017,9 +1031,21 @@ export default function QueuesPage() {
                                                   index +
                                                   1}
                                               </span>
-                                              <span className="text-sm truncate">
-                                                {player.discordNickname}
-                                              </span>
+                                              <PlayerContextMenu
+                                                player={{
+                                                  ...player,
+                                                  _id: player.discordId,
+                                                }}
+                                              >
+                                                <Link
+                                                  href={`/player/stats?playerName=${encodeURIComponent(
+                                                    player.discordUsername
+                                                  )}`}
+                                                  className="text-sm hover:underline"
+                                                >
+                                                  {player.discordNickname}
+                                                </Link>
+                                              </PlayerContextMenu>
                                             </div>
                                             <span className="text-xs text-muted-foreground">
                                               {formatJoinTime(player.joinedAt)}
@@ -1058,9 +1084,21 @@ export default function QueuesPage() {
                                                     index +
                                                     1}
                                                 </span>
-                                                <span className="text-sm truncate">
-                                                  {player.discordNickname}
-                                                </span>
+                                                <PlayerContextMenu
+                                                  player={{
+                                                    ...player,
+                                                    _id: player.discordId,
+                                                  }}
+                                                >
+                                                  <Link
+                                                    href={`/player/stats?playerName=${encodeURIComponent(
+                                                      player.discordUsername
+                                                    )}`}
+                                                    className="text-sm hover:underline"
+                                                  >
+                                                    {player.discordNickname}
+                                                  </Link>
+                                                </PlayerContextMenu>
                                               </div>
                                               <span className="text-xs text-muted-foreground">
                                                 {formatJoinTime(
@@ -1120,11 +1158,23 @@ export default function QueuesPage() {
                                                             index +
                                                             1}
                                                         </span>
-                                                        <span className="text-base">
-                                                          {
-                                                            player.discordNickname
-                                                          }
-                                                        </span>
+                                                        <PlayerContextMenu
+                                                          player={{
+                                                            ...player,
+                                                            _id: player.discordId,
+                                                          }}
+                                                        >
+                                                          <Link
+                                                            href={`/player/stats?playerName=${encodeURIComponent(
+                                                              player.discordUsername
+                                                            )}`}
+                                                            className="text-base hover:underline"
+                                                          >
+                                                            {
+                                                              player.discordNickname
+                                                            }
+                                                          </Link>
+                                                        </PlayerContextMenu>
                                                       </div>
                                                       <span className="text-sm text-muted-foreground">
                                                         {formatJoinTime(
@@ -1240,7 +1290,21 @@ export default function QueuesPage() {
                                           <span className="mr-2 text-xs font-medium text-muted-foreground">
                                             #{index + 1}
                                           </span>
-                                          {player.discordNickname}
+                                          <PlayerContextMenu
+                                            player={{
+                                              ...player,
+                                              _id: player.discordId,
+                                            }}
+                                          >
+                                            <Link
+                                              href={`/player/stats?playerName=${encodeURIComponent(
+                                                player.discordUsername
+                                              )}`}
+                                              className="text-sm hover:underline"
+                                            >
+                                              {player.discordNickname}
+                                            </Link>
+                                          </PlayerContextMenu>
                                         </ContextMenuItem>
                                       )
                                     )
@@ -1377,9 +1441,21 @@ export default function QueuesPage() {
                                                     <span className="mr-2 text-xs font-medium text-muted-foreground">
                                                       #{index + 1}
                                                     </span>
-                                                    <span className="text-sm truncate">
-                                                      {player.discordNickname}
-                                                    </span>
+                                                    <PlayerContextMenu
+                                                      player={{
+                                                        ...player,
+                                                        _id: player.discordId,
+                                                      }}
+                                                    >
+                                                      <Link
+                                                        href={`/player/stats?playerName=${encodeURIComponent(
+                                                          player.discordUsername
+                                                        )}`}
+                                                        className="text-sm hover:underline"
+                                                      >
+                                                        {player.discordNickname}
+                                                      </Link>
+                                                    </PlayerContextMenu>
                                                   </div>
                                                   <span className="text-xs text-muted-foreground">
                                                     {formatJoinTime(
@@ -1476,9 +1552,23 @@ export default function QueuesPage() {
                                                           index +
                                                           1}
                                                       </span>
-                                                      <span className="text-sm truncate">
-                                                        {player.discordNickname}
-                                                      </span>
+                                                      <PlayerContextMenu
+                                                        player={{
+                                                          ...player,
+                                                          _id: player.discordId,
+                                                        }}
+                                                      >
+                                                        <Link
+                                                          href={`/player/stats?playerName=${encodeURIComponent(
+                                                            player.discordUsername
+                                                          )}`}
+                                                          className="text-sm hover:underline"
+                                                        >
+                                                          {
+                                                            player.discordNickname
+                                                          }
+                                                        </Link>
+                                                      </PlayerContextMenu>
                                                     </div>
                                                     <span className="text-xs text-muted-foreground">
                                                       {formatJoinTime(
@@ -1521,9 +1611,23 @@ export default function QueuesPage() {
                                                           index +
                                                           1}
                                                       </span>
-                                                      <span className="text-sm truncate">
-                                                        {player.discordNickname}
-                                                      </span>
+                                                      <PlayerContextMenu
+                                                        player={{
+                                                          ...player,
+                                                          _id: player.discordId,
+                                                        }}
+                                                      >
+                                                        <Link
+                                                          href={`/player/stats?playerName=${encodeURIComponent(
+                                                            player.discordUsername
+                                                          )}`}
+                                                          className="text-sm hover:underline"
+                                                        >
+                                                          {
+                                                            player.discordNickname
+                                                          }
+                                                        </Link>
+                                                      </PlayerContextMenu>
                                                     </div>
                                                     <span className="text-xs text-muted-foreground">
                                                       {formatJoinTime(
@@ -1585,11 +1689,23 @@ export default function QueuesPage() {
                                                                   index +
                                                                   1}
                                                               </span>
-                                                              <span className="text-base">
-                                                                {
-                                                                  player.discordNickname
-                                                                }
-                                                              </span>
+                                                              <PlayerContextMenu
+                                                                player={{
+                                                                  ...player,
+                                                                  _id: player.discordId,
+                                                                }}
+                                                              >
+                                                                <Link
+                                                                  href={`/player/stats?playerName=${encodeURIComponent(
+                                                                    player.discordUsername
+                                                                  )}`}
+                                                                  className="text-base hover:underline"
+                                                                >
+                                                                  {
+                                                                    player.discordNickname
+                                                                  }
+                                                                </Link>
+                                                              </PlayerContextMenu>
                                                             </div>
                                                             <span className="text-sm text-muted-foreground">
                                                               {formatJoinTime(
@@ -1712,7 +1828,21 @@ export default function QueuesPage() {
                                                 <span className="mr-2 text-xs font-medium text-muted-foreground">
                                                   #{index + 1}
                                                 </span>
-                                                {player.discordNickname}
+                                                <PlayerContextMenu
+                                                  player={{
+                                                    ...player,
+                                                    _id: player.discordId,
+                                                  }}
+                                                >
+                                                  <Link
+                                                    href={`/player/stats?playerName=${encodeURIComponent(
+                                                      player.discordUsername
+                                                    )}`}
+                                                    className="text-sm hover:underline"
+                                                  >
+                                                    {player.discordNickname}
+                                                  </Link>
+                                                </PlayerContextMenu>
                                               </ContextMenuItem>
                                             )
                                           )
