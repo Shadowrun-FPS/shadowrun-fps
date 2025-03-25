@@ -55,28 +55,13 @@ export function initSocket(httpServer: NetServer) {
   return io;
 }
 
-export function emitMatchUpdate(matchId: string, data: any) {
-  try {
-    let socketIO;
-    try {
-      socketIO = getSocketIO();
-    } catch (error) {
-      console.warn("Socket.io not initialized, cannot emit match update");
-      return false;
-    }
+export function emitMatchUpdate(matchData: any) {
+  if (!io) return;
 
-    console.log(`Emitting match update for match ${matchId}`);
-    socketIO.to(`match:${matchId}`).emit("match:update", data);
-    return true;
-  } catch (error) {
-    console.error("Error emitting match update:", error);
-    return false;
-  }
-}
+  io.to(`match:${matchData.matchId}`).emit("match:update", {
+    ...matchData,
+    timestamp: Date.now(),
+  });
 
-function getSocketIO() {
-  if (!io) {
-    throw new Error("Socket.io not initialized");
-  }
-  return io;
+  io.emit("matches:update", matchData);
 }

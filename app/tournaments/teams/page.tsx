@@ -5,7 +5,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
 import { CreateTeamForm } from "@/components/teams/create-team-form";
 import {
   Trophy,
@@ -22,8 +21,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
-  Crown,
-  Swords,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
@@ -62,13 +59,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 interface Team {
   _id: string;
@@ -118,8 +108,6 @@ export default function TeamsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
   const [view, setView] = useState<string>("grid");
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -194,24 +182,6 @@ export default function TeamsPage() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    const fetchUserTeam = async () => {
-      if (session?.user) {
-        try {
-          const response = await fetch("/api/teams/user-team");
-          if (response.ok) {
-            const data = await response.json();
-            setMyTeam(data.team);
-          }
-        } catch (error) {
-          console.error("Error fetching user team:", error);
-        }
-      }
-    };
-
-    fetchUserTeam();
-  }, [session]);
-
-  useEffect(() => {
     fetchTeams();
   }, [session?.user?.id, fetchTeams]);
 
@@ -281,53 +251,103 @@ export default function TeamsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleChallengeClick = (team: Team) => {
-    setSelectedTeam(team);
-  };
-
-  // Check if user is a team captain
-  const isTeamCaptain =
-    myTeam && myTeam.captain.discordId === session?.user?.id;
-
-  // Add this function inside your TeamsPage component
-  const isTeamFull = useCallback((team: { members: string | any[] }) => {
-    // You can adjust this logic based on your requirements
-    // For example, if a full team requires 5 members:
-    return team && team.members && team.members.length >= 4;
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="container py-8 mx-auto">
-        <h1 className="mb-6 text-2xl font-bold">Teams</h1>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="overflow-hidden">
-              <CardContent className="p-0">
-                <div className="p-6">
-                  <Skeleton className="w-2/3 h-6 mb-2" />
-                  <Skeleton className="w-full h-4 mb-4" />
-                  <div className="flex items-center gap-2 mb-4">
-                    <Skeleton className="w-8 h-8 rounded-full" />
-                    <Skeleton className="w-1/3 h-4" />
-                  </div>
-                  <Skeleton className="w-full h-20" />
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-end gap-2 p-4 border-t">
-                <Skeleton className="w-24 h-9" />
-                <Skeleton className="w-24 h-9" />
-              </CardFooter>
-            </Card>
-          ))}
+  const TeamCard = ({
+    team,
+    isMyTeam = false,
+  }: {
+    team: Team;
+    isMyTeam?: boolean;
+  }) => (
+    <Card
+      key={team._id}
+      className="overflow-hidden transition-colors border-l-4 hover:bg-muted/50 border-l-primary/10 hover:border-l-primary/20"
+    >
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{team.name || "Unnamed Team"}</CardTitle>
+            <CardDescription>{team.tag ? `[${team.tag}]` : ""}</CardDescription>
+          </div>
+          {/* Team ELO badge */}
+          <div className="flex flex-col items-end">
+            <Badge variant="outline" className="text-primary">
+              {team.teamElo || 1000} ELO
+            </Badge>
+          </div>
         </div>
-      </div>
-    );
-  }
+      </CardHeader>
 
-  function setOpen(arg0: boolean): void {
-    throw new Error("Function not implemented.");
-  }
+      <CardContent>
+        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
+          {team.description}
+        </p>
+
+        <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="p-2 rounded-md bg-muted/50">
+            <div className="flex items-center gap-2 text-sm">
+              <Trophy className="w-4 h-4 text-primary" />
+              <span>Captain</span>
+            </div>
+            <div className="mt-1 text-sm font-medium truncate">
+              {team.captain.discordNickname}
+            </div>
+          </div>
+
+          <div className="p-2 rounded-md bg-muted/50">
+            <div className="flex items-center gap-2 text-sm">
+              <Users className="w-4 h-4 text-primary" />
+              <span>Members</span>
+            </div>
+            <div className="mt-1 text-sm font-medium">
+              {team.members.length} players
+            </div>
+          </div>
+        </div>
+
+        {team.tournaments && team.tournaments.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-3">
+            {team.tournaments.map((tournamentId) => {
+              const tournament = tournaments.find(
+                (t) => t._id === tournamentId
+              );
+              return tournament ? (
+                <Badge key={tournamentId} variant="outline" className="text-xs">
+                  {tournament.name}
+                </Badge>
+              ) : null;
+            })}
+          </div>
+        )}
+      </CardContent>
+
+      <CardFooter className="flex justify-end gap-2 pt-2 pb-3 border-t">
+        <Link href={`/tournaments/teams/${team._id.toString()}`}>
+          <Button variant="outline" size="sm" className="h-8">
+            View Details
+          </Button>
+        </Link>
+
+        {isMyTeam ? (
+          <Link
+            href={`/tournaments/teams/${team._id.toString()}/manage`}
+          ></Link>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span>
+                <Button variant="secondary" size="sm" className="h-8" disabled>
+                  Challenge
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              <p>Coming Soon!</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+      </CardFooter>
+    </Card>
+  );
 
   return (
     <FeatureGate feature="teams">
@@ -500,55 +520,7 @@ export default function TeamsPage() {
                 <div className="mb-8">
                   <h2 className="mt-8 mb-4 text-xl font-semibold">My Team</h2>
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    <Card className="overflow-hidden">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-2">
-                          <div>
-                            <h3 className="text-xl font-bold">{myTeam.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              [{myTeam.tag}]
-                            </p>
-                          </div>
-                          <div className="px-3 py-1 text-sm font-medium rounded-full bg-primary/10 text-primary">
-                            {myTeam.teamElo || 3200} ELO
-                          </div>
-                        </div>
-                        <p className="mb-4 text-muted-foreground">
-                          {myTeam.description}
-                        </p>
-
-                        <div className="grid gap-4 mb-4 md:grid-cols-2">
-                          <div className="flex items-center gap-2">
-                            <Shield className="w-5 h-5 text-primary" />
-                            <div>
-                              <p className="text-sm font-medium">Captain</p>
-                              <p className="text-sm text-muted-foreground">
-                                {myTeam.captain.discordNickname || "Unknown"}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Users className="w-5 h-5 text-primary" />
-                            <div>
-                              <p className="text-sm font-medium">Members</p>
-                              <p className="text-sm text-muted-foreground">
-                                {myTeam.members.length} players
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-end gap-2 p-4 border-t">
-                        <Button
-                          variant="default"
-                          onClick={() =>
-                            router.push(`/tournaments/teams/${myTeam._id}`)
-                          }
-                        >
-                          View Details
-                        </Button>
-                      </CardFooter>
-                    </Card>
+                    <TeamCard team={myTeam} isMyTeam={true} />
 
                     <Card className="border-dashed bg-primary/5 border-primary/30">
                       <CardContent className="flex flex-col items-center justify-center h-full py-8">
@@ -658,96 +630,14 @@ export default function TeamsPage() {
                       {filteredTeams.length} teams found
                     </p>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <TabsList className="h-8 p-1 border rounded-md bg-muted/80 border-border/50">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <TabsTrigger
-                              value="grid"
-                              className="w-8 h-6 p-0 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="transition-transform duration-200 ease-in-out group-hover:scale-110"
-                              >
-                                <rect x="3" y="3" width="7" height="7" rx="1" />
-                                <rect
-                                  x="14"
-                                  y="3"
-                                  width="7"
-                                  height="7"
-                                  rx="1"
-                                />
-                                <rect
-                                  x="14"
-                                  y="14"
-                                  width="7"
-                                  height="7"
-                                  rx="1"
-                                />
-                                <rect
-                                  x="3"
-                                  y="14"
-                                  width="7"
-                                  height="7"
-                                  rx="1"
-                                />
-                              </svg>
-                            </TabsTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="bottom"
-                            className="text-xs font-medium"
-                          >
-                            <p>Grid View</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <TabsTrigger
-                              value="list"
-                              className="w-8 h-6 p-0 data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                            >
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="transition-transform duration-200 ease-in-out group-hover:scale-110"
-                              >
-                                <line x1="3" y1="6" x2="21" y2="6" />
-                                <line x1="3" y1="12" x2="21" y2="12" />
-                                <line x1="3" y1="18" x2="21" y2="18" />
-                              </svg>
-                            </TabsTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent
-                            side="bottom"
-                            className="text-xs font-medium"
-                          >
-                            <p>List View</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TabsList>
-                  </div>
+                  <TabsList className="h-8">
+                    <TabsTrigger value="grid" className="h-8 px-3">
+                      Grid
+                    </TabsTrigger>
+                    <TabsTrigger value="list" className="h-8 px-3">
+                      List
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
 
                 {loading ? (
@@ -779,348 +669,117 @@ export default function TeamsPage() {
                     <TabsContent value="grid">
                       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {currentTeams.map((team) => (
-                          <Card
-                            key={team._id}
-                            className="overflow-hidden flex flex-col h-[340px]"
-                          >
-                            <CardHeader className="pb-2">
-                              <div className="flex items-center justify-between mb-2">
-                                <div>
-                                  <h3 className="text-xl font-bold">
-                                    {team.name}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    [{team.tag}]
-                                  </p>
-                                </div>
-                                <div className="px-3 py-1 text-sm font-medium rounded-full bg-primary/10 text-primary">
-                                  {team.teamElo || 3200} ELO
-                                </div>
-                              </div>
-                              <p className="mb-4 text-muted-foreground">
-                                {team.description}
-                              </p>
-                            </CardHeader>
-                            <CardContent className="flex-1">
-                              <div className="flex flex-col space-y-4">
-                                <div className="flex items-center gap-2">
-                                  <Shield className="w-5 h-5 text-primary" />
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      Captain
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {team.captain.discordNickname ||
-                                        "Unknown"}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Users className="w-5 h-5 text-primary" />
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      Members
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {team.members.length} players
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                            <CardFooter className="flex justify-end gap-2 p-4 border-t">
-                              <TooltipProvider>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div>
-                                      {team.members.length >= 4 ? (
-                                        <ChallengeTeamDialog
-                                          team={team}
-                                          userTeam={myTeam ?? ({} as Team)}
-                                        />
-                                      ) : (
-                                        <Button disabled={true} size="sm">
-                                          <Swords className="w-5 h-5 mr-2" />
-                                          Challenge
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </TooltipTrigger>
-                                  {team.members.length < 4 && (
-                                    <TooltipContent>
-                                      <p>
-                                        Team needs at least 4 members to be
-                                        challenged
-                                      </p>
-                                    </TooltipContent>
-                                  )}
-                                </Tooltip>
-                              </TooltipProvider>
-
-                              <Button
-                                variant="outline"
-                                onClick={() =>
-                                  router.push(`/tournaments/teams/${team._id}`)
-                                }
-                              >
-                                View Details
-                              </Button>
-                            </CardFooter>
-                          </Card>
+                          <TeamCard key={team._id} team={team} />
                         ))}
                       </div>
                     </TabsContent>
 
                     <TabsContent value="list">
-                      <Card className="overflow-hidden">
-                        {currentTeams.map((team) => (
-                          <div
-                            key={team._id}
-                            className="p-4 border-b hover:bg-muted/30 last:border-b-0"
-                          >
-                            {/* Desktop and tablet layout (flex row) */}
-                            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                              {/* Team name and tag */}
-                              <div className="flex-shrink-0">
-                                <div className="text-lg font-bold">
-                                  {team.name}
-                                </div>
+                      <Card>
+                        <div className="border rounded-md">
+                          <div className="grid items-center grid-cols-12 p-4 border-b bg-muted/50">
+                            <div className="col-span-5 font-medium">Team</div>
+                            <div className="col-span-2 font-medium">
+                              Captain
+                            </div>
+                            <div className="col-span-2 font-medium">
+                              Members
+                            </div>
+                            <div className="col-span-2 font-medium text-right">
+                              ELO
+                            </div>
+                            <div className="col-span-1"></div>
+                          </div>
+
+                          {currentTeams.map((team) => (
+                            <div
+                              key={team._id}
+                              className="grid items-center grid-cols-12 p-4 border-b hover:bg-muted/30"
+                            >
+                              <div className="col-span-5">
+                                <div className="font-medium">{team.name}</div>
                                 <div className="text-sm text-muted-foreground">
                                   [{team.tag}]
                                 </div>
                               </div>
-
-                              {/* Team info - responsive layout */}
-                              <div className="flex flex-col w-full gap-4 md:flex-row md:items-center md:gap-8 md:w-auto">
-                                {/* Captain, Members, Record - stack on mobile, row on larger screens */}
-                                <div className="grid grid-cols-3 gap-4 md:flex md:items-center md:gap-6">
-                                  <div className="flex flex-col items-start">
-                                    <div className="flex items-center gap-1">
-                                      <Shield className="w-4 h-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium">
-                                        Captain:
-                                      </span>
-                                    </div>
-                                    <span className="text-sm truncate max-w-[120px]">
-                                      {team.captain.discordNickname ||
-                                        "Unknown"}
-                                    </span>
-                                  </div>
-
-                                  <div className="flex flex-col items-start">
-                                    <div className="flex items-center gap-1">
-                                      <Users className="w-4 h-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium">
-                                        Members:
-                                      </span>
-                                    </div>
-                                    <span className="text-sm">
-                                      {team.members.length} players
-                                    </span>
-                                  </div>
-
-                                  <div className="flex flex-col items-start">
-                                    <div className="flex items-center gap-1">
-                                      <Trophy className="w-4 h-4 text-muted-foreground" />
-                                      <span className="text-sm font-medium">
-                                        Record:
-                                      </span>
-                                    </div>
-                                    <span className="text-sm">
-                                      {team.wins || 0}-{team.losses || 0}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* ELO and Actions - stack on mobile, row on larger screens */}
-                                <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
-                                  {/* ELO */}
-                                  <div className="px-3 py-1 text-sm font-medium rounded-md bg-accent/80 text-foreground w-fit">
-                                    {team.teamElo || 3200} ELO
-                                  </div>
-
-                                  {/* Actions */}
-                                  <div className="flex gap-2">
-                                    <TooltipProvider>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div>
-                                            {team.members.length >= 4 ? (
-                                              <ChallengeTeamDialog
-                                                team={team}
-                                                userTeam={
-                                                  myTeam ?? ({} as Team)
-                                                }
-                                              />
-                                            ) : (
-                                              <Button
-                                                variant="default"
-                                                size="sm"
-                                                disabled
-                                              >
-                                                <Swords className="w-4 h-4 mr-2" />
-                                                Challenge
-                                              </Button>
-                                            )}
-                                          </div>
-                                        </TooltipTrigger>
-                                        {team.members.length < 4 && (
-                                          <TooltipContent>
-                                            <p>
-                                              Team needs at least 4 members to
-                                              be challenged
-                                            </p>
-                                          </TooltipContent>
-                                        )}
-                                      </Tooltip>
-                                    </TooltipProvider>
-
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        router.push(
-                                          `/tournaments/teams/${team._id}`
-                                        )
-                                      }
-                                    >
-                                      <ChevronRight className="w-4 h-4 mr-2" />
-                                      View Details
-                                    </Button>
-                                  </div>
-                                </div>
+                              <div className="col-span-2">
+                                {team.captain.discordNickname}
+                              </div>
+                              <div className="col-span-2">
+                                {team.members.length}
+                              </div>
+                              <div className="col-span-2 font-medium text-right text-primary">
+                                {team.teamElo}
+                              </div>
+                              <div className="col-span-1 text-right">
+                                <Link
+                                  href={`/tournaments/teams/${team._id.toString()}`}
+                                >
+                                  <Button variant="ghost" size="sm">
+                                    View
+                                  </Button>
+                                </Link>
                               </div>
                             </div>
-
-                            {/* Tournament badges */}
-                            <div className="flex flex-wrap gap-2 mt-3">
-                              {team.tournaments &&
-                              team.tournaments.length > 0 ? (
-                                team.tournaments.map((tournamentId, index) => {
-                                  const tournament = tournaments.find(
-                                    (t) => t._id === tournamentId
-                                  );
-                                  return tournament ? (
-                                    <Badge
-                                      key={index}
-                                      variant="outline"
-                                      className="text-xs"
-                                    >
-                                      {tournament.name}
-                                    </Badge>
-                                  ) : null;
-                                })
-                              ) : (
-                                <>
-                                  <Badge variant="outline" className="text-xs">
-                                    Summer Championship 2025
-                                  </Badge>
-                                  <Badge variant="outline" className="text-xs">
-                                    2025 Summer Seasonal
-                                  </Badge>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </Card>
                     </TabsContent>
 
-                    {/* Pagination UI - Updated for responsiveness */}
+                    {/* Pagination UI */}
                     {totalPages > 1 && (
-                      <div className="flex flex-col p-4 mt-6 border rounded-md bg-card sm:flex-row sm:items-center sm:justify-between">
-                        <div className="mb-4 text-sm text-muted-foreground sm:mb-0">
+                      <div className="flex items-center justify-between p-4 mt-6 border rounded-md bg-card">
+                        <div className="text-sm text-muted-foreground">
                           Showing {indexOfFirstTeam + 1} to{" "}
                           {Math.min(indexOfLastTeam, filteredTeams.length)} of{" "}
                           {filteredTeams.length} teams
                         </div>
-
-                        <div className="flex flex-wrap justify-center gap-2 sm:justify-end">
-                          {/* On mobile, show simplified controls */}
-                          <div className="flex gap-2 sm:hidden">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handlePageChange(Math.max(1, currentPage - 1))
-                              }
-                              disabled={currentPage === 1}
-                              className="w-8 h-8 p-0"
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                            </Button>
-
-                            <div className="flex items-center h-8 px-3 text-sm border rounded-md bg-background border-input">
-                              {currentPage} / {totalPages}
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handlePageChange(
-                                  Math.min(totalPages, currentPage + 1)
-                                )
-                              }
-                              disabled={currentPage === totalPages}
-                              className="w-8 h-8 p-0"
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(1)}
+                            disabled={currentPage === 1}
+                            className="h-8 px-3"
+                          >
+                            First
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handlePageChange(Math.max(1, currentPage - 1))
+                            }
+                            disabled={currentPage === 1}
+                            className="h-8 px-3"
+                          >
+                            <ChevronLeft className="w-4 h-4" />
+                          </Button>
+                          <div className="flex items-center h-8 px-3 text-sm border rounded-md bg-background border-input">
+                            Page {currentPage} of {totalPages}
                           </div>
-
-                          {/* On larger screens, show full controls */}
-                          <div className="hidden sm:flex sm:gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePageChange(1)}
-                              disabled={currentPage === 1}
-                              className="h-8 px-3"
-                            >
-                              First
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handlePageChange(Math.max(1, currentPage - 1))
-                              }
-                              disabled={currentPage === 1}
-                              className="h-8 px-3"
-                            >
-                              <ChevronLeft className="w-4 h-4" />
-                            </Button>
-
-                            <div className="flex items-center h-8 px-3 text-sm border rounded-md bg-background border-input">
-                              Page {currentPage} of {totalPages}
-                            </div>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() =>
-                                handlePageChange(
-                                  Math.min(totalPages, currentPage + 1)
-                                )
-                              }
-                              disabled={currentPage === totalPages}
-                              className="h-8 px-3"
-                            >
-                              <ChevronRight className="w-4 h-4" />
-                            </Button>
-
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handlePageChange(totalPages)}
-                              disabled={currentPage === totalPages}
-                              className="h-8 px-3"
-                            >
-                              Last
-                            </Button>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handlePageChange(
+                                Math.min(totalPages, currentPage + 1)
+                              )
+                            }
+                            disabled={currentPage === totalPages}
+                            className="h-8 px-3"
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePageChange(totalPages)}
+                            disabled={currentPage === totalPages}
+                            className="h-8 px-3"
+                          >
+                            Last
+                          </Button>
                         </div>
                       </div>
                     )}

@@ -3,8 +3,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { getRankIconPath } from "@/lib/ranks";
-import Link from "next/link";
-import { PlayerContextMenu } from "@/components/player-context-menu";
 
 interface TeamCardProps {
   team: any[];
@@ -37,29 +35,23 @@ export function TeamCard({
           Team ELO: {teamElo.toLocaleString()}
         </Badge>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-3">
         {team.map((player) => (
           <div
             key={player.discordId}
-            className="flex items-center justify-between p-2 rounded-md bg-[#1a2234]"
+            className="flex items-center justify-between p-2 rounded-lg bg-[#1a2234]"
           >
             <div className="flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={player.discordProfilePicture} />
-                <AvatarFallback className="bg-[#374151] text-white">
+                <AvatarImage
+                  src={player.discordProfilePicture || ""}
+                  alt={player.discordNickname}
+                />
+                <AvatarFallback>
                   {player.discordNickname?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <PlayerContextMenu player={player}>
-                <Link
-                  href={`/player/stats?playerName=${encodeURIComponent(
-                    player.discordUsername
-                  )}`}
-                  className="text-white hover:underline"
-                >
-                  {player.discordNickname}
-                </Link>
-              </PlayerContextMenu>
+              <span className="text-white">{player.discordNickname}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative w-6 h-6">
