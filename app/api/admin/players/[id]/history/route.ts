@@ -53,15 +53,10 @@ export async function GET(
     // Connect to database
     const { db } = await connectToDatabase();
 
-    // Check if ID is a Discord ID or ObjectId
-    const isDiscordId = /^\d+$/.test(params.id);
-
-    // Query based on ID type
-    const query = isDiscordId
-      ? { discordId: params.id }
-      : { _id: new ObjectId(params.id) };
-
-    const player = await db.collection("Players").findOne(query);
+    // Get player document
+    const player = await db
+      .collection("Players")
+      .findOne({ _id: new ObjectId(params.id) });
 
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });

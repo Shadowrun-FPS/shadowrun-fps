@@ -531,7 +531,7 @@ export async function POST(
         timestamp: Date.now(),
       };
 
-      emitMatchUpdate(params.matchId, eventData);
+      emitMatchUpdate(eventData);
       console.log("Emitted match update:", eventData);
     }
 
