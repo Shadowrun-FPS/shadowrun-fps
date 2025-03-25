@@ -19,25 +19,23 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
   const [player, setPlayer] = useState<Player | null>(null);
   const router = useRouter();
 
+  // Add logic to determine if it's a Discord ID
+  const isDiscordId = /^\d+$/.test(playerId);
+
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch player data
+      // Fetch player data using the ID (which should be a Discord ID)
       const playerResponse = await fetch(`/api/admin/players/${playerId}`);
       if (!playerResponse.ok) {
         throw new Error(`Error: ${playerResponse.status}`);
       }
       const playerData = await playerResponse.json();
-
-      // Debug log player data, especially bans
-      console.log("Player data:", playerData);
-      console.log("Player bans:", playerData.bans);
-
       setPlayer(playerData);
 
-      // Fetch player history
+      // Fetch history data using the Discord ID
       const historyResponse = await fetch(
         `/api/admin/players/${playerId}/history`
       );

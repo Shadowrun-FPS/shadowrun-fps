@@ -164,36 +164,23 @@ export default function TournamentDetailsPage() {
   const [isSeeded, setIsSeeded] = useState(false);
   const [unseeding, setUnseeding] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [isLoadingAction, setIsLoadingAction] = useState(false);
+  const [hasSeededTeams, setHasSeededTeams] = useState(false);
+  const [tournamentStarted, setTournamentStarted] = useState(false);
 
   const fetchTournament = async () => {
     try {
       setLoading(true);
 
-      const response = await fetch(`/api/tournaments/${params.id}`);
+      const response = await fetch(
+        `/api/tournaments/${params.id}?t=${Date.now()}`
+      );
       if (!response.ok) {
-        throw new Error("Failed to fetch tournament");
+        throw new Error("Failed to fetch tournament data");
       }
 
-      let data = await response.json();
-
-      // Ensure we have an empty bracket structure when no teams are registered
-      if (!data.registeredTeams || data.registeredTeams.length === 0) {
-        // Reset bracket to empty state
-        if (!data.brackets) {
-          data.brackets = { rounds: [] };
-        }
-
-        // Ensure there's at least an empty first round
-        if (!data.brackets.rounds || data.brackets.rounds.length === 0) {
-          data.brackets.rounds = [
-            {
-              name: "Round 1",
-              matches: [],
-            },
-          ];
-        }
-      }
-
+      const data = await response.json();
       setTournament(data);
 
       // Set current round to the latest active round
@@ -244,8 +231,21 @@ export default function TournamentDetailsPage() {
       };
 
       ensureBracketStructure(data);
+
+      // Check if teams have already been seeded
+      setHasSeededTeams(
+        data.brackets?.rounds?.[0]?.matches?.some(
+          (match: any) => match.teamA || match.teamB
+        ) || false
+      );
+
+      // Check if tournament is already started
+      setTournamentStarted(
+        data.status === "in_progress" || data.status === "active"
+      );
     } catch (error) {
-      console.error("Failed to fetch tournament", error);
+      console.error("Error fetching tournament data:", error);
+      setError("Failed to load tournament");
     } finally {
       setLoading(false);
     }
@@ -312,22 +312,6 @@ export default function TournamentDetailsPage() {
         (match: any) => match.teamA || match.teamB
       );
       setIsSeeded(!!hasSeededTeams);
-    }
-  }, [tournament]);
-
-  useEffect(() => {
-    if (tournament) {
-      console.log("Tournament data:", tournament);
-      if (tournament.registeredTeams && tournament.registeredTeams.length > 0) {
-        const team = tournament.registeredTeams[0];
-        console.log("Team complete object:", JSON.stringify(team));
-        console.log(
-          "Team members type:",
-          Array.isArray(team.members) ? "Array" : typeof team.members
-        );
-        console.log("Captain object:", team.captain);
-        console.log("Team ELO type:", typeof team.teamElo);
-      }
     }
   }, [tournament]);
 
@@ -550,40 +534,37 @@ export default function TournamentDetailsPage() {
   };
 
   const handleUndoSeeding = async () => {
-    if (!tournament) return;
-
     try {
-      setUnseeding(true);
+      setIsLoadingAction(true);
 
       const response = await fetch(
-        `/api/tournaments/${tournament._id}/unseed`,
+        `/api/tournaments/${tournament?._id}/undo-seeding`,
         {
           method: "POST",
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to undo seeding");
+        throw new Error("Failed to undo seeding");
       }
+
+      // Refresh the tournament data
+      await fetchTournament();
+      setHasSeededTeams(false);
 
       toast({
         title: "Seeding removed",
-        description: "Tournament bracket has been reset",
+        description: "Teams have been unseeded successfully",
       });
-
-      // Refresh tournament data
-      await fetchTournament();
     } catch (error) {
-      console.error("Error removing seeding:", error);
+      console.error("Failed to undo seeding:", error);
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to undo seeding",
+        description: "Failed to undo team seeding",
         variant: "destructive",
       });
     } finally {
-      setUnseeding(false);
+      setIsLoadingAction(false);
     }
   };
 
@@ -593,6 +574,56 @@ export default function TournamentDetailsPage() {
       title: "Success",
       description: "Tournament updated successfully",
     });
+  };
+
+  const resetTournament = async () => {
+    try {
+      setIsLoadingAction(true);
+
+      // Check if user is admin or has the specific Discord ID
+      const isAuthorized =
+        isAdmin || session?.user?.id === "238329746671271936";
+
+      if (!isAuthorized) {
+        toast({
+          title: "Permission Denied",
+          description: "You don't have permission to reset this tournament.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/tournaments/${params.id}/reset`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to reset tournament");
+      }
+
+      // Refresh the tournament data
+      await fetchTournament();
+
+      toast({
+        title: "Tournament Reset",
+        description: "The tournament has been reset to upcoming status.",
+      });
+
+      // Close the confirmation dialog
+      setResetConfirmOpen(false);
+    } catch (error) {
+      console.error("Error resetting tournament:", error);
+      toast({
+        title: "Error",
+        description: "Failed to reset the tournament. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingAction(false);
+    }
   };
 
   if (loading) {
@@ -767,29 +798,6 @@ export default function TournamentDetailsPage() {
                     )
                   }
                 />
-              </div>
-            )}
-
-            {/* Add a debug section at the bottom of the bracket tab for admins */}
-            {isAdmin && (
-              <div className="p-4 mt-8 border rounded bg-muted/10">
-                <h3 className="mb-2 text-lg font-semibold">
-                  Tournament Seeding (Admin View)
-                </h3>
-                <div className="grid grid-cols-4 gap-4">
-                  {tournament.registeredTeams.map((team, index) => (
-                    <div
-                      key={team._id}
-                      className="flex items-center gap-2 p-2 border rounded"
-                    >
-                      <Badge variant="outline">{index + 1}</Badge>
-                      <span>{team.name}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
-                        ELO: {team.teamElo || "N/A"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
               </div>
             )}
           </TabsContent>
@@ -1021,126 +1029,92 @@ export default function TournamentDetailsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Admin Controls */}
-        {tournament?.status === "upcoming" && isAdmin && (
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {/* Admin control buttons */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={isSeeded ? handleUndoSeeding : handlePreseed}
-                    disabled={
-                      (isSeeded ? unseeding : seeding) ||
-                      tournament.status !== "upcoming" ||
-                      (!isSeeded &&
-                        tournament.registeredTeams.length !==
-                          (tournament.maxTeams || 8))
-                    }
-                    className="flex items-center gap-1"
-                  >
-                    {isSeeded ? (
-                      unseeding ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" /> Removing
-                          Seeding...
-                        </>
-                      ) : (
-                        <>
-                          <RotateCcw className="w-4 h-4" /> Undo Seeding
-                        </>
-                      )
-                    ) : seeding ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />{" "}
-                        Pre-seeding...
-                      </>
-                    ) : (
-                      <>
-                        <Shuffle className="w-4 h-4" /> Pre-seed Teams
-                      </>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSeeded ? (
-                    <p>Reset the tournament bracket to unseeded state</p>
-                  ) : (
-                    tournament.registeredTeams.length !==
-                      (tournament.maxTeams || 8) && (
-                      <p>
-                        ({tournament.registeredTeams.length}/
-                        {tournament.maxTeams || 8} teams required for
-                        pre-seeding)
-                      </p>
-                    )
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+        {/* Tournament Actions */}
+        {isAdmin && (
+          <div className="mt-6 space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={hasSeededTeams ? handleUndoSeeding : handlePreseed}
+                disabled={
+                  isLoadingAction || tournament.registeredTeams.length < 2
+                }
+              >
+                {isLoadingAction ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : hasSeededTeams ? (
+                  "Undo Seeding"
+                ) : (
+                  "Pre-Seed Teams"
+                )}
+              </Button>
 
-            {/* Add testing buttons */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={() => handleFillTournament()}
-                  >
-                    <Users className="w-4 h-4" />
-                    Fill Tournament
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Fill tournament with random teams (testing)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleFillTournament}
+                disabled={isLoadingAction}
+              >
+                Fill Tournament
+              </Button>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2 text-red-500 hover:text-red-600"
-                    onClick={() => handleClearTournament()}
-                  >
-                    <X className="w-4 h-4" />
-                    Clear Teams
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Remove all teams from tournament (testing)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearTournament}
+                disabled={isLoadingAction}
+              >
+                Clear Teams
+              </Button>
 
-            {isAdmin &&
-              tournament?.status === "upcoming" &&
-              tournament.registeredTeams.length === tournament.maxTeams && (
+              {/* Conditional rendering for Start/Reset Tournament button */}
+              {tournamentStarted ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setResetConfirmOpen(true)}
+                  disabled={isLoadingAction}
+                >
+                  Reset Tournament
+                </Button>
+              ) : (
                 <Button
                   variant="default"
                   size="sm"
-                  className="text-white bg-green-600 hover:bg-green-700"
                   onClick={handleLaunchTournament}
-                  disabled={launching}
+                  disabled={
+                    isLoadingAction ||
+                    tournament.registeredTeams.length < 2 ||
+                    tournament.status === "completed"
+                  }
                 >
-                  {launching ? (
+                  {isLoadingAction ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Launching...
+                      Processing...
                     </>
                   ) : (
                     <>
                       <Play className="w-4 h-4 mr-2" />
-                      Launch Tournament
+                      Start Tournament
                     </>
                   )}
                 </Button>
               )}
+            </div>
+
+            {/* Note about the reset functionality when tournament is active */}
+            {tournament.status === "active" && (
+              <p className="text-sm text-muted-foreground">
+                Resetting the tournament will change its status back to
+                &quot;upcoming&quot; and allow teams to register again, but will
+                preserve existing registrations.
+              </p>
+            )}
           </div>
         )}
 
@@ -1269,7 +1243,40 @@ export default function TournamentDetailsPage() {
             onSuccess={handleEditSuccess}
           />
         )}
+
+        {/* Reset Tournament Confirmation Dialog */}
+        <Dialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Tournament?</DialogTitle>
+              <DialogDescription>
+                This will change the tournament status back to
+                &quot;upcoming&quot; and allow teams to register again. Bracket
+                information will be preserved but the tournament will no longer
+                be in progress.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setResetConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={resetTournament}
+                disabled={isLoadingAction}
+              >
+                {isLoadingAction ? "Resetting..." : "Reset Tournament"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
+}
+function setError(arg0: string) {
+  throw new Error("Function not implemented.");
 }

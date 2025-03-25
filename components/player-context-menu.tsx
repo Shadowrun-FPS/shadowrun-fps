@@ -52,7 +52,7 @@ export function PlayerContextMenu({
   };
 
   const handleViewHistory = () => {
-    router.push(`/admin/players/${player._id}/history`);
+    router.push(`/admin/players/${player.discordId}/history`);
   };
 
   const handleViewModPanel = () => {
@@ -83,12 +83,11 @@ export function PlayerContextMenu({
             <span>{player.isBanned ? "Update Ban" : "Ban Player"}</span>
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem
-            onClick={handleViewHistory}
-            className="cursor-pointer flex items-center gap-2 text-indigo-600 focus:text-indigo-600 focus:bg-indigo-50"
-          >
-            <History className="h-4 w-4" />
-            <span>View Player History</span>
+          <ContextMenuItem asChild>
+            <Link href={`/admin/players/${player.discordId}/history`}>
+              <History className="w-4 h-4 mr-2" />
+              View Player History
+            </Link>
           </ContextMenuItem>
           <ContextMenuItem
             onClick={handleViewModPanel}

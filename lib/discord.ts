@@ -1,111 +1,59 @@
-interface WebhookPayload {
-  matchId: string;
-  type: "match_ready" | "match_start" | "match_complete";
-  teams: {
-    team1: any;
-    team2: any;
-  };
-  result?: {
-    team1Score?: number;
-    team2Score?: number;
-  };
-}
+/**
+ * Utility functions for Discord integration
+ */
 
-export async function sendDiscordWebhook(payload: WebhookPayload) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) return;
+/**
+ * Sends a message to a Discord webhook
+ * @param webhookUrl The Discord webhook URL
+ * @param content The message content to send
+ * @param embeds Optional embeds to include in the message
+ * @returns Promise that resolves when the webhook is sent
+ */
+export async function sendDiscordWebhook(
+  webhookUrl: string,
+  content: string,
+  embeds?: any[]
+): Promise<Response> {
+  if (!webhookUrl) {
+    console.warn("No webhook URL provided for Discord notification");
+    return new Response("No webhook URL", { status: 400 });
+  }
 
   try {
-    let content = "";
-    let embeds = [];
-
-    switch (payload.type) {
-      case "match_ready":
-        content = "🎮 **Match Ready**";
-        embeds = [
-          {
-            title: "Teams",
-            fields: [
-              {
-                name: "Team 1",
-                value: payload.teams.team1.players
-                  .map((p: any) => p.discordNickname)
-                  .join("\n"),
-                inline: true,
-              },
-              {
-                name: "Team 2",
-                value: payload.teams.team2.players
-                  .map((p: any) => p.discordNickname)
-                  .join("\n"),
-                inline: true,
-              },
-            ],
-            color: 0x00ff00,
-          },
-        ];
-        break;
-
-      case "match_start":
-        content = "🚀 **Match Started**";
-        embeds = [
-          {
-            title: "Match Details",
-            fields: [
-              {
-                name: "Team 1",
-                value: `Average ELO: ${Math.round(
-                  payload.teams.team1.averageElo
-                )}`,
-                inline: true,
-              },
-              {
-                name: "Team 2",
-                value: `Average ELO: ${Math.round(
-                  payload.teams.team2.averageElo
-                )}`,
-                inline: true,
-              },
-            ],
-            color: 0x0099ff,
-          },
-        ];
-        break;
-
-      case "match_complete":
-        content = "🏆 **Match Complete**";
-        embeds = [
-          {
-            title: "Match Results",
-            fields: [
-              {
-                name: "Team 1",
-                value: `Score: ${payload.result?.team1Score}`,
-                inline: true,
-              },
-              {
-                name: "Team 2",
-                value: `Score: ${payload.result?.team2Score}`,
-                inline: true,
-              },
-            ],
-            color: 0xff9900,
-          },
-        ];
-        break;
-    }
-
-    await fetch(webhookUrl, {
+    const response = await fetch(webhookUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         content,
         embeds,
-        username: "Tournament Bot",
-        avatar_url: "https://your-bot-avatar-url.com",
       }),
     });
+
+    if (!response.ok) {
+      console.error("Failed to send Discord webhook:", await response.text());
+    }
+
+    return response;
   } catch (error) {
-    console.error("Failed to send Discord webhook:", error);
+    console.error("Error sending Discord webhook:", error);
+    throw error;
   }
+}
+
+/**
+ * Sends a direct message to a user via Discord bot
+ * @param userId The Discord user ID to send the message to
+ * @param content The message content
+ * @returns Promise that resolves when the message is sent
+ */
+export async function sendDiscordDM(
+  userId: string,
+  content: string
+): Promise<boolean> {
+  // This would require a Discord bot token and API integration
+  // For now, we'll just log the message and return success
+  console.log(`[Discord DM to ${userId}]: ${content}`);
+  return true;
 }
