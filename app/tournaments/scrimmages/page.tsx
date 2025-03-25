@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useToast } from "@/components/ui/use-toast"; // keep this import
+import { cn } from "@/lib/utils";
+import { FeatureGate } from "@/components/feature-gate"; // This might be an unused import
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,10 +17,15 @@ import { toast } from "@/components/ui/use-toast";
 
 interface MapSelection {
   id: string;
+}
+
+interface Queue {
+  _id: string;
   name: string;
   isSmallVariant: boolean;
   image?: string;
 }
+
 
 interface Scrimmage {
   _id: string;

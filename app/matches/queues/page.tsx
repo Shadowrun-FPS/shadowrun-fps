@@ -83,6 +83,14 @@ import { useRouter } from "next/navigation";
 import { PlayerContextMenu } from "@/components/player-context-menu";
 import Link from "next/link";
 
+/*
+  TODO SIN: Define a single source of truth for the Queue, QueuePlayer, etc. types
+  I see QueuePlayer defined in multiple places, Let's define it once and import it where needed.
+  This will help ensure that the types are consistent across the application. Frotend, backend, and make it easier to update them in the future
+
+  Look into defining these types in a shared file like types.ts or models.ts, then import them where needed.
+  Can use mongoose models as a reference for the types
+*/
 interface QueuePlayer {
   discordId: string;
   discordUsername: string;
@@ -452,6 +460,9 @@ export default function QueuesPage() {
   // Update the canLaunchMatch function to check for proper roles
   const canLaunchMatch = (queue: Queue) => {
     // Check if user has the required roles
+    // TODO SIN: Create a helper function to check if a user has at least one of the required roles
+    // I see you doing this role check in multiple places
+    // ex. hasAnyRole(user, ["admin", "moderator", "founder", "GM"])
     const hasRequiredRole =
       session?.user?.id === "238329746671271936" || // Your ID
       (session?.user?.roles &&
