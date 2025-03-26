@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast"; // keep this import
 import { cn } from "@/lib/utils";
@@ -21,6 +22,9 @@ import Link from "next/link";
 
 interface MapSelection {
   id: string;
+  name: string;
+  isSmallVariant: boolean;
+  image?: string;
 }
 
 interface Queue {
@@ -29,7 +33,6 @@ interface Queue {
   isSmallVariant: boolean;
   image?: string;
 }
-
 
 interface Scrimmage {
   _id: string;
