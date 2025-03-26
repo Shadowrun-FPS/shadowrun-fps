@@ -1,26 +1,64 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { ObjectId } from "mongodb";
 
 export interface IScrimmage extends Document {
-  challengerTeamId: string;
-  challengedTeamId: string;
-  proposedDate: Date;
-  selectedMaps: string[];
-  status: "pending" | "accepted" | "rejected" | "completed" | "counterProposal";
-  counterProposedDate?: Date;
-  winner?: string;
-  mapScores?: {
-    mapId: string;
-    mapName: string;
-    challengerScore: number;
-    challengedScore: number;
-    winner: string;
-  }[];
-  createdAt: Date;
-  updatedAt: Date;
+  _id: ObjectId | string;
+  challengerTeamId: ObjectId | string;
+  challengedTeamId: ObjectId | string;
+  challengerTeam?: Team;
+  challengedTeam?: Team;
+  challengerCaptain?: {
+    discordId: string;
+    discordUsername: string;
+    discordNickname?: string;
+    discordProfilePicture?: string;
+  };
+  proposedDate: string;
+  selectedMaps: Array<{
+    id: string;
+    name: string;
+    isSmallVariant: boolean;
+    image?: string;
+  }>;
+  message?: string;
+  status: "pending" | "accepted" | "rejected" | "completed" | "cancelled";
+  createdAt: string;
+  updatedAt: string;
+  notifiedAt?: string;
+  scrimmageId?: string;
+  mapScores?: Array<{
+    teamAScore: number;
+    teamBScore: number;
+    winner?: string;
+    teamASubmitted?: boolean;
+    teamBSubmitted?: boolean;
+  }>;
+}
+
+export interface Team {
+  _id: ObjectId | string;
+  name: string;
+  tag: string;
+  captain: {
+    discordId: string;
+    discordUsername: string;
+    discordNickname?: string;
+    discordProfilePicture?: string;
+  };
+  members: Array<{
+    discordId: string;
+    discordUsername: string;
+    discordNickname?: string;
+    discordProfilePicture?: string;
+    role: string;
+  }>;
 }
 
 const ScrimmageSchema = new Schema(
   {
+    _id: {
+      type: Schema.Types.ObjectId,
+    },
     challengerTeamId: {
       type: Schema.Types.ObjectId,
       ref: "Team",
@@ -31,36 +69,62 @@ const ScrimmageSchema = new Schema(
       ref: "Team",
       required: true,
     },
+    challengerTeam: {
+      type: Schema.Types.ObjectId,
+      ref: "Team",
+    },
+    challengedTeam: {
+      type: Schema.Types.ObjectId,
+      ref: "Team",
+    },
+    challengerCaptain: {
+      discordId: String,
+      discordUsername: String,
+      discordNickname: String,
+      discordProfilePicture: String,
+    },
     proposedDate: {
-      type: Date,
+      type: String,
       required: true,
     },
     selectedMaps: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "Map",
-        required: true,
+        id: String,
+        name: String,
+        isSmallVariant: Boolean,
+        image: String,
       },
     ],
+    message: String,
     status: {
       type: String,
-      enum: ["pending", "accepted", "rejected", "completed", "counterProposal"],
+      enum: [
+        "pending",
+        "accepted",
+        "rejected",
+        "completed",
+        "cancelled",
+        "forfeited",
+      ],
       default: "pending",
     },
-    counterProposedDate: {
-      type: Date,
+    createdAt: {
+      type: String,
+      required: true,
     },
-    winner: {
-      type: Schema.Types.ObjectId,
-      ref: "Team",
+    updatedAt: {
+      type: String,
+      required: true,
     },
+    notifiedAt: String,
+    scrimmageId: String,
     mapScores: [
       {
-        mapId: { type: Schema.Types.ObjectId, ref: "Map" },
-        mapName: String,
-        challengerScore: Number,
-        challengedScore: Number,
-        winner: { type: Schema.Types.ObjectId, ref: "Team" },
+        teamAScore: Number,
+        teamBScore: Number,
+        winner: String,
+        teamASubmitted: Boolean,
+        teamBSubmitted: Boolean,
       },
     ],
   },

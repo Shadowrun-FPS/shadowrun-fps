@@ -25,6 +25,9 @@ interface TeamCardProps {
   onClick?: () => void;
   description?: string;
   userTeam?: any;
+  scrimmageWins?: number;
+  scrimmageLosses?: number;
+  tournamentWins?: number;
 }
 
 export function TeamCard({
@@ -37,6 +40,9 @@ export function TeamCard({
   onClick,
   description = "",
   userTeam,
+  scrimmageWins = 0,
+  scrimmageLosses = 0,
+  tournamentWins = 0,
 }: TeamCardProps) {
   const { data: session } = useSession();
   const isCaptain = session?.user?.id === members[0]?.discordId;
@@ -95,6 +101,27 @@ export function TeamCard({
                 {activeMembersCount} players
               </div>
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Queue Record:</span>
+              <span>
+                {wins || 0}-{losses || 0}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Scrimmage Record:</span>
+              <span>
+                {scrimmageWins || 0}-{scrimmageLosses || 0}
+              </span>
+            </div>
+            {tournamentWins > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tournament Wins:</span>
+                <span>{tournamentWins}</span>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

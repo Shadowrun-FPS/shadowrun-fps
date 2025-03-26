@@ -64,7 +64,7 @@ interface Team {
     discordId: string;
     discordNickname?: string;
     discordUsername?: string;
-    discordAvatar?: string;
+    discordProfilePicture?: string;
   };
   members: any[];
 }
@@ -81,6 +81,7 @@ interface MapItem {
 }
 
 interface MapSelection {
+  gameMode: string;
   id: string; // Map ObjectId
   name: string; // Map name
   isSmallVariant: boolean; // Whether this is a small variant
@@ -194,32 +195,30 @@ export function ChallengeTeamDialog({
   }, [open]);
 
   // Handle map selection
-  const handleMapSelection = (map: MapItem) => {
-    const selectedMap: MapSelection = {
-      id: map._id,
-      name: map.name,
-      isSmallVariant: map.isSmallVariant,
-      image: map.image,
-    };
+  const handleMapSelect = (map: any) => {
+    if (selectedMaps.some((m) => m.id === map._id)) {
+      setSelectedMaps(selectedMaps.filter((m) => m.id !== map._id));
+    } else {
+      if (selectedMaps.length < 3) {
+        // Make sure to include the gameMode
+        setSelectedMaps([
+          ...selectedMaps,
+          {
+            id: map._id,
+            name: map.name,
+            isSmallVariant: map.isSmallVariant,
+            image: map.image,
+            gameMode: map.gameMode,
+          },
+        ]);
 
-    setSelectedMaps((prev) => {
-      // If already selected, remove it
-      const existingIndex = prev.findIndex(
-        (m) => m.id === map._id && m.isSmallVariant === map.isSmallVariant
-      );
-
-      if (existingIndex >= 0) {
-        return prev.filter((_, i) => i !== existingIndex);
+        console.log("Selected map with gameMode:", {
+          id: map._id,
+          name: map.name,
+          gameMode: map.gameMode,
+        });
       }
-
-      // If we already have 3 maps, replace the last one
-      if (prev.length >= 3) {
-        return [...prev.slice(0, 2), selectedMap];
-      }
-
-      // Otherwise, add it
-      return [...prev, selectedMap];
-    });
+    }
   };
 
   // Handle suggested time selection
@@ -250,18 +249,21 @@ export function ChallengeTeamDialog({
           name: nerveCenterSmall.name,
           isSmallVariant: true,
           image: nerveCenterSmall.image,
+          gameMode: "",
         },
         {
           id: lobbySmall._id,
           name: lobbySmall.name,
           isSmallVariant: true,
           image: lobbySmall.image,
+          gameMode: "",
         },
         {
           id: powerStation._id,
           name: powerStation.name,
           isSmallVariant: false,
           image: powerStation.image,
+          gameMode: "",
         },
       ]);
       setMapSelectionMethod("standard");
@@ -294,6 +296,7 @@ export function ChallengeTeamDialog({
         id: map._id,
         name: map.name,
         isSmallVariant: map.isSmallVariant,
+        gameMode: map.gameMode,
         image: map.image,
       }))
     );
@@ -302,42 +305,56 @@ export function ChallengeTeamDialog({
 
   // Handle form submission
   const handleSubmit = async () => {
-    if (!date || selectedMaps.length !== 3 || !isTeamCaptain) {
-      return;
-    }
-
     try {
       setIsSubmitting(true);
 
-      // Adjust date based on time option
-      const proposedDate = new Date(date);
-      if (timeOption === "custom") {
-        // Parse custom time (HH:MM format)
-        const [hours, minutes] = customTime.split(":").map(Number);
-        proposedDate.setHours(hours, minutes, 0, 0);
-      } else if (timeOption === "morning") {
-        proposedDate.setHours(10, 0, 0, 0);
-      } else if (timeOption === "afternoon") {
-        proposedDate.setHours(14, 0, 0, 0);
-      } else {
-        proposedDate.setHours(19, 0, 0, 0);
+      if (!date) {
+        toast({
+          title: "Error",
+          description: "Please select a date for the scrimmage",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
       }
 
-      // Create the scrimmage data with complete map information
-      const formData = {
-        challengerTeamId: userTeam._id,
+      if (selectedMaps.length === 0) {
+        toast({
+          title: "Error",
+          description: "Please select at least one map",
+          variant: "destructive",
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Format the selected maps to include gameMode
+      const formattedMaps = selectedMaps.map((map) => ({
+        id: map.id,
+        name: map.name,
+        isSmallVariant: map.isSmallVariant,
+        image: map.image,
+        gameMode: map.gameMode,
+      }));
+
+      console.log("Sending challenge with data:", {
         challengedTeamId: team._id,
-        proposedDate: proposedDate.toISOString(),
-        selectedMaps: selectedMaps, // Now sending the complete map objects
+        proposedDate: date.toISOString(),
+        selectedMaps: formattedMaps,
         message,
-      };
+      });
 
       const response = await fetch("/api/scrimmages/challenge", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          challengedTeamId: team._id,
+          proposedDate: date.toISOString(),
+          selectedMaps: formattedMaps,
+          message,
+        }),
       });
 
       if (!response.ok) {
@@ -345,13 +362,11 @@ export function ChallengeTeamDialog({
         throw new Error(errorData.error || "Failed to send challenge");
       }
 
+      setOpen(false);
       toast({
         title: "Challenge sent",
-        description: `You've challenged ${team.name} to a scrimmage match.`,
+        description: `Your challenge has been sent to ${team.name}.`,
       });
-
-      // Close the dialog and reset form
-      setOpen(false);
     } catch (error: any) {
       console.error("Error sending challenge:", error);
       toast({
@@ -638,7 +653,7 @@ export function ChallengeTeamDialog({
                     {maps.map((map) => (
                       <div
                         key={map._id + (map.isSmallVariant ? ":small" : "")}
-                        onClick={() => handleMapSelection(map)}
+                        onClick={() => handleMapSelect(map)}
                         className={cn(
                           "relative flex flex-col items-center border rounded-md overflow-hidden cursor-pointer transition-all",
                           selectedMaps.some(

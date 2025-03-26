@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 export async function GET(
@@ -10,23 +10,23 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be logged in" },
-        { status: 401 }
-      );
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db();
+    const { db } = await connectToDatabase();
 
-    const scrimmageId = params.id;
-
-    // Get the scrimmage
-    const scrimmage = await db.collection("Scrimmages").findOne({
-      _id: new ObjectId(scrimmageId),
+    // First try to find by _id
+    let scrimmage = await db.collection("Scrimmages").findOne({
+      _id: new ObjectId(params.id),
     });
+
+    // If not found, try to find by scrimmageId
+    if (!scrimmage) {
+      scrimmage = await db.collection("Scrimmages").findOne({
+        scrimmageId: params.id,
+      });
+    }
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -35,66 +35,19 @@ export async function GET(
       );
     }
 
-    // Get teams
-    const [challengerTeam, challengedTeam] = await Promise.all([
-      db.collection("Teams").findOne({ _id: scrimmage.challengerTeamId }),
-      db.collection("Teams").findOne({ _id: scrimmage.challengedTeamId }),
-    ]);
+    // Populate team details
+    const challengerTeam = await db
+      .collection("Teams")
+      .findOne({ _id: new ObjectId(scrimmage.challengerTeamId) });
 
-    // Check if user is part of either team
-    const isUserInTeams =
-      (challengerTeam?.members || []).some(
-        (m: { discordId: string }) => m.discordId === session.user.id
-      ) ||
-      (challengedTeam?.members || []).some(
-        (m: { discordId: string }) => m.discordId === session.user.id
-      );
+    const challengedTeam = await db
+      .collection("Teams")
+      .findOne({ _id: new ObjectId(scrimmage.challengedTeamId) });
 
-    if (!isUserInTeams) {
-      return NextResponse.json(
-        { error: "You don't have permission to view this scrimmage" },
-        { status: 403 }
-      );
-    }
+    scrimmage.challengerTeam = challengerTeam;
+    scrimmage.challengedTeam = challengedTeam;
 
-    // Get map details
-    const mapIds = scrimmage.selectedMaps.map(
-      (map: { isSmallVariant?: boolean; mapId: any }) =>
-        map.isSmallVariant ? map.mapId : map.mapId
-    );
-
-    const maps = await db
-      .collection("Maps")
-      .find({ _id: { $in: mapIds } })
-      .toArray();
-
-    // Transform for client
-    return NextResponse.json({
-      ...scrimmage,
-      _id: scrimmage._id.toString(),
-      challengerTeamId: scrimmage.challengerTeamId.toString(),
-      challengedTeamId: scrimmage.challengedTeamId.toString(),
-      challengerTeam: challengerTeam
-        ? {
-            ...challengerTeam,
-            _id: challengerTeam._id.toString(),
-          }
-        : null,
-      challengedTeam: challengedTeam
-        ? {
-            ...challengedTeam,
-            _id: challengedTeam._id.toString(),
-          }
-        : null,
-      selectedMaps: scrimmage.selectedMaps.map((map: { mapId: any }) => ({
-        ...map,
-        mapId: map.mapId.toString(),
-      })),
-      maps: maps.map((map) => ({
-        ...map,
-        _id: map._id.toString(),
-      })),
-    });
+    return NextResponse.json(scrimmage);
   } catch (error) {
     console.error("Error fetching scrimmage:", error);
     return NextResponse.json(

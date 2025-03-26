@@ -78,12 +78,12 @@ interface Team {
   captain: {
     discordId: string;
     discordNickname: string;
-    discordAvatar?: string;
+    discordProfilePicture: string;
   };
   members: {
     discordId: string;
     discordNickname: string;
-    discordAvatar?: string;
+    discordProfilePicture: string;
     role: string;
   }[];
   teamElo: number;

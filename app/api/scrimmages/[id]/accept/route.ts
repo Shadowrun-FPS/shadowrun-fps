@@ -1,31 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
-export async function PATCH(
+export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be logged in" },
-        { status: 401 }
-      );
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const client = await clientPromise;
-    const db = client.db();
+    console.log("User ID:", session.user.id);
 
-    const scrimmageId = params.id;
+    const { db } = await connectToDatabase();
 
     // Get the scrimmage
     const scrimmage = await db.collection("Scrimmages").findOne({
-      _id: new ObjectId(scrimmageId),
+      _id: new ObjectId(params.id),
     });
 
     if (!scrimmage) {
@@ -35,94 +30,61 @@ export async function PATCH(
       );
     }
 
-    // Get the challenged team
+    console.log("Scrimmage:", JSON.stringify(scrimmage, null, 2));
+
+    // The issue might be that the captain info is not properly populated
+    // Let's fetch the team directly to get the captain info
     const challengedTeam = await db.collection("Teams").findOne({
       _id: new ObjectId(scrimmage.challengedTeamId),
     });
 
-    if (!challengedTeam) {
-      return NextResponse.json(
-        { error: "Challenged team not found" },
-        { status: 404 }
-      );
-    }
+    console.log("Challenged Team:", JSON.stringify(challengedTeam, null, 2));
 
-    // Check if user is the captain of the challenged team
-    if (challengedTeam.captain?.discordId !== session.user.id) {
+    // Verify user is authorized to accept the scrimmage
+    const isAdmin = session.user.roles?.includes("admin");
+    console.log("Is Admin:", isAdmin);
+
+    // Check if user is captain of challenged team
+    const isTeamBCaptain =
+      session.user.id === challengedTeam?.captain?.discordId;
+    console.log("Is Team B Captain:", isTeamBCaptain);
+    console.log("Session User ID:", session.user.id);
+    console.log("Team B Captain ID:", challengedTeam?.captain?.discordId);
+
+    if (!isAdmin && !isTeamBCaptain) {
       return NextResponse.json(
-        { error: "Only the team captain can accept challenges" },
+        {
+          error:
+            "Only the challenged team captain or an admin can accept a challenge",
+          userId: session.user.id,
+          captainId: challengedTeam?.captain?.discordId,
+        },
         { status: 403 }
-      );
-    }
-
-    // Check if the scrimmage is in a state that can be accepted
-    if (scrimmage.status !== "pending") {
-      return NextResponse.json(
-        { error: "This challenge cannot be accepted" },
-        { status: 400 }
       );
     }
 
     // Update the scrimmage status to accepted
     await db.collection("Scrimmages").updateOne(
-      { _id: new ObjectId(scrimmageId) },
+      { _id: new ObjectId(params.id) },
       {
         $set: {
           status: "accepted",
-          updatedAt: new Date(),
+          acceptedAt: new Date(),
+          scrimmageId: new ObjectId().toString(), // Generate and store a scrimmageId
         },
       }
     );
 
-    // Create notifications for all members of both teams
-    const challengerTeam = await db.collection("Teams").findOne({
-      _id: new ObjectId(scrimmage.challengerTeamId),
+    // Get the updated scrimmage
+    const updatedScrimmage = await db.collection("Scrimmages").findOne({
+      _id: new ObjectId(params.id),
     });
 
-    if (challengerTeam) {
-      const notifications = [
-        // Notify challenger team
-        ...challengerTeam.members.map((member: any) => ({
-          userId: member.discordId,
-          type: "scrimmage_accepted",
-          message: `${challengedTeam.name} has accepted your scrimmage challenge`,
-          data: {
-            scrimmageId: scrimmageId,
-            challengedTeamId: scrimmage.challengedTeamId.toString(),
-            challengedTeamName: challengedTeam.name,
-          },
-          read: false,
-          createdAt: new Date(),
-        })),
-        // Notify challenged team members (except captain who already knows)
-        ...challengedTeam.members
-          .filter((member: any) => member.discordId !== session.user.id)
-          .map((member: any) => ({
-            userId: member.discordId,
-            type: "scrimmage_scheduled",
-            message: `Your team has a scheduled scrimmage against ${challengerTeam.name}`,
-            data: {
-              scrimmageId: scrimmageId,
-              challengerTeamId: scrimmage.challengerTeamId.toString(),
-              challengerTeamName: challengerTeam.name,
-            },
-            read: false,
-            createdAt: new Date(),
-          })),
-      ];
-
-      if (notifications.length > 0) {
-        await db.collection("Notifications").insertMany(notifications);
-      }
-    }
-
-    return NextResponse.json({
-      message: "Challenge accepted successfully",
-    });
+    return NextResponse.json(updatedScrimmage);
   } catch (error) {
-    console.error("Error accepting scrimmage challenge:", error);
+    console.error("Error accepting scrimmage:", error);
     return NextResponse.json(
-      { error: "Failed to accept challenge" },
+      { error: "Failed to accept scrimmage" },
       { status: 500 }
     );
   }
