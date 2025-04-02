@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/header";
 import {
@@ -73,37 +73,34 @@ export default function RankingsPage() {
     };
 
     fetchTeams();
-    // Don't include teams or sortBy in the dependency array
-    // as they will cause an infinite loop
   }, []);
 
-  // Add a separate useEffect for sorting that runs when sortBy changes
-  useEffect(() => {
-    if (teams.length > 0) {
-      const sortedTeams = [...teams].sort((a, b) => {
-        if (sortBy === "elo") {
-          const aElo = a.teamElo || a.calculatedElo || 0;
-          const bElo = b.teamElo || b.calculatedElo || 0;
-          return bElo - aElo;
-        } else if (sortBy === "winRatio") {
-          return b.winRatio - a.winRatio;
-        } else if (sortBy === "wins") {
-          return (b.wins || 0) - (a.wins || 0);
-        } else if (sortBy === "losses") {
-          return (b.losses || 0) - (a.losses || 0);
-        }
-        return 0;
-      });
+  // Create a derived state for sorted teams
+  const sortedTeams = useMemo(() => {
+    if (teams.length === 0) return [];
 
-      setTeams(sortedTeams);
-    }
-  }, [sortBy, teams]);
+    return [...teams].sort((a, b) => {
+      if (sortBy === "elo") {
+        const aElo = a.teamElo || a.calculatedElo || 0;
+        const bElo = b.teamElo || b.calculatedElo || 0;
+        return bElo - aElo;
+      } else if (sortBy === "winRatio") {
+        return b.winRatio - a.winRatio;
+      } else if (sortBy === "wins") {
+        return (b.wins || 0) - (a.wins || 0);
+      } else if (sortBy === "losses") {
+        return (b.losses || 0) - (a.losses || 0);
+      }
+      return 0;
+    });
+  }, [teams, sortBy]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(teams.length / teamsPerPage);
-  const indexOfLastTeam = currentPage * teamsPerPage;
-  const indexOfFirstTeam = indexOfLastTeam - teamsPerPage;
-  const currentTeams = teams.slice(indexOfFirstTeam, indexOfLastTeam);
+  const totalPages = Math.ceil(sortedTeams.length / teamsPerPage);
+  const currentTeams = sortedTeams.slice(
+    (currentPage - 1) * teamsPerPage,
+    currentPage * teamsPerPage
+  );
 
   // Change page
   const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
@@ -176,33 +173,35 @@ export default function RankingsPage() {
                         {/* Rank and Team Info */}
                         <div className="flex items-center">
                           <div className="flex items-center justify-center w-8">
-                            {indexOfFirstTeam + index < 3 ? (
+                            {index < 3 ? (
                               <Medal
                                 className={`w-5 h-5 sm:w-6 sm:h-6 ${getMedalColor(
-                                  indexOfFirstTeam + index
+                                  index
                                 )}`}
                               />
                             ) : (
                               <span className="text-base font-semibold sm:text-lg text-muted-foreground">
-                                #{indexOfFirstTeam + index + 1}
+                                #{index + 1}
                               </span>
                             )}
                           </div>
                           <div className="ml-4">
                             <div className="flex items-center gap-3">
-                              <Link
-                                href={`/tournaments/teams/${team._id}`}
-                                className="font-medium transition-colors hover:text-primary hover:underline"
-                              >
-                                {team.name}
-                              </Link>
+                              <div className="flex flex-col">
+                                <Link
+                                  href={`/tournaments/teams/${team._id}`}
+                                  className="font-medium transition-colors hover:text-primary hover:underline"
+                                >
+                                  {team.name}
+                                </Link>
+                                <span className="text-xs text-muted-foreground">
+                                  Captain:{" "}
+                                  {team.captain?.discordNickname ||
+                                    team.captain?.discordUsername ||
+                                    "Unknown"}
+                                </span>
+                              </div>
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                              Captain:{" "}
-                              {team.captain?.discordNickname ||
-                                team.captain?.discordUsername ||
-                                "Unknown"}
-                            </span>
                           </div>
                         </div>
 
@@ -240,7 +239,7 @@ export default function RankingsPage() {
               </div>
 
               {/* Pagination */}
-              {!loading && teams.length > 0 && (
+              {!loading && sortedTeams.length > 0 && (
                 <div className="flex items-center justify-center gap-2 py-4 border-t">
                   <Button
                     variant="outline"
