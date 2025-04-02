@@ -274,7 +274,7 @@ export default function TeamPage({ team }: TeamPageProps) {
 
   const canChallenge = () => {
     if (!session?.user) return false;
-    if (team.captain?.discordId === session.user.id) return false; // Can't challenge own team
+    if (team.captain.discordId === session.user.id) return false; // Can't challenge own team
     return true;
   };
 
