@@ -86,7 +86,22 @@ export async function POST(request: NextRequest) {
         tag: userTeam.tag,
         logo: userTeam.logo,
         captain: userTeam.captain,
-        members: userTeam.members,
+        members: userTeam.members.map(
+          (member: {
+            discordId: any;
+            discordUsername: any;
+            discordNickname: any;
+            discordProfilePicture: any;
+            role: any;
+          }) => ({
+            ...member,
+            discordId: member.discordId,
+            discordUsername: member.discordUsername,
+            discordNickname: member.discordNickname,
+            discordProfilePicture: member.discordProfilePicture,
+            role: member.role,
+          })
+        ),
       },
       challengedTeam: {
         _id: challengedTeam._id,
@@ -94,10 +109,25 @@ export async function POST(request: NextRequest) {
         tag: challengedTeam.tag,
         logo: challengedTeam.logo,
         captain: challengedTeam.captain,
-        members: challengedTeam.members,
+        members: challengedTeam.members.map(
+          (member: {
+            discordId: any;
+            discordUsername: any;
+            discordNickname: any;
+            discordProfilePicture: any;
+            role: any;
+          }) => ({
+            ...member,
+            discordId: member.discordId,
+            discordUsername: member.discordUsername,
+            discordNickname: member.discordNickname,
+            discordProfilePicture: member.discordProfilePicture,
+            role: member.role,
+          })
+        ),
       },
       proposedDate: new Date(data.proposedDate),
-      selectedMaps: mapsWithGameMode, // Use the maps with gameMode
+      selectedMaps: mapsWithGameMode,
       message: data.message || "",
       status: "pending",
       createdAt: new Date(),

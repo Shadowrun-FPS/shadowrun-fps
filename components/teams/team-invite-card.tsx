@@ -12,6 +12,7 @@ interface TeamInviteCardProps {
   teamId: string;
   teamName: string;
   inviterName: string;
+  inviterNickname: string;
   createdAt: string;
   onInviteProcessed?: () => void;
 }
@@ -21,6 +22,7 @@ export function TeamInviteCard({
   teamId,
   teamName,
   inviterName,
+  inviterNickname,
   createdAt,
   onInviteProcessed,
 }: TeamInviteCardProps) {
@@ -99,13 +101,13 @@ export function TeamInviteCard({
           <h3 className="text-lg font-semibold">Team Invite</h3>
         </div>
 
-        <p className="text-sm mb-1">
+        <p className="mb-1 text-sm">
           You have been invited to join team{" "}
           <span className="font-semibold">{teamName}</span>
         </p>
 
-        <div className="text-xs text-muted-foreground space-y-1 mt-2">
-          <p>Invited by: {inviterName}</p>
+        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+          <p>Invited by: {inviterNickname || inviterName}</p>
           <p>Date: {formatDate(createdAt)}</p>
         </div>
       </CardContent>
@@ -143,9 +145,9 @@ export function TeamInviteCard({
 
       {processed && (
         <CardFooter className="pt-2">
-          <p className="text-sm w-full text-center py-2">
+          <p className="w-full py-2 text-sm text-center">
             {status === "accepted" ? (
-              <span className="text-green-500 font-medium">
+              <span className="font-medium text-green-500">
                 Invite accepted. Joining team...
               </span>
             ) : (

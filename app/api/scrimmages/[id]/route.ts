@@ -9,10 +9,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // Remove session check to allow public access
+    // const session = await getServerSession(authOptions);
+    // if (!session) {
+    //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // }
 
     const { db } = await connectToDatabase();
 
@@ -35,17 +36,7 @@ export async function GET(
       );
     }
 
-    // Populate team details
-    const challengerTeam = await db
-      .collection("Teams")
-      .findOne({ _id: new ObjectId(scrimmage.challengerTeamId) });
-
-    const challengedTeam = await db
-      .collection("Teams")
-      .findOne({ _id: new ObjectId(scrimmage.challengedTeamId) });
-
-    scrimmage.challengerTeam = challengerTeam;
-    scrimmage.challengedTeam = challengedTeam;
+    // No need to look up current team data, we should use the stored team data
 
     return NextResponse.json(scrimmage);
   } catch (error) {

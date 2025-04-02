@@ -122,14 +122,14 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
           <div className="max-h-[300px] overflow-y-auto space-y-2">
             {isLoading ? (
               <div className="flex justify-center p-4">
-                <Loader2 className="h-6 w-6 animate-spin" />
+                <Loader2 className="w-6 h-6 animate-spin" />
               </div>
             ) : searchTerm.length < 2 ? (
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-center text-muted-foreground">
                 Type at least 2 characters to search
               </p>
             ) : results.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-center text-muted-foreground">
                 No players found
               </p>
             ) : (
@@ -139,7 +139,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
                   className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
+                    <Avatar className="w-8 h-8">
                       <AvatarFallback>
                         {player.name.charAt(0).toUpperCase()}
                       </AvatarFallback>

@@ -62,6 +62,7 @@ interface ModerationLog {
   action: string;
   playerId: string;
   playerName: string;
+  playerNickname: string;
   moderatorId: string;
   moderatorName: string;
   reason: string;
