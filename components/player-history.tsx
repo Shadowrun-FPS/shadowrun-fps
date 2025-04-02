@@ -7,16 +7,49 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { ModerationAction, Player, Ban } from "@/types/moderation";
 import { formatDate } from "@/lib/utils";
+import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 interface PlayerHistoryProps {
   playerId: string;
 }
 
+// Define types for history items
+interface HistoryItem {
+  _id: string;
+  type: string;
+  reason: string;
+  rule?: string;
+  moderatorName: string;
+  moderatorNickname?: string;
+  timestamp: Date | string;
+  expiry?: Date | string;
+}
+
+// Add missing properties to the Player type
+type ExtendedPlayer = Player & {
+  banExpiry?: string | Date;
+  warnings?: any[];
+  bans?: any[];
+};
+
 export function PlayerHistory({ playerId }: PlayerHistoryProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<ModerationAction[]>([]);
-  const [player, setPlayer] = useState<Player | null>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [player, setPlayer] = useState<ExtendedPlayer | null>(null);
   const router = useRouter();
 
   const fetchHistory = useCallback(async () => {
@@ -30,102 +63,62 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
         throw new Error(`Error: ${playerResponse.status}`);
       }
       const playerData = await playerResponse.json();
-
-      // Debug log player data, especially bans
-      console.log("Player data:", playerData);
-      console.log("Player bans:", playerData.bans);
-
       setPlayer(playerData);
 
-      // Fetch player history
-      const historyResponse = await fetch(
-        `/api/admin/players/${playerId}/history`
-      );
-      if (!historyResponse.ok) {
-        throw new Error(`Error: ${historyResponse.status}`);
-      }
+      console.log("Player data:", playerData);
 
-      let historyData = await historyResponse.json();
+      // Create history from player document only
+      let combinedHistory: HistoryItem[] = [];
 
-      // Ensure historyData is an array
-      if (!Array.isArray(historyData)) {
-        historyData = historyData.history || [];
-      }
+      // Add warnings from player document
+      if (playerData.warnings && playerData.warnings.length > 0) {
+        console.log("Player warnings:", playerData.warnings);
 
-      // Check if player has an active ban that's not in history
-      if (
-        playerData.isBanned &&
-        playerData.bans &&
-        playerData.bans.length > 0
-      ) {
-        // Find the most recent ban
-        const mostRecentBan = playerData.bans.reduce(
-          (latest: Ban | null, current: Ban) => {
-            if (!latest) return current;
-
-            const latestDate = new Date(latest.timestamp).getTime();
-            const currentDate = new Date(current.timestamp).getTime();
-
-            return currentDate > latestDate ? current : latest;
-          },
-          null
+        const warningHistory: HistoryItem[] = playerData.warnings.map(
+          (warning: any) => ({
+            _id: warning._id || `warning-${Date.now()}-${Math.random()}`,
+            type: "warning",
+            reason: warning.reason || "No reason provided",
+            rule: warning.rule || "",
+            moderatorName: warning.moderatorName || "Unknown",
+            moderatorNickname: warning.moderatorNickname || "",
+            timestamp: warning.timestamp || warning.createdAt || new Date(),
+          })
         );
 
-        // Add the ban to history if it's not already there
-        if (mostRecentBan) {
-          const banExists = historyData.some(
-            (action: ModerationAction) =>
-              action._id === mostRecentBan._id ||
-              (action.timestamp === mostRecentBan.timestamp &&
-                action.reason === mostRecentBan.reason)
-          );
+        combinedHistory = [...combinedHistory, ...warningHistory];
+      }
 
-          if (!banExists) {
-            // Log ban data for debugging
-            console.log("Adding ban to history:", mostRecentBan);
+      // Add bans from player document
+      if (playerData.bans && playerData.bans.length > 0) {
+        console.log("Player bans:", playerData.bans);
 
-            // Create the history entry with better fallbacks for moderator info
-            historyData.push({
-              _id: mostRecentBan._id || `ban-${Date.now()}`,
-              type: mostRecentBan.expiry ? "temp_ban" : "perm_ban",
-              reason: mostRecentBan.reason || "No reason provided",
-              moderatorId: mostRecentBan.moderatorId,
-              // Check for moderator info in all possible locations
-              moderatorName:
-                mostRecentBan.moderatorName ||
-                mostRecentBan.moderator?.name ||
-                mostRecentBan.createdBy?.name ||
-                "Unknown",
-              moderatorNickname:
-                mostRecentBan.moderatorNickname ||
-                mostRecentBan.moderator?.nickname ||
-                mostRecentBan.createdBy?.nickname ||
-                "",
-              playerId: playerId,
-              playerName:
-                playerData.discordNickname ||
-                playerData.discordUsername ||
-                "Unknown Player",
-              duration: mostRecentBan.duration,
-              expiry: mostRecentBan.expiry,
-              timestamp: mostRecentBan.timestamp,
-            });
-          }
-        }
+        const banHistory: HistoryItem[] = playerData.bans.map((ban: any) => ({
+          _id: ban._id || `ban-${Date.now()}-${Math.random()}`,
+          type: ban.permanent ? "perm_ban" : "temp_ban",
+          reason: ban.reason || "No reason provided",
+          rule: ban.rule || "",
+          moderatorName: ban.moderatorName || "Unknown",
+          moderatorNickname: ban.moderatorNickname || "",
+          timestamp: ban.timestamp || ban.createdAt || new Date(),
+          expiry: ban.expiry,
+        }));
+
+        combinedHistory = [...combinedHistory, ...banHistory];
       }
 
       // Sort by timestamp, newest first
-      historyData.sort((a: ModerationAction, b: ModerationAction) => {
-        return (
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        );
+      combinedHistory.sort((a, b) => {
+        const dateA = new Date(a.timestamp || 0).getTime();
+        const dateB = new Date(b.timestamp || 0).getTime();
+        return dateB - dateA;
       });
 
-      setHistory(historyData);
+      console.log("Combined history from player document:", combinedHistory);
+      setHistory(combinedHistory);
     } catch (err) {
-      console.error("Failed to fetch player history:", err);
-      setError("Failed to load player history. Please try again.");
-      setHistory([]);
+      console.error("Error fetching player history:", err);
+      setError("Failed to load player history");
     } finally {
       setLoading(false);
     }
@@ -135,50 +128,27 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
     fetchHistory();
   }, [fetchHistory]);
 
-  const handleBack = () => {
-    router.back();
-  };
+  const getReasonDisplay = (reason: string) => {
+    if (!reason) return "No reason provided";
 
-  // Format date to match the screenshot format (e.g., "6/15/2023, 7:30:00 AM")
-  const formatDateTime = (date: Date): string => {
-    return date.toLocaleString("en-US", {
-      month: "numeric",
-      day: "numeric",
-      year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    });
-  };
+    const isTooLong = reason.length > 50;
 
-  // Format action type as a badge with proper styling
-  const renderActionBadge = (action: ModerationAction) => {
-    switch (action.type) {
-      case "warning":
-        return (
-          <Badge className="bg-yellow-500 hover:bg-yellow-600">Warning</Badge>
-        );
-      case "temp_ban":
-        return (
-          <Badge className="bg-red-500 hover:bg-red-600">
-            Temporary Ban
-            {action.duration && (
-              <span className="ml-1">({action.duration})</span>
-            )}
-          </Badge>
-        );
-      case "perm_ban":
-        return (
-          <Badge className="bg-red-700 hover:bg-red-800">Permanent Ban</Badge>
-        );
-      case "unban":
-        return (
-          <Badge className="bg-green-500 hover:bg-green-600">Unbanned</Badge>
-        );
-      default:
-        return <Badge>{action.type}</Badge>;
+    if (isTooLong) {
+      return (
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <span className="cursor-help underline-offset-2 hover:underline">
+              {reason.substring(0, 50)}...
+            </span>
+          </HoverCardTrigger>
+          <HoverCardContent className="p-4 w-80">
+            <p className="text-sm">{reason}</p>
+          </HoverCardContent>
+        </HoverCard>
+      );
     }
+
+    return reason;
   };
 
   if (loading) {
@@ -207,7 +177,7 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
           {playerName}&apos;s Moderation History
         </h3>
         <p className="mb-6 text-muted-foreground">
-          A record of warnings and bans associated with your account.
+          A record of warnings and bans associated with this account.
         </p>
 
         {history.length === 0 ? (
@@ -215,46 +185,65 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
             No moderation actions found for this player.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full table-auto">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-4 py-3 font-medium text-left">Action</th>
-                  <th className="px-4 py-3 font-medium text-left">Reason</th>
-                  <th className="px-4 py-3 font-medium text-left">Moderator</th>
-                  <th className="px-4 py-3 font-medium text-left">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((action) => (
-                  <tr key={action._id?.toString()} className="border-b">
-                    <td className="px-4 py-3">
-                      {renderActionBadge(action)}
-                      {action.type === "temp_ban" && action.duration && (
-                        <div className="mt-1 text-xs text-muted-foreground">
-                          Duration: {action.duration}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {action.reason || "No reason provided"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {action.moderatorNickname ||
-                        action.moderatorName ||
-                        player?.bans?.[0]?.moderatorNickname ||
-                        player?.bans?.[0]?.moderatorName ||
-                        "Unknown"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {action.timestamp
-                        ? formatDateTime(new Date(action.timestamp))
-                        : "Unknown"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-4 overflow-x-auto">
+            <h2 className="text-xl font-bold">Moderation History</h2>
+            <div className="min-w-full">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-24">Action</TableHead>
+                    <TableHead className="w-1/3">Reason</TableHead>
+                    <TableHead className="w-1/6">Rule</TableHead>
+                    <TableHead className="w-1/6">Moderator</TableHead>
+                    <TableHead className="w-1/6">Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {history.map((item, index) => (
+                    <TableRow key={`${item._id || index}`}>
+                      <TableCell className="whitespace-nowrap">
+                        <Badge
+                          className={
+                            item.type === "temp_ban" || item.type === "perm_ban"
+                              ? "bg-destructive text-destructive-foreground"
+                              : item.type === "warning"
+                              ? "bg-yellow-500 text-black"
+                              : ""
+                          }
+                        >
+                          {item.type === "temp_ban"
+                            ? "Temporary Ban"
+                            : item.type === "perm_ban"
+                            ? "Permanent Ban"
+                            : item.type === "warning"
+                            ? "Warning"
+                            : item.type === "unban"
+                            ? "Unbanned"
+                            : item.type || "Unknown"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{getReasonDisplay(item.reason)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {item.rule || "N/A"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {item.moderatorNickname ||
+                          item.moderatorName ||
+                          "Unknown"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {item.timestamp
+                          ? format(
+                              new Date(item.timestamp),
+                              "MM/dd/yyyy, h:mm a"
+                            )
+                          : "Unknown date"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
         )}
 
@@ -264,7 +253,10 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
             <p className="font-medium text-red-400">
               This player is currently banned
               {player.banExpiry
-                ? ` until ${formatDateTime(new Date(player.banExpiry))}`
+                ? ` until ${format(
+                    new Date(player.banExpiry),
+                    "MM/dd/yyyy, h:mm a"
+                  )}`
                 : " permanently"}
             </p>
           </div>

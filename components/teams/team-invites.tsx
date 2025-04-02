@@ -8,6 +8,7 @@ import { Mail, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface TeamInvite {
+  inviterNickname: string;
   _id: string;
   teamId: string;
   inviteeId: string;
@@ -123,7 +124,7 @@ export function TeamInvites({
                 <div className="space-y-1">
                   <p className="font-medium">{invite.inviteeName}</p>
                   <p className="text-sm text-muted-foreground">
-                    Invited by {invite.inviterName}
+                    Invited by {invite.inviterNickname || invite.inviterName}
                   </p>
                 </div>
                 <Badge className={getStatusBadgeStyle(invite.status)}>

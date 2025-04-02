@@ -24,17 +24,39 @@ export async function GET(req: NextRequest) {
 
     const { db } = await connectToDatabase();
 
-    // Search players by username or nickname
-    const players = await db
-      .collection("Players")
-      .find({
+    // Check if the search term might be a Discord ID (all digits)
+    const isDiscordId = /^\d+$/.test(searchTerm);
+
+    // Build the query
+    let searchQuery;
+
+    if (isDiscordId) {
+      // If it looks like a Discord ID, search by exact match
+      searchQuery = {
+        $or: [
+          { discordUsername: { $regex: searchTerm, $options: "i" } },
+          { discordNickname: { $regex: searchTerm, $options: "i" } },
+          { discordId: searchTerm }, // Add Discord ID search
+        ],
+        // Don't include the current user in results
+        discordId: { $ne: session.user.id },
+      };
+    } else {
+      // Otherwise just search by username or nickname
+      searchQuery = {
         $or: [
           { discordUsername: { $regex: searchTerm, $options: "i" } },
           { discordNickname: { $regex: searchTerm, $options: "i" } },
         ],
         // Don't include the current user in results
         discordId: { $ne: session.user.id },
-      })
+      };
+    }
+
+    // Search players
+    const players = await db
+      .collection("Players")
+      .find(searchQuery)
       .limit(10)
       .project({
         _id: 0,
@@ -44,6 +66,10 @@ export async function GET(req: NextRequest) {
         discordProfilePicture: 1,
       })
       .toArray();
+
+    console.log(
+      `Found ${players.length} players for search term "${searchTerm}"`
+    );
 
     return NextResponse.json(players);
   } catch (error) {

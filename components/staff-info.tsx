@@ -10,7 +10,7 @@ interface StaffInfoProps {
 
 export function StaffInfo({ name, roles, avatarUrl }: StaffInfoProps) {
   return (
-    <div className="flex items-center space-x-4 p-4 bg-slate-100 rounded-lg">
+    <div className="flex items-center p-4 space-x-4 rounded-lg bg-slate-100">
       <Avatar>
         <AvatarImage src={avatarUrl} alt={name} />
         <AvatarFallback>
@@ -22,7 +22,7 @@ export function StaffInfo({ name, roles, avatarUrl }: StaffInfoProps) {
       </Avatar>
       <div>
         <p className="font-medium">{name}</p>
-        <div className="flex space-x-2 mt-1">
+        <div className="flex mt-1 space-x-2">
           {roles.map((role, index) => (
             <Badge key={index} variant="secondary">
               {role}

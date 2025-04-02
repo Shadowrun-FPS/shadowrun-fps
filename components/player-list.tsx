@@ -506,15 +506,6 @@ export function PlayerList() {
                           Active
                         </Badge>
                       )}
-                      {player.warnings && player.warnings.length > 0 && (
-                        <Badge
-                          variant="outline"
-                          className="ml-2 bg-amber-100 text-amber-700 border-amber-200"
-                        >
-                          {player.warnings.length} Warning
-                          {player.warnings.length !== 1 ? "s" : ""}
-                        </Badge>
-                      )}
                     </TableCell>
                     <TableCell className="text-center">
                       {getWarningCount(player)}

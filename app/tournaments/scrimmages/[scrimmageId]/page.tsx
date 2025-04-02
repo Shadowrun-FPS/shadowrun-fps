@@ -95,8 +95,8 @@ export default function ScrimmageDetailsPage({
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchMatch = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await fetch(`/api/scrimmages/${params.scrimmageId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch match details");
