@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ObjectId } from "mongodb";
+import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
 
 interface TeamInvite {
   _id: ObjectId | string;
@@ -54,6 +55,7 @@ export default function TeamPage({ team }: TeamPageProps) {
   const [newCaptainId, setNewCaptainId] = useState<string | undefined>(
     undefined
   );
+  const [showChallengeDialog, setShowChallengeDialog] = useState(false);
 
   // Check if current user is the team captain
   const isCaptain = session?.user?.id === team.captain.discordId;
@@ -268,6 +270,12 @@ export default function TeamPage({ team }: TeamPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const canChallenge = () => {
+    if (!session?.user) return false;
+    if (team.captain?.discordId === session.user.id) return false; // Can't challenge own team
+    return true;
   };
 
   return (
@@ -755,49 +763,6 @@ export default function TeamPage({ team }: TeamPageProps) {
                   "Leave Team"
                 )}
               </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {process.env.NODE_ENV === "development" && isCaptain && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Developer Debug Info</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="p-3 overflow-auto text-xs rounded bg-slate-800">
-                <p>Team ID: {team._id.toString()}</p>
-                <p>Captain ID: {team.captain.discordId}</p>
-                <p>Current User ID: {session?.user?.id}</p>
-                <p>Is Captain: {isCaptain.toString()}</p>
-                <p>Member Count: {team.members.length}</p>
-                <hr className="my-2 border-slate-700" />
-                <details>
-                  <summary className="cursor-pointer">
-                    Team Members Data
-                  </summary>
-                  <pre>{JSON.stringify(team.members, null, 2)}</pre>
-                </details>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    console.log("Team data:", team);
-                    console.log("Session:", session);
-                    console.log("Members:", team.members);
-                    toast({
-                      title: "Debug Info",
-                      description: "Check console for team data",
-                    });
-                  }}
-                >
-                  Log Data to Console
-                </Button>
-              </div>
             </div>
           </CardContent>
         </Card>

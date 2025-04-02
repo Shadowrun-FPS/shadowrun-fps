@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import type { MongoTeam } from "@/types/mongodb";
 import { ReactNode } from "react";
 import { FeatureGate } from "@/components/feature-gate";
+import Link from "next/link";
 
 interface TeamWithStats extends MongoTeam {
   calculatedElo: number;
@@ -59,32 +60,44 @@ export default function RankingsPage() {
   const teamsPerPage = 10;
 
   useEffect(() => {
-    setLoading(true);
-    getTeamRankings().then((data) => {
-      setTeams(data);
-      setLoading(false);
-    });
+    const fetchTeams = async () => {
+      setLoading(true);
+      try {
+        const teamsData = await getTeamRankings();
+        setTeams(teamsData);
+      } catch (error) {
+        console.error("Failed to fetch teams:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeams();
+    // Don't include teams or sortBy in the dependency array
+    // as they will cause an infinite loop
   }, []);
 
-  const handleSort = useCallback(
-    (field: string) => {
-      if (sortBy === field) {
-        setSortBy(
-          sortBy === "elo" ? ("winRatio" as SortOption) : ("elo" as SortOption)
-        );
-      } else {
-        setSortBy(field as SortOption);
-      }
-    },
-    [sortBy]
-  );
-
-  // Add this useEffect to sort by ELO when the component mounts
+  // Add a separate useEffect for sorting that runs when sortBy changes
   useEffect(() => {
     if (teams.length > 0) {
-      handleSort("elo");
+      const sortedTeams = [...teams].sort((a, b) => {
+        if (sortBy === "elo") {
+          const aElo = a.teamElo || a.calculatedElo || 0;
+          const bElo = b.teamElo || b.calculatedElo || 0;
+          return bElo - aElo;
+        } else if (sortBy === "winRatio") {
+          return b.winRatio - a.winRatio;
+        } else if (sortBy === "wins") {
+          return (b.wins || 0) - (a.wins || 0);
+        } else if (sortBy === "losses") {
+          return (b.losses || 0) - (a.losses || 0);
+        }
+        return 0;
+      });
+
+      setTeams(sortedTeams);
     }
-  }, [teams.length, handleSort]);
+  }, [sortBy, teams]);
 
   // Calculate pagination
   const totalPages = Math.ceil(teams.length / teamsPerPage);
@@ -97,6 +110,11 @@ export default function RankingsPage() {
   const nextPage = () =>
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
   const prevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+
+  // Create a handler function that properly casts the string to SortOption
+  const handleSortChange = (value: string) => {
+    setSortBy(value as SortOption);
+  };
 
   return (
     <FeatureGate feature="rankings">
@@ -114,7 +132,7 @@ export default function RankingsPage() {
                     Global rankings for all competitive teams
                   </p>
                 </div>
-                <Select value={sortBy} onValueChange={handleSort}>
+                <Select value={sortBy} onValueChange={handleSortChange}>
                   <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Sort by..." />
                   </SelectTrigger>
@@ -171,12 +189,20 @@ export default function RankingsPage() {
                             )}
                           </div>
                           <div className="ml-4">
-                            <h3 className="text-base font-semibold sm:text-lg">
-                              {team.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              Captain: {team.captain.discordNickname}
-                            </p>
+                            <div className="flex items-center gap-3">
+                              <Link
+                                href={`/tournaments/teams/${team._id}`}
+                                className="font-medium transition-colors hover:text-primary hover:underline"
+                              >
+                                {team.name}
+                              </Link>
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              Captain:{" "}
+                              {team.captain?.discordNickname ||
+                                team.captain?.discordUsername ||
+                                "Unknown"}
+                            </span>
                           </div>
                         </div>
 
