@@ -2,6 +2,8 @@
 
 import { useParams } from "next/navigation";
 import { PlayerHistory } from "@/components/player-history";
+import PublicModerationLog from "@/components/public-moderation-log";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";

@@ -202,7 +202,7 @@ export function PlayerList() {
   };
 
   const handleViewHistory = (player: Player) => {
-    router.push(`/admin/players/${player.discordId}/history`);
+    router.push(`/admin/players/${player._id}/history`);
   };
 
   // Helper to get warning and ban counts
@@ -445,7 +445,7 @@ export function PlayerList() {
                     variant="ghost"
                     className="flex-1 text-blue-500 rounded-none hover:text-blue-600 hover:bg-blue-50"
                     onClick={() =>
-                      router.push(`/admin/players/${player.discordId}/history`)
+                      router.push(`/admin/players/${player._id}/history`)
                     }
                   >
                     <History className="w-4 h-4 mr-1" />

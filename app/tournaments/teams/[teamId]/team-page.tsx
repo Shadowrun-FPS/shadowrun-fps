@@ -390,6 +390,9 @@ export default function TeamPage({ team }: TeamPageProps) {
                     member.discordId !== team.captain.discordId
                 )
                 .sort((a: TeamMember, b: TeamMember) => {
+                  if (!a.joinedAt) return -1;
+                  if (!b.joinedAt) return 1;
+
                   const dateA =
                     typeof a.joinedAt === "string"
                       ? new Date(a.joinedAt).getTime()
@@ -398,6 +401,7 @@ export default function TeamPage({ team }: TeamPageProps) {
                     typeof b.joinedAt === "string"
                       ? new Date(b.joinedAt).getTime()
                       : b.joinedAt.getTime();
+
                   return dateA - dateB;
                 })
                 .map((member: TeamMember) => (
@@ -425,7 +429,9 @@ export default function TeamPage({ team }: TeamPageProps) {
                           onClick={() =>
                             handleRemoveMember(
                               member.discordId,
-                              member.discordNickname || member.discordUsername
+                              member.discordNickname ||
+                                member.discordUsername ||
+                                "Unknown Member"
                             )
                           }
                           disabled={isLoading}
@@ -651,7 +657,7 @@ export default function TeamPage({ team }: TeamPageProps) {
                               member.discordId,
                               member.discordNickname ||
                                 member.discordUsername ||
-                                "this member"
+                                "Unknown Member"
                             )
                           }
                           disabled={isLoading}

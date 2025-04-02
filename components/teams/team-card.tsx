@@ -28,6 +28,8 @@ interface TeamCardProps {
   scrimmageWins?: number;
   scrimmageLosses?: number;
   tournamentWins?: number;
+  isUserTeam?: boolean;
+  teamElo?: number; // Use the original name to avoid confusion
 }
 
 export function TeamCard({
@@ -43,37 +45,33 @@ export function TeamCard({
   scrimmageWins = 0,
   scrimmageLosses = 0,
   tournamentWins = 0,
+  isUserTeam = false,
+  teamElo, // Use the original name
 }: TeamCardProps) {
   const { data: session } = useSession();
-  const isCaptain = session?.user?.id === members[0]?.discordId;
 
-  // Calculate team ELO based on top 4 active players
-  const teamElo = members
-    .filter((member) => member.role !== "substitute") // Exclude substitutes
-    .map((member) => Number(member.elo?.["4v4"]) || 1500) // Convert to number, fallback to 1500
-    .sort((a, b) => b - a) // Sort in descending order
-    .slice(0, 4) // Take top 4 active players
-    .reduce((sum, elo) => sum + elo, 0); // Sum them up
+  // Find the captain
+  const captain = members.find((member) => member.role === "captain");
+  const captainName = captain?.discordNickname || "Unknown";
 
-  const averageElo = Math.round(teamElo / 4);
-  const captainName =
-    members[0]?.discordNickname ||
-    members[0]?.discordUsername ||
-    "Stock Captain";
+  // Count active members
   const activeMembersCount = members.filter(
-    (m) => m.role !== "substitute"
+    (member) => member.role !== "substitute"
   ).length;
 
   return (
-    <Card className="flex flex-col h-full">
-      <CardHeader className="pb-2">
+    <Card
+      className={cn(
+        "transition-all hover:bg-accent",
+        onClick && "cursor-pointer"
+      )}
+      onClick={onClick}
+    >
+      <CardHeader>
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{name}</CardTitle>
-            <p className="text-sm text-muted-foreground">[{tag}]</p>
-          </div>
+          <CardTitle>{name}</CardTitle>
           <div className="px-3 py-1 text-sm font-medium rounded-md bg-accent/80 text-foreground">
-            {averageElo} ELO
+            {teamElo?.toLocaleString() || "N/A"} ELO
           </div>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -81,8 +79,8 @@ export function TeamCard({
         </p>
       </CardHeader>
 
-      <CardContent className="flex-grow pb-2">
-        <div className="flex flex-col space-y-4">
+      <CardContent>
+        <div className="space-y-4">
           {/* Captain */}
           <div className="flex items-center">
             <Shield className="w-5 h-5 mr-2 text-muted-foreground" />
@@ -92,7 +90,7 @@ export function TeamCard({
             </div>
           </div>
 
-          {/* Members - explicitly positioned below captain */}
+          {/* Members */}
           <div className="flex items-center">
             <Users className="w-5 h-5 mr-2 text-muted-foreground" />
             <div>
@@ -104,12 +102,6 @@ export function TeamCard({
           </div>
 
           <div className="flex flex-col gap-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Queue Record:</span>
-              <span>
-                {wins || 0}-{losses || 0}
-              </span>
-            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Scrimmage Record:</span>
               <span>
@@ -127,13 +119,13 @@ export function TeamCard({
       </CardContent>
 
       <CardFooter className="grid grid-cols-2 gap-2 pt-2">
-        {userTeam && _id ? (
+        {userTeam && _id && !isUserTeam ? (
           <ChallengeTeamDialog
             team={{
               _id,
               name,
               tag,
-              captain: members[0],
+              captain: captain || members[0],
               members,
             }}
             userTeam={userTeam}
@@ -146,7 +138,7 @@ export function TeamCard({
         )}
 
         <Button variant="outline" size="sm" className="h-8" asChild>
-          <Link href={`/tournaments/teams/${tag}`}>View Details</Link>
+          <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
         </Button>
       </CardFooter>
     </Card>

@@ -16,9 +16,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Calendar, Clock, MapPin, Loader2, Trophy } from "lucide-react";
+import { Calendar, Clock, MapPin, Loader2, Trophy, Search } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import { Input } from "@/components/ui/input";
+import { PendingScrimmageCard } from "@/components/scrimmages/pending-scrimmage-card";
 
 interface MapSelection {
   id: string;
@@ -68,15 +70,32 @@ export default function ScrimmagesPage() {
   const [scrimmages, setScrimmages] = useState<Scrimmage[]>([]);
   const [loading, setLoading] = useState(true);
   const [userTeam, setUserTeam] = useState<any>(null);
+  const [teamFilter, setTeamFilter] = useState("");
+  const [filteredPendingScrimmages, setFilteredPendingScrimmages] = useState<
+    Scrimmage[]
+  >([]);
+  const [filteredUpcomingScrimmages, setFilteredUpcomingScrimmages] = useState<
+    Scrimmage[]
+  >([]);
+  const [filteredCompletedScrimmages, setFilteredCompletedScrimmages] =
+    useState<Scrimmage[]>([]);
 
   useEffect(() => {
     const fetchScrimmages = async () => {
       try {
         setLoading(true);
         const response = await fetch("/api/scrimmages");
+
+        if (response.status === 401) {
+          // Handle unauthorized gracefully
+          setScrimmages([]);
+          return;
+        }
+
         if (!response.ok) {
           throw new Error("Failed to fetch scrimmages");
         }
+
         const data = await response.json();
         setScrimmages(data);
       } catch (error) {
@@ -105,9 +124,44 @@ export default function ScrimmagesPage() {
       }
     };
 
-    fetchScrimmages();
-    fetchUserTeam();
+    // Only fetch if user is logged in
+    if (session?.user) {
+      fetchScrimmages();
+      fetchUserTeam();
+    } else {
+      setLoading(false);
+    }
   }, [session]);
+
+  useEffect(() => {
+    const filterByTeam = (scrimmages: Scrimmage[]) => {
+      if (!teamFilter) return scrimmages;
+
+      return scrimmages.filter(
+        (s) =>
+          s.challengerTeam?.name
+            .toLowerCase()
+            .includes(teamFilter.toLowerCase()) ||
+          s.challengerTeam?.tag
+            .toLowerCase()
+            .includes(teamFilter.toLowerCase()) ||
+          s.challengedTeam?.name
+            .toLowerCase()
+            .includes(teamFilter.toLowerCase()) ||
+          s.challengedTeam?.tag.toLowerCase().includes(teamFilter.toLowerCase())
+      );
+    };
+
+    setFilteredPendingScrimmages(
+      filterByTeam(scrimmages.filter((s) => s.status === "pending"))
+    );
+    setFilteredUpcomingScrimmages(
+      filterByTeam(scrimmages.filter((s) => s.status === "accepted"))
+    );
+    setFilteredCompletedScrimmages(
+      filterByTeam(scrimmages.filter((s) => s.status === "completed"))
+    );
+  }, [teamFilter, scrimmages]);
 
   // Filter scrimmages based on status
   const pendingScrimmages = scrimmages.filter(
@@ -121,50 +175,35 @@ export default function ScrimmagesPage() {
   );
 
   // Check if user is a team captain
-  const isTeamCaptain =
-    userTeam && session?.user?.id === userTeam.captain?.discordId;
+  const isTeamCaptain = userTeam?.captain?.discordId === session?.user?.id;
 
   // Handle accepting a challenge
   const handleAcceptChallenge = async (scrimmageId: string) => {
     try {
       const response = await fetch(`/api/scrimmages/${scrimmageId}/accept`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to accept challenge");
+        throw new Error("Failed to accept challenge");
       }
 
-      // Update the scrimmage status locally and add the scrimmageId
-      const updatedScrimmage = await response.json();
+      // Refresh scrimmages with proper typing
       setScrimmages((prev) =>
         prev.map((s) =>
-          s._id === scrimmageId
-            ? {
-                ...s,
-                status: "accepted",
-                scrimmageId: updatedScrimmage.scrimmageId,
-              }
-            : s
+          s._id === scrimmageId ? { ...s, status: "accepted" as const } : s
         )
       );
 
-      // Switch to the Upcoming tab
-      setActiveTab("upcoming");
-
       toast({
-        title: "Challenge accepted",
-        description: "The scrimmage has been scheduled.",
+        title: "Challenge Accepted",
+        description: "You have accepted the scrimmage challenge.",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error accepting challenge:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to accept challenge",
+        description: "Failed to accept the challenge. Please try again.",
         variant: "destructive",
       });
     }
@@ -175,28 +214,28 @@ export default function ScrimmagesPage() {
     try {
       const response = await fetch(`/api/scrimmages/${scrimmageId}/reject`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to reject challenge");
+        throw new Error("Failed to reject challenge");
       }
 
-      // Remove the rejected scrimmage from the list
-      setScrimmages((prev) => prev.filter((s) => s._id !== scrimmageId));
+      // Refresh scrimmages with proper typing
+      setScrimmages((prev) =>
+        prev.map((s) =>
+          s._id === scrimmageId ? { ...s, status: "rejected" as const } : s
+        )
+      );
 
       toast({
-        title: "Challenge rejected",
-        description: "The scrimmage challenge has been rejected.",
+        title: "Challenge Rejected",
+        description: "You have rejected the scrimmage challenge.",
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error rejecting challenge:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to reject challenge",
+        description: "Failed to reject the challenge. Please try again.",
         variant: "destructive",
       });
     }
@@ -206,32 +245,24 @@ export default function ScrimmagesPage() {
     try {
       const response = await fetch(`/api/scrimmages/${scrimmageId}/cancel`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to cancel challenge");
+        throw new Error("Failed to cancel challenge");
       }
 
-      // Remove the cancelled scrimmage from the list or update its status
-      setScrimmages((prev) =>
-        prev.map((s) =>
-          s._id === scrimmageId ? { ...s, status: "cancelled" } : s
-        )
-      );
+      // Remove the scrimmage from the list
+      setScrimmages(scrimmages.filter((s) => s._id !== scrimmageId));
 
       toast({
-        title: "Challenge cancelled",
-        description: "The scrimmage challenge has been cancelled.",
+        title: "Challenge Canceled",
+        description: "You have canceled the scrimmage challenge.",
       });
-    } catch (error: any) {
-      console.error("Error cancelling challenge:", error);
+    } catch (error) {
+      console.error("Error canceling challenge:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to cancel challenge",
+        description: "Failed to cancel the challenge. Please try again.",
         variant: "destructive",
       });
     }
@@ -282,7 +313,7 @@ export default function ScrimmagesPage() {
               return (
                 <Card key={scrimmage._id} className="overflow-hidden">
                   <CardHeader className="p-4 pb-2">
-                    <div className="flex justify-between items-center">
+                    <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">
                         {scrimmage.challengerTeam?.name} vs{" "}
                         {scrimmage.challengedTeam?.name}
@@ -319,7 +350,7 @@ export default function ScrimmagesPage() {
                       )}
                     </div>
                   </CardContent>
-                  <CardFooter className="p-4 flex justify-end">
+                  <CardFooter className="flex justify-end p-4">
                     <Button variant="outline" size="sm" asChild>
                       <Link
                         href={`/tournaments/scrimmages/${
@@ -340,243 +371,158 @@ export default function ScrimmagesPage() {
   };
 
   return (
-    <div className="container px-4 py-8 mx-auto">
-      <h1 className="text-3xl font-bold">Scrimmages</h1>
-      <p className="mt-2 text-muted-foreground">
-        View and manage scrimmage matches between teams
-      </p>
+    <div className="min-h-screen">
+      <main className="container px-4 py-8 mx-auto">
+        <h1 className="mb-6 text-2xl font-bold">Scrimmages</h1>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-8">
-        <TabsList>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pending" className="mt-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Filter by team name or tag..."
+                className="pl-9"
+                value={teamFilter}
+                onChange={(e) => setTeamFilter(e.target.value)}
+              />
             </div>
-          ) : pendingScrimmages.length === 0 ? (
-            <div className="p-12 text-center border rounded-lg">
-              <h3 className="text-lg font-medium">No pending challenges</h3>
-              <p className="mt-2 text-muted-foreground">
-                Challenge a team to start a scrimmage.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {pendingScrimmages.map((scrimmage) => (
-                <Card
-                  key={scrimmage._id}
-                  className="overflow-hidden border-l-4 border-l-primary"
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg font-bold">
-                        {scrimmage.challengerTeam.name} vs{" "}
-                        {scrimmage.challengedTeam.name}
-                      </CardTitle>
-                      <Badge variant="outline" className="font-medium">
-                        Pending
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-primary" />
-                        <span className="text-sm">
-                          {format(
-                            new Date(scrimmage.proposedDate),
-                            "EEEE, MMMM d"
-                          )}{" "}
-                          • {format(new Date(scrimmage.proposedDate), "h:mm a")}
-                        </span>
-                      </div>
+          </div>
 
-                      <div className="flex flex-wrap gap-2">
-                        {scrimmage.selectedMaps &&
-                        scrimmage.selectedMaps.length > 0 ? (
-                          scrimmage.selectedMaps.map((map, index) => (
-                            <Badge
-                              key={index}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {map.name}
-                            </Badge>
-                          ))
-                        ) : (
-                          <Badge variant="secondary" className="text-xs">
-                            No maps selected
-                          </Badge>
-                        )}
-                      </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab("pending")}
+              className={cn(
+                "px-4 py-2 rounded-md transition-colors",
+                activeTab === "pending"
+                  ? "bg-muted/50 font-medium"
+                  : "text-muted-foreground hover:bg-muted/30"
+              )}
+            >
+              Pending
+            </button>
+            <button
+              onClick={() => setActiveTab("upcoming")}
+              className={cn(
+                "px-4 py-2 rounded-md transition-colors",
+                activeTab === "upcoming"
+                  ? "bg-muted/50 font-medium"
+                  : "text-muted-foreground hover:bg-muted/30"
+              )}
+            >
+              Upcoming
+            </button>
+            <button
+              onClick={() => setActiveTab("completed")}
+              className={cn(
+                "px-4 py-2 rounded-md transition-colors",
+                activeTab === "completed"
+                  ? "bg-muted/50 font-medium"
+                  : "text-muted-foreground hover:bg-muted/30"
+              )}
+            >
+              Completed
+            </button>
+          </div>
 
-                      {scrimmage.message && (
-                        <div className="p-3 text-sm italic border-l-2 rounded-md bg-muted border-primary">
-                          <div className="mb-1 text-xs font-semibold text-muted-foreground">
-                            Message from {scrimmage.challengerTeam.name}
-                          </div>
-                          &quot;{filterBadWords(scrimmage.message)}&quot;
-                        </div>
-                      )}
-
-                      {isTeamCaptain && (
-                        <div className="flex gap-2 mt-4">
-                          {userTeam._id === scrimmage.challengedTeam._id ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={() =>
-                                  handleRejectChallenge(scrimmage._id)
-                                }
-                              >
-                                Decline
-                              </Button>
-                              <Button
-                                className="flex-1"
-                                onClick={() =>
-                                  handleAcceptChallenge(scrimmage._id)
-                                }
-                              >
-                                Accept
-                              </Button>
-                            </>
-                          ) : (
-                            userTeam._id === scrimmage.challengerTeam._id && (
-                              <Button
-                                variant="destructive"
-                                className="w-full"
-                                onClick={() =>
-                                  handleCancelChallenge(scrimmage._id)
-                                }
-                              >
-                                Cancel Challenge
-                              </Button>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          {/* Content based on active tab */}
+          {activeTab === "pending" && (
+            <div>
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : !session?.user ? (
+                <div className="p-12 text-center border rounded-lg">
+                  <h3 className="text-lg font-medium">
+                    Sign in to view scrimmages
+                  </h3>
+                  <p className="mt-2 text-muted-foreground">
+                    You need to be signed in to view and manage scrimmages.
+                  </p>
+                  <Button className="mt-4" asChild>
+                    <Link href="/api/auth/signin">Sign In</Link>
+                  </Button>
+                </div>
+              ) : pendingScrimmages.length === 0 ? (
+                <div className="p-12 text-center border rounded-lg">
+                  <h3 className="text-lg font-medium">No pending challenges</h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Challenge a team to start a scrimmage.
+                  </p>
+                </div>
+              ) : filteredPendingScrimmages.length === 0 ? (
+                <div className="p-12 text-center border rounded-lg">
+                  <h3 className="text-lg font-medium">No matches found</h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Try adjusting your team filter.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {filteredPendingScrimmages.map((scrimmage) => (
+                    <PendingScrimmageCard
+                      key={scrimmage._id}
+                      scrimmage={scrimmage}
+                      isTeamCaptain={isTeamCaptain}
+                      userTeam={userTeam}
+                      onAccept={handleAcceptChallenge}
+                      onReject={handleRejectChallenge}
+                      onCancel={handleCancelChallenge}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-        </TabsContent>
 
-        <TabsContent value="upcoming" className="mt-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : upcomingScrimmages.length === 0 ? (
-            <div className="p-12 text-center border rounded-lg">
-              <h3 className="text-lg font-medium">No upcoming scrimmages</h3>
-              <p className="mt-2 text-muted-foreground">
-                Accept a challenge to see it here.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {upcomingScrimmages.map((scrimmage) => (
-                <Card key={scrimmage._id} className="overflow-hidden">
-                  <CardHeader className="p-4 bg-muted/50">
-                    <div className="flex items-center justify-between">
-                      <Badge variant="outline">Upcoming</Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {format(
-                          new Date(scrimmage.proposedDate),
-                          "MMM dd, yyyy"
-                        )}
-                      </span>
-                    </div>
-                    <CardTitle className="mt-2 text-lg">
-                      {scrimmage.challengerTeam.name} vs{" "}
-                      {scrimmage.challengedTeam.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4">
-                    <div className="flex items-center mb-3">
-                      <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span>
-                        {format(
-                          new Date(scrimmage.proposedDate),
-                          "MMMM dd, yyyy"
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center mb-3">
-                      <Clock className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span>
-                        {format(new Date(scrimmage.proposedDate), "h:mm a")}
-                      </span>
-                    </div>
-                    <div className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span>Maps:</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {scrimmage.selectedMaps &&
-                      scrimmage.selectedMaps.length > 0 ? (
-                        scrimmage.selectedMaps.map((map, index) => (
-                          <Badge key={index} variant="secondary">
-                            {map.name}
-                          </Badge>
-                        ))
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          No maps selected
-                        </Badge>
-                      )}
-                    </div>
-
-                    {scrimmage.status === "accepted" && (
-                      <div className="mt-4">
-                        <Button
-                          variant="default"
-                          size="sm"
-                          asChild
-                          className="w-full"
-                        >
-                          <Link
-                            href={`/tournaments/scrimmages/${
-                              scrimmage.scrimmageId || scrimmage._id
-                            }`}
-                          >
-                            View Match
-                          </Link>
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+          {activeTab === "upcoming" && (
+            <div>
+              {/* Upcoming scrimmages content */}
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : upcomingScrimmages.length === 0 ? (
+                <div className="p-12 text-center border rounded-lg">
+                  <h3 className="text-lg font-medium">
+                    No upcoming scrimmages
+                  </h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Accept a challenge to see it here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {/* Upcoming scrimmages cards */}
+                  {/* ... */}
+                </div>
+              )}
             </div>
           )}
-        </TabsContent>
 
-        <TabsContent value="completed" className="mt-6">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          {activeTab === "completed" && (
+            <div>
+              {/* Completed scrimmages content */}
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : completedScrimmages.length === 0 ? (
+                <div className="p-12 text-center border rounded-lg">
+                  <h3 className="text-lg font-medium">
+                    No completed scrimmages
+                  </h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Complete a scrimmage to see it here.
+                  </p>
+                </div>
+              ) : (
+                <CompletedScrimmages scrimmages={filteredCompletedScrimmages} />
+              )}
             </div>
-          ) : completedScrimmages.length === 0 ? (
-            <div className="p-12 text-center border rounded-lg">
-              <h3 className="text-lg font-medium">No completed scrimmages</h3>
-              <p className="mt-2 text-muted-foreground">
-                Complete a scrimmage to see it here.
-              </p>
-            </div>
-          ) : (
-            <CompletedScrimmages scrimmages={completedScrimmages} />
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      </main>
     </div>
   );
 }

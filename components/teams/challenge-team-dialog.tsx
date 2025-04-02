@@ -88,13 +88,23 @@ interface MapSelection {
   image?: string; // Map image path
 }
 
+interface ChallengeTeamDialogProps {
+  team: {
+    _id: string;
+    name: string;
+    tag: string;
+    captain: any;
+    members: any[];
+  };
+  userTeam: any;
+  disabled?: boolean;
+}
+
 export function ChallengeTeamDialog({
   team,
   userTeam,
-}: {
-  team: Team;
-  userTeam: Team;
-}) {
+  disabled,
+}: ChallengeTeamDialogProps) {
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);

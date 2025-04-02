@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
+import { connectToDatabase } from "@/lib/mongodb";
 
 interface TeamMember {
   discordId: string;
@@ -21,42 +22,45 @@ interface Team extends WithId<Document> {
 
 // Get team details
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
   try {
-    // Validate teamId is a valid ObjectId
-    if (!ObjectId.isValid(params.teamId)) {
-      return NextResponse.json({ error: "Invalid team ID" }, { status: 400 });
+    const { teamId } = params;
+    const { db } = await connectToDatabase();
+
+    // Try to find by ObjectId first
+    let team;
+    try {
+      if (ObjectId.isValid(teamId)) {
+        team = await db
+          .collection("Teams")
+          .findOne({ _id: new ObjectId(teamId) });
+      }
+    } catch (error) {
+      console.error("Error finding team by ID:", error);
     }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
-
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(params.teamId),
-    });
+    // If not found by ID, try to find by tag
+    if (!team) {
+      team = await db.collection("Teams").findOne({ tag: teamId });
+    }
 
     if (!team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    console.log("Team data being returned:", JSON.stringify(team, null, 2));
-    const session = await getServerSession(authOptions);
-    console.log("Current user ID:", session?.user?.id);
-    console.log(
-      "Team members:",
-      team.members.map((m: { discordId: any; role: any }) => ({
-        id: m.discordId,
-        role: m.role,
-      }))
-    );
+    // Convert ObjectId to string for JSON serialization
+    const teamWithStringId = {
+      ...team,
+      _id: team._id.toString(),
+    };
 
-    return NextResponse.json(team);
+    return NextResponse.json(teamWithStringId);
   } catch (error) {
-    console.error("Failed to fetch team:", error);
+    console.error("Error fetching team:", error);
     return NextResponse.json(
-      { error: "Failed to fetch team" },
+      { error: "Failed to load team data" },
       { status: 500 }
     );
   }

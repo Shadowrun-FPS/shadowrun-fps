@@ -49,7 +49,7 @@ export function RequestJoinTeam({ teamId, teamName }: RequestJoinTeamProps) {
       disabled={isLoading}
       className="flex items-center gap-2"
     >
-      <UserPlus className="w-4 h-4" />
+      <UserPlus className="h-4 w-4" />
       {isLoading ? "Sending Request..." : "Request to Join"}
     </Button>
   );

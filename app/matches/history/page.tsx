@@ -102,8 +102,20 @@ export default function MatchHistoryPage() {
 
       let url = `/api/matches?page=${currentPage}&sort=${sortField}&direction=${sortDirection}`;
 
-      if (statusFilter && statusFilter !== "all")
-        url += `&status=${statusFilter}`;
+      if (statusFilter && statusFilter !== "all") {
+        const statusMap: Record<string, string> = {
+          Completed: "completed",
+          "In-Progress": "in_progress",
+          Canceled: "canceled",
+          "Ready-Check": "ready_check",
+          Queue: "queue",
+          Pending: "pending",
+        };
+
+        const dbStatus = statusMap[statusFilter] || statusFilter.toLowerCase();
+        url += `&status=${dbStatus}`;
+      }
+
       if (eloTierFilter && eloTierFilter !== "all")
         url += `&eloTier=${eloTierFilter}`;
       if (teamSizeFilter && teamSizeFilter !== "all")
@@ -254,8 +266,8 @@ export default function MatchHistoryPage() {
   const getWinnerDisplay = (match: Match) => {
     if (match.status !== "completed") return "Pending";
 
-    if (match.winner === 1) return "Lineage";
-    if (match.winner === 2) return "RNA Corp";
+    if (match.winner === 1) return "Team 1";
+    if (match.winner === 2) return "Team 2";
 
     return "Draw";
   };
@@ -362,14 +374,13 @@ export default function MatchHistoryPage() {
               onValueChange={setStatusFilter}
             >
               <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
                 <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="complete">Completed</SelectItem>
-                <SelectItem value="canceled">Canceled</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+                <SelectItem value="In-Progress">In-Progress</SelectItem>
+                <SelectItem value="Canceled">Canceled</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -385,7 +396,7 @@ export default function MatchHistoryPage() {
               <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
                 <SelectItem value="all">All Tiers</SelectItem>
                 <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="medium">Mid</SelectItem>
                 <SelectItem value="high">High</SelectItem>
               </SelectContent>
             </Select>
