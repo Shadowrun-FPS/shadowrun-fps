@@ -59,6 +59,8 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { TeamCard } from "@/components/teams/team-card";
+import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
 
 interface Team {
   _id: string;
@@ -68,20 +70,24 @@ interface Team {
   captain: {
     discordId: string;
     discordNickname: string;
-    discordAvatar?: string;
+    discordProfilePicture: string;
   };
   members: {
     discordId: string;
     discordNickname: string;
-    discordAvatar?: string;
+    discordProfilePicture: string;
+    discordUsername?: string;
+    elo?: any;
+    joinedAt?: string;
     role: string;
   }[];
   teamElo: number;
   tournaments?: string[];
-  matchesPlayed?: number;
   wins?: number;
   losses?: number;
-  lastActivity?: string;
+  scrimmageWins?: number;
+  scrimmageLosses?: number;
+  tournamentWins?: number;
 }
 
 interface Tournament {
@@ -102,9 +108,9 @@ export default function TeamsPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [myTeam, setMyTeam] = useState<Team | null>(null);
+  const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
   const [view, setView] = useState<string>("grid");
@@ -116,16 +122,19 @@ export default function TeamsPage() {
 
   const fetchTeams = useCallback(async () => {
     try {
-      // First get all teams
+      setLoading(true);
       const response = await fetch("/api/teams");
-      const teamsData = await response.json();
-      setTeams(Array.isArray(teamsData) ? teamsData : []);
+      if (!response.ok) throw new Error("Failed to fetch teams");
+      const data = await response.json();
+
+      // Make sure we're using the actual teamElo value from the database
+      setTeams(data);
 
       // Find user's team
-      const userTeam = teamsData.find((team: Team) =>
+      const userTeam = data.find((team: Team) =>
         team.members.some((member) => member.discordId === session?.user?.id)
       );
-      setMyTeam(userTeam || null);
+      setUserTeam(userTeam || null);
 
       // Fetch tournaments
       try {
@@ -156,7 +165,7 @@ export default function TeamsPage() {
             });
 
             // Enhance team objects with tournament data
-            const enhancedTeams = teamsData.map((team: Team) => ({
+            const enhancedTeams = data.map((team: Team) => ({
               ...team,
               tournaments: teamTournamentMap.get(team._id.toString()) || [],
             }));
@@ -168,8 +177,6 @@ export default function TeamsPage() {
         console.error("Error fetching tournaments:", tournamentError);
         setTournaments([]);
       }
-
-      setLoading(false);
     } catch (error) {
       console.error("Error fetching teams:", error);
       toast({
@@ -177,6 +184,7 @@ export default function TeamsPage() {
         description: "Failed to load teams",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   }, [session?.user?.id]);
@@ -186,7 +194,7 @@ export default function TeamsPage() {
   }, [session?.user?.id, fetchTeams]);
 
   const filteredTeams = teams
-    .filter((team) => !myTeam || team._id !== myTeam._id)
+    .filter((team) => !userTeam || team._id !== userTeam._id)
     .filter((team) => {
       // Filter by tournament if selected
       if (selectedTournament !== "all") {
@@ -212,8 +220,8 @@ export default function TeamsPage() {
       }
 
       // Search filtering with null checks
-      if (searchTerm) {
-        const lowercaseSearch = searchTerm.toLowerCase();
+      if (searchQuery) {
+        const lowercaseSearch = searchQuery.toLowerCase();
         return (
           (team.name && team.name.toLowerCase().includes(lowercaseSearch)) ||
           (team.tag && team.tag.toLowerCase().includes(lowercaseSearch)) ||
@@ -251,103 +259,9 @@ export default function TeamsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const TeamCard = ({
-    team,
-    isMyTeam = false,
-  }: {
-    team: Team;
-    isMyTeam?: boolean;
-  }) => (
-    <Card
-      key={team._id}
-      className="overflow-hidden transition-colors border-l-4 hover:bg-muted/50 border-l-primary/10 hover:border-l-primary/20"
-    >
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{team.name || "Unnamed Team"}</CardTitle>
-            <CardDescription>{team.tag ? `[${team.tag}]` : ""}</CardDescription>
-          </div>
-          {/* Team ELO badge */}
-          <div className="flex flex-col items-end">
-            <Badge variant="outline" className="text-primary">
-              {team.teamElo || 1000} ELO
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <p className="text-sm text-muted-foreground line-clamp-2 min-h-[40px]">
-          {team.description}
-        </p>
-
-        <div className="grid grid-cols-2 gap-2 mt-4">
-          <div className="p-2 rounded-md bg-muted/50">
-            <div className="flex items-center gap-2 text-sm">
-              <Trophy className="w-4 h-4 text-primary" />
-              <span>Captain</span>
-            </div>
-            <div className="mt-1 text-sm font-medium truncate">
-              {team.captain.discordNickname}
-            </div>
-          </div>
-
-          <div className="p-2 rounded-md bg-muted/50">
-            <div className="flex items-center gap-2 text-sm">
-              <Users className="w-4 h-4 text-primary" />
-              <span>Members</span>
-            </div>
-            <div className="mt-1 text-sm font-medium">
-              {team.members.length} players
-            </div>
-          </div>
-        </div>
-
-        {team.tournaments && team.tournaments.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-3">
-            {team.tournaments.map((tournamentId) => {
-              const tournament = tournaments.find(
-                (t) => t._id === tournamentId
-              );
-              return tournament ? (
-                <Badge key={tournamentId} variant="outline" className="text-xs">
-                  {tournament.name}
-                </Badge>
-              ) : null;
-            })}
-          </div>
-        )}
-      </CardContent>
-
-      <CardFooter className="flex justify-end gap-2 pt-2 pb-3 border-t">
-        <Link href={`/tournaments/teams/${team._id.toString()}`}>
-          <Button variant="outline" size="sm" className="h-8">
-            View Details
-          </Button>
-        </Link>
-
-        {isMyTeam ? (
-          <Link
-            href={`/tournaments/teams/${team._id.toString()}/manage`}
-          ></Link>
-        ) : (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <Button variant="secondary" size="sm" className="h-8" disabled>
-                  Challenge
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              <p>Coming Soon!</p>
-            </TooltipContent>
-          </Tooltip>
-        )}
-      </CardFooter>
-    </Card>
-  );
+  const handleChallenge = (teamId: string) => {
+    // Implementation of handleChallenge function
+  };
 
   return (
     <FeatureGate feature="teams">
@@ -419,8 +333,8 @@ export default function TeamsPage() {
                     type="search"
                     placeholder="Search teams..."
                     className="pl-9 w-full sm:w-[260px]"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                   />
                 </div>
 
@@ -515,12 +429,26 @@ export default function TeamsPage() {
             </div>
 
             {/* My Team Section */}
-            {myTeam && (
+            {userTeam && (
               <>
                 <div className="mb-8">
                   <h2 className="mt-8 mb-4 text-xl font-semibold">My Team</h2>
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    <TeamCard team={myTeam} isMyTeam={true} />
+                    <TeamCard
+                      key={userTeam._id}
+                      _id={userTeam._id}
+                      name={userTeam.name}
+                      tag={userTeam.tag}
+                      members={userTeam.members}
+                      wins={userTeam.wins || 0}
+                      losses={userTeam.losses || 0}
+                      scrimmageWins={userTeam.scrimmageWins || 0}
+                      scrimmageLosses={userTeam.scrimmageLosses || 0}
+                      tournamentWins={userTeam.tournamentWins || 0}
+                      userTeam={userTeam}
+                      isUserTeam={true}
+                      teamElo={userTeam.teamElo}
+                    />
 
                     <Card className="border-dashed bg-primary/5 border-primary/30">
                       <CardContent className="flex flex-col items-center justify-center h-full py-8">
@@ -533,7 +461,7 @@ export default function TeamsPage() {
                         </p>
                         <Button asChild>
                           <Link
-                            href={`/tournaments/teams/${myTeam._id.toString()}`}
+                            href={`/tournaments/teams/${userTeam._id.toString()}`}
                           >
                             <Shield className="w-4 h-4 mr-2" />
                             Manage Team
@@ -615,8 +543,8 @@ export default function TeamsPage() {
                       type="search"
                       placeholder="Search teams..."
                       className="pl-9 w-full sm:w-[260px]"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
                 </div>
@@ -669,61 +597,94 @@ export default function TeamsPage() {
                     <TabsContent value="grid">
                       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {currentTeams.map((team) => (
-                          <TeamCard key={team._id} team={team} />
+                          <TeamCard
+                            key={team._id}
+                            _id={team._id}
+                            name={team.name}
+                            tag={team.tag}
+                            members={team.members}
+                            wins={team.wins || 0}
+                            losses={team.losses || 0}
+                            scrimmageWins={team.scrimmageWins || 0}
+                            scrimmageLosses={team.scrimmageLosses || 0}
+                            tournamentWins={team.tournamentWins || 0}
+                            userTeam={userTeam}
+                            isUserTeam={userTeam?._id === team._id}
+                            teamElo={team.teamElo}
+                          />
                         ))}
                       </div>
                     </TabsContent>
 
                     <TabsContent value="list">
-                      <Card>
-                        <div className="border rounded-md">
-                          <div className="grid items-center grid-cols-12 p-4 border-b bg-muted/50">
-                            <div className="col-span-5 font-medium">Team</div>
-                            <div className="col-span-2 font-medium">
-                              Captain
-                            </div>
-                            <div className="col-span-2 font-medium">
-                              Members
-                            </div>
-                            <div className="col-span-2 font-medium text-right">
-                              ELO
-                            </div>
-                            <div className="col-span-1"></div>
-                          </div>
-
-                          {currentTeams.map((team) => (
-                            <div
-                              key={team._id}
-                              className="grid items-center grid-cols-12 p-4 border-b hover:bg-muted/30"
-                            >
-                              <div className="col-span-5">
-                                <div className="font-medium">{team.name}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  [{team.tag}]
-                                </div>
-                              </div>
-                              <div className="col-span-2">
-                                {team.captain.discordNickname}
-                              </div>
-                              <div className="col-span-2">
-                                {team.members.length}
-                              </div>
-                              <div className="col-span-2 font-medium text-right text-primary">
-                                {team.teamElo}
-                              </div>
-                              <div className="col-span-1 text-right">
-                                <Link
-                                  href={`/tournaments/teams/${team._id.toString()}`}
-                                >
-                                  <Button variant="ghost" size="sm">
-                                    View
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="bg-muted/50">
+                              <th className="p-3 text-left">Team</th>
+                              <th className="p-3 text-left">Captain</th>
+                              <th className="p-3 text-left">Members</th>
+                              <th className="p-3 text-left">ELO</th>
+                              <th className="p-3 text-right"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {currentTeams.map((team) => (
+                              <tr
+                                key={team._id}
+                                className="border-b border-muted hover:bg-muted/30"
+                              >
+                                <td className="p-3">
+                                  <div className="font-medium">{team.name}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    [{team.tag}]
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  {team.members.find(
+                                    (m) =>
+                                      m.role === "captain" ||
+                                      m.discordId === team.captain?.discordId
+                                  )?.discordNickname ||
+                                    team.captain?.discordNickname ||
+                                    "Stock Captain"}
+                                </td>
+                                <td className="p-3">
+                                  {team.members?.length || 0}
+                                </td>
+                                <td className="p-3">
+                                  {team.teamElo?.toLocaleString() || "N/A"}
+                                </td>
+                                <td className="p-3 space-x-2 text-right">
+                                  <Button variant="outline" size="sm" asChild>
+                                    <Link
+                                      href={`/tournaments/teams/${team.tag}`}
+                                    >
+                                      View
+                                    </Link>
                                   </Button>
-                                </Link>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </Card>
+                                  {userTeam &&
+                                    team._id !== userTeam._id &&
+                                    session?.user?.id ===
+                                      userTeam?.captain?.discordId && (
+                                      <ChallengeTeamDialog
+                                        team={{
+                                          _id: team._id,
+                                          name: team.name,
+                                          tag: team.tag,
+                                          captain: team.captain,
+                                          members: team.members,
+                                        }}
+                                        userTeam={userTeam}
+                                        disabled={team.members.length < 4}
+                                      />
+                                    )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </TabsContent>
 
                     {/* Pagination UI */}
@@ -790,8 +751,8 @@ export default function TeamsPage() {
                       <Users className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
                       <h3 className="text-lg font-medium">No Teams Found</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {searchTerm
-                          ? `No teams match "${searchTerm}"`
+                        {searchQuery
+                          ? `No teams match "${searchQuery}"`
                           : selectedTournament !== "all"
                           ? "No teams found for this tournament"
                           : "Create the first team to get started!"}

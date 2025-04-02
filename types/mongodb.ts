@@ -3,11 +3,12 @@ import { StaticImport } from "next/dist/shared/lib/get-img-props";
 
 interface TeamMember {
   discordId: string;
-  discordUsername: string;
+  discordUsername?: string;
   discordNickname: string;
-  role: "captain" | "member" | "substitute";
-  elo: Record<string, number>;
-  joinedAt: Date | string;
+  discordProfilePicture?: string;
+  role: "captain" | "member" | "substitute" | string;
+  elo?: Record<string, number>;
+  joinedAt?: Date | string;
 }
 
 // Base interface for team data without ID

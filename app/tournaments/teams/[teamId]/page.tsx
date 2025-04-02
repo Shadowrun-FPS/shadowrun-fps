@@ -15,6 +15,8 @@ import {
   UserMinus,
   LogIn,
   X,
+  RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { TeamInvitesList } from "@/components/teams/team-invites-list";
+import { useRouter } from "next/navigation";
 
 interface TeamMember {
   discordId: string;
@@ -63,13 +66,23 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   const [newCaptainId, setNewCaptainId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
+  const [isRefreshingElo, setIsRefreshingElo] = useState(false);
+  const router = useRouter();
 
   const isTeamCaptain = session?.user?.id === team?.captain.discordId;
 
   useEffect(() => {
     const fetchTeam = async () => {
       try {
-        const response = await fetch(`/api/teams/${params.teamId}`);
+        // Check if the teamId is a valid MongoDB ObjectId (24 hex characters)
+        const isObjectId = /^[0-9a-fA-F]{24}$/.test(params.teamId);
+
+        // Use the appropriate endpoint based on whether teamId is an ObjectId or tag
+        const endpoint = isObjectId
+          ? `/api/teams/${params.teamId}`
+          : `/api/teams/tag/${params.teamId}`;
+
+        const response = await fetch(endpoint);
         if (!response.ok) throw new Error("Failed to load team data");
         const data = await response.json();
         setTeam(data);
@@ -251,6 +264,74 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
     }
   };
 
+  // Add this function to the team details page
+  const handleRefreshElo = async () => {
+    if (!team) return; // Early return if team is null
+
+    try {
+      setIsRefreshingElo(true);
+      const response = await fetch(`/api/teams/${team._id}/refresh-elo`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          // Add a flag to indicate this is an admin or special user request
+          isAdminRequest:
+            session?.user?.id === "238329746671271936" ||
+            (Array.isArray(session?.user?.roles) &&
+              session?.user?.roles.includes("admin")),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to refresh team ELO");
+      }
+
+      const data = await response.json();
+
+      // Update the team ELO in the UI with proper type handling
+      setTeam((prevTeam) => {
+        if (!prevTeam) return null;
+        return {
+          ...prevTeam,
+          teamElo: data.teamElo,
+        };
+      });
+
+      toast({
+        title: "Success",
+        description: "Team ELO refreshed successfully",
+      });
+    } catch (error: any) {
+      console.error("Refresh ELO error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to refresh team ELO",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshingElo(false);
+    }
+  };
+
+  // Add this check to determine if the user can refresh ELO
+  const canRefreshElo = () => {
+    if (!session?.user?.id) return false;
+
+    // Allow team captain
+    if (isTeamCaptain) return true;
+
+    // Allow specific admin user (you)
+    if (session.user.id === "238329746671271936") return true;
+
+    // Allow users with admin roles
+    return (
+      Array.isArray(session.user.roles) && session.user.roles.includes("admin")
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -293,13 +374,37 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     Information about {team.name}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                  <span className="text-xl font-bold">
-                    {team && team.teamElo !== undefined && team.teamElo !== null
-                      ? Number(team.teamElo).toLocaleString()
-                      : "N/A"}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    <span className="text-xl font-bold">
+                      {team &&
+                      team.teamElo !== undefined &&
+                      team.teamElo !== null
+                        ? Number(team.teamElo).toLocaleString()
+                        : "N/A"}
+                    </span>
+                  </div>
+                  {canRefreshElo() && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRefreshElo}
+                      disabled={isRefreshingElo}
+                    >
+                      {isRefreshingElo ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Refreshing...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2" />
+                          Refresh ELO
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardHeader>
@@ -868,6 +973,19 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
               </Card>
             </div>
           )}
+
+        {/* Back button */}
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.back()}
+            className="flex items-center gap-1"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </Button>
+        </div>
       </main>
     </div>
   );
