@@ -105,7 +105,7 @@ export function TeamCard({
             <div className="flex justify-between">
               <span className="text-muted-foreground">Scrimmage Record:</span>
               <span>
-                {scrimmageWins || 0}-{scrimmageLosses || 0}
+                {wins || 0}-{losses || 0}
               </span>
             </div>
             {tournamentWins > 0 && (
