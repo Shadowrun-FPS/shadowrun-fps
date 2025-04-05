@@ -2,6 +2,7 @@ import { AuthOptions, DefaultSession } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import type { DefaultJWT } from "next-auth/jwt";
 import { connectToDatabase } from "@/lib/mongodb";
+import { signIn } from "next-auth/react";
 
 // Add your Discord ID to the list of admin IDs
 const ADMIN_IDS = ["238329746671271936"]; // Your Discord ID
@@ -75,6 +76,7 @@ export const authOptions: AuthOptions = {
         session.user.nickname = token.nickname as string;
         session.user.roles = token.roles as string[];
       }
+
       return session;
     },
     async jwt({ token, user, account }) {
@@ -147,6 +149,45 @@ export const authOptions: AuthOptions = {
         }
       }
       return token;
+    },
+    async signIn({ user, account, profile }) {
+      // Only proceed for Discord sign-ins
+      if (account?.provider === "discord") {
+        try {
+          // Get user data
+          const { id: discordId, name, image } = user;
+          const discordNickname = user.name;
+          const discordUsername =
+            user.email?.split("@")[0] || name?.toLowerCase();
+          const discordProfilePicture = image;
+
+          // Connect directly to the database
+          const { db } = await connectToDatabase();
+
+          // Update or create player document
+          await db.collection("Players").updateOne(
+            { discordId },
+            {
+              $set: {
+                discordNickname,
+                discordUsername,
+                discordProfilePicture,
+                updatedAt: new Date().toISOString(),
+              },
+              $setOnInsert: {
+                stats: [],
+                createdAt: new Date().toISOString(),
+              },
+            },
+            { upsert: true }
+          );
+        } catch (error) {
+          console.error("Error updating player document:", error);
+          // Don't block sign-in if this fails
+        }
+      }
+
+      return true; // Allow sign-in
     },
   },
   pages: {

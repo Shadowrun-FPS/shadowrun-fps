@@ -1,25 +1,14 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { initSocketServer } from "./lib/socket-server";
 
 export function middleware(request: NextRequest) {
-  // Initialize Socket.IO if not already initialized
-  if (!(global as any).io && (global as any).server) {
-    initSocketServer((global as any).server);
-  }
-
-  return NextResponse.next();
+  // Simply block Socket.IO paths in Edge Runtime
+  return NextResponse.json(
+    { error: "Socket.IO is only available through the custom server" },
+    { status: 501 }
+  );
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/api/socketio/:path*"],
 };

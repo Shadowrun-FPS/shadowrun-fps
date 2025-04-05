@@ -1,7 +1,6 @@
 import { createServer } from "http";
 import { parse } from "url";
 import next from "next";
-import { initSocket } from "./lib/socket";
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
@@ -13,8 +12,17 @@ app.prepare().then(() => {
     handle(req, res, parsedUrl);
   });
 
-  // Initialize socket.io with the HTTP server
-  initSocket(server);
+  // Only initialize Socket.IO in Node.js environment
+  if (typeof window === "undefined" && !process.env.EDGE_RUNTIME) {
+    // Dynamic import to prevent Edge Runtime issues
+    import("./lib/socket-server.node")
+      .then(({ initSocketServer }) => {
+        initSocketServer(server);
+      })
+      .catch((err) => {
+        console.error("Failed to initialize Socket.IO:", err);
+      });
+  }
 
   const port = process.env.PORT || 3000;
   server.listen(port, () => {

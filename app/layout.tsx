@@ -7,6 +7,7 @@ import { ClientLayout } from "@/components/ClientLayout";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { OnlineStatus } from "@/components/online-status";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
+import { PlayerUpdater } from "@/components/player-updater";
 
 // Define the Inter font outside the component
 const inter = Inter({ subsets: ["latin"] });
@@ -116,6 +117,7 @@ export default function RootLayout({
         <NotificationsProvider>
           <AuthProvider>
             <OnlineStatus />
+            <PlayerUpdater />
             <ClientLayout>{children}</ClientLayout>
           </AuthProvider>
         </NotificationsProvider>

@@ -125,7 +125,7 @@ export default function AccountDropdown() {
 
           <DropdownMenuItem asChild>
             <Link href="/notifications" className="flex items-center">
-              <Bell className="mr-2 h-4 w-4" />
+              <Bell className="w-4 h-4 mr-2" />
               <span>Notifications</span>
               {unreadCount > 0 && (
                 <span className="ml-auto bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs font-semibold">
@@ -139,7 +139,7 @@ export default function AccountDropdown() {
           session?.user.roles?.includes("moderator") ? (
             <DropdownMenuItem asChild>
               <Link href="/admin/moderation" className="flex items-center">
-                <Shield className="mr-2 h-4 w-4" />
+                <Shield className="w-4 h-4 mr-2" />
                 <span>Mod Panel</span>
               </Link>
             </DropdownMenuItem>
