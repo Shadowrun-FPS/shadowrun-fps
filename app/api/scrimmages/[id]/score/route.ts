@@ -196,14 +196,14 @@ export async function POST(
             .collection("teams")
             .updateOne(
               { _id: new ObjectId(winningTeamId) },
-              { $inc: { scrimmageWins: 1 } }
+              { $inc: { wins: 1 } }
             );
 
           await db
             .collection("teams")
             .updateOne(
               { _id: new ObjectId(losingTeamId) },
-              { $inc: { scrimmageLosses: 1 } }
+              { $inc: { losses: 1 } }
             );
         }
       }

@@ -45,6 +45,8 @@ interface TeamMember {
 }
 
 interface Team {
+  wins: number | undefined;
+  losses: number | undefined;
   _id: string;
   name: string;
   tag: string;
@@ -364,6 +366,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
         teamName={team.name}
         teamTag={team.tag}
         teamElo={team.teamElo}
+        wins={team.wins}
+        losses={team.losses}
       />
 
       <div className="min-h-screen">

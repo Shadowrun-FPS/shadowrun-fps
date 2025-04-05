@@ -74,10 +74,10 @@ export async function POST(
       .insertOne({
         teamId: team._id.toString(),
         teamName: team.name,
-        userId: userId,
-        userName: userName,
-        userNickname: session.user.nickname || userName,
-        userAvatar: session.user.image || null,
+        userId: session.user.id,
+        userName: session.user.name,
+        userNickname: session.user.nickname || session.user.name,
+        userAvatar: session.user.image,
         status: "pending",
         createdAt: new Date(),
       });

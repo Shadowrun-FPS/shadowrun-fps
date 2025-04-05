@@ -18,7 +18,9 @@ import {
   CheckCircle,
   Clock8,
   X,
+  PlusCircle,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +62,7 @@ interface Tournament {
 
 export default function TournamentsOverviewPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -67,6 +70,12 @@ export default function TournamentsOverviewPage() {
   const [teamSizeFilter, setTeamSizeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
+  // Check if user has permission to create tournaments
+  const canCreateTournament =
+    session?.user?.roles?.includes("admin") ||
+    session?.user?.roles?.includes("moderator") ||
+    session?.user?.id === "YOUR_USER_ID"; // Replace with your actual user ID
 
   // Move fetchTournaments outside useEffect to component scope
   const fetchTournaments = async () => {
@@ -232,12 +241,15 @@ export default function TournamentsOverviewPage() {
             Browse and register for competitive tournaments
           </p>
         </div>
-        <Button
-          onClick={() => setIsCreateDialogOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> Create Tournament
-        </Button>
+        {canCreateTournament && (
+          <Button
+            onClick={() => setIsCreateDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <PlusCircle className="w-4 h-4" />
+            Create Tournament
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -449,9 +461,11 @@ export default function TournamentsOverviewPage() {
                   There are no tournaments currently in progress. Check upcoming
                   tournaments or create your own!
                 </p>
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  Create Tournament
-                </Button>
+                {canCreateTournament && (
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    Create Tournament
+                  </Button>
+                )}
               </Card>
             )}
           </TabsContent>
@@ -498,9 +512,11 @@ export default function TournamentsOverviewPage() {
                   There are no tournaments scheduled for the future. Be the
                   first to create one!
                 </p>
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  Create Tournament
-                </Button>
+                {canCreateTournament && (
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    Create Tournament
+                  </Button>
+                )}
               </Card>
             )}
           </TabsContent>

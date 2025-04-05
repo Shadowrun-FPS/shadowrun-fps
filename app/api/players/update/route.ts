@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     const { id: discordId, name, image } = session.user;
 
     // Map Discord fields correctly
-    const discordNickname = session.user.nickname || session.user.name;
+    const discordNickname = session.user.nickname;
     const discordUsername = session.user.name;
     const discordProfilePicture = image;
 
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
       { discordId },
       {
         $set: {
-          discordNickname,
-          discordUsername,
-          discordProfilePicture,
+          discordNickname: discordNickname,
+          discordUsername: discordUsername,
+          discordProfilePicture: discordProfilePicture,
           updatedAt: new Date().toISOString(),
         },
         $setOnInsert: {

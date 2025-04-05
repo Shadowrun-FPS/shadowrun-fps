@@ -97,7 +97,7 @@ const TournamentsLinks = [
   {
     title: "Scrimmages",
     href: "/tournaments/scrimmages",
-    description: "Set up practice matches with other teams",
+    description: "View scrimmage matches with other teams",
     icon: <HeartHandshake className="w-5 h-5 mr-2 text-primary" />,
   },
   {

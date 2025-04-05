@@ -25,8 +25,6 @@ interface TeamCardProps {
   onClick?: () => void;
   description?: string;
   userTeam?: any;
-  scrimmageWins?: number;
-  scrimmageLosses?: number;
   tournamentWins?: number;
   isUserTeam?: boolean;
   teamElo?: number; // Use the original name to avoid confusion
@@ -42,8 +40,6 @@ export function TeamCard({
   onClick,
   description = "",
   userTeam,
-  scrimmageWins = 0,
-  scrimmageLosses = 0,
   tournamentWins = 0,
   isUserTeam = false,
   teamElo, // Use the original name
@@ -58,6 +54,22 @@ export function TeamCard({
   const activeMembersCount = members.filter(
     (member) => member.role !== "substitute"
   ).length;
+
+  // Check if user's team has 4 members
+  const hasFullTeam = userTeam?.members?.length === 4;
+
+  // Check if the team being viewed has 4 members
+  const targetTeamHasFullTeam = activeMembersCount === 4;
+
+  // Determine tooltip text based on team membership status
+  const challengeTooltip = !hasFullTeam
+    ? "Your team needs 4 members to challenge other teams"
+    : !targetTeamHasFullTeam
+    ? `${name} needs 4 members to be challenged`
+    : "Challenge this team";
+
+  // Determine if challenge button should be disabled
+  const disableChallenge = !hasFullTeam || !targetTeamHasFullTeam;
 
   return (
     <Card
@@ -119,27 +131,67 @@ export function TeamCard({
       </CardContent>
 
       <CardFooter className="grid grid-cols-2 gap-2 pt-2">
-        {userTeam && _id && !isUserTeam ? (
-          <ChallengeTeamDialog
-            team={{
-              _id,
-              name,
-              tag,
-              captain: captain || members[0],
-              members,
-            }}
-            userTeam={userTeam}
-          />
-        ) : (
-          <Button size="sm" variant="outline" className="h-8" disabled>
-            <Swords className="w-5 h-5 mr-2" />
-            Challenge
+        {isUserTeam ? (
+          // For user's own team, show a full-width View Details button instead of two buttons
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 col-span-2"
+            asChild
+          >
+            <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
           </Button>
-        )}
+        ) : (
+          // For other teams, show Challenge and View Details buttons
+          <>
+            {userTeam && _id ? (
+              hasFullTeam && targetTeamHasFullTeam ? (
+                <ChallengeTeamDialog
+                  team={{
+                    _id,
+                    name,
+                    tag,
+                    captain: captain || members[0],
+                    members,
+                  }}
+                  userTeam={userTeam}
+                />
+              ) : (
+                <Button
+                  variant="outline"
+                  className="h-8"
+                  disabled={true}
+                  title={challengeTooltip}
+                  aria-label={challengeTooltip}
+                >
+                  <Swords className="w-4 h-4 mr-2" />
+                  Challenge
+                </Button>
+              )
+            ) : (
+              <Button
+                variant="outline"
+                className="h-8"
+                onClick={() => {
+                  // Only open challenge dialog if both teams have full rosters
+                  if (hasFullTeam && targetTeamHasFullTeam) {
+                    // Existing code to open challenge dialog
+                  }
+                }}
+                disabled={disableChallenge}
+                title={challengeTooltip}
+                aria-label={challengeTooltip}
+              >
+                <Swords className="w-4 h-4 mr-2" />
+                Challenge
+              </Button>
+            )}
 
-        <Button variant="outline" size="sm" className="h-8" asChild>
-          <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
-        </Button>
+            <Button variant="outline" size="sm" className="h-8" asChild>
+              <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
+            </Button>
+          </>
+        )}
       </CardFooter>
     </Card>
   );

@@ -80,6 +80,32 @@ export async function POST(
       _id: new ObjectId(params.id),
     });
 
+    // Get the challenging team captain's ID for notification
+    const challengerCaptainId = scrimmage.challengerTeam?.captain?.discordId;
+
+    // Create a notification for the challenging team captain
+    if (challengerCaptainId) {
+      await db.collection("Notifications").insertOne({
+        userId: challengerCaptainId,
+        type: "scrimmage_accepted",
+        title: "Scrimmage Challenge Accepted",
+        message: `${
+          scrimmage.challengedTeam?.name
+        } has accepted your scrimmage challenge for ${new Date(
+          scrimmage.proposedDate
+        ).toLocaleDateString()}.`,
+        scrimmageId: scrimmage.scrimmageId || scrimmage._id.toString(),
+        scrimmageDetails: {
+          teamA: scrimmage.challengerTeam?.name,
+          teamB: scrimmage.challengedTeam?.name,
+          date: scrimmage.proposedDate,
+          maps: scrimmage.maps,
+        },
+        createdAt: new Date(),
+        read: false,
+      });
+    }
+
     return NextResponse.json(updatedScrimmage);
   } catch (error) {
     console.error("Error accepting scrimmage:", error);

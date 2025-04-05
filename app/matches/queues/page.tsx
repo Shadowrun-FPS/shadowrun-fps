@@ -223,12 +223,30 @@ export default function QueuesPage() {
 
   const handleJoinQueue = async (queueId: string) => {
     if (!session?.user) return;
+
+    // Check if already joining a queue
+    if (joiningQueue) return;
+
+    // Set the joining state to prevent multiple clicks
     setJoiningQueue(queueId);
 
-    // Don't do optimistic update with hardcoded ELO
-    // Instead, let the SSE update handle it
-
     try {
+      // First check if player is already in this queue
+      const queueToJoin = queues.find((q) => q._id === queueId);
+      const alreadyInQueue = queueToJoin?.players.some(
+        (p: QueuePlayer) => p.discordId === session.user.id
+      );
+
+      if (alreadyInQueue) {
+        toast({
+          title: "Already in queue",
+          description: "You are already in this queue",
+          duration: 3000,
+        });
+        setJoiningQueue(null);
+        return;
+      }
+
       const response = await fetch(`/api/queues/${queueId}/join`, {
         method: "POST",
       });
@@ -238,21 +256,24 @@ export default function QueuesPage() {
         throw new Error(data.error || "Failed to join queue");
       }
 
+      // Instead of optimistically updating the UI, we'll wait for the SSE update
+      // This prevents the duplicate entry issue
+
       toast({
-        title: "Joined Queue",
-        description: "You have joined the queue successfully",
-        duration: 3000,
+        title: "Success",
+        description: "Successfully joined queue",
       });
     } catch (error) {
+      console.error("Error joining queue:", error);
       toast({
         title: "Error",
         description:
           error instanceof Error ? error.message : "Failed to join queue",
         variant: "destructive",
-        duration: 3000,
       });
     } finally {
-      setJoiningQueue(null);
+      // Reset joining state after a short delay to prevent spam clicks
+      setTimeout(() => setJoiningQueue(null), 1000);
     }
   };
 
@@ -1265,6 +1286,20 @@ export default function QueuesPage() {
               >
                 <TabsList className="grid w-full h-auto grid-cols-4">
                   <TabsTrigger
+                    value="1v1"
+                    className="py-2 text-sm sm:text-base"
+                    onClick={() => setActiveTab("1v1")}
+                  >
+                    1v1
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="2v2"
+                    className="py-2 text-sm sm:text-base"
+                    onClick={() => setActiveTab("2v2")}
+                  >
+                    2v2
+                  </TabsTrigger>
+                  <TabsTrigger
                     value="4v4"
                     className="py-2 text-sm sm:text-base"
                     onClick={() => setActiveTab("4v4")}
@@ -1277,20 +1312,6 @@ export default function QueuesPage() {
                     onClick={() => setActiveTab("5v5")}
                   >
                     5v5
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="2v2"
-                    className="py-2 text-sm sm:text-base"
-                    onClick={() => setActiveTab("2v2")}
-                  >
-                    2v2
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="1v1"
-                    className="py-2 text-sm sm:text-base"
-                    onClick={() => setActiveTab("1v1")}
-                  >
-                    1v1
                   </TabsTrigger>
                 </TabsList>
 
