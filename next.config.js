@@ -18,6 +18,17 @@ const nextConfig = {
         child_process: false,
       };
     }
+
+    // Handle Socket.IO for all environments
+    if (isServer) {
+      // Add socket.io to externals to prevent it from being bundled in Edge
+      config.externals = [
+        ...(config.externals || []),
+        "socket.io",
+        "engine.io",
+      ];
+    }
+
     return config;
   },
   async rewrites() {
@@ -59,6 +70,16 @@ const nextConfig = {
         permanent: false,
       },
     ];
+  },
+  experimental: {
+    // This tells Next.js to treat these packages as external in Server Components
+    serverComponentsExternalPackages: [
+      "socket.io",
+      "engine.io",
+      "ws",
+      "bufferutil",
+      "utf-8-validate",
+    ],
   },
 };
 
