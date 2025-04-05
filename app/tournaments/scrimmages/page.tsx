@@ -86,17 +86,14 @@ export default function ScrimmagesPage() {
         setLoading(true);
         const response = await fetch("/api/scrimmages");
 
-        if (response.status === 401) {
-          // Handle unauthorized gracefully
-          setScrimmages([]);
-          return;
-        }
-
         if (!response.ok) {
-          throw new Error("Failed to fetch scrimmages");
+          const errorData = await response.json();
+          console.error("API error:", errorData);
+          throw new Error(`Failed to fetch scrimmages: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log("Fetched scrimmages:", data); // Log the data to see what's coming back
         setScrimmages(data);
       } catch (error) {
         console.error("Error fetching scrimmages:", error);
@@ -124,12 +121,12 @@ export default function ScrimmagesPage() {
       }
     };
 
-    // Only fetch if user is logged in
+    // Fetch scrimmages for all users (including signed-out)
+    fetchScrimmages();
+
+    // Only fetch user team if logged in
     if (session?.user) {
-      fetchScrimmages();
       fetchUserTeam();
-    } else {
-      setLoading(false);
     }
   }, [session]);
 
@@ -434,10 +431,11 @@ export default function ScrimmagesPage() {
               ) : !session?.user ? (
                 <div className="p-12 text-center border rounded-lg">
                   <h3 className="text-lg font-medium">
-                    Sign in to view scrimmages
+                    Sign in to view pending scrimmages
                   </h3>
                   <p className="mt-2 text-muted-foreground">
-                    You need to be signed in to view and manage scrimmages.
+                    You need to be signed in to view and manage pending
+                    scrimmages.
                   </p>
                   <Button className="mt-4" asChild>
                     <Link href="/api/auth/signin">Sign In</Link>
@@ -488,13 +486,64 @@ export default function ScrimmagesPage() {
                     No upcoming scrimmages
                   </h3>
                   <p className="mt-2 text-muted-foreground">
-                    Accept a challenge to see it here.
+                    There are no upcoming scrimmages scheduled.
+                  </p>
+                </div>
+              ) : filteredUpcomingScrimmages.length === 0 ? (
+                <div className="p-12 text-center border rounded-lg">
+                  <h3 className="text-lg font-medium">No matches found</h3>
+                  <p className="mt-2 text-muted-foreground">
+                    Try adjusting your team filter.
                   </p>
                 </div>
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {/* Upcoming scrimmages cards */}
-                  {/* ... */}
+                  {filteredUpcomingScrimmages.map((scrimmage) => (
+                    <Card key={scrimmage._id} className="overflow-hidden">
+                      <CardHeader className="p-4 pb-2">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">
+                            {scrimmage.challengerTeam?.name} vs{" "}
+                            {scrimmage.challengedTeam?.name}
+                          </CardTitle>
+                          <Badge variant="default">Upcoming</Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-2 pb-0">
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm">
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            <span>
+                              {format(
+                                new Date(scrimmage.proposedDate),
+                                "MMMM d, yyyy"
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span>
+                              {format(
+                                new Date(scrimmage.proposedDate),
+                                "h:mm a"
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </CardContent>
+                      <CardFooter className="flex justify-end p-4">
+                        <Button variant="outline" size="sm" asChild>
+                          <Link
+                            href={`/tournaments/scrimmages/${
+                              scrimmage.scrimmageId || scrimmage._id
+                            }`}
+                          >
+                            View Match
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
                 </div>
               )}
             </div>
@@ -513,7 +562,7 @@ export default function ScrimmagesPage() {
                     No completed scrimmages
                   </h3>
                   <p className="mt-2 text-muted-foreground">
-                    Complete a scrimmage to see it here.
+                    There are no completed scrimmages yet.
                   </p>
                 </div>
               ) : (
