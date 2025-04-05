@@ -34,6 +34,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { TeamInvitesList } from "@/components/teams/team-invites-list";
 import { useRouter } from "next/navigation";
+import TeamHeader from "./team-header";
 
 interface TeamMember {
   discordId: string;
@@ -358,228 +359,177 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   };
 
   return (
-    <div className="min-h-screen">
-      <main className="container px-4 py-8 mx-auto space-y-6">
-        {/* First Row: Team Details and Members */}
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Team Details Card */}
-          <Card className="md:col-span-2">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <CardTitle className="text-2xl font-bold">
-                    Team Details
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Information about {team.name}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card">
-                    <TrendingUp className="w-5 h-5 text-primary" />
-                    <span className="text-xl font-bold">
-                      {team &&
-                      team.teamElo !== undefined &&
-                      team.teamElo !== null
-                        ? Number(team.teamElo).toLocaleString()
-                        : "N/A"}
-                    </span>
+    <div className="space-y-6">
+      <TeamHeader
+        teamName={team.name}
+        teamTag={team.tag}
+        teamElo={team.teamElo}
+      />
+
+      <div className="min-h-screen">
+        <main className="container px-4 py-8 mx-auto space-y-6">
+          {/* First Row: Team Details and Members */}
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Team Details Card */}
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-2xl font-bold">
+                      Team Details
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Information about {team.name}
+                    </p>
                   </div>
-                  {canRefreshElo() && (
+                  <div className="flex items-center gap-2">
+                    {/* <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      <span className="text-xl font-bold">
+                        {team &&
+                        team.teamElo !== undefined &&
+                        team.teamElo !== null
+                          ? Number(team.teamElo).toLocaleString()
+                          : "N/A"}
+                      </span>
+                    </div> */}
+                    {canRefreshElo() && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleRefreshElo}
+                        disabled={isRefreshingElo}
+                      >
+                        {isRefreshingElo ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Refreshing...
+                          </>
+                        ) : (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refresh ELO
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {isTeamCaptain ? (
+                  <TeamSettingsForm team={team} />
+                ) : (
+                  <>
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                        Team Name
+                      </h3>
+                      <p className="text-xl font-semibold">{team.name}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                        Team Tag
+                      </h3>
+                      <Badge variant="secondary" className="text-lg">
+                        [{team.tag}]
+                      </Badge>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                        Description
+                      </h3>
+                      <p className="text-muted-foreground">
+                        {team.description || "No description available"}
+                      </p>
+                    </div>
+
+                    {team && team.createdAt && (
+                      <div>
+                        <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                          Created
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(team.createdAt)}
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Team Members Card */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Team Members
+                  </CardTitle>
+                  {isTeamCaptain && team.members.length < 4 && (
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={handleRefreshElo}
-                      disabled={isRefreshingElo}
+                      onClick={() => {
+                        const event = new CustomEvent("openInviteModal", {
+                          detail: { teamId: team._id },
+                        });
+                        window.dispatchEvent(event);
+                      }}
                     >
-                      {isRefreshingElo ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Refreshing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                          Refresh ELO
-                        </>
-                      )}
+                      <Users className="w-4 h-4 mr-2" />
+                      Invite Player
                     </Button>
                   )}
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {isTeamCaptain ? (
-                <TeamSettingsForm team={team} />
-              ) : (
-                <>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Captain Section */}
                   <div>
                     <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                      Team Name
+                      Captain
                     </h3>
-                    <p className="text-xl font-semibold">{team.name}</p>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                      Team Tag
-                    </h3>
-                    <Badge variant="secondary" className="text-lg">
-                      [{team.tag}]
-                    </Badge>
-                  </div>
-
-                  <div>
-                    <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                      Description
-                    </h3>
-                    <p className="text-muted-foreground">
-                      {team.description || "No description available"}
-                    </p>
-                  </div>
-
-                  {team && team.createdAt && (
-                    <div>
-                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                        Created
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(team.createdAt)}
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Team Members Card */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Team Members
-                </CardTitle>
-                {isTeamCaptain && team.members.length < 4 && (
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      const event = new CustomEvent("openInviteModal", {
-                        detail: { teamId: team._id },
-                      });
-                      window.dispatchEvent(event);
-                    }}
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Invite Player
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Captain Section */}
-                <div>
-                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                    Captain
-                  </h3>
-                  <div className="p-3 border rounded-lg bg-card/50 border-border/50">
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex items-center justify-center w-10 h-10 overflow-hidden rounded-full bg-accent">
-                        {team.captain.discordProfilePicture ? (
-                          <Image
-                            src={team.captain.discordProfilePicture}
-                            alt={team.captain.discordNickname}
-                            width={48}
-                            height={48}
-                            className="object-cover w-full h-full"
-                          />
-                        ) : (
-                          <Users className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium">
-                          {team.captain.discordNickname}
-                        </p>
-                        <Badge className="mt-1 bg-amber-900/20 text-amber-300 border-amber-700">
-                          Captain
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Active Members Section */}
-                <div>
-                  <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                    Active Members
-                  </h3>
-                  <div className="space-y-2">
-                    {team.members
-                      .filter(
-                        (member) =>
-                          member.role.toLowerCase() !== "substitute" &&
-                          member.discordId !== team.captain.discordId
-                      )
-                      .map((member) => (
-                        <div
-                          key={member.discordId}
-                          className="flex items-center justify-between p-3 border rounded-lg bg-card border-border"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="relative w-10 h-10 overflow-hidden rounded-full">
-                              {member.discordProfilePicture ? (
-                                <Image
-                                  src={member.discordProfilePicture}
-                                  alt={member.discordNickname}
-                                  width={48}
-                                  height={48}
-                                  className="object-cover w-full h-full"
-                                />
-                              ) : (
-                                <div className="flex items-center justify-center w-full h-full bg-secondary">
-                                  <Users className="w-5 h-5 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                            <p>{member.discordNickname}</p>
-                          </div>
-                          {isTeamCaptain && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-500 hover:text-red-700 hover:bg-red-500/10"
-                              onClick={() =>
-                                handleRemoveMember(
-                                  member.discordId,
-                                  member.discordNickname ||
-                                    member.discordUsername ||
-                                    "this member"
-                                )
-                              }
-                            >
-                              <UserMinus className="w-4 h-4" />
-                            </Button>
+                    <div className="p-3 border rounded-lg bg-card/50 border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className="relative flex items-center justify-center w-10 h-10 overflow-hidden rounded-full bg-accent">
+                          {team.captain.discordProfilePicture ? (
+                            <Image
+                              src={team.captain.discordProfilePicture}
+                              alt={team.captain.discordNickname}
+                              width={48}
+                              height={48}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            <Users className="w-5 h-5 text-muted-foreground" />
                           )}
                         </div>
-                      ))}
+                        <div>
+                          <p className="font-medium">
+                            {team.captain.discordNickname}
+                          </p>
+                          <Badge className="mt-1 bg-amber-900/20 text-amber-300 border-amber-700">
+                            Captain
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
 
-                {/* Substitutes Section */}
-                {team.members.some(
-                  (member) => member.role.toLowerCase() === "substitute"
-                ) && (
+                  {/* Active Members Section */}
                   <div>
                     <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                      Substitutes
+                      Active Members
                     </h3>
                     <div className="space-y-2">
                       {team.members
                         .filter(
-                          (member) => member.role.toLowerCase() === "substitute"
+                          (member) =>
+                            member.role.toLowerCase() !== "substitute" &&
+                            member.discordId !== team.captain.discordId
                         )
                         .map((member) => (
                           <div
@@ -625,234 +575,364 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         ))}
                     </div>
                   </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Leave Team option for non-captain members */}
-        {team &&
-          session?.user?.id &&
-          team.members.some((m) => m.discordId === session.user.id) &&
-          !isTeamCaptain && (
-            <div className="mt-6">
-              <Card>
+                  {/* Substitutes Section */}
+                  {team.members.some(
+                    (member) => member.role.toLowerCase() === "substitute"
+                  ) && (
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                        Substitutes
+                      </h3>
+                      <div className="space-y-2">
+                        {team.members
+                          .filter(
+                            (member) =>
+                              member.role.toLowerCase() === "substitute"
+                          )
+                          .map((member) => (
+                            <div
+                              key={member.discordId}
+                              className="flex items-center justify-between p-3 border rounded-lg bg-card border-border"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="relative w-10 h-10 overflow-hidden rounded-full">
+                                  {member.discordProfilePicture ? (
+                                    <Image
+                                      src={member.discordProfilePicture}
+                                      alt={member.discordNickname}
+                                      width={48}
+                                      height={48}
+                                      className="object-cover w-full h-full"
+                                    />
+                                  ) : (
+                                    <div className="flex items-center justify-center w-full h-full bg-secondary">
+                                      <Users className="w-5 h-5 text-muted-foreground" />
+                                    </div>
+                                  )}
+                                </div>
+                                <p>{member.discordNickname}</p>
+                              </div>
+                              {isTeamCaptain && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-500/10"
+                                  onClick={() =>
+                                    handleRemoveMember(
+                                      member.discordId,
+                                      member.discordNickname ||
+                                        member.discordUsername ||
+                                        "this member"
+                                    )
+                                  }
+                                >
+                                  <UserMinus className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Leave Team option for non-captain members */}
+          {team &&
+            session?.user?.id &&
+            team.members.some((m) => m.discordId === session.user.id) &&
+            !isTeamCaptain && (
+              <div className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-red-500">Leave Team</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-sm text-muted-foreground">
+                        If you leave this team, you&apos;ll need to be invited
+                        again to rejoin.
+                      </p>
+                      <Button
+                        variant="destructive"
+                        onClick={async () => {
+                          if (
+                            !confirm(
+                              "Are you sure you want to leave this team?"
+                            )
+                          ) {
+                            return;
+                          }
+
+                          setIsSubmitting(true);
+                          try {
+                            const response = await fetch(
+                              `/api/teams/${team._id}/leave`,
+                              {
+                                method: "POST",
+                              }
+                            );
+
+                            if (!response.ok) {
+                              const data = await response.json();
+                              throw new Error(
+                                data.error || "Failed to leave team"
+                              );
+                            }
+
+                            toast({
+                              title: "Success",
+                              description: "You have left the team",
+                            });
+
+                            // Navigate back to teams page
+                            window.location.href = "/tournaments/teams";
+                          } catch (error: any) {
+                            console.error("Error leaving team:", error);
+                            toast({
+                              title: "Error",
+                              description:
+                                error.message || "Failed to leave team",
+                              variant: "destructive",
+                            });
+                          } finally {
+                            setIsSubmitting(false);
+                          }
+                        }}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Leaving...
+                          </>
+                        ) : (
+                          "Leave Team"
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+          {/* Captain Settings Section (Middle Row) */}
+          {isTeamCaptain && (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="md:col-span-2 lg:col-span-3">
                 <CardHeader>
-                  <CardTitle className="text-red-500">Leave Team</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Captain Settings
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
+                    <h3 className="text-lg font-medium">
+                      Transfer Captain Role
+                    </h3>
                     <p className="text-sm text-muted-foreground">
-                      If you leave this team, you&apos;ll need to be invited
-                      again to rejoin.
+                      This will transfer your captain privileges to another team
+                      member. This action cannot be undone.
                     </p>
-                    <Button
-                      variant="destructive"
-                      onClick={async () => {
-                        if (
-                          !confirm("Are you sure you want to leave this team?")
-                        ) {
-                          return;
-                        }
 
-                        setIsSubmitting(true);
-                        try {
-                          const response = await fetch(
-                            `/api/teams/${team._id}/leave`,
-                            {
-                              method: "POST",
-                            }
-                          );
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+                      <div className="space-y-2">
+                        <Label htmlFor="newCaptain">Select New Captain</Label>
+                        <div className="flex items-center gap-2">
+                          <Select
+                            value={newCaptainId}
+                            onValueChange={setNewCaptainId}
+                          >
+                            <SelectTrigger
+                              id="newCaptain"
+                              className="w-[280px]"
+                            >
+                              <SelectValue placeholder="Choose a team member" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {team.members
+                                .filter(
+                                  (member) =>
+                                    member.discordId !== session?.user?.id
+                                )
+                                .map((member) => (
+                                  <SelectItem
+                                    key={member.discordId}
+                                    value={member.discordId}
+                                  >
+                                    {member.discordNickname ||
+                                      member.discordUsername}
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
 
-                          if (!response.ok) {
-                            const data = await response.json();
-                            throw new Error(
-                              data.error || "Failed to leave team"
-                            );
-                          }
+                          {/* Add clear button */}
+                          {newCaptainId && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setNewCaptainId("")}
+                              className="w-10 h-10"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
 
-                          toast({
-                            title: "Success",
-                            description: "You have left the team",
-                          });
-
-                          // Navigate back to teams page
-                          window.location.href = "/tournaments/teams";
-                        } catch (error: any) {
-                          console.error("Error leaving team:", error);
-                          toast({
-                            title: "Error",
-                            description:
-                              error.message || "Failed to leave team",
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setIsSubmitting(false);
-                        }
-                      }}
-                      disabled={isSubmitting}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Leaving...
-                        </>
-                      ) : (
-                        "Leave Team"
-                      )}
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTransferCaptain}
+                        disabled={!newCaptainId || isSubmitting}
+                        className="mt-2"
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Transferring...
+                          </>
+                        ) : (
+                          <>
+                            <Shield className="w-4 h-4 mr-2" />
+                            Transfer Captain Role
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
           )}
 
-        {/* Captain Settings Section (Middle Row) */}
-        {isTeamCaptain && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="md:col-span-2 lg:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Captain Settings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Transfer Captain Role</h3>
-                  <p className="text-sm text-muted-foreground">
-                    This will transfer your captain privileges to another team
-                    member. This action cannot be undone.
-                  </p>
+          {/* Recent Invites Section (Bottom Row) */}
+          {isTeamCaptain && (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Card className="md:col-span-2 lg:col-span-3">
+                <TeamInvitesList teamId={team._id} isCaptain={isTeamCaptain} />
+              </Card>
+            </div>
+          )}
 
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-                    <div className="space-y-2">
-                      <Label htmlFor="newCaptain">Select New Captain</Label>
-                      <div className="flex items-center gap-2">
-                        <Select
-                          value={newCaptainId}
-                          onValueChange={setNewCaptainId}
-                        >
-                          <SelectTrigger id="newCaptain" className="w-[280px]">
-                            <SelectValue placeholder="Choose a team member" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {team.members
-                              .filter(
-                                (member) =>
-                                  member.discordId !== session?.user?.id
-                              )
-                              .map((member) => (
-                                <SelectItem
-                                  key={member.discordId}
-                                  value={member.discordId}
-                                >
-                                  {member.discordNickname ||
-                                    member.discordUsername}
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
+          {/* Request to Join button for non-members */}
+          {team &&
+            session?.user?.id &&
+            !team.members.some((m) => m.discordId === session.user.id) && (
+              <div className="mt-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Join This Team</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {(() => {
+                        // Check if team is full (4 members total)
+                        const isTeamFull = team.members.length >= 4;
 
-                        {/* Add clear button */}
-                        {newCaptainId && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setNewCaptainId("")}
-                            className="w-10 h-10"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleTransferCaptain}
-                      disabled={!newCaptainId || isSubmitting}
-                      className="mt-2"
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Transferring...
-                        </>
-                      ) : (
-                        <>
-                          <Shield className="w-4 h-4 mr-2" />
-                          Transfer Captain Role
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
-        {/* Recent Invites Section (Bottom Row) */}
-        {isTeamCaptain && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="md:col-span-2 lg:col-span-3">
-              <TeamInvitesList teamId={team._id} isCaptain={isTeamCaptain} />
-            </Card>
-          </div>
-        )}
-
-        {/* Request to Join button for non-members */}
-        {team &&
-          session?.user?.id &&
-          !team.members.some((m) => m.discordId === session.user.id) && (
-            <div className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Join This Team</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {(() => {
-                      // Check if team is full (4 members total)
-                      const isTeamFull = team.members.length >= 4;
-
-                      if (isTeamFull) {
-                        return (
-                          <div className="p-3 border border-yellow-800 rounded bg-yellow-900/20">
-                            <p className="text-sm font-medium text-yellow-400">
-                              This team is full (4/4 members)
-                            </p>
-                          </div>
-                        );
-                      }
-
-                      if (hasPendingRequest) {
-                        return (
-                          <div className="space-y-4">
-                            <div className="p-3 border border-blue-800 rounded bg-blue-900/20">
-                              <p className="text-sm font-medium text-blue-400">
-                                You have a pending request to join this team
+                        if (isTeamFull) {
+                          return (
+                            <div className="p-3 border border-yellow-800 rounded bg-yellow-900/20">
+                              <p className="text-sm font-medium text-yellow-400">
+                                This team is full (4/4 members)
                               </p>
                             </div>
-                            <Button
-                              variant="outline"
-                              className="border-red-500 hover:bg-red-500/10"
-                              onClick={async () => {
-                                if (
-                                  !confirm(
-                                    "Are you sure you want to cancel your join request?"
-                                  )
-                                ) {
-                                  return;
-                                }
+                          );
+                        }
 
+                        if (hasPendingRequest) {
+                          return (
+                            <div className="space-y-4">
+                              <div className="p-3 border border-blue-800 rounded bg-blue-900/20">
+                                <p className="text-sm font-medium text-blue-400">
+                                  You have a pending request to join this team
+                                </p>
+                              </div>
+                              <Button
+                                variant="outline"
+                                className="border-red-500 hover:bg-red-500/10"
+                                onClick={async () => {
+                                  if (
+                                    !confirm(
+                                      "Are you sure you want to cancel your join request?"
+                                    )
+                                  ) {
+                                    return;
+                                  }
+
+                                  setIsSubmitting(true);
+                                  try {
+                                    const response = await fetch(
+                                      `/api/teams/${team._id}/cancel-join-request`,
+                                      {
+                                        method: "POST",
+                                      }
+                                    );
+
+                                    if (!response.ok) {
+                                      const data = await response.json();
+                                      throw new Error(
+                                        data.error ||
+                                          "Failed to cancel join request"
+                                      );
+                                    }
+
+                                    setHasPendingRequest(false);
+                                    toast({
+                                      title: "Success",
+                                      description: "Join request cancelled",
+                                    });
+                                  } catch (error: any) {
+                                    console.error(
+                                      "Error cancelling join request:",
+                                      error
+                                    );
+                                    toast({
+                                      title: "Error",
+                                      description:
+                                        error.message ||
+                                        "Failed to cancel join request",
+                                      variant: "destructive",
+                                    });
+                                  } finally {
+                                    setIsSubmitting(false);
+                                  }
+                                }}
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Cancelling...
+                                  </>
+                                ) : (
+                                  <>
+                                    <X className="w-4 h-4 mr-2" />
+                                    Cancel Join Request
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              This team has {team.members.length}/4 members.
+                              Send a request to join this team.
+                            </p>
+                            <Button
+                              onClick={async () => {
                                 setIsSubmitting(true);
                                 try {
                                   const response = await fetch(
-                                    `/api/teams/${team._id}/cancel-join-request`,
+                                    `/api/teams/${team._id}/request-join`,
                                     {
                                       method: "POST",
                                     }
@@ -862,25 +942,26 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                     const data = await response.json();
                                     throw new Error(
                                       data.error ||
-                                        "Failed to cancel join request"
+                                        "Failed to send join request"
                                     );
                                   }
 
-                                  setHasPendingRequest(false);
+                                  setHasPendingRequest(true);
                                   toast({
                                     title: "Success",
-                                    description: "Join request cancelled",
+                                    description:
+                                      "Join request sent to team captain",
                                   });
                                 } catch (error: any) {
                                   console.error(
-                                    "Error cancelling join request:",
+                                    "Error requesting to join team:",
                                     error
                                   );
                                   toast({
                                     title: "Error",
                                     description:
                                       error.message ||
-                                      "Failed to cancel join request",
+                                      "Failed to send join request",
                                     variant: "destructive",
                                   });
                                 } finally {
@@ -892,101 +973,38 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                               {isSubmitting ? (
                                 <>
                                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Cancelling...
+                                  Sending request...
                                 </>
                               ) : (
                                 <>
-                                  <X className="w-4 h-4 mr-2" />
-                                  Cancel Join Request
+                                  <LogIn className="w-4 h-4 mr-2" />
+                                  Request to Join
                                 </>
                               )}
                             </Button>
-                          </div>
+                          </>
                         );
-                      }
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
-                      return (
-                        <>
-                          <p className="text-sm text-muted-foreground">
-                            This team has {team.members.length}/4 members. Send
-                            a request to join this team.
-                          </p>
-                          <Button
-                            onClick={async () => {
-                              setIsSubmitting(true);
-                              try {
-                                const response = await fetch(
-                                  `/api/teams/${team._id}/request-join`,
-                                  {
-                                    method: "POST",
-                                  }
-                                );
-
-                                if (!response.ok) {
-                                  const data = await response.json();
-                                  throw new Error(
-                                    data.error || "Failed to send join request"
-                                  );
-                                }
-
-                                setHasPendingRequest(true);
-                                toast({
-                                  title: "Success",
-                                  description:
-                                    "Join request sent to team captain",
-                                });
-                              } catch (error: any) {
-                                console.error(
-                                  "Error requesting to join team:",
-                                  error
-                                );
-                                toast({
-                                  title: "Error",
-                                  description:
-                                    error.message ||
-                                    "Failed to send join request",
-                                  variant: "destructive",
-                                });
-                              } finally {
-                                setIsSubmitting(false);
-                              }
-                            }}
-                            disabled={isSubmitting}
-                          >
-                            {isSubmitting ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Sending request...
-                              </>
-                            ) : (
-                              <>
-                                <LogIn className="w-4 h-4 mr-2" />
-                                Request to Join
-                              </>
-                            )}
-                          </Button>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-        {/* Back button */}
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.back()}
-            className="flex items-center gap-1"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-        </div>
-      </main>
+          {/* Back button */}
+          <div className="flex items-center justify-between mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.back()}
+              className="flex items-center gap-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Button>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
