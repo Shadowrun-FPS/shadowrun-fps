@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast"; // keep this import
 import { cn } from "@/lib/utils";
@@ -16,11 +16,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
-import { Calendar, Clock, MapPin, Loader2, Trophy, Search } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  Loader2,
+  Trophy,
+  Search,
+  Copy,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { PendingScrimmageCard } from "@/components/scrimmages/pending-scrimmage-card";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MapSelection {
   id: string;
@@ -79,48 +105,48 @@ export default function ScrimmagesPage() {
   >([]);
   const [filteredCompletedScrimmages, setFilteredCompletedScrimmages] =
     useState<Scrimmage[]>([]);
+  const [scrimmageToDelete, setScrimmageToDelete] = useState<string | null>(
+    null
+  );
+
+  // Wrap fetchScrimmages in useCallback
+  const fetchScrimmages = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/scrimmages");
+      if (!response.ok) {
+        throw new Error("Failed to fetch scrimmages");
+      }
+      const data = await response.json();
+      setScrimmages(data);
+    } catch (error) {
+      console.error("Error fetching scrimmages:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch scrimmages",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []); // Empty dependency array means this function won't change
+
+  // Wrap fetchUserTeam in useCallback
+  const fetchUserTeam = useCallback(async () => {
+    if (session?.user) {
+      try {
+        const response = await fetch("/api/teams/user-team");
+        if (response.ok) {
+          const data = await response.json();
+          setUserTeam(data.team);
+        }
+      } catch (error) {
+        console.error("Error fetching user team:", error);
+      }
+    }
+  }, [session?.user]); // Only recreate if session.user changes
 
   useEffect(() => {
-    const fetchScrimmages = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/scrimmages");
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("API error:", errorData);
-          throw new Error(`Failed to fetch scrimmages: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log("Fetched scrimmages:", data); // Log the data to see what's coming back
-        setScrimmages(data);
-      } catch (error) {
-        console.error("Error fetching scrimmages:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load scrimmages",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    const fetchUserTeam = async () => {
-      if (session?.user) {
-        try {
-          const response = await fetch("/api/teams/user-team");
-          if (response.ok) {
-            const data = await response.json();
-            setUserTeam(data.team);
-          }
-        } catch (error) {
-          console.error("Error fetching user team:", error);
-        }
-      }
-    };
-
     // Fetch scrimmages for all users (including signed-out)
     fetchScrimmages();
 
@@ -128,7 +154,7 @@ export default function ScrimmagesPage() {
     if (session?.user) {
       fetchUserTeam();
     }
-  }, [session]);
+  }, [session, fetchScrimmages, fetchUserTeam]);
 
   useEffect(() => {
     const filterByTeam = (scrimmages: Scrimmage[]) => {
@@ -292,40 +318,66 @@ export default function ScrimmagesPage() {
 
   const CompletedScrimmages = ({ scrimmages }: { scrimmages: any[] }) => {
     return (
-      <div className="space-y-4">
-        {scrimmages.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            No completed scrimmages found
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {scrimmages.map((scrimmage) => {
-              const winnerTeam =
-                scrimmage.winner === "teamA"
-                  ? scrimmage.challengerTeam
-                  : scrimmage.winner === "teamB"
-                  ? scrimmage.challengedTeam
-                  : null;
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {scrimmages.map((scrimmage) => {
+          // Determine the winner correctly
+          let winnerTeam;
 
-              return (
-                <Card key={scrimmage._id} className="overflow-hidden">
+          // Check different possible formats for the winner field
+          if (
+            scrimmage.winner === "teamA" ||
+            scrimmage.winner === "challenger" ||
+            scrimmage.winner === scrimmage.challengerTeam?._id
+          ) {
+            winnerTeam = scrimmage.challengerTeam;
+          } else if (
+            scrimmage.winner === "teamB" ||
+            scrimmage.winner === "challenged" ||
+            scrimmage.winner === scrimmage.challengedTeam?._id
+          ) {
+            winnerTeam = scrimmage.challengedTeam;
+          } else {
+            // If winner is stored as the team name
+            if (scrimmage.winner === scrimmage.challengerTeam?.name) {
+              winnerTeam = scrimmage.challengerTeam;
+            } else if (scrimmage.winner === scrimmage.challengedTeam?.name) {
+              winnerTeam = scrimmage.challengedTeam;
+            } else {
+              // Default case - check map scores if available
+              const mapScores = scrimmage.mapDetails || [];
+              let challengerWins = 0;
+              let challengedWins = 0;
+
+              mapScores.forEach((map: any) => {
+                if (map.teamAScore > map.teamBScore) {
+                  challengerWins++;
+                } else if (map.teamBScore > map.teamAScore) {
+                  challengedWins++;
+                }
+              });
+
+              if (challengerWins > challengedWins) {
+                winnerTeam = scrimmage.challengerTeam;
+              } else if (challengedWins > challengerWins) {
+                winnerTeam = scrimmage.challengedTeam;
+              } else {
+                // If still can't determine, just show the first team
+                winnerTeam = scrimmage.challengerTeam;
+              }
+            }
+          }
+
+          return (
+            <ContextMenu key={scrimmage._id}>
+              <ContextMenuTrigger>
+                <Card className="overflow-hidden">
                   <CardHeader className="p-4 pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-lg">
                         {scrimmage.challengerTeam?.name} vs{" "}
                         {scrimmage.challengedTeam?.name}
                       </CardTitle>
-                      <Badge
-                        variant={
-                          scrimmage.status === "completed"
-                            ? "default"
-                            : "outline"
-                        }
-                      >
-                        {scrimmage.status === "completed"
-                          ? "Completed"
-                          : scrimmage.status}
-                      </Badge>
+                      <Badge variant="secondary">Completed</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-2 pb-0">
@@ -339,12 +391,12 @@ export default function ScrimmagesPage() {
                           )}
                         </span>
                       </div>
-                      {winnerTeam && (
-                        <div className="flex items-center gap-2 text-sm text-green-500">
-                          <Trophy className="w-4 h-4" />
-                          <span>{winnerTeam.name} won</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm">
+                        <Trophy className="w-4 h-4 text-yellow-500" />
+                        <span className="font-medium">
+                          {winnerTeam?.name || "Unknown team"} won
+                        </span>
+                      </div>
                     </div>
                   </CardContent>
                   <CardFooter className="flex justify-end p-4">
@@ -359,12 +411,90 @@ export default function ScrimmagesPage() {
                     </Button>
                   </CardFooter>
                 </Card>
-              );
-            })}
-          </div>
-        )}
+              </ContextMenuTrigger>
+              {canManageScrimmages() && (
+                <ContextMenuContent className="w-64">
+                  <ContextMenuItem
+                    onClick={() =>
+                      copyToClipboard(
+                        scrimmage._id,
+                        "Scrimmage ID copied to clipboard"
+                      )
+                    }
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Scrimmage ID
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    onClick={() =>
+                      copyToClipboard(
+                        `${window.location.origin}/tournaments/scrimmages/${scrimmage._id}`,
+                        "Scrimmage URL copied to clipboard"
+                      )
+                    }
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Copy Scrimmage URL
+                  </ContextMenuItem>
+                  <ContextMenuItem
+                    className="text-red-600"
+                    onClick={() => setScrimmageToDelete(scrimmage._id)}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Scrimmage
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              )}
+            </ContextMenu>
+          );
+        })}
       </div>
     );
+  };
+
+  const canManageScrimmages = () => {
+    return (
+      session?.user?.roles?.includes("admin") ||
+      session?.user?.id === "238329746671271936"
+    );
+  };
+
+  const copyToClipboard = (text: string, description: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied to clipboard",
+      description: description,
+    });
+  };
+
+  const handleDeleteScrimmage = async () => {
+    if (!scrimmageToDelete) return;
+
+    try {
+      const response = await fetch(`/api/scrimmages/${scrimmageToDelete}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete scrimmage");
+      }
+
+      toast({
+        title: "Scrimmage deleted",
+        description: "The scrimmage has been successfully deleted",
+      });
+
+      // Refresh the scrimmages list
+      fetchScrimmages();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete scrimmage",
+        variant: "destructive",
+      });
+    } finally {
+      setScrimmageToDelete(null);
+    }
   };
 
   return (
@@ -499,50 +629,87 @@ export default function ScrimmagesPage() {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   {filteredUpcomingScrimmages.map((scrimmage) => (
-                    <Card key={scrimmage._id} className="overflow-hidden">
-                      <CardHeader className="p-4 pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-lg">
-                            {scrimmage.challengerTeam?.name} vs{" "}
-                            {scrimmage.challengedTeam?.name}
-                          </CardTitle>
-                          <Badge variant="default">Upcoming</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-4 pt-2 pb-0">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span>
-                              {format(
-                                new Date(scrimmage.proposedDate),
-                                "MMMM d, yyyy"
-                              )}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span>
-                              {format(
-                                new Date(scrimmage.proposedDate),
-                                "h:mm a"
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex justify-end p-4">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link
-                            href={`/tournaments/scrimmages/${
-                              scrimmage.scrimmageId || scrimmage._id
-                            }`}
+                    <ContextMenu key={scrimmage._id}>
+                      <ContextMenuTrigger>
+                        <Card className="overflow-hidden">
+                          <CardHeader className="p-4 pb-2">
+                            <div className="flex items-center justify-between">
+                              <CardTitle className="text-lg">
+                                {scrimmage.challengerTeam?.name} vs{" "}
+                                {scrimmage.challengedTeam?.name}
+                              </CardTitle>
+                              <Badge variant="default">Upcoming</Badge>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="p-4 pt-2 pb-0">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <span>
+                                  {format(
+                                    new Date(scrimmage.proposedDate),
+                                    "MMMM d, yyyy"
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                <Clock className="w-4 h-4 text-muted-foreground" />
+                                <span>
+                                  {format(
+                                    new Date(scrimmage.proposedDate),
+                                    "h:mm a"
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </CardContent>
+                          <CardFooter className="flex justify-end p-4">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link
+                                href={`/tournaments/scrimmages/${
+                                  scrimmage.scrimmageId || scrimmage._id
+                                }`}
+                              >
+                                View Match
+                              </Link>
+                            </Button>
+                          </CardFooter>
+                        </Card>
+                      </ContextMenuTrigger>
+                      {canManageScrimmages() && (
+                        <ContextMenuContent className="w-64">
+                          <ContextMenuItem
+                            onClick={() =>
+                              copyToClipboard(
+                                scrimmage._id,
+                                "Scrimmage ID copied to clipboard"
+                              )
+                            }
                           >
-                            View Match
-                          </Link>
-                        </Button>
-                      </CardFooter>
-                    </Card>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Scrimmage ID
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onClick={() =>
+                              copyToClipboard(
+                                `${window.location.origin}/tournaments/scrimmages/${scrimmage._id}`,
+                                "Scrimmage URL copied to clipboard"
+                              )
+                            }
+                          >
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Copy Scrimmage URL
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            className="text-red-600"
+                            onClick={() => setScrimmageToDelete(scrimmage._id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete Scrimmage
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      )}
+                    </ContextMenu>
                   ))}
                 </div>
               )}
@@ -572,6 +739,31 @@ export default function ScrimmagesPage() {
           )}
         </div>
       </main>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog
+        open={!!scrimmageToDelete}
+        onOpenChange={(open) => !open && setScrimmageToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Scrimmage</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this scrimmage? This action cannot
+              be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteScrimmage}
+              className="text-white bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

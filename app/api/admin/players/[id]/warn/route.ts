@@ -36,7 +36,17 @@ export async function POST(
       discordId: session.user.id,
     });
 
+    // Get the player's information to fetch their nickname
+    const player = await db.collection("Players").findOne({
+      _id: new ObjectId(params.id),
+    });
+
+    if (!player) {
+      return NextResponse.json({ error: "Player not found" }, { status: 404 });
+    }
+
     const moderatorNickname = moderator?.discordNickname || session.user.name;
+    const playerNickname = player.discordNickname || player.discordUsername;
 
     // Add warning to player
     const result = await db.collection("Players").updateOne(
@@ -61,7 +71,7 @@ export async function POST(
     await createModerationLog({
       playerId: params.id,
       moderatorId: session.user.id,
-      playerName: moderator?.discordNickname || moderator?.discordUsername,
+      playerName: playerNickname,
       moderatorName: moderatorNickname,
       action: "warn",
       reason: warning.reason,

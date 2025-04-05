@@ -85,8 +85,7 @@ interface Team {
   tournaments?: string[];
   wins?: number;
   losses?: number;
-  scrimmageWins?: number;
-  scrimmageLosses?: number;
+
   tournamentWins?: number;
 }
 
@@ -442,8 +441,6 @@ export default function TeamsPage() {
                       members={userTeam.members}
                       wins={userTeam.wins || 0}
                       losses={userTeam.losses || 0}
-                      scrimmageWins={userTeam.scrimmageWins || 0}
-                      scrimmageLosses={userTeam.scrimmageLosses || 0}
                       tournamentWins={userTeam.tournamentWins || 0}
                       userTeam={userTeam}
                       isUserTeam={true}
@@ -605,8 +602,6 @@ export default function TeamsPage() {
                             members={team.members}
                             wins={team.wins || 0}
                             losses={team.losses || 0}
-                            scrimmageWins={team.scrimmageWins || 0}
-                            scrimmageLosses={team.scrimmageLosses || 0}
                             tournamentWins={team.tournamentWins || 0}
                             userTeam={userTeam}
                             isUserTeam={userTeam?._id === team._id}

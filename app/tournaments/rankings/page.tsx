@@ -113,6 +113,28 @@ export default function RankingsPage() {
     setSortBy(value as SortOption);
   };
 
+  // Calculate win rate with special handling for 100% case
+  const calculateWinRate = (wins: number, losses: number) => {
+    // Log the inputs to help debug
+    console.log("Win rate calculation:", { wins, losses, type: typeof wins });
+
+    // Ensure wins and losses are numbers
+    const winsNum = Number(wins || 0);
+    const lossesNum = Number(losses || 0);
+
+    const totalGames = winsNum + lossesNum;
+    if (totalGames === 0) return "0.0%";
+
+    // Special case for 1-0 record (100% win rate)
+    if (winsNum === 1 && lossesNum === 0) {
+      console.log("Special case: 1-0 record, returning 100%");
+      return "100.0%";
+    }
+
+    const winRate = (winsNum / totalGames) * 100;
+    return winRate.toFixed(1) + "%";
+  };
+
   return (
     <FeatureGate feature="rankings">
       <div className="min-h-screen bg-background">
@@ -228,7 +250,10 @@ export default function RankingsPage() {
                           />
                           <Stat
                             icon={<Trophy className="w-4 h-4 text-primary" />}
-                            value={`${(team.winRatio * 100).toFixed(1)}%`}
+                            value={calculateWinRate(
+                              Number(team.wins || 0),
+                              Number(team.losses || 0)
+                            )}
                             label="Win Rate"
                           />
                         </div>

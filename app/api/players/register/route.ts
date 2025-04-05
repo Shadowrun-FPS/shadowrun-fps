@@ -40,15 +40,14 @@ export async function POST(req: NextRequest) {
       elo: 800, // Default starting ELO
       wins: 0,
       losses: 0,
-      lastMatchDate: new Date(),
     }));
 
     // Create player document
     const playerDoc = {
       discordId: session.user.id,
-      discordUsername: session.user.name || "",
-      discordNickname: session.user.nickname || session.user.name || "",
-      discordProfilePicture: session.user.image || "",
+      discordUsername: session.user.name,
+      discordNickname: session.user.nickname,
+      discordProfilePicture: session.user.image,
       stats,
       registeredAt: Date.now(),
     };

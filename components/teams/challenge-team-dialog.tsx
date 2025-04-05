@@ -517,7 +517,14 @@ export function ChallengeTeamDialog({
                             setCalendarOpen(false);
                           }}
                           initialFocus
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            // Get start of today
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+
+                            // Disable dates before today, but allow today
+                            return date < today;
+                          }}
                         />
                       </PopoverContent>
                     </Popover>

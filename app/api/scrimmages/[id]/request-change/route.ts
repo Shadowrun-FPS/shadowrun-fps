@@ -53,7 +53,48 @@ export async function POST(
 
     // Get request data
     const data = await request.json();
-    const { newDate, message } = data;
+    const { newDate, newTime, message } = data;
+
+    // Check if there's already a pending change request
+    if (
+      scrimmage.changeRequest &&
+      scrimmage.changeRequest.status === "pending"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "There is already a pending change request for this scrimmage. Please wait for a response before submitting a new request.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate the date is not in the past
+    const currentDate = new Date();
+    const requestedDateTime = newDate ? new Date(newDate) : null;
+
+    if (requestedDateTime) {
+      // Set both dates to start of day for comparison
+      const currentDateStart = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth(),
+        currentDate.getDate()
+      );
+
+      const requestedDateStart = new Date(
+        requestedDateTime.getFullYear(),
+        requestedDateTime.getMonth(),
+        requestedDateTime.getDate()
+      );
+
+      // Only block if the requested date is strictly before today
+      if (requestedDateStart < currentDateStart) {
+        return NextResponse.json(
+          { error: "Cannot request a date in the past" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Verify user is authorized to request changes
     const isAdmin = session.user.roles?.includes("admin");
@@ -133,6 +174,11 @@ export async function POST(
         ? scrimmage.challengedTeam?.captain?.discordId
         : scrimmage.challengerTeam?.captain?.discordId;
 
+    const requestingTeamName =
+      requestingTeam === "teamA"
+        ? scrimmage.challengerTeam?.name
+        : scrimmage.challengedTeam?.name;
+
     // Update the scrimmage with change request
     await db.collection("Scrimmages").updateOne(
       { _id: scrimmage._id },
@@ -141,8 +187,10 @@ export async function POST(
           changeRequest: {
             requestedBy: session.user.id,
             requestedByTeam: requestingTeam,
+            requestedByTeamName: requestingTeamName,
             requestedAt: new Date(),
             newDate: newDate || null,
+            newTime: newTime || null,
             message: message || "",
             status: "pending",
             notifiedOtherTeam: false,
@@ -151,14 +199,22 @@ export async function POST(
       }
     );
 
-    // Create a notification for the other team captain
+    // Create a notification for the other team captain with improved details
     if (otherTeamCaptainId) {
       await db.collection("Notifications").insertOne({
         userId: otherTeamCaptainId,
         type: "scrimmage_change_request",
         title: "Scrimmage Change Requested",
-        message: `The other team has requested changes to your scheduled scrimmage.`,
+        message: `${requestingTeamName} has requested changes to your scheduled scrimmage on ${new Date(
+          scrimmage.proposedDate
+        ).toLocaleDateString()}.`,
         scrimmageId: scrimmage.scrimmageId || scrimmage._id.toString(),
+        scrimmageDetails: {
+          teamA: scrimmage.challengerTeam?.name,
+          teamB: scrimmage.challengedTeam?.name,
+          originalDate: scrimmage.proposedDate,
+          requestedDate: newDate,
+        },
         createdAt: new Date(),
         read: false,
       });

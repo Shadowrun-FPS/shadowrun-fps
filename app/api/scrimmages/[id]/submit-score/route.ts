@@ -57,6 +57,21 @@ export async function POST(
     const data = await request.json();
     const { mapIndex, teamAScore, teamBScore, submittedBy } = data;
 
+    // Validate scores - ensure they are numbers between 0 and 6
+    if (
+      typeof teamAScore !== "number" ||
+      typeof teamBScore !== "number" ||
+      teamAScore < 0 ||
+      teamAScore > 6 ||
+      teamBScore < 0 ||
+      teamBScore > 6
+    ) {
+      return NextResponse.json(
+        { error: "Invalid scores. Scores must be between 0 and 6." },
+        { status: 400 }
+      );
+    }
+
     // Verify user is authorized to submit scores
     const isAdmin = session.user.roles?.includes("admin");
 
@@ -118,16 +133,6 @@ export async function POST(
     // Determine which team is submitting
     const submittingTeam = isTeamACaptain ? "teamA" : "teamB";
 
-    // Determine the winner based on scores
-    let winner = null;
-    if (teamAScore > teamBScore) {
-      winner = "teamA";
-    } else if (teamBScore > teamAScore) {
-      winner = "teamB";
-    } else {
-      winner = "tie";
-    }
-
     // Initialize mapScores array if it doesn't exist
     if (!scrimmage.mapScores) {
       scrimmage.mapScores = [];
@@ -180,14 +185,14 @@ export async function POST(
         teamBScore: teamBSubmittedScore,
       });
 
-      // Determine the winner based on the scores
+      // Determine the winner based on the scores - one team must have exactly 6 rounds to win
       if (
-        teamASubmittedScore >= 6 &&
+        teamASubmittedScore === 6 &&
         teamASubmittedScore > teamBSubmittedScore
       ) {
         updatedMapScores[mapIndex].winner = "teamA";
       } else if (
-        teamBSubmittedScore >= 6 &&
+        teamBSubmittedScore === 6 &&
         teamBSubmittedScore > teamASubmittedScore
       ) {
         updatedMapScores[mapIndex].winner = "teamB";
@@ -212,7 +217,7 @@ export async function POST(
         (map) => map.winner === "teamB"
       ).length;
 
-      // Check if one team has won at least 2 maps
+      // Best of 3 - need 2 wins to win the match
       if (teamAWins >= 2) {
         matchWinner = "teamA";
       } else if (teamBWins >= 2) {
@@ -230,9 +235,18 @@ export async function POST(
 
     // If match winner is determined, update match status and winner
     if (matchWinner) {
+      const now = new Date();
       updateData.status = "completed";
       updateData.winner = matchWinner;
-      updateData.completedAt = new Date();
+      updateData.completedAt = now;
+
+      // If the match is completed before the scheduled date, update the scheduledDate
+      if (scrimmage.scheduledDate && new Date(scrimmage.scheduledDate) > now) {
+        console.log(
+          "Match completed before scheduled date. Updating scheduledDate."
+        );
+        updateData.scheduledDate = now;
+      }
 
       // Update team stats for scrimmage wins/losses
       if (matchWinner === "teamA") {
@@ -241,14 +255,14 @@ export async function POST(
           .collection("Teams")
           .updateOne(
             { _id: new ObjectId(scrimmage.challengerTeamId) },
-            { $inc: { scrimmageWins: 1 } }
+            { $inc: { wins: 1 } }
           );
 
         await db
           .collection("Teams")
           .updateOne(
             { _id: new ObjectId(scrimmage.challengedTeamId) },
-            { $inc: { scrimmageLosses: 1 } }
+            { $inc: { losses: 1 } }
           );
       } else if (matchWinner === "teamB") {
         // Team B won, update their wins and Team A's losses
@@ -256,14 +270,14 @@ export async function POST(
           .collection("Teams")
           .updateOne(
             { _id: new ObjectId(scrimmage.challengedTeamId) },
-            { $inc: { scrimmageWins: 1 } }
+            { $inc: { wins: 1 } }
           );
 
         await db
           .collection("Teams")
           .updateOne(
             { _id: new ObjectId(scrimmage.challengerTeamId) },
-            { $inc: { scrimmageLosses: 1 } }
+            { $inc: { losses: 1 } }
           );
       }
       // No need to update stats for ties

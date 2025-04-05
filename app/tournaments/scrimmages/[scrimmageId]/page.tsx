@@ -56,7 +56,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Image from "next/image";
-import { format } from "date-fns";
+import { format, set } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { getRankIconPath } from "@/lib/ranks";
@@ -68,6 +68,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function ScrimmageDetailsPage({
   params,
@@ -83,6 +90,7 @@ export default function ScrimmageDetailsPage({
   const [changeRequestDate, setChangeRequestDate] = useState<Date | undefined>(
     undefined
   );
+  const [changeRequestTime, setChangeRequestTime] = useState<string>("19:00");
   const [changeRequestMessage, setChangeRequestMessage] = useState("");
   const [changeRequestLoading, setChangeRequestLoading] = useState(false);
   const [forfeitLoading, setForfeitLoading] = useState(false);
@@ -282,9 +290,44 @@ export default function ScrimmageDetailsPage({
   const teamAMembers = sortTeamMembers(match.challengerTeam);
   const teamBMembers = sortTeamMembers(match.challengedTeam);
 
+  // Generate time options for the time selector (30 min intervals)
+  const timeOptions = Array.from({ length: 48 }, (_, i) => {
+    const hour = Math.floor(i / 2);
+    const minute = (i % 2) * 30;
+    const formattedHour = hour.toString().padStart(2, "0");
+    const formattedMinute = minute.toString().padStart(2, "0");
+    const timeValue = `${formattedHour}:${formattedMinute}`;
+
+    // Format for display (12-hour format with AM/PM)
+    const displayHour = hour % 12 || 12;
+    const period = hour < 12 ? "AM" : "PM";
+    const displayTime = `${displayHour}:${
+      formattedMinute === "00" ? "00" : "30"
+    } ${period}`;
+
+    return { value: timeValue, label: displayTime };
+  });
+
+  // Combine date and time for the request
+  const getCombinedDateTime = () => {
+    if (!changeRequestDate) return null;
+
+    const [hours, minutes] = changeRequestTime.split(":").map(Number);
+
+    return set(changeRequestDate, {
+      hours,
+      minutes,
+      seconds: 0,
+      milliseconds: 0,
+    });
+  };
+
   const handleRequestChange = async () => {
     try {
       setChangeRequestLoading(true);
+
+      const combinedDateTime = getCombinedDateTime();
+
       const response = await fetch(
         `/api/scrimmages/${params.scrimmageId}/request-change`,
         {
@@ -293,7 +336,7 @@ export default function ScrimmageDetailsPage({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            newDate: changeRequestDate ? changeRequestDate.toISOString() : null,
+            newDate: combinedDateTime ? combinedDateTime.toISOString() : null,
             message: changeRequestMessage,
           }),
         }
@@ -928,11 +971,40 @@ export default function ScrimmageDetailsPage({
                     mode="single"
                     selected={changeRequestDate}
                     onSelect={(date) => setChangeRequestDate(date)}
+                    disabled={(date) => {
+                      // Get start of today
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+
+                      // Disable dates before today, but allow today
+                      return date < today;
+                    }}
                     initialFocus
                   />
                 </PopoverContent>
               </Popover>
             </div>
+
+            {/* Add Time Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="time">New Time</Label>
+              <Select
+                value={changeRequestTime}
+                onValueChange={setChangeRequestTime}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a time" />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="message">Message</Label>
               <Textarea

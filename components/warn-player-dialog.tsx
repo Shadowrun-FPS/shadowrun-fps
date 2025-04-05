@@ -70,6 +70,7 @@ export function WarnPlayerDialog({
   onWarningComplete,
 }: WarnPlayerDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Initialize the form with default values
   const form = useForm<WarningFormValues>({
@@ -89,18 +90,23 @@ export function WarnPlayerDialog({
   };
 
   // Handle form submission
-  const onSubmit = async (values: WarningFormValues) => {
-    if (!values.reason.trim()) {
-      form.setError("reason", {
-        type: "manual",
-        message: "Reason cannot be empty",
-      });
+  const handleWarn = async () => {
+    if (!form.getValues("reason")) {
+      setError("Please provide a reason for the warning");
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
+      setIsSubmitting(true);
+
+      // Get the player's details first to ensure we have the correct name
+      const playerResponse = await fetch(`/api/players/${playerId}`);
+      if (!playerResponse.ok) {
+        throw new Error("Failed to fetch player details");
+      }
+      const playerData = await playerResponse.json();
+
+      // Now create the warning with correct player and moderator information
       const response = await fetch("/api/moderation/warn", {
         method: "POST",
         headers: {
@@ -108,29 +114,31 @@ export function WarnPlayerDialog({
         },
         body: JSON.stringify({
           playerId,
-          reason: values.reason,
-          rule: values.rule,
+          playerName: playerData.discordNickname || playerData.discordUsername, // Use player's name
+          reason: form.getValues("reason"),
+          ruleId: form.getValues("rule") || null,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to warn player");
+        const data = await response.json();
+        throw new Error(data.error || "Failed to warn player");
       }
 
       toast({
-        title: "Warning issued",
-        description: `A warning has been issued to ${playerName}.`,
+        title: "Player warned",
+        description: `Successfully warned ${
+          playerData.discordNickname || playerData.discordUsername
+        }`,
       });
 
       onWarningComplete();
       handleOpenChange(false);
     } catch (error) {
       console.error("Error warning player:", error);
-      toast({
-        title: "Error",
-        description: "Failed to issue warning. Please try again.",
-        variant: "destructive",
-      });
+      setError(
+        error instanceof Error ? error.message : "Failed to warn player"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -150,7 +158,7 @@ export function WarnPlayerDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(handleWarn)} className="space-y-4">
             <FormField
               control={form.control}
               name="rule"

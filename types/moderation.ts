@@ -76,8 +76,8 @@ export interface ModerationAction {
   moderatorId: string;
   moderatorName: string;
   moderatorNickname?: string;
-  playerName?: string;
-  playerId?: string;
+  playerName: string;
+  playerId: string;
   duration?: string;
   expiry?: Date | string | null;
   timestamp: Date | string;

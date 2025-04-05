@@ -44,6 +44,18 @@ export async function GET() {
       .sort({ teamElo: -1 })
       .toArray();
 
+    // Log team data for debugging
+    teams.forEach((team) => {
+      if (team.wins === 1 && team.losses === 0) {
+        console.log("Found 1-0 team:", {
+          name: team.name,
+          wins: team.wins,
+          losses: team.losses,
+          winRatio: team.winRatio,
+        });
+      }
+    });
+
     const teamsWithStats = teams.map((team) => ({
       ...team,
       _id: team._id.toString(),
