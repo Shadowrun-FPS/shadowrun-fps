@@ -3,15 +3,34 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Search, X, Loader2 } from "lucide-react";
+import { Users, Search, X, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import Image from "next/image";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+interface SearchResult {
+  id: string;
+  name: string;
+  username: string;
+  elo: number;
+  isInvited: boolean;
+  inTeam: boolean;
+  teamName?: string;
+  profilePicture?: string;
+}
 
 export function InvitePlayerModal() {
   const [isOpen, setIsOpen] = useState(false);
   const [teamId, setTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [searching, setSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [inviting, setInviting] = useState<Record<string, boolean>>({});
   const modalRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -82,20 +101,15 @@ export function InvitePlayerModal() {
   }, [isOpen, closeModal]);
 
   // Search for players
-  const handleSearch = async () => {
-    if (searchTerm.trim().length < 3) {
-      toast({
-        title: "Error",
-        description: "Please enter at least 3 characters to search",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSearchPlayer = async (searchText: string) => {
+    if (!searchText || searchText.length < 2) return;
 
     setSearching(true);
     try {
       const response = await fetch(
-        `/api/players/search?q=${encodeURIComponent(searchTerm)}`
+        `/api/players/search?term=${encodeURIComponent(
+          searchText
+        )}&includeTeamInfo=true`
       );
 
       if (!response.ok) {
@@ -103,14 +117,26 @@ export function InvitePlayerModal() {
       }
 
       const data = await response.json();
-      setSearchResults(data);
+      const players = data.players || [];
+
+      // Add team status to each player
+      const playersWithInviteStatus = players.map((player: any) => ({
+        ...player,
+        isInvited: false, // Will check this separately if needed
+        inTeam: player.team != null,
+        teamName: player.team?.name,
+        profilePicture: player.profilePicture || player.discordProfilePicture,
+      }));
+
+      setSearchResults(playersWithInviteStatus);
     } catch (error) {
       console.error("Error searching players:", error);
       toast({
-        title: "Error",
-        description: "Failed to search players",
+        title: "Search Failed",
+        description: "Could not search for players. Please try again.",
         variant: "destructive",
       });
+      setSearchResults([]);
     } finally {
       setSearching(false);
     }
@@ -183,10 +209,13 @@ export function InvitePlayerModal() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") handleSearch();
+                if (e.key === "Enter") handleSearchPlayer(searchTerm);
               }}
             />
-            <Button onClick={handleSearch} disabled={searching}>
+            <Button
+              onClick={() => handleSearchPlayer(searchTerm)}
+              disabled={searching}
+            >
               {searching ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -206,35 +235,72 @@ export function InvitePlayerModal() {
             ) : (
               searchResults.map((player) => (
                 <div
-                  key={player.discordId}
+                  key={player.id}
                   className="flex items-center justify-between p-3 border rounded-md border-border"
                 >
-                  <div>
-                    <div className="font-medium">
-                      {player.discordNickname || player.discordUsername}
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-10 h-10">
+                      {player.profilePicture ? (
+                        <AvatarImage
+                          src={player.profilePicture}
+                          alt={player.name}
+                        />
+                      ) : null}
+                      <AvatarFallback>
+                        {player.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{player.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {player.username}
+                      </p>
                     </div>
-                    {player.discordNickname && player.discordUsername && (
-                      <div className="text-xs text-muted-foreground">
-                        {player.discordUsername}
-                      </div>
-                    )}
                   </div>
-                  <Button
-                    size="sm"
-                    disabled={inviting[player.discordId]}
-                    onClick={() =>
-                      handleInvite(
-                        player.discordId,
-                        player.discordNickname || player.discordUsername
-                      )
-                    }
-                  >
-                    {inviting[player.discordId] ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      "Invite"
-                    )}
-                  </Button>
+                  {player.isInvited ? (
+                    <Button variant="secondary" disabled>
+                      Invited
+                    </Button>
+                  ) : player.inTeam ? (
+                    <TooltipProvider delayDuration={100}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button
+                              variant="outline"
+                              disabled
+                              className="cursor-not-allowed"
+                              size="sm"
+                            >
+                              <AlertTriangle className="w-3 h-3 mr-1 text-amber-500" />
+                              Invite
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="left"
+                          className="p-2 text-sm bg-secondary text-secondary-foreground"
+                        >
+                          <p>
+                            This player is already in team &quot;
+                            {player.teamName}&quot;
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <Button
+                      size="sm"
+                      disabled={inviting[player.id]}
+                      onClick={() => handleInvite(player.id, player.name)}
+                    >
+                      {inviting[player.id] ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Invite"
+                      )}
+                    </Button>
+                  )}
                 </div>
               ))
             )}

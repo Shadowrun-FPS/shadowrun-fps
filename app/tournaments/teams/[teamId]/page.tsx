@@ -17,6 +17,7 @@ import {
   X,
   RefreshCw,
   ArrowLeft,
+  UserPlus,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +36,13 @@ import { Label } from "@/components/ui/label";
 import { TeamInvitesList } from "@/components/teams/team-invites-list";
 import { useRouter } from "next/navigation";
 import TeamHeader from "./team-header";
+import { RequestJoinTeam } from "@/components/teams/request-join-team";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TeamMember {
   discordId: string;
@@ -70,6 +78,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [isRefreshingElo, setIsRefreshingElo] = useState(false);
+  const [userCurrentTeam, setUserCurrentTeam] = useState<Team | null>(null);
   const router = useRouter();
 
   const isTeamCaptain = session?.user?.id === team?.captain.discordId;
@@ -144,6 +153,29 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
       // );
     }
   }, [team]);
+
+  // Add function to check if user is already in a team
+  useEffect(() => {
+    const checkUserTeam = async () => {
+      if (!session?.user) return;
+
+      try {
+        const response = await fetch("/api/teams/my-team");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.team) {
+            setUserCurrentTeam(data.team);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking user team:", error);
+      }
+    };
+
+    if (session?.user) {
+      checkUserTeam();
+    }
+  }, [session]);
 
   // Function to handle captain transfer
   const handleTransferCaptain = async () => {
@@ -931,61 +963,87 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                               This team has {team.members.length}/4 members.
                               Send a request to join this team.
                             </p>
-                            <Button
-                              onClick={async () => {
-                                setIsSubmitting(true);
-                                try {
-                                  const response = await fetch(
-                                    `/api/teams/${team._id}/request-join`,
-                                    {
-                                      method: "POST",
-                                    }
-                                  );
-
-                                  if (!response.ok) {
-                                    const data = await response.json();
-                                    throw new Error(
-                                      data.error ||
-                                        "Failed to send join request"
+                            {userCurrentTeam ? (
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span>
+                                      <Button
+                                        disabled={true}
+                                        className="flex items-center gap-2 mt-2 cursor-not-allowed"
+                                      >
+                                        <UserPlus className="w-4 h-4" />
+                                        Request to Join
+                                      </Button>
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>
+                                      You are already a member of{" "}
+                                      {userCurrentTeam.name}. Leave your current
+                                      team to join another.
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            ) : (
+                              <Button
+                                onClick={async () => {
+                                  setIsSubmitting(true);
+                                  try {
+                                    const response = await fetch(
+                                      `/api/teams/${team._id}/request-join`,
+                                      {
+                                        method: "POST",
+                                      }
                                     );
-                                  }
 
-                                  setHasPendingRequest(true);
-                                  toast({
-                                    title: "Success",
-                                    description:
-                                      "Join request sent to team captain",
-                                  });
-                                } catch (error: any) {
-                                  console.error(
-                                    "Error requesting to join team:",
-                                    error
-                                  );
-                                  toast({
-                                    title: "Error",
-                                    description:
-                                      error.message ||
-                                      "Failed to send join request",
-                                    variant: "destructive",
-                                  });
-                                } finally {
-                                  setIsSubmitting(false);
-                                }
-                              }}
-                              disabled={isSubmitting}
-                            >
-                              {isSubmitting ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Sending request...
-                                </>
-                              ) : (
-                                <>
-                                  <LogIn className="w-4 h-4 mr-2" />
-                                  Request to Join
-                                </>
-                              )}
-                            </Button>
+                                    if (!response.ok) {
+                                      const data = await response.json();
+                                      throw new Error(
+                                        data.error ||
+                                          "Failed to send join request"
+                                      );
+                                    }
+
+                                    setHasPendingRequest(true);
+                                    toast({
+                                      title: "Success",
+                                      description:
+                                        "Join request sent to team captain",
+                                    });
+                                  } catch (error: any) {
+                                    console.error(
+                                      "Error requesting to join team:",
+                                      error
+                                    );
+                                    toast({
+                                      title: "Error",
+                                      description:
+                                        error.message ||
+                                        "Failed to send join request",
+                                      variant: "destructive",
+                                    });
+                                  } finally {
+                                    setIsSubmitting(false);
+                                  }
+                                }}
+                                disabled={isSubmitting}
+                                className="mt-2"
+                              >
+                                {isSubmitting ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Sending Request...
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    Request to Join
+                                  </>
+                                )}
+                              </Button>
+                            )}
                           </>
                         );
                       })()}

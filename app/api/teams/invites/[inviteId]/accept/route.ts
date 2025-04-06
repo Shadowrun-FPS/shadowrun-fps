@@ -35,6 +35,79 @@ export async function POST(
       );
     }
 
+    // Check if user is already in a team
+    const existingTeam = await db.collection("Teams").findOne(
+      {
+        "members.discordId": session.user.id,
+      },
+      {
+        projection: {
+          _id: 1,
+          name: 1,
+        },
+      }
+    );
+
+    // If force parameter is not provided and user is in a team, return error with team info
+    const { force } = await req.json().catch(() => ({ force: false }));
+
+    if (existingTeam && !force) {
+      return NextResponse.json(
+        {
+          error: "Already in a team",
+          message: `You are already a member of team "${existingTeam.name}". You must leave your current team before joining another.`,
+          currentTeam: {
+            id: existingTeam._id.toString(),
+            name: existingTeam.name,
+          },
+          requiresConfirmation: true,
+        },
+        { status: 409 }
+      );
+    }
+
+    // If force is true and user is in a team, remove them from that team first
+    if (existingTeam && force) {
+      const pullUpdate = {
+        $pull: {
+          members: {
+            discordId: session.user.id,
+          },
+        },
+      };
+
+      await db
+        .collection("Teams")
+        .updateOne(
+          { _id: existingTeam._id },
+          pullUpdate as unknown as UpdateFilter<Document>
+        );
+
+      // Add notification to the team's captain
+      const oldTeam = await db
+        .collection("Teams")
+        .findOne({ _id: existingTeam._id });
+
+      if (oldTeam && oldTeam.captain) {
+        await db.collection("Notifications").insertOne({
+          userId: oldTeam.captain.discordId,
+          type: "team_member_left",
+          title: "Member Left Team",
+          message: `${
+            session.user.nickname || session.user.name
+          } has left your team to join another team.`,
+          read: false,
+          createdAt: new Date(),
+          metadata: {
+            teamId: oldTeam._id.toString(),
+            teamName: oldTeam.name,
+            memberId: session.user.id,
+            memberName: session.user.nickname || session.user.name,
+          },
+        });
+      }
+    }
+
     // Update invite status
     await db
       .collection("TeamInvites")

@@ -9,69 +9,97 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "You must be logged in to search players" },
+        { status: 401 }
+      );
     }
 
-    const { searchParams } = new URL(req.url);
-    const searchTerm = searchParams.get("q");
+    const searchParams = req.nextUrl.searchParams;
+    const term = searchParams.get("term");
+    const includeTeamInfo = searchParams.get("includeTeamInfo") === "true";
 
-    if (!searchTerm || searchTerm.length < 3) {
+    if (!term) {
       return NextResponse.json(
-        { error: "Search term must be at least 3 characters" },
+        { error: "Search term is required" },
         { status: 400 }
       );
     }
 
     const { db } = await connectToDatabase();
 
-    // Check if the search term might be a Discord ID (all digits)
-    const isDiscordId = /^\d+$/.test(searchTerm);
+    // Find players that match the search term
+    const searchRegex = new RegExp(term, "i");
 
-    // Build the query
-    let searchQuery;
-
-    if (isDiscordId) {
-      // If it looks like a Discord ID, search by exact match
-      searchQuery = {
-        $or: [
-          { discordUsername: { $regex: searchTerm, $options: "i" } },
-          { discordNickname: { $regex: searchTerm, $options: "i" } },
-          { discordId: searchTerm }, // Add Discord ID search
-        ],
-        // Don't include the current user in results
-        discordId: { $ne: session.user.id },
-      };
-    } else {
-      // Otherwise just search by username or nickname
-      searchQuery = {
-        $or: [
-          { discordUsername: { $regex: searchTerm, $options: "i" } },
-          { discordNickname: { $regex: searchTerm, $options: "i" } },
-        ],
-        // Don't include the current user in results
-        discordId: { $ne: session.user.id },
-      };
-    }
-
-    // Search players
     const players = await db
       .collection("Players")
-      .find(searchQuery)
-      .limit(10)
-      .project({
-        _id: 0,
-        discordId: 1,
-        discordUsername: 1,
-        discordNickname: 1,
-        discordProfilePicture: 1,
+      .find({
+        $or: [
+          { discordNickname: { $regex: searchRegex } },
+          { discordUsername: { $regex: searchRegex } },
+        ],
       })
+      .project({
+        discordId: 1,
+        discordNickname: 1,
+        discordUsername: 1,
+        discordProfilePicture: 1,
+        elo: 1,
+      })
+      .limit(10)
       .toArray();
 
-    console.log(
-      `Found ${players.length} players for search term "${searchTerm}"`
-    );
+    // If we need to include team info, let's get that too
+    let playersWithTeamInfo = players;
 
-    return NextResponse.json(players);
+    if (includeTeamInfo) {
+      // Get the team for each player
+      const playerIds = players.map((player) => player.discordId);
+
+      const teamsWithPlayers = await db
+        .collection("Teams")
+        .find({ "members.discordId": { $in: playerIds } })
+        .project({
+          _id: 1,
+          name: 1,
+          "members.discordId": 1,
+        })
+        .toArray();
+
+      // Create a map of player ID to team
+      const playerTeamMap = new Map();
+      teamsWithPlayers.forEach((team) => {
+        team.members.forEach((member: any) => {
+          playerTeamMap.set(member.discordId, {
+            id: team._id,
+            name: team.name,
+          });
+        });
+      });
+
+      // Add team info to each player
+      playersWithTeamInfo = players.map((player) => ({
+        id: player.discordId,
+        name: player.discordNickname || player.discordUsername,
+        username: player.discordUsername,
+        elo: player.elo || 0,
+        team: playerTeamMap.get(player.discordId) || null,
+        profilePicture: player.discordProfilePicture || null,
+      }));
+    } else {
+      // Format the response without team info
+      playersWithTeamInfo = players.map((player) => ({
+        id: player.discordId,
+        name: player.discordNickname || player.discordUsername,
+        username: player.discordUsername,
+        elo: player.elo || 0,
+        profilePicture: player.discordProfilePicture || null,
+      }));
+    }
+
+    return NextResponse.json({
+      players: playersWithTeamInfo,
+    });
   } catch (error) {
     console.error("Error searching players:", error);
     return NextResponse.json(

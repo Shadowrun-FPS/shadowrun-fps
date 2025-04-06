@@ -12,8 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, Users, AlertTriangle } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SearchResult {
   id: string;
@@ -21,6 +27,8 @@ interface SearchResult {
   username: string;
   elo: number;
   isInvited: boolean;
+  inTeam: boolean;
+  teamName?: string;
 }
 
 export function InvitePlayerDialog({ teamId }: { teamId: string }) {
@@ -31,29 +39,41 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSearch = async (value: string) => {
-    setSearchTerm(value);
-    if (value.length < 2) {
-      setResults([]);
-      return;
-    }
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
 
     setIsLoading(true);
     try {
       const response = await fetch(
-        `/api/players/search?q=${encodeURIComponent(value)}&teamId=${teamId}`
+        `/api/players/search?term=${encodeURIComponent(
+          searchTerm
+        )}&includeTeamInfo=true`
       );
+      if (!response.ok) throw new Error("Failed to search players");
+
       const data = await response.json();
 
-      if (!response.ok) throw new Error(data.error || "Search failed");
+      // Check for invites for these players
+      const inviteCheckPromises = data.players.map(async (player: any) => {
+        const inviteResponse = await fetch(
+          `/api/teams/${teamId}/invites/check/${player.id}`
+        );
+        const inviteData = await inviteResponse.json();
+        return {
+          ...player,
+          isInvited: inviteData.isInvited,
+          inTeam: player.team != null,
+          teamName: player.team?.name,
+        };
+      });
 
-      console.log("Search results:", data);
-      setResults(data);
+      const playersWithInviteStatus = await Promise.all(inviteCheckPromises);
+      setResults(playersWithInviteStatus);
     } catch (error) {
-      console.error("Search failed:", error);
+      console.error("Error searching players:", error);
       toast({
-        title: "Search Error",
-        description: "Failed to search for players",
+        title: "Error",
+        description: "Failed to search for players.",
         variant: "destructive",
       });
     } finally {
@@ -62,16 +82,13 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
   };
 
   const handleInvite = async (playerId: string) => {
-    if (!session?.user) return;
-
     try {
       const response = await fetch(`/api/teams/${teamId}/invite`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          inviterId: session.user.id,
-          inviteeId: playerId,
-        }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ playerId }),
       });
 
       if (!response.ok) {
@@ -79,26 +96,20 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
         throw new Error(data.error || "Failed to send invite");
       }
 
-      // Refresh the invites list in the parent component
-      const invitesResponse = await fetch(`/api/teams/${teamId}/invites`);
-      if (invitesResponse.ok) {
-        const newInvites = await invitesResponse.json();
-        // Update the invites state in the parent component
-        window.dispatchEvent(
-          new CustomEvent("refreshInvites", { detail: newInvites })
-        );
-      }
+      // Update the invited status in local state
+      setResults((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, isInvited: true } : p))
+      );
 
       toast({
-        title: "Success",
-        description: "Player has been invited to the team",
+        title: "Invite Sent",
+        description: "Team invitation has been sent to the player.",
       });
-      setIsOpen(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error inviting player:", error);
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to send invite",
+        description: error.message || "Failed to send invite",
         variant: "destructive",
       });
     }
@@ -107,36 +118,47 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>Invite Player</Button>
+        <Button className="flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Invite Player
+        </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite Player to Team</DialogTitle>
+          <DialogTitle>Invite Players to Team</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <Input
-            placeholder="Search by nickname or username..."
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-          <div className="max-h-[300px] overflow-y-auto space-y-2">
-            {isLoading ? (
-              <div className="flex justify-center p-4">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
-            ) : searchTerm.length < 2 ? (
-              <p className="text-sm text-center text-muted-foreground">
-                Type at least 2 characters to search
-              </p>
-            ) : results.length === 0 ? (
-              <p className="text-sm text-center text-muted-foreground">
-                No players found
+          <div className="flex items-center space-x-2">
+            <Input
+              placeholder="Search players..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            />
+            <Button
+              onClick={handleSearch}
+              disabled={isLoading || !searchTerm.trim()}
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Search"
+              )}
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {results.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {isLoading
+                  ? "Searching..."
+                  : "No players found. Try searching for a player."}
               </p>
             ) : (
               results.map((player) => (
                 <div
                   key={player.id}
-                  className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                 >
                   <div className="flex items-center gap-3">
                     <Avatar className="w-8 h-8">
@@ -148,13 +170,41 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
                       <p className="font-medium">{player.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {player.username} • ELO: {player.elo}
+                        {player.inTeam && (
+                          <span className="ml-1 text-amber-500">
+                            • In team: {player.teamName}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
+
                   {player.isInvited ? (
                     <Button size="sm" variant="secondary" disabled>
                       Invited
                     </Button>
+                  ) : player.inTeam ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled
+                            className="cursor-not-allowed"
+                          >
+                            <AlertTriangle className="h-3 w-3 mr-1 text-amber-500" />
+                            Invite
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">
+                          <p>
+                            This player is already in team &quot;
+                            {player.teamName}&quot;
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ) : (
                     <Button size="sm" onClick={() => handleInvite(player.id)}>
                       Invite
