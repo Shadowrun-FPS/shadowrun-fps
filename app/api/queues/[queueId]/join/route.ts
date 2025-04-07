@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
+import { sendDirectMessage } from "@/lib/discord-bot";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,6 @@ const MAPS = [
   "Lobby (Attrition)",
   "Lobby Small (Attrition)",
   "Power Station (Attrition)",
-  "Downtown (Attrition)",
-  "Chinatown (Attrition)",
-  "Docks (Attrition)",
-  "Corporate Plaza (Attrition)",
-  "Underground Mall (Attrition)",
 ];
 
 // Define the Discord user type
@@ -237,6 +233,103 @@ export async function POST(
     // Emit the update event to all connected clients
     if (global.io) {
       global.io.emit("queues:update", updatedQueues);
+    }
+
+    // Check if the queue is now full after adding this player
+    const updatedQueue = await db.collection("Queues").findOne({
+      _id: new ObjectId(params.queueId),
+    });
+
+    // If queue is full, send notifications with expiration time
+    if (
+      updatedQueue &&
+      updatedQueue.players.length === updatedQueue.teamSize * 2
+    ) {
+      console.log("Queue is now full, sending notifications to players");
+
+      // Create expiration time (5 minutes from now)
+      const expirationTime = new Date();
+      expirationTime.setMinutes(expirationTime.getMinutes() + 5);
+
+      // FOR TESTING - only send notifications to specific Discord ID
+      const testingDiscordId = "238329746671271936"; // Your Discord ID
+
+      for (const player of updatedQueue.players) {
+        // Skip if not the testing Discord ID during testing
+        if (player.discordId !== testingDiscordId) continue;
+
+        // Create the notification message
+        const formattedQueueName =
+          updatedQueue.name ||
+          `${updatedQueue.teamSize}v${updatedQueue.teamSize} ${
+            updatedQueue.eloTier
+              ? updatedQueue.eloTier.charAt(0).toUpperCase() +
+                updatedQueue.eloTier.slice(1)
+              : "Ranked"
+          }`;
+
+        const notificationMessage = `Your ${updatedQueue.teamSize}v${updatedQueue.teamSize} ${formattedQueueName} queue is now full and ready to launch! You have 5 minutes to ready up!`;
+
+        // Send in-app notification
+        await db.collection("Notifications").insertOne({
+          userId: player.discordId,
+          type: "queue_full",
+          title: "Queue Full",
+          message: notificationMessage,
+          createdAt: new Date(),
+          read: false,
+          data: {
+            queueId: params.queueId,
+            queueName: formattedQueueName,
+            queueType: updatedQueue.gameType || "Ranked",
+            teamSize: updatedQueue.teamSize,
+            redirectUrl: "/matches/queues",
+            expiresAt: expirationTime,
+          },
+        });
+
+        // Format the current time
+        const currentTime = new Date().toLocaleString("en-US", {
+          month: "numeric",
+          day: "numeric",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        // Send the enhanced Discord DM
+        await sendDirectMessage(
+          player.discordId,
+          "A match is ready! Join now:",
+          {
+            queueInfo: {
+              queueName: formattedQueueName,
+              playerCount: updatedQueue.players.length,
+              timeLimit: 5, // 5 minute countdown
+              timestamp: currentTime,
+            },
+          }
+        ).catch((error) => {
+          console.error(
+            `Failed to send Discord DM to user ${player.discordId}:`,
+            error
+          );
+        });
+
+        // If socket.io is available, emit the notifications update
+        if (global.io) {
+          const userNotifications = await db
+            .collection("Notifications")
+            .find({ userId: player.discordId, read: false })
+            .sort({ createdAt: -1 })
+            .toArray();
+
+          global.io
+            .to(player.discordId)
+            .emit("notifications:update", userNotifications);
+        }
+      }
     }
 
     return NextResponse.json({ success: true });
