@@ -554,10 +554,7 @@ export default function MatchDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">
-                    without changing any designs, any layouts, or any
-                    functionality, can you fix these build errors?
-                  </p>
+                  <p className="text-sm text-gray-400">Launched By</p>
                   <p className="font-medium text-white">
                     {match.createdBy.discordNickname}
                   </p>

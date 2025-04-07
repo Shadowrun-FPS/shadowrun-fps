@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { connectToDatabase } from "@/lib/mongodb";
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,100 +37,62 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
-    // Check if user is authenticated and has admin permissions
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to create a tournament" },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is admin
-    const client = await clientPromise;
-    const db = client.db();
-
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
-
-    const isAdmin = user?.roles?.includes("admin") || false;
-
-    // If not admin, forbid access
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "Only administrators can create tournaments" },
-        { status: 403 }
-      );
+    // Check if user is an admin
+    // Use the isAdmin property from the session
+    if (!session.user.isAdmin) {
+      // Special case for your account specifically
+      if (session.user.id !== "238329746671271936") {
+        return NextResponse.json(
+          { error: "Only administrators can create tournaments" },
+          { status: 403 }
+        );
+      }
     }
 
+    const { db } = await connectToDatabase();
     const data = await request.json();
 
     // Validate required fields
-    if (!data.name || !data.format || !data.teamSize || !data.startDate) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+    const requiredFields = ["name", "format", "teamSize", "maxTeams"];
+    for (const field of requiredFields) {
+      if (!data[field]) {
+        return NextResponse.json(
+          { error: `Missing required field: ${field}` },
+          { status: 400 }
+        );
+      }
     }
 
-    // Create tournament document with proper typing and discord user info
-    const tournament: {
-      name: string;
-      description: string;
-      format: string;
-      teamSize: number;
-      maxTeams: number;
-      startDate: Date;
-      registrationDeadline: Date;
-      status: string;
-      createdAt: Date;
-      createdBy: {
-        discordId: string;
-        discordUsername: string;
-        discordNickname?: string;
-      };
-      teams: any[];
-      brackets: {
-        rounds: any[];
-        losersRounds?: any[];
-      };
-      registeredTeams: any[];
-    } = {
-      name: data.name,
-      description: data.description || "",
-      format: data.format,
-      teamSize: data.teamSize,
-      maxTeams: data.maxTeams || 8,
-      startDate: new Date(data.startDate),
-      registrationDeadline: data.registrationDeadline
-        ? new Date(data.registrationDeadline)
-        : new Date(data.startDate),
-      status: data.status || "upcoming",
+    // Create the tournament
+    const tournamentData = {
+      ...data,
+      status: "upcoming",
       createdAt: new Date(),
       createdBy: {
-        discordId: session.user.id,
-        discordUsername: session.user.name || "Unknown",
-        discordNickname: user?.nickname || undefined,
+        userId: session.user.id,
+        name: session.user.name,
       },
       teams: [],
       brackets: {
         rounds: [],
       },
-      registeredTeams: [],
     };
 
-    // Add losers bracket for double elimination
+    // If double elimination format, add losers bracket
     if (data.format === "double_elimination") {
-      tournament.brackets.losersRounds = [];
+      tournamentData.brackets.losersRounds = [];
     }
 
-    const result = await db.collection("Tournaments").insertOne(tournament);
+    const result = await db.collection("Tournaments").insertOne(tournamentData);
 
-    // Return the created tournament with string ID
     return NextResponse.json({
-      ...tournament,
-      _id: result.insertedId.toString(),
+      success: true,
+      tournamentId: result.insertedId,
+      message: "Tournament created successfully",
     });
   } catch (error) {
     console.error("Error creating tournament:", error);

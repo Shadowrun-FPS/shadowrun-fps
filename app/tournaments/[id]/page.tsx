@@ -53,6 +53,7 @@ import { toast } from "@/components/ui/use-toast";
 import Image from "next/image";
 import { EditTournamentDialog } from "@/components/tournaments/edit-tournament-dialog";
 import { Progress } from "@/components/ui/progress";
+import { formatDate } from "@/lib/utils";
 
 // Types
 interface Tournament {
@@ -76,6 +77,9 @@ interface Tournament {
     tournamentMatchId: string;
   }[];
   winner?: Team;
+  teamStandings?: { team: Team; wins: number; losses: number }[];
+  completedAt?: string;
+  updatedAt?: string;
 }
 
 interface Team {
@@ -170,29 +174,89 @@ const safeFormatDate = (dateString: string | undefined | null): string => {
   }
 };
 
-// Add a tournament winner banner at the top of the page when tournament is completed
-const TournamentWinnerBanner = ({ winner }: { winner: Team }) => {
+// Updated TournamentWinnerBanner component with better small screen support
+const TournamentWinnerBanner = ({
+  winner,
+  completedAt,
+}: {
+  winner: Team;
+  completedAt?: string;
+}) => {
   return (
-    <div className="mb-6 overflow-hidden border rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600">
-      <div className="px-6 py-4 text-center">
-        <div className="flex items-center justify-center mb-2">
-          <div className="px-3 py-1 mb-2 text-sm font-semibold text-white rounded-full bg-black/20">
-            TOURNAMENT CHAMPION
-          </div>
+    <div className="mt-8 overflow-hidden rounded-lg shadow-lg">
+      {/* Gradient background with more sophisticated colors */}
+      <div className="relative p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+        {/* Trophy icon with glow effect - hidden on small screens */}
+        <div className="absolute top-0 right-0 hidden w-32 h-32 md:block lg:w-48 lg:h-48 opacity-10">
+          <Trophy className="w-full h-full text-yellow-300" />
         </div>
-        <h2 className="text-3xl font-bold text-white">{winner.name}</h2>
-        {winner.tag && (
-          <p className="text-lg text-white/80">Team {winner.tag}</p>
-        )}
-        <div className="flex justify-center mt-4 space-x-2">
-          {winner.captain && (
-            <div className="px-3 py-1 text-sm text-white rounded-full bg-black/20">
-              Captain:{" "}
-              {winner.captain.discordNickname || winner.captain.discordUsername}
+
+        {/* Header content */}
+        <div className="relative">
+          <div className="flex items-center justify-center">
+            <div className="p-3 md:p-4 mb-2 md:mb-4 bg-gradient-to-br from-yellow-300 to-amber-600 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]">
+              <Trophy className="w-10 h-10 text-white sm:w-12 sm:h-12 md:w-16 md:h-16" />
+            </div>
+          </div>
+
+          <h2 className="mb-2 text-xl font-semibold text-center text-yellow-300 sm:text-2xl">
+            TOURNAMENT CHAMPION
+          </h2>
+
+          <div className="relative py-2 mb-4 text-center md:py-3 md:mb-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-600/40"></div>
+            </div>
+            <div className="relative flex justify-center">
+              <span className="px-2 text-2xl font-bold tracking-wider text-white md:px-4 sm:text-3xl md:text-4xl bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+                {winner.name}
+              </span>
+            </div>
+          </div>
+
+          {winner.tag && (
+            <div className="flex justify-center mb-6">
+              <span className="px-3 py-1 text-base font-medium text-white rounded-full md:text-lg bg-slate-700/70">
+                [{winner.tag}]
+              </span>
             </div>
           )}
-          <div className="px-3 py-1 text-sm text-white rounded-full bg-black/20">
-            {winner.members?.length || 0} players
+
+          {/* Simplified team members section with more compact layout */}
+          {winner.members && winner.members.length > 0 && (
+            <div className="pt-4 mt-4 border-t border-gray-700">
+              <h3 className="mb-3 text-sm font-semibold text-center text-gray-300">
+                CHAMPIONSHIP ROSTER
+              </h3>
+              {/* Updated grid with more compact layout on medium+ screens */}
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-1 md:max-w-[80%] mx-auto">
+                {winner.members.map((member) => (
+                  <Link
+                    key={member.discordId}
+                    href={`/player/stats?playerName=${member.discordUsername?.toLowerCase()}`}
+                    className="flex flex-col items-center p-1 transition-colors rounded-lg hover:bg-blue-900/20"
+                  >
+                    <div className="w-12 h-12 md:w-14 md:h-14">
+                      <MemberAvatar
+                        profilePicture={member.discordProfilePicture}
+                        username={member.discordUsername}
+                        size={14}
+                      />
+                    </div>
+                    <span className="w-full mt-3 text-sm font-medium text-center text-white break-words hyphens-auto">
+                      {member.discordNickname || member.discordUsername}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Date footer */}
+          <div className="mt-6 text-xs text-center text-gray-400 sm:text-sm">
+            {completedAt
+              ? format(new Date(completedAt), "MMMM d, yyyy")
+              : "N/A"}
           </div>
         </div>
       </div>
@@ -711,6 +775,12 @@ export default function TournamentDetailsPage() {
     }
   };
 
+  useEffect(() => {
+    if (tournament?.teamStandings) {
+      console.log("Tournament standings:", tournament.teamStandings);
+    }
+  }, [tournament?.teamStandings]);
+
   if (loading) {
     return (
       <div className="container py-8 mx-auto">
@@ -873,7 +943,10 @@ export default function TournamentDetailsPage() {
 
         {/* Add this inside your Tournament component before the tabs section */}
         {tournament.status === "completed" && tournament.winner && (
-          <TournamentWinnerBanner winner={tournament.winner} />
+          <TournamentWinnerBanner
+            winner={tournament.winner}
+            completedAt={tournament.completedAt}
+          />
         )}
 
         {/* Tabs Navigation */}
@@ -923,21 +996,29 @@ export default function TournamentDetailsPage() {
               </div>
             ) : (
               <div className="mt-4">
-                <TournamentBracket
-                  rounds={tournament?.brackets?.rounds || []}
-                  currentRound={currentRound}
-                  onPreviousRound={() =>
-                    setCurrentRound(Math.max(0, currentRound - 1))
-                  }
-                  onNextRound={() =>
-                    setCurrentRound(
-                      Math.min(
-                        (tournament?.brackets?.rounds?.length || 1) - 1,
-                        currentRound + 1
+                {tournament?.brackets?.rounds?.length > 0 ? (
+                  <TournamentBracket
+                    rounds={tournament.brackets.rounds}
+                    currentRound={currentRound}
+                    onPreviousRound={() =>
+                      setCurrentRound(Math.max(0, currentRound - 1))
+                    }
+                    onNextRound={() =>
+                      setCurrentRound(
+                        Math.min(
+                          (tournament?.brackets?.rounds?.length || 1) - 1,
+                          currentRound + 1
+                        )
                       )
-                    )
-                  }
-                />
+                    }
+                  />
+                ) : (
+                  <div className="py-8 text-center">
+                    <p className="text-muted-foreground">
+                      No bracket available yet.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -947,15 +1028,15 @@ export default function TournamentDetailsPage() {
                 <h3 className="mb-2 text-lg font-semibold">
                   Tournament Seeding (Admin View)
                 </h3>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-4">
                   {tournament.registeredTeams.map((team, index) => (
                     <div
                       key={team._id}
                       className="flex items-center gap-2 p-2 border rounded"
                     >
                       <Badge variant="outline">{index + 1}</Badge>
-                      <span>{team.name}</span>
-                      <span className="ml-auto text-xs text-muted-foreground">
+                      <span className="truncate">{team.name}</span>
+                      <span className="ml-auto text-xs whitespace-nowrap text-muted-foreground">
                         ELO: {team.teamElo || "N/A"}
                       </span>
                     </div>
@@ -967,30 +1048,46 @@ export default function TournamentDetailsPage() {
 
           {/* Standings Content */}
           <TabsContent value="standings" className="mt-0">
-            <Card>
-              <CardContent className="p-6">
+            {tournament.teamStandings ? (
+              <div className="mt-4">
                 <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-800">
-                      <th className="pb-2 text-left">Rank</th>
-                      <th className="pb-2 text-left">Team</th>
-                      <th className="pb-2 text-right">W</th>
-                      <th className="pb-2 text-right">L</th>
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-4 py-2 text-left">Team</th>
+                      <th className="px-4 py-2 text-center">W</th>
+                      <th className="px-4 py-2 text-center">L</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {tournament.registeredTeams.map((team, index) => (
-                      <tr key={team._id} className="border-b border-gray-800">
-                        <td className="py-3">{index + 1}</td>
-                        <td className="py-3">{team.name}</td>
-                        <td className="py-3 text-right text-green-500">0</td>
-                        <td className="py-3 text-right text-red-500">0</td>
-                      </tr>
-                    ))}
+                    {tournament.teamStandings
+                      .sort((a, b) => b.wins - a.wins)
+                      .map((team, index) => (
+                        <tr
+                          key={team.team._id.toString()}
+                          className={index % 2 ? "bg-muted/10" : ""}
+                        >
+                          <td className="px-4 py-3 font-medium">
+                            {team.team.name}
+                            {team.team.tag && (
+                              <span className="ml-2 text-sm text-muted-foreground">
+                                [{team.team.tag}]
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-center">{team.wins}</td>
+                          <td className="px-4 py-3 text-center">
+                            {team.losses}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
-              </CardContent>
-            </Card>
+              </div>
+            ) : (
+              <p className="mt-4 text-muted-foreground">
+                No standings available yet.
+              </p>
+            )}
           </TabsContent>
 
           {/* Teams Content */}

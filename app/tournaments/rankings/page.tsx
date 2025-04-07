@@ -115,9 +115,6 @@ export default function RankingsPage() {
 
   // Calculate win rate with special handling for 100% case
   const calculateWinRate = (wins: number, losses: number) => {
-    // Log the inputs to help debug
-    console.log("Win rate calculation:", { wins, losses, type: typeof wins });
-
     // Ensure wins and losses are numbers
     const winsNum = Number(wins || 0);
     const lossesNum = Number(losses || 0);
@@ -127,7 +124,6 @@ export default function RankingsPage() {
 
     // Special case for 1-0 record (100% win rate)
     if (winsNum === 1 && lossesNum === 0) {
-      console.log("Special case: 1-0 record, returning 100%");
       return "100.0%";
     }
 
