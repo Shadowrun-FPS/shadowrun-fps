@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
 import { getRankIconPath } from "@/lib/ranks";
+import Link from "next/link";
 
 interface TeamCardProps {
   team: any[];
@@ -42,7 +43,7 @@ export function TeamCard({
             className="flex items-center justify-between p-2 rounded-lg bg-[#1a2234]"
           >
             <div className="flex items-center gap-2">
-              <Avatar className="h-8 w-8">
+              <Avatar className="w-8 h-8">
                 <AvatarImage
                   src={player.discordProfilePicture || ""}
                   alt={player.discordNickname}
@@ -51,7 +52,16 @@ export function TeamCard({
                   {player.discordNickname?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-white">{player.discordNickname}</span>
+              <div>
+                <Link
+                  href={`/player/stats?playerName=${encodeURIComponent(
+                    player.discordUsername
+                  )}`}
+                  className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
+                >
+                  {player.discordNickname || player.discordUsername}
+                </Link>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="relative w-6 h-6">

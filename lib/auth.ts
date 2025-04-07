@@ -3,10 +3,39 @@ import DiscordProvider from "next-auth/providers/discord";
 import type { DefaultJWT } from "next-auth/jwt";
 import { connectToDatabase } from "@/lib/mongodb";
 import { signIn } from "next-auth/react";
+import { NextAuthOptions } from "next-auth";
+import {
+  upsertPlayerDiscordData,
+  getGuildData,
+  updatePlayerGuildNickname,
+} from "./discord-helpers";
+
+// Grant admin access to this specific user regardless of roles
+const DEVELOPER_ID = "238329746671271936"; // Your Discord ID
 
 // Add your Discord ID to the list of admin IDs
-const ADMIN_IDS = ["238329746671271936"]; // Your Discord ID
-const MODERATOR_IDS = ["238329746671271936"]; // Your Discord ID
+const ADMIN_IDS = [DEVELOPER_ID /* other admin IDs */];
+const MODERATOR_IDS = [DEVELOPER_ID /* other mod IDs */];
+
+// Add this type definition at the top of your file
+interface DiscordProfile {
+  id: string;
+  username: string;
+  avatar: string;
+  discriminator: string;
+  public_flags: number;
+  flags: number;
+  banner: string | null;
+  accent_color: number | null;
+  global_name: string;
+  avatar_decoration_data: any;
+  banner_color: string;
+  mfa_enabled: boolean;
+  locale: string;
+  premium_type: number;
+  email: string;
+  verified: boolean;
+}
 
 declare module "next-auth" {
   interface Session {
@@ -38,16 +67,39 @@ declare module "next-auth/jwt" {
   }
 }
 
-export const authOptions: AuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     DiscordProvider({
-      clientId: process.env.DISCORD_CLIENT_ID || "",
-      clientSecret: process.env.DISCORD_CLIENT_SECRET || "",
+      clientId: process.env.DISCORD_CLIENT_ID!,
+      clientSecret: process.env.DISCORD_CLIENT_SECRET!,
       authorization: {
         params: {
-          // Limit scope to only what's essential
-          scope: "identify",
+          scope: "identify guilds guilds.members.read",
         },
+      },
+      profile(profile) {
+        // Log the raw profile in development
+        if (process.env.NODE_ENV === "development") {
+          console.log("Discord profile:", profile);
+        }
+
+        if (profile.avatar === null) {
+          const defaultAvatarNumber = parseInt(profile.discriminator) % 5;
+          profile.image_url = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarNumber}.png`;
+        } else {
+          const format = profile.avatar.startsWith("a_") ? "gif" : "png";
+          profile.image_url = `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.${format}`;
+        }
+
+        return {
+          id: profile.id,
+          name: profile.username,
+          email: profile.email,
+          image: profile.image_url,
+          // Make sure we're capturing global_name
+          global_name: profile.global_name || null,
+          nickname: null, // This will be set by the Discord API call to get member details
+        };
       },
     }),
   ],
@@ -69,86 +121,77 @@ export const authOptions: AuthOptions = {
     },
   },
   callbacks: {
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.isAdmin = token.isAdmin;
-        session.user.nickname = token.nickname as string;
-        session.user.roles = token.roles as string[];
-      }
-
-      return session;
-    },
-    async jwt({ token, user, account }) {
-      // Initial sign in
-      if (account && user) {
-        token.id = user.id;
+    async jwt({ token, account, profile }) {
+      if (account) {
         token.accessToken = account.access_token;
 
-        // Try to get Discord information
-        if (account.provider === "discord" && account.access_token) {
-          try {
-            // Get user data from Discord API
-            const userResponse = await fetch(
-              "https://discord.com/api/users/@me",
-              {
-                headers: {
-                  Authorization: `Bearer ${account.access_token}`,
-                },
-              }
-            );
+        // Get basic Discord data
+        if (profile) {
+          // Cast profile to DiscordProfile type
+          const discordProfile = profile as unknown as DiscordProfile;
 
-            const userData = await userResponse.json();
-            token.nickname = userData.global_name || userData.username || "";
+          token.id = discordProfile.id;
+          token.name = discordProfile.username;
+          token.image = `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`;
 
-            // Store Discord ID on the token
-            token.id = userData.id;
+          // Store basic info with global username
+          await upsertPlayerDiscordData(
+            discordProfile.id,
+            discordProfile.username,
+            token.image as string
+          );
 
-            // Only fetch guilds if absolutely needed
-            // And store minimal data
-            /*
-            const guildsResponse = await fetch(
-              "https://discord.com/api/users/@me/guilds",
-              {
-                headers: {
-                  Authorization: `Bearer ${account.access_token}`,
-                },
-              }
-            );
+          // Now get and update the guild-specific nickname
+          if (account.access_token) {
+            console.log("Fetching guild data during auth for user:", token.id);
+            const guildData = await getGuildData(account.access_token);
 
-            if (guildsResponse.ok) {
-              const guilds = await guildsResponse.json();
-              token.discordGuilds = guilds.map(g => ({ 
-                id: g.id, 
-                name: g.name 
-              }));
+            if (guildData && guildData.nick) {
+              // Use the guild nickname if available
+              const guildNickname = guildData.nick;
+              console.log(
+                `Found guild nickname: "${guildNickname}" for user ${token.id}`
+              );
+              token.nickname = guildNickname;
+            } else if (discordProfile.global_name) {
+              // Fallback to global display name
+              console.log(
+                `Using global name: "${discordProfile.global_name}" for user ${token.id}`
+              );
+              token.nickname = discordProfile.global_name;
+            } else {
+              // Final fallback to username
+              console.log(
+                `Using username as fallback: "${discordProfile.username}" for user ${token.id}`
+              );
+              token.nickname = discordProfile.username;
             }
-            */
-
-            // Initialize roles array
-            token.roles = [];
-
-            // Add admin role if user ID is in ADMIN_IDS
-            if (ADMIN_IDS.includes(userData.id)) {
-              token.roles.push("admin");
-            }
-
-            if (MODERATOR_IDS.includes(userData.id)) {
-              token.roles.push("moderator");
-            }
-
-            if (process.env.NEXT_PUBLIC_DEBUG_AUTH === "true") {
-              console.log("JWT callback:", {
-                userId: userData.id,
-                timestamp: new Date().toISOString(),
-              });
-            }
-          } catch (error) {
-            console.error("Error fetching Discord data:", error);
           }
+        }
+
+        // Always grant admin access to developer account
+        if (token.id === DEVELOPER_ID) {
+          token.isAdmin = true;
         }
       }
       return token;
+    },
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.id as string;
+        session.user.name = token.name;
+        session.user.image = token.image as string;
+        session.accessToken = token.accessToken as string;
+
+        // Make sure nickname is passed from token to session
+        session.user.nickname = token.nickname;
+
+        // Always grant admin access to developer account
+        if (session.user.id === DEVELOPER_ID) {
+          session.user.isAdmin = true;
+        }
+      }
+      return session;
     },
     async signIn({ user, account, profile }) {
       // Only proceed for Discord sign-ins
@@ -156,9 +199,45 @@ export const authOptions: AuthOptions = {
         try {
           // Get user data
           const { id: discordId, name, image } = user;
-          const discordNickname = user.name;
-          const discordUsername =
-            user.email?.split("@")[0] || name?.toLowerCase();
+
+          // Access token is needed to get guild data
+          const accessToken = account.access_token;
+
+          // Get guild data to find server-specific nickname
+          let discordNickname = null;
+
+          if (accessToken) {
+            console.log(`Fetching guild data during signIn for ${discordId}`);
+            const guildData = await getGuildData(accessToken);
+
+            if (guildData && guildData.nick) {
+              // Use guild nickname if available (highest priority)
+              discordNickname = guildData.nick;
+              console.log(
+                `Using guild nickname "${discordNickname}" for user ${discordId}`
+              );
+            } else if (user.global_name) {
+              // Fallback to global name
+              discordNickname = user.global_name;
+              console.log(
+                `No guild nickname found. Using global name "${discordNickname}" for user ${discordId}`
+              );
+            } else {
+              // Final fallback to username
+              discordNickname = name;
+              console.log(
+                `No guild or global nickname found. Using username "${discordNickname}" for user ${discordId}`
+              );
+            }
+          } else {
+            // No access token available, use name as fallback
+            discordNickname = name;
+            console.log(
+              `No access token available. Using username "${discordNickname}" for user ${discordId}`
+            );
+          }
+
+          const discordUsername = name;
           const discordProfilePicture = image;
 
           // Connect directly to the database
@@ -169,7 +248,7 @@ export const authOptions: AuthOptions = {
             { discordId },
             {
               $set: {
-                discordNickname,
+                discordNickname, // Use the properly determined nickname
                 discordUsername,
                 discordProfilePicture,
                 updatedAt: new Date().toISOString(),
@@ -180,6 +259,11 @@ export const authOptions: AuthOptions = {
               },
             },
             { upsert: true }
+          );
+
+          // Log what was saved
+          console.log(
+            `Updated player ${discordId} with nickname "${discordNickname}"`
           );
         } catch (error) {
           console.error("Error updating player document:", error);

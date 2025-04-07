@@ -44,6 +44,55 @@ interface TournamentBracketProps {
   onNextRound: () => void;
 }
 
+// Create interfaces for our components
+interface TeamDisplayProps {
+  team: {
+    _id: string;
+    name: string;
+    tag?: string;
+    seed?: number;
+  };
+  isWinner: boolean;
+  score?: number;
+}
+
+// Define the TeamDisplay component
+const TeamDisplay = ({ team, isWinner, score }: TeamDisplayProps) => (
+  <div
+    className={`flex items-center justify-between w-full ${
+      isWinner ? "text-green-500" : ""
+    }`}
+  >
+    <div className="flex items-center gap-3">
+      <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full bg-muted">
+        {team.seed || "?"}
+      </span>
+      <div>
+        <span className="font-semibold">{team.name}</span>
+        {team.tag && (
+          <span className="ml-2 text-xs text-muted-foreground">{team.tag}</span>
+        )}
+      </div>
+    </div>
+    <span className="text-xl font-bold">
+      {score !== undefined ? score : "-"}
+    </span>
+  </div>
+);
+
+// Define the TeamPlaceholder component
+const TeamPlaceholder = () => (
+  <div className="flex items-center w-full gap-3">
+    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full bg-muted">
+      ?
+    </span>
+    <Skeleton className="w-32 h-5" />
+    <span className="ml-auto">
+      <Skeleton className="w-8 h-5" />
+    </span>
+  </div>
+);
+
 export function TournamentBracket({
   rounds,
   currentRound,
@@ -127,6 +176,70 @@ export function TournamentBracket({
     }
   }, [currentRoundData.matches]);
 
+  // Update the renderRoundMatches function to handle the type issue
+  const renderRoundMatches = (round: number) => {
+    // Calculate how many matches should be in each round based on bracket size
+    const totalRounds = rounds.length;
+
+    // Calculate number of matches for this specific round
+    // Starting with total teams (2^totalRounds), divide by 2^(round+1)
+    const matchesInRound = Math.pow(2, totalRounds - 1 - round);
+
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: matchesInRound }).map((_, matchIndex) => {
+          const matchKey = `${round + 1}-${matchIndex + 1}`;
+
+          // Use type assertion to fix the type error
+          // First get the match from the rounds data structure
+          const matchData = rounds[round]?.matches?.[matchKey as any];
+
+          // Then cast it to Match type to avoid TypeScript errors
+          const match = matchData as Match | undefined;
+
+          return (
+            <div key={matchIndex} className="relative">
+              <div className="overflow-hidden border rounded-lg bg-card">
+                {/* First team */}
+                <div className="flex items-center p-3 border-b border-gray-700">
+                  {match?.teamA ? (
+                    <TeamDisplay
+                      team={match.teamA}
+                      isWinner={match.winner === "teamA"}
+                      score={match.scores?.teamA}
+                    />
+                  ) : (
+                    <TeamPlaceholder />
+                  )}
+                </div>
+
+                {/* Second team */}
+                <div className="flex items-center p-3">
+                  {match?.teamB ? (
+                    <TeamDisplay
+                      team={match.teamB}
+                      isWinner={match.winner === "teamB"}
+                      score={match.scores?.teamB}
+                    />
+                  ) : (
+                    <TeamPlaceholder />
+                  )}
+                </div>
+              </div>
+
+              {/* Waiting for teams message if neither team is set */}
+              {!match?.teamA && !match?.teamB && (
+                <div className="mt-2 text-sm text-center text-gray-400">
+                  Waiting for teams...
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-4">
@@ -155,48 +268,7 @@ export function TournamentBracket({
 
       {/* Update the display logic */}
       {!hasTeams || !isProperlySeeded ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="overflow-hidden border rounded-lg bg-card">
-              <div className="flex flex-col">
-                {/* Match header with seed numbers */}
-                <div className="flex justify-between px-4 py-2 text-sm bg-muted/50">
-                  <span className="font-semibold">{i}</span>
-                  <Skeleton className="w-16 h-4" />
-                </div>
-
-                {/* Team A */}
-                <div className="flex items-center justify-between p-3 border-b">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full bg-muted">
-                      ?
-                    </span>
-                    <Skeleton className="w-32 h-5" />
-                  </div>
-                  <Skeleton className="w-8 h-5" />
-                </div>
-
-                {/* Team B */}
-                <div className="flex items-center justify-between p-3">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full bg-muted">
-                      ?
-                    </span>
-                    <Skeleton className="w-32 h-5" />
-                  </div>
-                  <Skeleton className="w-8 h-5" />
-                </div>
-
-                {/* Match footer */}
-                <div className="px-4 py-2 text-xs text-center bg-muted/30">
-                  <span className="text-muted-foreground">
-                    Waiting for teams...
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        renderRoundMatches(currentRound)
       ) : (
         <div className="space-y-4">
           {currentRoundData.matches.map((match, idx) => (
@@ -321,7 +393,7 @@ export function TournamentBracket({
                     <Button
                       variant="ghost"
                       size="sm"
-                      asChild
+                      asChild={!!match.tournamentMatchId}
                       className="text-xs"
                       onClick={(e) => {
                         if (!match.tournamentMatchId) {
@@ -334,15 +406,15 @@ export function TournamentBracket({
                         }
                       }}
                     >
-                      <Link
-                        href={
-                          match.tournamentMatchId
-                            ? `/tournaments/matches/${match.tournamentMatchId}`
-                            : "#"
-                        }
-                      >
-                        {match.tournamentMatchId ? "View Match" : "Not Started"}
-                      </Link>
+                      {match.tournamentMatchId ? (
+                        <Link
+                          href={`/tournaments/matches/${match.tournamentMatchId}`}
+                        >
+                          View Match
+                        </Link>
+                      ) : (
+                        <span>View Match</span>
+                      )}
                     </Button>
                   )}
                 </div>

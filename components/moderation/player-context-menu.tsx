@@ -45,14 +45,14 @@ export function PlayerContextMenu({
         </div>
         <ContextMenuSeparator className="bg-[#3b82f6]/30" />
         <ContextMenuItem
-          className="flex items-center gap-2 cursor-not-allowed opacity-50"
+          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
           // onClick will be implemented later
         >
           <AlertTriangle className="w-4 h-4 text-yellow-500" />
           <span>Issue Warning</span>
         </ContextMenuItem>
         <ContextMenuItem
-          className="flex items-center gap-2 cursor-not-allowed opacity-50"
+          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
           // onClick will be implemented later
         >
           <Ban className="w-4 h-4 text-red-500" />

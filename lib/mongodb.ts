@@ -30,11 +30,15 @@ if (process.env.NODE_ENV === "development") {
 
 export async function connectToDatabase() {
   try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
-    return { db, client };
+    if (clientPromise) {
+      const client = await clientPromise;
+
+      const db = client.db("ShadowrunWeb");
+      return { client, db };
+    }
+    throw new Error("MongoDB client promise not initialized");
   } catch (error) {
-    console.error("Error connecting to database:", error);
+    console.error("Failed to connect to MongoDB:", error);
     throw error;
   }
 }

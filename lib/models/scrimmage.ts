@@ -19,6 +19,7 @@ export interface IScrimmage extends Document {
     name: string;
     isSmallVariant: boolean;
     image?: string;
+    gameMode: string;
   }>;
   message?: string;
   status: "pending" | "accepted" | "rejected" | "completed" | "cancelled";
@@ -93,6 +94,7 @@ const ScrimmageSchema = new Schema(
         name: String,
         isSmallVariant: Boolean,
         image: String,
+        gameMode: String,
       },
     ],
     message: String,

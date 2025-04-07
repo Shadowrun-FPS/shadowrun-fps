@@ -111,13 +111,13 @@ function LeaderboardContent() {
     pages: 0,
   });
 
-  const initialTeamSize = searchParams.get("teamSize") || "4";
-  const initialPage = searchParams.get("page") || "1";
-  const initialSearch = searchParams.get("search") || "";
+  const initialTeamSize = searchParams?.get("teamSize") || "4";
+  const initialPage = searchParams?.get("page") || "1";
+  const initialSearch = searchParams?.get("search") || "";
   const initialSortField =
-    (searchParams.get("sortField") as SortField) || "elo";
+    (searchParams?.get("sortField") as SortField) || "elo";
   const initialSortDirection =
-    (searchParams.get("sortDirection") as SortDirection) || "desc";
+    (searchParams?.get("sortDirection") as SortDirection) || "desc";
 
   const [teamSize, setTeamSize] = useState<string>(initialTeamSize);
   const [page, setPage] = useState<number>(parseInt(initialPage));

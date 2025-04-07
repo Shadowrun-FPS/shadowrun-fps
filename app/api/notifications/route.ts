@@ -22,10 +22,6 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .toArray();
 
-    console.log(
-      `Found ${notifications.length} notifications for user ${session.user.id}`
-    );
-
     return NextResponse.json(notifications);
   } catch (error) {
     console.error("Error fetching notifications:", error);

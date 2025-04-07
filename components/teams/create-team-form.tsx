@@ -52,6 +52,7 @@ export function CreateTeamForm({ onSuccess }: CreateTeamFormProps) {
           description: formData.description,
           tag: formData.tag,
           captain: session.user.id,
+          captainProfilePicture: session.user.image,
         }),
       });
 

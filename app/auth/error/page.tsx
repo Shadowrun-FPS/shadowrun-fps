@@ -16,7 +16,7 @@ import { Suspense } from "react";
 // Create a client component that uses the hook
 function AuthErrorContent() {
   const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+  const error = searchParams?.get("error");
 
   let errorMessage = "An error occurred during authentication";
 

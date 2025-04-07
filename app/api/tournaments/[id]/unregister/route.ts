@@ -1,48 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 export async function POST(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log("Unregister route hit with ID:", params.id);
-
-    // Get session and check authentication
     const session = await getServerSession(authOptions);
-
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to unregister a team" },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
-    if (!ObjectId.isValid(id)) {
+    const { teamId } = await req.json();
+
+    if (!teamId) {
       return NextResponse.json(
-        { error: "Invalid tournament ID" },
+        { error: "Team ID is required" },
         { status: 400 }
       );
     }
 
-    // Get request body
-    const data = await request.json();
-    const { teamId } = data;
-
-    if (!teamId) {
-      return NextResponse.json({ error: "Invalid team ID" }, { status: 400 });
+    const tournamentId = params.id;
+    if (!tournamentId) {
+      return NextResponse.json(
+        { error: "Tournament ID is required" },
+        { status: 400 }
+      );
     }
 
-    const client = await clientPromise;
-    const db = client.db();
+    console.log(`Unregistering team ${teamId} from tournament ${tournamentId}`);
 
-    // Check if tournament exists
+    const { db } = await connectToDatabase();
+
+    // Check if user is admin or team captain
+    const isAdmin =
+      session.user.id === "238329746671271936" ||
+      (session.user.roles &&
+        (session.user.roles.includes("admin") ||
+          session.user.roles.includes("moderator")));
+
+    // Get the tournament first to check if the team is registered
     const tournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(id),
+      _id: new ObjectId(tournamentId),
     });
 
     if (!tournament) {
@@ -52,96 +54,61 @@ export async function POST(
       );
     }
 
-    // Check if tournament registration can be modified
+    // Check if tournament is in upcoming status
     if (tournament.status !== "upcoming") {
       return NextResponse.json(
-        { error: "Teams cannot be removed after tournament has started" },
+        { error: "Cannot unregister from an active or completed tournament" },
         { status: 400 }
       );
     }
 
-    // Check if user is admin or team captain
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
-
-    const isAdmin = user?.roles?.includes("admin") || false;
-
-    // Get the team from registered teams
-    const registeredTeam = tournament.registeredTeams?.find(
-      (team: any) => team._id === teamId
+    // Check if the team is registered
+    const isTeamRegistered = tournament.registeredTeams.some(
+      (team: any) => team._id.toString() === teamId || team._id === teamId
     );
 
-    if (!registeredTeam) {
+    if (!isTeamRegistered) {
       return NextResponse.json(
-        { error: "Team is not registered for this tournament" },
+        { error: "Team is not registered in this tournament" },
         { status: 400 }
       );
     }
 
-    // Check if user is captain of the team or an admin
-    const isTeamCaptain = registeredTeam.captain?.discordId === session.user.id;
+    // If not admin, check if user is the team captain
+    if (!isAdmin) {
+      const team = await db.collection("Teams").findOne({
+        _id: new ObjectId(teamId),
+        "captain.discordId": session.user.id,
+      });
 
-    if (!isTeamCaptain && !isAdmin) {
-      return NextResponse.json(
-        { error: "Only team captains or admins can unregister teams" },
-        { status: 403 }
-      );
+      if (!team) {
+        return NextResponse.json(
+          { error: "You must be the team captain to unregister" },
+          { status: 403 }
+        );
+      }
     }
 
-    // First update removes the team from the teams array
-    await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(id) },
+    // Update the tournament document to remove the team
+    const result = await db.collection("Tournaments").updateOne(
+      { _id: new ObjectId(tournamentId) },
       {
         $pull: {
-          teams: new ObjectId(teamId),
-        } as any,
-      }
-    );
-
-    // Second update removes the team from registeredTeams array
-    await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $pull: {
-          registeredTeams: { _id: teamId },
-        } as any,
-      }
-    );
-
-    // Next, update the bracket to remove the team from matches
-    await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          "brackets.rounds.$[].matches.$[match].teamA": null,
-          "brackets.rounds.$[].matches.$[match].teamB": null,
-          updatedAt: new Date(),
+          registeredTeams: { _id: teamId } as any,
         },
-      },
-      {
-        arrayFilters: [
-          {
-            $or: [{ "match.teamA._id": teamId }, { "match.teamB._id": teamId }],
-          },
-        ],
       }
     );
 
-    // Re-seed the tournament if there are still teams
-    const updatedTournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(id),
-    });
-
-    if (updatedTournament?.registeredTeams?.length >= 2) {
-      // Trigger reseeding
-      // ... code to re-seed with remaining teams ...
+    if (result.modifiedCount === 0) {
+      return NextResponse.json(
+        { error: "Failed to unregister team" },
+        { status: 500 }
+      );
     }
 
-    // Return success response
     return NextResponse.json({
       success: true,
-      message: "Team successfully unregistered from tournament",
+      message: "Team unregistered successfully",
     });
   } catch (error) {
     console.error("Error unregistering team:", error);

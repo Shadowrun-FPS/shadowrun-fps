@@ -70,10 +70,17 @@ export async function POST(request: NextRequest) {
     // Ensure the gameMode is properly stored
     const mapsWithGameMode = data.selectedMaps.map((map: any) => ({
       ...map,
-      gameMode: map.gameMode, // Use the gameMode directly from the map
+      gameMode: map.gameMode || "Attrition", // Use the gameMode with a fallback
     }));
 
-    console.log("Maps with gameMode:", mapsWithGameMode);
+    // Log for verification when saving
+    console.log(
+      "Maps with gameMode:",
+      mapsWithGameMode.map((m: { name: any; gameMode: any }) => ({
+        name: m.name,
+        gameMode: m.gameMode,
+      }))
+    );
 
     // Create the scrimmage
     const scrimmage = {

@@ -72,6 +72,30 @@ export async function POST(
       );
     }
 
+    // NEW: Validate that previous maps have been scored
+    // Initialize mapScores array if it doesn't exist
+    if (!scrimmage.mapScores) {
+      scrimmage.mapScores = [];
+    }
+
+    // For maps after the first one, verify previous maps have been scored
+    if (mapIndex > 0) {
+      // Check if all previous maps have been completely scored
+      for (let i = 0; i < mapIndex; i++) {
+        // Ensure the previous map exists and is scored by both teams
+        if (
+          !scrimmage.mapScores[i] ||
+          !scrimmage.mapScores[i].teamASubmitted ||
+          !scrimmage.mapScores[i].teamBSubmitted
+        ) {
+          return NextResponse.json(
+            { error: "Previous maps must be scored first" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Verify user is authorized to submit scores
     const isAdmin = session.user.roles?.includes("admin");
 
@@ -132,11 +156,6 @@ export async function POST(
 
     // Determine which team is submitting
     const submittingTeam = isTeamACaptain ? "teamA" : "teamB";
-
-    // Initialize mapScores array if it doesn't exist
-    if (!scrimmage.mapScores) {
-      scrimmage.mapScores = [];
-    }
 
     // Ensure the mapScores array has enough elements
     while (scrimmage.mapScores.length <= mapIndex) {

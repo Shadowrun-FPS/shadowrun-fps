@@ -262,6 +262,27 @@ export async function POST(
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
+    // NEW: Verify that previous maps have been scored first
+    const mapScores = match.mapScores || [];
+
+    // For maps after the first one, check that previous maps have scores
+    if (mapIndex > 0) {
+      for (let i = 0; i < mapIndex; i++) {
+        const prevMapScore = mapScores[i] || {};
+
+        // Check if previous map has verified scores from both teams
+        if (
+          !prevMapScore.scoresVerified &&
+          !(prevMapScore.submittedByTeam1 && prevMapScore.submittedByTeam2)
+        ) {
+          return NextResponse.json(
+            { error: "Previous maps must be scored first" },
+            { status: 400 }
+          );
+        }
+      }
+    }
+
     // Get the submitting player's info
     const submittingUser = {
       discordId: session.user.id,
@@ -279,7 +300,6 @@ export async function POST(
     }
 
     // Initialize mapScores if it doesn't exist
-    const mapScores = match.mapScores || [];
     const existingMapScore = mapScores[mapIndex] || {};
 
     // Create the update field based on submitting team

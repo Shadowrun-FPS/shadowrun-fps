@@ -149,26 +149,6 @@ export default function ScrimmageDetailsPage({
           (member: any) =>
             member.discordId === session?.user?.id && member.role === "captain"
         );
-
-      console.log("Captain check:", {
-        sessionUserId: session?.user?.id,
-        isTeamACaptain,
-        isTeamBCaptain,
-        challengerCaptainId: match?.challengerTeam?.captain?.discordId,
-        challengedCaptainId: match?.challengedTeam?.captain?.discordId,
-        challengerTeamMembers: match?.challengerTeam?.members?.map(
-          (m: any) => ({
-            id: m.discordId,
-            role: m.role,
-          })
-        ),
-        challengedTeamMembers: match?.challengedTeam?.members?.map(
-          (m: any) => ({
-            id: m.discordId,
-            role: m.role,
-          })
-        ),
-      });
     }
   }, [match, session]);
 
@@ -502,6 +482,28 @@ export default function ScrimmageDetailsPage({
     }
   };
 
+  // Add this function to check if previous maps are scored
+  const canSubmitMapScore = (mapIndex: number) => {
+    if (!match || !match.mapScores) return mapIndex === 0;
+
+    // First map can always be scored
+    if (mapIndex === 0) return true;
+
+    // For subsequent maps, check if previous maps have been scored by both teams
+    for (let i = 0; i < mapIndex; i++) {
+      const previousMapScore = match.mapScores[i];
+      if (
+        !previousMapScore ||
+        !previousMapScore.teamASubmitted ||
+        !previousMapScore.teamBSubmitted
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   return (
     <div className="container py-8">
       <div className="flex items-center justify-between mb-4">
@@ -828,7 +830,9 @@ export default function ScrimmageDetailsPage({
                             src={map.image}
                             alt={map.name}
                             fill
+                            priority={index === 0}
                             className="object-cover"
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Add the sizes prop here
                           />
                         ) : (
                           <div className="flex items-center justify-center h-full">
@@ -896,8 +900,11 @@ export default function ScrimmageDetailsPage({
                               setTeamBScore(0);
                               setScoreSubmitDialogOpen(true);
                             }}
+                            disabled={!canSubmitMapScore(index)}
                           >
-                            Submit Score
+                            {canSubmitMapScore(index)
+                              ? "Submit Score"
+                              : "Score Previous Maps First"}
                           </Button>
                         )}
                       </div>
