@@ -1,131 +1,108 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
-import { getGuildData, updatePlayerGuildNickname } from "@/lib/discord-helpers";
+import clientPromise from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
-// Define a type for the Discord user fields we need
-interface DiscordUser {
-  id: string;
-  name?: string | null;
-  nickname?: string | null;
-  global_name?: string | null;
-  image?: string | null;
-}
-
-const DEBUG = false; // Set to true only when debugging this specific endpoint
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const accessToken = session.accessToken;
-    const userId = session.user.id;
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "No access token available" },
-        { status: 400 }
-      );
+    // Get request body if available
+    let requestBody = {};
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      // No body or invalid JSON
     }
 
-    // Log the session info for debugging
-    if (DEBUG) {
-      console.log("Session user:", {
-        id: session.user.id,
-        name: session.user.name,
-        nickname: session.user.nickname,
-      });
-    }
+    const { nickname, updateTeamInfo = true } = requestBody;
 
-    // Get fresh guild data with detailed logging
-    if (DEBUG) {
-      console.log(`Refreshing Discord data for user ${userId}`);
-    }
-    const guildData = await getGuildData(accessToken);
+    // Get the user's Discord data from the session
+    const discordId = session.user.id;
+    const discordUsername = session.user.name;
+    const discordNickname =
+      nickname || session.user.nickname || session.user.name;
+    const discordProfilePicture = session.user.image;
 
-    // Log the complete raw data in a more readable format
-    if (guildData && guildData.rawData) {
-      // Log just the relevant fields for clarity
-      if (DEBUG) {
-        console.log("Guild data fields:", {
-          user: guildData.rawData.user,
-          nick: guildData.rawData.nick,
-          roles: guildData.rawData.roles?.length || 0,
-        });
-      }
-    }
+    // Update the player document
+    const updateResult = await db.collection("Players").updateOne(
+      { discordId },
+      {
+        $set: {
+          discordUsername,
+          discordNickname,
+          discordProfilePicture,
+          lastUpdated: new Date(),
+        },
+        $setOnInsert: {
+          createdAt: new Date(),
+          elo: 1000,
+          wins: 0,
+          losses: 0,
+          matches: [],
+        },
+      },
+      { upsert: true }
+    );
 
-    // CRITICAL FIX: Always use a valid nickname - never null
-    // Determine the best nickname with proper fallback chain
-    let nickname;
-    let source;
+    // If updateTeamInfo is true, update the player's info in any teams they belong to
+    if (updateTeamInfo) {
+      // Find all teams where this player is a member
+      const teams = await db
+        .collection("Teams")
+        .find({
+          "members.discordId": discordId,
+        })
+        .toArray();
 
-    if (session.user.nickname) {
-      // If nickname is already in session, use that first
-      nickname = session.user.nickname;
-      source = "session_nickname";
-      if (DEBUG) {
-        console.log(`Using existing session nickname: "${nickname}"`);
-      }
-    } else if (guildData?.nick) {
-      // Otherwise use guild nickname from getGuildData
-      nickname = guildData.nick;
-      source = "guild_nickname";
-      if (DEBUG) {
-        console.log(`Using guild nickname: "${nickname}"`);
-      }
-    } else if (session.user.name) {
-      // Finally fall back to username
-      nickname = session.user.name;
-      source = "username_fallback";
-      if (DEBUG) {
-        console.log(`Using username as fallback: "${nickname}"`);
-      }
-    } else {
-      nickname = "Unknown User";
-      source = "default";
-    }
-
-    // IMPORTANT: Don't update if nickname is null or empty
-    if (!nickname) {
-      if (DEBUG) {
-        console.log(
-          "WARNING: Nickname is null or empty, not updating database"
+      // Update each team with the player's latest Discord info
+      for (const team of teams) {
+        await db.collection("Teams").updateOne(
+          {
+            _id: team._id,
+            "members.discordId": discordId,
+          },
+          {
+            $set: {
+              "members.$.discordUsername": discordUsername,
+              "members.$.discordNickname": discordNickname,
+              "members.$.discordProfilePicture": discordProfilePicture,
+            },
+          }
         );
+
+        // If this player is the team captain, also update the captain info
+        if (team.captain.discordId === discordId) {
+          await db.collection("Teams").updateOne(
+            { _id: team._id },
+            {
+              $set: {
+                "captain.discordUsername": discordUsername,
+                "captain.discordNickname": discordNickname,
+                "captain.discordProfilePicture": discordProfilePicture,
+              },
+            }
+          );
+        }
       }
-      return NextResponse.json({
-        success: false,
-        error: "No valid nickname found",
-        source,
-      });
     }
-
-    // Debug log right before updating
-    if (DEBUG) {
-      console.log(
-        `About to update player ${userId} with nickname "${nickname}"`
-      );
-    }
-
-    // Use the dedicated helper to update the player and related documents
-    await updatePlayerGuildNickname(userId, nickname);
 
     return NextResponse.json({
       success: true,
-      nickname,
-      source,
-      userId,
+      updated: updateResult.modifiedCount > 0,
+      created: updateResult.upsertedCount > 0,
     });
   } catch (error) {
-    if (DEBUG) {
-      console.error("Error refreshing discord data:", error);
-    }
+    console.error("Error refreshing player data:", error);
     return NextResponse.json(
-      { error: "Failed to refresh discord data" },
+      { error: "Failed to refresh player data" },
       { status: 500 }
     );
   }

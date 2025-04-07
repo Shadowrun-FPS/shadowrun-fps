@@ -33,6 +33,12 @@ export function PlayerUpdater() {
             headers: {
               "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+              // Include the nickname fallback hierarchy
+              nickname: session.user.nickname || session.user.name,
+              // Also update team member info
+              updateTeamInfo: true,
+            }),
           });
 
           const data = await response.json();
