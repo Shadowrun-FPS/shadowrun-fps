@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { InvitePlayerDialog } from "@/components/teams/invite-player-dialog";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2, Shield, AlertCircle } from "lucide-react";
 import type {
   TeamMember,
   MongoTeam,
@@ -276,6 +276,69 @@ export default function TeamPage({ team }: TeamPageProps) {
     if (!session?.user) return false;
     if (team.captain.discordId === session.user.id) return false; // Can't challenge own team
     return true;
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!isCaptain) {
+      toast({
+        title: "Permission Denied",
+        description: "Only the team captain can delete the team",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if there are other members
+    const hasOtherMembers =
+      team.members.filter((m) => m.discordId !== team.captain.discordId)
+        .length > 0;
+    if (hasOtherMembers) {
+      toast({
+        title: "Cannot Delete Team",
+        description:
+          "You must remove all other members before deleting the team",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Confirm deletion
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this team? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/teams/${team._id}/delete`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete team");
+      }
+
+      toast({
+        title: "Team Deleted",
+        description: "Your team has been permanently deleted",
+      });
+
+      // Redirect to teams page
+      window.location.href = "/tournaments/teams";
+    } catch (error: any) {
+      console.error("Error deleting team:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete team",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -566,6 +629,48 @@ export default function TeamPage({ team }: TeamPageProps) {
           </CardContent>
         </Card>
       )}
+
+      {/* Delete Team Card - Only shown to captain with no other members */}
+      {isCaptain &&
+        team.members.filter((m) => m.discordId !== team.captain.discordId)
+          .length === 0 && (
+          <Card className="mt-6 border-red-800">
+            <CardHeader className="bg-red-900/20">
+              <CardTitle className="flex items-center gap-2 text-red-500">
+                <AlertCircle className="w-5 h-5" />
+                Danger Zone
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <div className="p-4 border border-red-800 rounded-md bg-red-900/10">
+                  <h3 className="mb-2 font-semibold text-red-500">
+                    Delete Team
+                  </h3>
+                  <p className="mb-4 text-sm text-muted-foreground">
+                    Since you have no other team members, you can permanently
+                    delete this team. This action cannot be undone.
+                  </p>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteTeam}
+                    disabled={isLoading}
+                    className="w-full sm:w-auto"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete Team Permanently"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
       {/* Team Management Card - Bottom Row */}
       {isCaptain && (

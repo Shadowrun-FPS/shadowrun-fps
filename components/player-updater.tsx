@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 
 /**
@@ -10,6 +10,29 @@ export function PlayerUpdater() {
   const { data: session } = useSession();
   const lastUpdateRef = useRef<string | null>(null);
   const updateTimeRef = useRef<number>(0);
+  const [guildNickname, setGuildNickname] = useState<string | null>(null);
+
+  // Fetch guild nickname if available
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const fetchGuildNickname = async () => {
+      try {
+        // Try to get the guild-specific nickname if available
+        const response = await fetch(
+          `/api/discord/guild-nickname?userId=${session.user.id}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setGuildNickname(data.guildNickname || null);
+        }
+      } catch (error) {
+        console.error("Error fetching guild nickname:", error);
+      }
+    };
+
+    fetchGuildNickname();
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (!session?.user) return;
@@ -33,6 +56,13 @@ export function PlayerUpdater() {
             headers: {
               "Content-Type": "application/json",
             },
+            body: JSON.stringify({
+              // Include the nickname fallback hierarchy
+              nickname:
+                guildNickname || session.user.nickname || session.user.name,
+              // This ensures we send the global nickname as a fallback
+              // The API will use: guildNickname → user.nickname → user.name
+            }),
           });
 
           const data = await response.json();
@@ -49,7 +79,7 @@ export function PlayerUpdater() {
     }
     // Add eslint disable comment to suppress the warning without changing functionality
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id]);
+  }, [session?.user?.id, guildNickname]);
 
   return null; // This component doesn't render anything
 }

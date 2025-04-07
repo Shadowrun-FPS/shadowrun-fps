@@ -110,6 +110,7 @@ const TournamentsLinks = [
 
 export function Navbar() {
   const pathname = usePathname();
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -117,7 +118,7 @@ export function Navbar() {
         <div className="flex items-center mr-4">
           {/* Mobile Navigation - moved to left side */}
           <div className="md:hidden">
-            <Sheet>
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
                 <Button variant="outline" size="icon" className="h-9 w-9">
                   <Menu className="w-5 h-5" />
@@ -131,7 +132,7 @@ export function Navbar() {
                     Browse all sections of Shadowrun FPS
                   </SheetDescription>
                 </SheetHeader>
-                <MobileNav />
+                <MobileNav onNavigate={() => setMobileNavOpen(false)} />
               </SheetContent>
             </Sheet>
           </div>
@@ -254,17 +255,22 @@ const ListItem = React.forwardRef<React.ElementRef<"a">, ListItemProps>(
 );
 ListItem.displayName = "ListItem";
 
-function MobileNav() {
+function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
 
+  const handleLinkClick = () => {
+    onNavigate();
+  };
+
   return (
-    <div className="flex flex-col gap-4 py-4">
+    <div className="flex flex-col gap-4 py-4 overflow-y-auto max-h-[calc(100vh-120px)] pb-16">
       <Link
         href="/"
         className={cn(
           "flex items-center px-4 py-2 text-sm font-medium rounded-lg hover:bg-accent",
           pathname === "/" ? "bg-accent" : ""
         )}
+        onClick={handleLinkClick}
       >
         <Home className="w-5 h-5 mr-2" />
         Home
@@ -281,6 +287,7 @@ function MobileNav() {
                 "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
                 pathname === link.href ? "bg-accent" : ""
               )}
+              onClick={handleLinkClick}
             >
               {link.icon}
               {link.title}
@@ -300,6 +307,7 @@ function MobileNav() {
                 "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
                 pathname === link.href ? "bg-accent" : ""
               )}
+              onClick={handleLinkClick}
             >
               {link.icon}
               {link.title}
@@ -319,6 +327,7 @@ function MobileNav() {
                 "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
                 pathname === link.href ? "bg-accent" : ""
               )}
+              onClick={handleLinkClick}
             >
               {link.icon}
               {link.title}
@@ -326,6 +335,9 @@ function MobileNav() {
           ))}
         </div>
       </div>
+
+      {/* Bottom margin to ensure scrolling works properly */}
+      <div className="h-6"></div>
     </div>
   );
 }

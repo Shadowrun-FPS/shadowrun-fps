@@ -52,6 +52,57 @@ export function TeamManagement({ team }: TeamManagementProps) {
     }
   };
 
+  const handleDeleteTeam = async () => {
+    if (!isCaptain) return;
+
+    // Check if there are other members
+    const hasOtherMembers =
+      team.members.filter((m: any) => m.role !== "captain").length > 0;
+    if (hasOtherMembers) {
+      toast({
+        title: "Cannot Delete Team",
+        description:
+          "You must remove all other members before deleting the team",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Confirm deletion
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this team? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/teams/${team._id}/delete`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete team");
+
+      toast({
+        title: "Team Deleted",
+        description: "Your team has been permanently deleted",
+      });
+
+      // Redirect to teams page
+      window.location.href = "/tournaments/teams";
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete team",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isCaptain) return null;
 
   return (
@@ -82,6 +133,27 @@ export function TeamManagement({ team }: TeamManagementProps) {
                 </div>
               ))}
           </div>
+          {isCaptain &&
+            team.members.filter((m: any) => m.role !== "captain").length ===
+              0 && (
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="text-lg font-semibold text-red-500 mb-2">
+                  Danger Zone
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Since you have no other team members, you can permanently
+                  delete this team.
+                </p>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteTeam}
+                  disabled={isLoading}
+                  className="w-full"
+                >
+                  {isLoading ? "Deleting..." : "Delete Team Permanently"}
+                </Button>
+              </div>
+            )}
         </div>
       </CardContent>
     </Card>

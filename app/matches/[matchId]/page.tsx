@@ -49,6 +49,7 @@ interface MatchMap {
   mapName: string;
   gameMode: string;
   selected: boolean;
+  mapImage?: string;
 }
 
 interface MapScore {
@@ -489,7 +490,7 @@ export default function MatchDetailPage() {
   const team2Elo = team2.reduce((sum, player) => sum + player.elo, 0);
 
   return (
-    <div className="min-h-screen bg-[#0f172a]">
+    <div className="min-h-screen ">
       {/* Add Back button at the top */}
       <div className="container p-4 pt-3 mx-auto">
         <Button
@@ -526,7 +527,7 @@ export default function MatchDetailPage() {
         </div>
 
         <div className="relative mb-6">
-          <Card className="bg-[#111827] border-[#1f2937]">
+          <Card className=" border-[#1f2937]">
             <CardContent className="p-6">
               <h2 className="mb-2 text-xl font-semibold text-white capitalize">
                 {match.eloTier} Queue
@@ -647,7 +648,7 @@ export default function MatchDetailPage() {
 
         {/* Match Results Section */}
         {match.status === "completed" ? (
-          <Card className="bg-[#111827] border-[#1f2937]">
+          <Card className=" border-[#1f2937]">
             <CardContent className="p-6">
               <h3 className="mb-4 text-xl font-semibold text-white">
                 Match Results
@@ -786,167 +787,113 @@ export default function MatchDetailPage() {
         )}
 
         {/* Maps Section */}
-        <Card className="bg-[#111827] border-[#1f2937]">
-          <CardContent className="p-6">
-            <h3 className="mb-4 text-xl font-semibold text-white">
-              Match Maps
-            </h3>
+        <div className="mt-6">
+          <h2 className="mb-4 text-2xl font-bold text-blue-400">Match Maps</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {match.maps.map((map, index) => {
+              // Only hide third map if it wasn't played (match ended 2-0)
+              const team1Wins =
+                match.mapScores?.filter((s) => s.winner === 1).length || 0;
+              const team2Wins =
+                match.mapScores?.filter((s) => s.winner === 2).length || 0;
 
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              {match.maps.map((map, index) => {
-                // Show all maps that have been played
-                const team1Wins =
-                  match.mapScores?.filter((s) => s.winner === 1).length || 0;
-                const team2Wins =
-                  match.mapScores?.filter((s) => s.winner === 2).length || 0;
+              if (
+                index === 2 &&
+                !match.mapScores?.[index]?.winner &&
+                (team1Wins === 2 || team2Wins === 2)
+              ) {
+                return null;
+              }
 
-                // Only hide third map if it wasn't played (match ended 2-0)
-                if (
-                  index === 2 &&
-                  !match.mapScores?.[index]?.winner &&
-                  (team1Wins === 2 || team2Wins === 2)
-                ) {
-                  return null;
-                }
+              // Update to use fixed team names instead of dynamic ones
+              const team1Name = "Team 1";
+              const team2Name = "Team 2";
 
-                return (
-                  <Card
-                    key={index}
-                    className="overflow-hidden bg-[#1a2234] border-[#1f2937]"
-                  >
-                    <div className="relative">
-                      <div className="relative w-full h-40">
-                        <Image
-                          src={`/maps/${formatMapNameForImage(map.mapName)}`}
-                          alt={map.mapName}
-                          fill
-                          priority={index === 0} // Add priority to first image
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
-                          className="object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+              return (
+                <div
+                  key={index}
+                  className="overflow-hidden  rounded-lg border border-[#1f2937]"
+                >
+                  <div className="p-2 text-center font-medium  bg-[#0f172a]">
+                    Map {index + 1}
+                  </div>
+                  <div className="relative w-full h-40">
+                    <Image
+                      src={
+                        map.mapImage
+                          ? map.mapImage
+                          : `/maps/${formatMapNameForImage(map.mapName)}`
+                      }
+                      alt={map.mapName}
+                      fill
+                      priority={index === 0}
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      {map.mapName}
+                    </h3>
+                    <p className="mb-4 text-sm text-gray-400">{map.gameMode}</p>
+
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-white">{team1Name}</span>
+                        <span className="font-bold text-white">
+                          {match.mapScores?.[index]?.team1Score || 0}
+                        </span>
                       </div>
-
-                      {/* Winner banner */}
-                      <div
-                        className={`absolute top-0 left-0 right-0 px-3 py-1 text-sm font-semibold text-center text-white ${
-                          match.mapScores?.[index]?.winner === 1
-                            ? "bg-blue-600"
-                            : match.mapScores?.[index]?.winner === 2
-                            ? "bg-red-600"
-                            : "bg-gray-600"
-                        }`}
-                      >
-                        {match.mapScores?.[index]?.winner
-                          ? `${getTeamName(match.mapScores[index].winner)} Won`
-                          : `Map ${index + 1}`}
-                      </div>
-                    </div>
-
-                    {/* Rest of the map card content */}
-                    <div className="p-4">
-                      <div className="flex flex-col">
-                        <div className="mb-2">
-                          <h4 className="text-lg font-medium text-white">
-                            {map.mapName}
-                          </h4>
-                          <p className="text-sm text-gray-400">
-                            {map.gameMode}
-                          </p>
-                        </div>
-
-                        {/* Score display */}
-                        <div className="mt-2">
-                          <div className="flex justify-between mb-2">
-                            <span className="text-white">{getTeamName(1)}</span>
-                            <span
-                              className={`text-xl font-bold ${
-                                match.mapScores?.[index]?.winner === 1
-                                  ? "text-blue-500"
-                                  : "text-gray-400"
-                              }`}
-                            >
-                              {match.mapScores?.[index]?.team1Score || "0"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-white">{getTeamName(2)}</span>
-                            <span
-                              className={`text-xl font-bold ${
-                                match.mapScores?.[index]?.winner === 2
-                                  ? "text-red-500"
-                                  : "text-gray-400"
-                              }`}
-                            >
-                              {match.mapScores?.[index]?.team2Score || "0"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Only show Submit Score button if user's team hasn't verified yet */}
-                        {userTeam &&
-                          !match.mapScores?.[index]?.winner &&
-                          !match.mapScores?.[index]?.[
-                            `submittedByTeam${userTeam}`
-                          ] && (
-                            <Button
-                              variant="outline"
-                              className="w-full mt-2"
-                              onClick={() => handleOpenScoreDialog(index)}
-                              disabled={
-                                !canSubmitMapScore(index) ||
-                                match.status === "completed"
-                              }
-                            >
-                              {match.status === "completed"
-                                ? "Match Completed"
-                                : canSubmitMapScore(index)
-                                ? "Submit Score"
-                                : "Score Previous Maps First"}
-                            </Button>
-                          )}
-
-                        {/* Show verification status */}
-                        <div className="flex justify-between mt-2">
-                          <div className="flex items-center gap-2">
-                            {match.mapScores?.[index]?.submittedByTeam1 ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Clock className="w-4 h-4 text-yellow-500" />
-                            )}
-                            <span>
-                              Team 1{" "}
-                              {match.mapScores?.[index]?.submittedByTeam1
-                                ? "Verified"
-                                : "Pending"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {match.mapScores?.[index]?.submittedByTeam2 ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Clock className="w-4 h-4 text-yellow-500" />
-                            )}
-                            <span>
-                              Team 2{" "}
-                              {match.mapScores?.[index]?.submittedByTeam2
-                                ? "Verified"
-                                : "Pending"}
-                            </span>
-                          </div>
-                        </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-white">{team2Name}</span>
+                        <span className="font-bold text-white">
+                          {match.mapScores?.[index]?.team2Score || 0}
+                        </span>
                       </div>
                     </div>
-                  </Card>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+
+                    <div className="mb-3 text-sm text-gray-400">
+                      {match.mapScores?.[index]?.scoresVerified
+                        ? "Scores verified"
+                        : match.mapScores?.[index]?.submittedByTeam1 ||
+                          match.mapScores?.[index]?.submittedByTeam2
+                        ? "Waiting for verification"
+                        : "No scores yet"}
+                    </div>
+
+                    {userTeam &&
+                      !match.mapScores?.[index]?.winner &&
+                      !match.mapScores?.[index]?.[
+                        `submittedByTeam${userTeam}`
+                      ] && (
+                        <Button
+                          variant={
+                            canSubmitMapScore(index) ? "default" : "outline"
+                          }
+                          className="w-full"
+                          onClick={() => handleOpenScoreDialog(index)}
+                          disabled={
+                            !canSubmitMapScore(index) ||
+                            match.status === "completed"
+                          }
+                        >
+                          {match.status === "completed"
+                            ? "Match Completed"
+                            : canSubmitMapScore(index)
+                            ? "Submit Score"
+                            : "Score Previous Maps First"}
+                        </Button>
+                      )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* Score Submission Dialog */}
         <Dialog open={scoreDialog} onOpenChange={setScoreDialog}>
-          <DialogContent className="bg-[#1a2234] border-[#3b82f6] text-white">
+          <DialogContent className=" border-[#3b82f6] text-white">
             <DialogHeader>
               <DialogTitle>Submit Score</DialogTitle>
               <DialogDescription className="text-gray-400">
@@ -967,7 +914,7 @@ export default function MatchDetailPage() {
                   max="6"
                   value={team1Score}
                   onChange={(e) => setTeam1Score(e.target.value)}
-                  className="col-span-2 bg-[#111827] border-[#3b82f6]"
+                  className="col-span-2  border-[#3b82f6]"
                 />
               </div>
               <div className="grid items-center grid-cols-3 gap-4">
@@ -981,7 +928,7 @@ export default function MatchDetailPage() {
                   max="6"
                   value={team2Score}
                   onChange={(e) => setTeam2Score(e.target.value)}
-                  className="col-span-2 bg-[#111827] border-[#3b82f6]"
+                  className="col-span-2  border-[#3b82f6]"
                 />
               </div>
             </div>
@@ -1018,7 +965,7 @@ export default function MatchDetailPage() {
 
         {/* Match status section at the bottom */}
         {match.status === "completed" && (
-          <Card className="mt-6 bg-[#111827] border-[#1f2937]">
+          <Card className="mt-6  border-[#1f2937]">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>

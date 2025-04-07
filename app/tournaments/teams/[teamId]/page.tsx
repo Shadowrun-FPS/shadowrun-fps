@@ -18,6 +18,7 @@ import {
   RefreshCw,
   ArrowLeft,
   UserPlus,
+  AlertCircle,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -365,6 +366,69 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
     return (
       Array.isArray(session.user.roles) && session.user.roles.includes("admin")
     );
+  };
+
+  // Add this function to the TeamPage component
+  const handleDeleteTeam = async () => {
+    if (!isTeamCaptain || !team) {
+      toast({
+        title: "Permission Denied",
+        description: "Only the team captain can delete the team",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if there are other members
+    const hasOtherMembers =
+      team.members.filter((m) => m.discordId !== session?.user?.id).length > 0;
+    if (hasOtherMembers) {
+      toast({
+        title: "Cannot Delete Team",
+        description:
+          "You must remove all other members before deleting the team",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Confirm deletion
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this team? This action cannot be undone."
+      )
+    ) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`/api/teams/${team._id}/delete`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete team");
+      }
+
+      toast({
+        title: "Team Deleted",
+        description: "Your team has been permanently deleted",
+      });
+
+      // Redirect to teams page
+      window.location.href = "/tournaments/teams";
+    } catch (error: any) {
+      console.error("Error deleting team:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete team",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -846,6 +910,44 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
               </Card>
             </div>
           )}
+
+          {/* Delete Team Section - Only shown to captain with no other members */}
+          {isTeamCaptain &&
+            team.members.filter((m) => m.discordId !== session?.user?.id)
+              .length === 0 && (
+              <div className="mt-6">
+                <Card className="border-red-800">
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="mt-4 rounded-md ">
+                        <h3 className="mb-2 font-semibold text-red-500">
+                          Delete Team
+                        </h3>
+                        <p className="mb-4 text-sm text-muted-foreground">
+                          Since you have no other team members, you can
+                          permanently delete this team. This action cannot be
+                          undone.
+                        </p>
+                        <Button
+                          variant="destructive"
+                          onClick={handleDeleteTeam}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                              Deleting...
+                            </>
+                          ) : (
+                            "Delete Team Permanently"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
           {/* Recent Invites Section (Bottom Row) */}
           {isTeamCaptain && (

@@ -160,7 +160,7 @@ export default function AccountDropdown() {
             </Avatar>
             <span className="hidden md:inline max-w-[140px] truncate text-sm">
               {/* Use guild nickname instead of global username */}
-              {guildNickname || session?.user?.name}
+              {guildNickname || session?.user?.nickname}
             </span>
           </Button>
         </DropdownMenuTrigger>
@@ -169,7 +169,7 @@ export default function AccountDropdown() {
           <div className="flex flex-col p-2 space-y-1">
             <p className="font-medium">
               {/* Use guild nickname instead of global username */}
-              {guildNickname || session?.user?.name}
+              {guildNickname || session?.user?.nickname}
             </p>
             <div className="flex flex-wrap gap-1">
               {userRoles.map(

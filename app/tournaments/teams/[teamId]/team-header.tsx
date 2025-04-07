@@ -30,9 +30,6 @@ export default function TeamHeader({
   wins = 0,
   losses = 0,
 }: TeamHeaderProps) {
-  // Add debugging to see the actual values
-  console.log("Team stats input:", { wins, losses });
-
   // Ensure wins and losses are numbers
   const winsNum = Number(wins);
   const lossesNum = Number(losses);
@@ -53,14 +50,6 @@ export default function TeamHeader({
     // Round to nearest integer
     winPercentage = Math.round(winPercentage);
   }
-
-  console.log("Calculated stats:", {
-    winsNum,
-    lossesNum,
-    totalGames,
-    winPercentage,
-    rawPercentage: totalGames > 0 ? (winsNum / totalGames) * 100 : 0,
-  });
 
   // Determine record status icon and color
   const getRecordStatus = () => {

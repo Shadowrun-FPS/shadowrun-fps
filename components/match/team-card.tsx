@@ -22,11 +22,8 @@ export function TeamCard({
   const teamElo = team.reduce((total, player) => total + (player.elo || 0), 0);
   const isMatchCompleted = matchStatus === "completed";
 
-  // Add console.log to verify ELO calculation
-  console.log(`Team ${teamNumber} total ELO:`, teamElo);
-
   return (
-    <Card className="bg-[#111827] border-[#1f2937]">
+    <Card className=" border-[#1f2937]">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <h3 className="text-xl font-semibold text-white">{title}</h3>
         <Badge
@@ -40,7 +37,7 @@ export function TeamCard({
         {team.map((player) => (
           <div
             key={player.discordId}
-            className="flex items-center justify-between p-2 rounded-lg bg-[#1a2234]"
+            className="flex items-center justify-between p-2 rounded-lg "
           >
             <div className="flex items-center gap-2">
               <Avatar className="w-8 h-8">

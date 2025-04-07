@@ -23,6 +23,17 @@ interface QueueMap {
   // Add other properties as needed
 }
 
+// Update the map interface to reflect the actual structure
+interface GameMap {
+  name: string;
+  src: string;
+  gameMode: string;
+  rankedMap: boolean;
+  smallOption?: boolean;
+  isSmall?: boolean;
+  _id?: ObjectId;
+}
+
 export const dynamic = "force-dynamic";
 
 // Function to find the most balanced teams
@@ -191,7 +202,54 @@ export async function POST(
       mapsCount: queue.maps?.length || 0,
     });
 
-    // Create the match document
+    // Fetch all ranked maps from the Maps collection
+    const rankedMaps = await db
+      .collection("Maps")
+      .find({ rankedMap: true })
+      .toArray();
+
+    // Create an array that includes both normal and small variants of maps
+    const allMapsWithVariants: GameMap[] = [];
+
+    for (const map of rankedMaps) {
+      // Add the regular map with proper type casting
+      allMapsWithVariants.push({
+        name: map.name,
+        src: map.src,
+        gameMode: map.gameMode,
+        rankedMap: map.rankedMap,
+        smallOption: map.smallOption,
+        isSmall: false,
+        _id: map._id,
+      });
+
+      // If smallOption is true, add a small variant with proper type casting
+      if (map.smallOption) {
+        allMapsWithVariants.push({
+          name: `${map.name} (Small)`,
+          src: map.src,
+          gameMode: map.gameMode,
+          rankedMap: map.rankedMap,
+          smallOption: map.smallOption,
+          isSmall: true,
+          _id: map._id,
+        });
+      }
+    }
+
+    // Randomly select 3 maps (or fewer if not enough maps available)
+    const shuffled = [...allMapsWithVariants].sort(() => 0.5 - Math.random());
+    const randomMaps = shuffled
+      .slice(0, Math.min(3, shuffled.length))
+      .map((map) => ({
+        mapName: map.name,
+        mapImage: map.src,
+        gameMode: map.gameMode,
+        isSmall: map.isSmall,
+        selected: false,
+      }));
+
+    // Create the match document with the randomly selected maps
     const match = {
       matchId,
       status: "in_progress",
@@ -205,22 +263,19 @@ export async function POST(
         discordUsername: session.user.name || "",
         discordNickname: session.user.nickname || session.user.name || "",
       },
-      maps: queue.maps
-        ? queue.maps.map((map: QueueMap) => ({
-            mapName: map.name,
-            gameMode: map.gameMode,
-            selected: false,
-          }))
-        : [
-            // Default maps if none are provided
-            { mapName: "Pinnacle", gameMode: "Attrition", selected: false },
-            {
-              mapName: "Power Station",
-              gameMode: "Attrition",
-              selected: false,
-            },
-            { mapName: "Lobby", gameMode: "Attrition", selected: false },
-          ],
+      maps:
+        randomMaps.length > 0
+          ? randomMaps
+          : [
+              // Default maps if no ranked maps are available
+              { mapName: "Pinnacle", gameMode: "Attrition", selected: false },
+              {
+                mapName: "Power Station",
+                gameMode: "Attrition",
+                selected: false,
+              },
+              { mapName: "Lobby", gameMode: "Attrition", selected: false },
+            ],
       team1: team1WithValidNicknames.map((player) => ({
         discordId: player.discordId,
         discordUsername: player.discordUsername,
@@ -243,7 +298,7 @@ export async function POST(
         updatedElo: player.elo,
         isReady: false,
       })),
-      eloDifference: 0, // This will be calculated later
+      eloDifference: 0,
       queueId: params.queueId,
     };
 

@@ -500,22 +500,27 @@ function LeaderboardContent() {
       </Card>
 
       {pagination.pages > 1 && (
-        <div className="flex items-center justify-between p-4 border-t border-gray-800">
-          <div className="text-sm text-gray-400">
+        <div className="flex flex-col items-center justify-between p-4 space-y-4 border-t border-gray-800 sm:flex-row sm:space-y-0">
+          <div className="text-sm text-center text-gray-400 sm:text-left">
             Showing {(page - 1) * pagination.limit + 1} to{" "}
             {Math.min(page * pagination.limit, pagination.total)} of{" "}
             {pagination.total} players
           </div>
-          <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(1)}
-              disabled={page === 1}
-              className="h-8 px-3"
-            >
-              First
-            </Button>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            {/* On mobile, show fewer options */}
+            <div className="hidden space-x-2 sm:flex">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(1)}
+                disabled={page === 1}
+                className="h-8 px-3"
+              >
+                First
+              </Button>
+            </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -525,9 +530,11 @@ function LeaderboardContent() {
             >
               Previous
             </Button>
+
             <div className="flex items-center h-8 px-2 text-sm border rounded-md bg-background border-input">
               Page {page} of {pagination.pages}
             </div>
+
             <Button
               variant="outline"
               size="sm"
@@ -539,15 +546,19 @@ function LeaderboardContent() {
             >
               Next
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.pages)}
-              disabled={page === pagination.pages}
-              className="h-8 px-3"
-            >
-              Last
-            </Button>
+
+            {/* On mobile, show fewer options */}
+            <div className="hidden space-x-2 sm:flex">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.pages)}
+                disabled={page === pagination.pages}
+                className="h-8 px-3"
+              >
+                Last
+              </Button>
+            </div>
           </div>
         </div>
       )}
