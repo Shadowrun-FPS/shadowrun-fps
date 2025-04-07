@@ -4,12 +4,15 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+<<<<<<< HEAD
 // Define the interface for the request body
 interface RefreshDiscordDataRequest {
   nickname?: string;
   updateTeamInfo?: boolean;
 }
 
+=======
+>>>>>>> a626e3050ae2142cc179e9478ba63ec205e840cf
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -21,7 +24,11 @@ export async function POST(req: NextRequest) {
     const db = client.db("ShadowrunWeb");
 
     // Get request body if available
+<<<<<<< HEAD
     let requestBody: RefreshDiscordDataRequest = {};
+=======
+    let requestBody = {};
+>>>>>>> a626e3050ae2142cc179e9478ba63ec205e840cf
     try {
       requestBody = await req.json();
     } catch (e) {
