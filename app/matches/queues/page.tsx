@@ -136,6 +136,10 @@ export default function QueuesPage() {
   const [isCheckingRegistration, setIsCheckingRegistration] =
     useState<boolean>(true);
   const [isRegistering, setIsRegistering] = useState<boolean>(false);
+  const [missingTeamSizes, setMissingTeamSizes] = useState<number[]>([]);
+  const [isRegisteringMissing, setIsRegisteringMissing] =
+    useState<boolean>(false);
+  const [has4v4, setHas4v4] = useState<boolean>(false);
   const router = useRouter();
 
   // Create queue form
@@ -645,7 +649,72 @@ export default function QueuesPage() {
     }
   }, [session, checkUserRegistration]);
 
-  // Add a function to handle registration
+  // Add this function to check for missing team sizes
+  const checkMissingTeamSizes = useCallback(async () => {
+    if (!session?.user) return;
+
+    try {
+      const response = await fetch(`/api/players/check-missing-teamsizes`);
+      const data = await response.json();
+
+      setMissingTeamSizes(data.missingTeamSizes || []);
+      setHas4v4(data.has4v4 || false);
+    } catch (error) {
+      console.error("Failed to check missing team sizes:", error);
+    }
+  }, [session?.user]);
+
+  // Update the useEffect that calls checkUserRegistration to also call checkMissingTeamSizes
+  useEffect(() => {
+    if (session?.user) {
+      checkUserRegistration();
+      checkMissingTeamSizes();
+    }
+  }, [session, checkUserRegistration, checkMissingTeamSizes]);
+
+  // Add function to handle registering missing team sizes
+  const handleRegisterMissingTeamSizes = async () => {
+    if (!session?.user) return;
+
+    setIsRegisteringMissing(true);
+    try {
+      const response = await fetch(`/api/players/register-missing-teamsizes`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(
+          data.error || "Failed to register for missing team sizes"
+        );
+      }
+
+      const data = await response.json();
+      setMissingTeamSizes([]);
+
+      toast({
+        title: "Registration Successful",
+        description: `You have been registered for ${data.registeredSizes
+          .map((size: number) => `${size}v${size}`)
+          .join(", ")} queues`,
+        duration: 3000,
+      });
+    } catch (error) {
+      toast({
+        title: "Registration Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to register for missing team sizes",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setIsRegisteringMissing(false);
+    }
+  };
+
+  // Add the missing handleRegisterForRanked function
   const handleRegisterForRanked = async () => {
     if (!session?.user) return;
 
@@ -666,6 +735,9 @@ export default function QueuesPage() {
         description: "You have been registered for ranked matchmaking",
         duration: 3000,
       });
+
+      // After registering, check for missing team sizes
+      checkMissingTeamSizes();
     } catch (error) {
       toast({
         title: "Registration Failed",
@@ -831,6 +903,36 @@ export default function QueuesPage() {
                         {isRegistering
                           ? "Registering..."
                           : "Register for Ranked"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+            {isRegistered && missingTeamSizes.length > 0 && has4v4 && (
+              <div className="mb-6">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col items-center justify-center gap-4 text-center">
+                      <h3 className="text-lg font-semibold">
+                        Register for Ranked
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        You&apos;re missing registration for some team sizes.
+                        We&apos;ll copy your 4v4 ELO to these team sizes.
+                      </p>
+                      <Button
+                        onClick={handleRegisterMissingTeamSizes}
+                        disabled={isRegisteringMissing}
+                        className="w-full max-w-xs"
+                      >
+                        {isRegisteringMissing
+                          ? "Registering..."
+                          : missingTeamSizes.length > 1
+                          ? `Register for ${missingTeamSizes
+                              .map((size) => `${size}v${size}`)
+                              .join(", ")}`
+                          : `Register for ${missingTeamSizes[0]}v${missingTeamSizes[0]}`}
                       </Button>
                     </div>
                   </CardContent>

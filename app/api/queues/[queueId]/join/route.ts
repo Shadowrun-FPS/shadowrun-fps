@@ -152,14 +152,6 @@ export async function POST(
       );
     }
 
-    // Debug log
-    console.log("Player ELO check:", {
-      discordId: session.user.id,
-      teamSize: queue.teamSize,
-      foundStats: statsForTeamSize,
-      elo: statsForTeamSize.elo,
-    });
-
     // Check ELO requirements using the found stats
     if (statsForTeamSize.elo > queue.maxElo) {
       return NextResponse.json(
@@ -270,34 +262,6 @@ export async function POST(
 
         const notificationMessage = `Your ${updatedQueue.teamSize}v${updatedQueue.teamSize} ${formattedQueueName} queue is now full and ready to launch! You have 5 minutes to ready up!`;
 
-        // Send in-app notification
-        await db.collection("Notifications").insertOne({
-          userId: player.discordId,
-          type: "queue_full",
-          title: "Queue Full",
-          message: notificationMessage,
-          createdAt: new Date(),
-          read: false,
-          data: {
-            queueId: params.queueId,
-            queueName: formattedQueueName,
-            queueType: updatedQueue.gameType || "Ranked",
-            teamSize: updatedQueue.teamSize,
-            redirectUrl: "/matches/queues",
-            expiresAt: expirationTime,
-          },
-        });
-
-        // Format the current time
-        const currentTime = new Date().toLocaleString("en-US", {
-          month: "numeric",
-          day: "numeric",
-          year: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          hour12: true,
-        });
-
         // Send the enhanced Discord DM
         await sendDirectMessage(
           player.discordId,
@@ -307,7 +271,14 @@ export async function POST(
               queueName: formattedQueueName,
               playerCount: updatedQueue.players.length,
               timeLimit: 5, // 5 minute countdown
-              timestamp: currentTime,
+              timestamp: expirationTime.toLocaleString("en-US", {
+                month: "numeric",
+                day: "numeric",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              }),
             },
           }
         ).catch((error) => {

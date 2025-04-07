@@ -17,11 +17,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Add debug logging
-    console.log("Session data in fill route:", {
-      user: session.user,
-      userId: session.user.id,
-    });
+  
 
     // Check if user is an admin
     if (!isAdmin(session.user.id)) {

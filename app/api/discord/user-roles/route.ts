@@ -56,7 +56,6 @@ export async function GET(req: NextRequest) {
       // Prioritize guild nickname from API, then session nickname
       const nickname =
         guildData.nick || session.user.nickname || session.user.name;
-      console.log(`Using nickname: ${nickname} for user ${session.user.id}`);
 
       return NextResponse.json({
         roles: roles,

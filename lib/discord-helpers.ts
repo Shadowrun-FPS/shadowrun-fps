@@ -24,9 +24,6 @@ export async function getGuildData(accessToken: string) {
     }
 
     const userData = await userResponse.json();
-    console.log(
-      `Verified Discord token for user ${userData.id} (${userData.username})`
-    );
 
     // Now check if user is in the guild with the provided token
     const guildsResponse = await fetch(
@@ -89,15 +86,6 @@ export async function getGuildData(accessToken: string) {
     // Check different possible field names for the nickname
     const guildNickname =
       data.nick || data.guildNickname || data.user?.nick || null;
-
-    // Verify we have the nickname field
-    if (guildNickname) {
-      console.log(`Found guild nickname for user: "${guildNickname}"`);
-    } else {
-      console.log("No guild nickname found in any expected field");
-      // Log all top-level fields to help debug
-      console.log("Available fields:", Object.keys(data));
-    }
 
     return {
       nick: guildNickname,
