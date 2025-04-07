@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
 export async function POST(
@@ -9,36 +9,21 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validate admin permissions
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is admin
+    // Check if user is an admin
     if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: "Only admins can reset tournaments" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { id } = params;
+    const { db } = await connectToDatabase();
 
-    const client = await clientPromise;
-    const db = client.db();
-
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
-
-    // Get tournament
+    // Get the tournament
     const tournament = await db.collection("Tournaments").findOne({
       _id: new ObjectId(id),
     });
@@ -50,58 +35,52 @@ export async function POST(
       );
     }
 
-    // Check admin permissions
-    const isAdmin =
-      user?.roles?.includes("admin") ||
-      tournament.createdBy?.discordId === session.user.id ||
-      session.user.id === "238329746671271936" || // Add your specific ID for testing
-      false;
+    // Update all bracket matches to "upcoming" status
+    const updateOperations: Record<string, any> = {};
 
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "You must be an administrator to perform this action" },
-        { status: 403 }
-      );
+    if (tournament.brackets && tournament.brackets.rounds) {
+      tournament.brackets.rounds.forEach((round: any, roundIndex: number) => {
+        if (round.matches) {
+          round.matches.forEach((match: any, matchIndex: number) => {
+            // Reset match status and scores
+            updateOperations[
+              `brackets.rounds.${roundIndex}.matches.${matchIndex}.status`
+            ] = "upcoming";
+            updateOperations[
+              `brackets.rounds.${roundIndex}.matches.${matchIndex}.scores.teamA`
+            ] = 0;
+            updateOperations[
+              `brackets.rounds.${roundIndex}.matches.${matchIndex}.scores.teamB`
+            ] = 0;
+            updateOperations[
+              `brackets.rounds.${roundIndex}.matches.${matchIndex}.winner`
+            ] = null;
+
+            // Only keep teamA and teamB for the first round, remove them from later rounds
+            if (roundIndex > 0) {
+              updateOperations[
+                `brackets.rounds.${roundIndex}.matches.${matchIndex}.teamA`
+              ] = null;
+              updateOperations[
+                `brackets.rounds.${roundIndex}.matches.${matchIndex}.teamB`
+              ] = null;
+            }
+          });
+        }
+      });
     }
 
-    // Update tournament status to upcoming
+    // Clear all tournament matches and reset tournament status
     await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
           status: "upcoming",
-          updatedAt: new Date(),
+          ...updateOperations,
         },
+        $unset: { tournamentMatches: "" },
       }
     );
-
-    // Reset all match statuses to upcoming
-    if (tournament.brackets?.rounds) {
-      // Update all matches in all rounds to upcoming status
-      for (let i = 0; i < tournament.brackets.rounds.length; i++) {
-        await db
-          .collection("Tournaments")
-          .updateOne(
-            { _id: new ObjectId(id) },
-            {
-              $set: { [`brackets.rounds.${i}.matches.$[].status`]: "upcoming" },
-            }
-          );
-      }
-    }
-
-    // Also update any tournament matches in the tournamentMatches array
-    if (
-      tournament.tournamentMatches &&
-      tournament.tournamentMatches.length > 0
-    ) {
-      await db
-        .collection("Tournaments")
-        .updateOne(
-          { _id: new ObjectId(id) },
-          { $set: { "tournamentMatches.$[].status": "upcoming" } }
-        );
-    }
 
     return NextResponse.json({
       success: true,

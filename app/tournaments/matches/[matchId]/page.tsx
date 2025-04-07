@@ -13,6 +13,8 @@ import {
   X,
   CalendarIcon,
   ClockIcon,
+  Shield,
+  Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +32,12 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function TournamentMatchPage() {
   const params = useParams();
@@ -48,6 +56,7 @@ export default function TournamentMatchPage() {
   const [startingMatch, setStartingMatch] = useState(false);
   const [teamAId, setTeamAId] = useState<string | null>(null);
   const [teamBId, setTeamBId] = useState<string | null>(null);
+  const [adminSettingWinner, setAdminSettingWinner] = useState(false);
 
   // Check which team the user belongs to with proper null checks
   const checkUserTeamMembership = useCallback(
@@ -388,6 +397,52 @@ export default function TournamentMatchPage() {
     fetchMatch();
   }, [getMatchIdFromUrl]);
 
+  // Add this function to handle admin winner selection
+  const handleAdminSetWinner = async (teamNumber: number) => {
+    if (!match) return;
+
+    setAdminSettingWinner(true);
+
+    try {
+      const response = await fetch(
+        `/api/tournaments/match/${match.tournamentMatchId}/admin-set-winner`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            winningTeam: teamNumber,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to set match winner");
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: "Winner Set",
+        description: `${result.winningTeam} has been set as the match winner.`,
+      });
+
+      // Refresh the match data
+      await fetchMatchData();
+    } catch (error) {
+      console.error("Error setting match winner:", error);
+      toast({
+        title: "Error",
+        description: "Failed to set the match winner. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAdminSettingWinner(false);
+    }
+  };
+
   // Handle loading state
   if (loading) {
     return (
@@ -587,6 +642,67 @@ export default function TournamentMatchPage() {
               </div>
             </div>
           </div>
+
+          {/* Admin Controls Section - Only visible to admins */}
+          {session?.user?.isAdmin && (
+            <div className="p-6 mb-6 border rounded-lg bg-card border-amber-500">
+              <div className="flex items-center mb-4">
+                <Shield className="w-5 h-5 mr-2 text-amber-500" />
+                <h2 className="text-xl font-semibold">Admin Controls</h2>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <h3 className="mb-2 text-sm font-medium text-gray-400">
+                    Set Match Winner
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        adminSettingWinner || match.status === "completed"
+                      }
+                      onClick={() => handleAdminSetWinner(1)}
+                    >
+                      <Trophy className="w-4 h-4 mr-2 text-amber-500" />
+                      {match.teamA?.name} Wins
+                    </Button>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={
+                        adminSettingWinner || match.status === "completed"
+                      }
+                      onClick={() => handleAdminSetWinner(2)}
+                    >
+                      <Trophy className="w-4 h-4 mr-2 text-amber-500" />
+                      {match.teamB?.name} Wins
+                    </Button>
+                  </div>
+                </div>
+
+                {match.status === "completed" && (
+                  <div className="ml-auto">
+                    <Badge
+                      variant="outline"
+                      className="text-green-500 border-green-800 bg-green-800/20"
+                    >
+                      Match Completed
+                    </Badge>
+                  </div>
+                )}
+              </div>
+
+              {adminSettingWinner && (
+                <div className="flex items-center mt-4 text-sm text-amber-500">
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Setting match winner...
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Maps Section */}
           <div className="mb-8">

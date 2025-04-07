@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { nanoid } from "nanoid";
 
 // First, add a proper interface for tournament matches
 interface TournamentMatch {
@@ -42,33 +41,21 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Validate admin permissions
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is admin
-    if (!session.user.isAdmin) {
-      return NextResponse.json(
-        { error: "Only admins can launch tournaments" },
-        { status: 403 }
-      );
+    // Check if user is an admin
+    if (!session.user.isAdmin && session.user.id !== "238329746671271936") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { id } = params;
+    const { db } = await connectToDatabase();
 
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Validate tournament ID
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
-
-    // Get tournament
+    // Get the full tournament data
     const tournament = await db.collection("Tournaments").findOne({
       _id: new ObjectId(id),
     });
@@ -88,88 +75,155 @@ export async function POST(
       );
     }
 
-    // First update existing tournament if it's already set up
-    const updateResult = await db.collection("Tournaments").updateOne(
+    // Verify we have registered teams
+    if (
+      !tournament.registeredTeams ||
+      tournament.registeredTeams.length === 0
+    ) {
+      return NextResponse.json(
+        { error: "No teams registered for this tournament" },
+        { status: 400 }
+      );
+    }
+
+    // Check if the bracket has been seeded
+    if (!tournament.brackets?.rounds?.[0]?.matches) {
+      return NextResponse.json(
+        { error: "Tournament bracket has not been seeded yet" },
+        { status: 400 }
+      );
+    }
+
+    // Get all ranked maps from the Maps collection
+    const rankedMaps = await db
+      .collection("Maps")
+      .find({ rankedMap: true })
+      .toArray();
+
+    // Prepare maps array with both regular and small variants
+    const allMapsWithVariants: any[] = [];
+
+    rankedMaps.forEach((map: any) => {
+      // Add the regular map
+      allMapsWithVariants.push({
+        _id: map._id,
+        name: map.name,
+        gameMode: map.gameMode,
+        src: map.src,
+        isSmall: false,
+      });
+
+      // If smallOption is true, add a small variant
+      if (map.smallOption) {
+        allMapsWithVariants.push({
+          _id: map._id,
+          name: `${map.name} (Small)`,
+          gameMode: map.gameMode,
+          src: map.src,
+          isSmall: true,
+        });
+      }
+    });
+
+    // Helper function to randomly select 3 maps
+    const selectRandomMaps = (): any[] => {
+      if (!allMapsWithVariants || allMapsWithVariants.length === 0) {
+        // Return some default maps if none available
+        return [
+          {
+            mapName: "Map 1",
+            mapImage: "/maps/map_default.png",
+            gameMode: "Attrition",
+          },
+          {
+            mapName: "Map 2",
+            mapImage: "/maps/map_default.png",
+            gameMode: "Attrition",
+          },
+          {
+            mapName: "Map 3",
+            mapImage: "/maps/map_default.png",
+            gameMode: "Attrition",
+          },
+        ];
+      }
+
+      // Shuffle the maps array
+      const shuffled = [...allMapsWithVariants].sort(() => 0.5 - Math.random());
+
+      // Take 3 random maps
+      return shuffled.slice(0, Math.min(3, shuffled.length)).map((map) => ({
+        mapName: map.name,
+        mapImage: map.src,
+        gameMode: map.gameMode,
+        isSmall: map.isSmall,
+      }));
+    };
+
+    // Create tournament matches for the first round
+    const tournamentMatches = [];
+
+    // For each match in the first round
+    for (let i = 0; i < tournament.brackets.rounds[0].matches.length; i++) {
+      const bracketMatch = tournament.brackets.rounds[0].matches[i];
+
+      // Only create matches for both teams assigned
+      if (bracketMatch.teamA && bracketMatch.teamB) {
+        // Find the full team objects
+        const teamA = tournament.registeredTeams.find(
+          (t: any) => t._id.toString() === bracketMatch.teamA._id.toString()
+        );
+
+        const teamB = tournament.registeredTeams.find(
+          (t: any) => t._id.toString() === bracketMatch.teamB._id.toString()
+        );
+
+        if (teamA && teamB) {
+          const matchId = `${tournament._id.toString()}-R1-M${i + 1}`;
+
+          // Select random maps for this match
+          const matchMaps = selectRandomMaps();
+
+          // Create the match object
+          tournamentMatches.push({
+            tournamentMatchId: matchId,
+            teamA: teamA,
+            teamB: teamB,
+            status: "live",
+            maps: matchMaps,
+            mapScores: [],
+            winner: null,
+            round: 1,
+            matchNumber: i + 1,
+            createdAt: new Date(),
+            startTime: new Date(),
+          });
+
+          // Update the bracket with match ID
+          await db.collection("Tournaments").updateOne(
+            { _id: new ObjectId(id) },
+            {
+              $set: {
+                [`brackets.rounds.0.matches.${i}.status`]: "live",
+                [`brackets.rounds.0.matches.${i}.tournamentMatchId`]: matchId,
+              },
+            }
+          );
+        }
+      }
+    }
+
+    // Update tournament status and add match records
+    await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
           status: "active",
-          startedAt: new Date(),
-          "brackets.rounds.0.matches.$[].status": "live",
-          "tournamentMatches.$[firstRoundMatch].status": "live",
+          tournamentMatches: tournamentMatches,
+          launchedAt: new Date(),
         },
-      },
-      {
-        arrayFilters: [{ "firstRoundMatch.roundIndex": 0 }],
       }
     );
-
-    const tournamentMatches = [];
-
-    if (tournament.brackets && tournament.brackets.rounds) {
-      const firstRound = tournament.brackets.rounds[0];
-
-      // Process each match in the first round
-      for (let index = 0; index < firstRound.matches.length; index++) {
-        const match = firstRound.matches[index];
-
-        if (match.teamA && match.teamB) {
-          // Ensure unique and consistent match ID
-          const tournamentMatchId = `${tournament._id.toString()}-R1-M${
-            index + 1
-          }`;
-
-          // Update match with tournamentMatchId
-          match.tournamentMatchId = tournamentMatchId;
-
-          // Get random ranked maps from the Maps collection
-          const rankedMaps = await db
-            .collection("Maps")
-            .find({ rankedMap: true })
-            .toArray();
-
-          // Randomly select 3 maps
-          const shuffledMaps = rankedMaps.sort(() => 0.5 - Math.random());
-          const selectedMaps = shuffledMaps.slice(0, 3).map((map) => {
-            // Randomly decide if we should use small version (if available)
-            const useSmallVersion = map.smallOption && Math.random() > 0.5;
-
-            return {
-              mapName: useSmallVersion ? `${map.name} (Small)` : map.name,
-              gameMode: map.gameMode,
-              smallOption: useSmallVersion,
-            };
-          });
-
-          // Create tournament match object - SET STATUS TO LIVE HERE
-          tournamentMatches.push({
-            tournamentMatchId,
-            tournamentId: tournament._id.toString(),
-            roundIndex: 0,
-            matchIndex: index,
-            teamA: match.teamA,
-            teamB: match.teamB,
-            mapScores: [],
-            status: "live", // <-- CHANGED FROM "upcoming" TO "live"
-            createdAt: new Date(),
-            maps: selectedMaps,
-          });
-        }
-      }
-
-      // Only update if we have new matches to add
-      if (tournamentMatches.length > 0) {
-        await db.collection("Tournaments").updateOne(
-          { _id: new ObjectId(id) },
-          {
-            $set: {
-              tournamentMatches,
-              "brackets.rounds.0.matches.$[].status": "live",
-            },
-          }
-        );
-      }
-    }
 
     return NextResponse.json({
       success: true,

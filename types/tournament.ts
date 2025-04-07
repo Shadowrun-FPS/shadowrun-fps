@@ -1,5 +1,6 @@
 // Create a new file for shared types
 export interface TournamentMatch {
+  winner: number;
   tournamentMatchId: string;
   tournamentId: string;
   roundIndex: number;
