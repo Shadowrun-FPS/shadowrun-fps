@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@discordjs/rest": "^2.4.3",
     "@heroicons/react": "^2.2.0",
     "@hookform/resolvers": "^3.3.3",
     "@radix-ui/react-accordion": "^1.2.3",
@@ -52,6 +53,9 @@
     "clsx": "^2.0.0",
     "cmdk": "^1.0.4",
     "date-fns": "^2.30.0",
+    "discord-api-types": "^0.37.119",
+    "discord-interactions": "^4.1.1",
+    "discord.js": "^14.18.0",
     "embla-carousel-react": "^8.0.0-rc19",
     "eslint-config-next": "^14.1.0",
     "framer-motion": "^12.5.0",
