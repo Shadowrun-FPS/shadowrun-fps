@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
 
         httpServer.once("listening", () => {
           clearTimeout(timeout);
-          console.log("Socket.IO server started successfully");
+
           resolve();
         });
 

@@ -8,8 +8,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Create a client component that uses useSearchParams
 function PlayerStatsContent() {
   const searchParams = useSearchParams();
-  const playerName = searchParams.get("playerName");
-  const discordId = searchParams.get("discordId");
+  const playerName = searchParams?.get("playerName");
+  const discordId = searchParams?.get("discordId");
   const [player, setPlayer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

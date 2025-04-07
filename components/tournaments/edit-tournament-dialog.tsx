@@ -59,6 +59,7 @@ const formSchema = z.object({
     message: "Please enter a valid time in 24-hour format (HH:MM).",
   }),
   status: z.enum(["upcoming", "active", "completed"]),
+  registrationDeadline: z.date().nullable().optional(),
 });
 
 const teamSizeOptions = [1, 2, 3, 4, 5, 6];
@@ -73,6 +74,7 @@ interface Tournament {
   format: "single_elimination" | "double_elimination";
   status: "upcoming" | "active" | "completed";
   maxTeams?: number;
+  registrationDeadline?: string;
 }
 
 export function EditTournamentDialog({
@@ -96,6 +98,14 @@ export function EditTournamentDialog({
     ).padStart(2, "0")}`;
   };
 
+  // Helper function to safely parse a date
+  const safeParseDate = (dateString: string | undefined): Date | null => {
+    if (!dateString) return null;
+
+    const date = new Date(dateString);
+    return !isNaN(date.getTime()) ? date : null;
+  };
+
   // Set form values from tournament
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -108,6 +118,7 @@ export function EditTournamentDialog({
       startDate: new Date(tournament.startDate),
       startTime: getTimeFromDateString(tournament.startDate),
       status: tournament.status,
+      registrationDeadline: safeParseDate(tournament.registrationDeadline),
     },
   });
 
@@ -123,6 +134,7 @@ export function EditTournamentDialog({
         startDate: new Date(tournament.startDate),
         startTime: getTimeFromDateString(tournament.startDate),
         status: tournament.status,
+        registrationDeadline: safeParseDate(tournament.registrationDeadline),
       });
     }
   }, [tournament, form]);
@@ -144,6 +156,9 @@ export function EditTournamentDialog({
         body: JSON.stringify({
           ...values,
           startDate: startDate.toISOString(),
+          registrationDeadline: values.registrationDeadline
+            ? values.registrationDeadline.toISOString()
+            : null,
         }),
       });
 
@@ -158,11 +173,13 @@ export function EditTournamentDialog({
         description: "Tournament updated successfully",
       });
 
-      if (onSuccess) {
-        onSuccess(data.tournament);
-      }
-
+      // Close the dialog first
       onOpenChange(false);
+
+      // Then call the success callback if provided
+      if (onSuccess) {
+        onSuccess(data);
+      }
     } catch (error) {
       console.error("Error updating tournament:", error);
       toast({
@@ -395,6 +412,65 @@ export function EditTournamentDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="registrationDeadline"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Registration Deadline (Optional)</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value &&
+                          field.value instanceof Date &&
+                          !isNaN(field.value.getTime()) ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>No deadline set</span>
+                          )}
+                          <CalendarIcon className="w-4 h-4 ml-auto opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <div className="p-2 border-b">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => field.onChange(null)}
+                          className="text-xs"
+                        >
+                          Clear deadline
+                        </Button>
+                      </div>
+                      <Calendar
+                        mode="single"
+                        selected={
+                          field.value instanceof Date &&
+                          !isNaN(field.value.getTime())
+                            ? field.value
+                            : undefined
+                        }
+                        onSelect={field.onChange}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormDescription>
+                    Optional deadline for team registration
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button

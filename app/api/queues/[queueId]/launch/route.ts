@@ -71,10 +71,6 @@ function createBalancedTeams(
     .filter((i) => !bestTeam1Indices.includes(i))
     .map((i) => players[i]);
 
-  console.log(`Created balanced teams with ELO difference: ${bestDifference}`);
-  console.log(`Team 1 total ELO: ${team1.reduce((sum, p) => sum + p.elo, 0)}`);
-  console.log(`Team 2 total ELO: ${team2.reduce((sum, p) => sum + p.elo, 0)}`);
-
   return [team1, team2];
 }
 

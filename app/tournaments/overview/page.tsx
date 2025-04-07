@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format, isPast, isFuture, isToday } from "date-fns";
@@ -62,7 +62,7 @@ interface Tournament {
 
 export default function TournamentsOverviewPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,34 +70,38 @@ export default function TournamentsOverviewPage() {
   const [teamSizeFilter, setTeamSizeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [canCreateTournament, setCanCreateTournament] = useState(false);
 
-  // Check if user has permission to create tournaments
-  const canCreateTournament =
-    session?.user?.roles?.includes("admin") ||
-    session?.user?.roles?.includes("moderator") ||
-    session?.user?.id === "YOUR_USER_ID"; // Replace with your actual user ID
-
-  // Move fetchTournaments outside useEffect to component scope
-  const fetchTournaments = async () => {
+  // Wrap fetchTournaments in useCallback to avoid infinite loops
+  const fetchTournaments = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch("/api/tournaments");
-      if (response.ok) {
-        const data = await response.json();
-        setTournaments(data);
-      } else {
-        console.error("Failed to fetch tournaments");
-      }
+      const data = await response.json();
+      setTournaments(data);
+
+      // Check if user has permission to create tournaments
+      const userResponse = await fetch("/api/user/permissions");
+      const userData = await userResponse.json();
+
+      // Allow tournament creation for admins, mods, and the developer
+      setCanCreateTournament(
+        userData.isAdmin ||
+          userData.isModerator ||
+          session?.user?.id === "238329746671271936"
+      );
     } catch (error) {
       console.error("Error fetching tournaments:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    fetchTournaments();
-  }, []);
+    if (status === "authenticated") {
+      fetchTournaments();
+    }
+  }, [status, session, fetchTournaments]);
 
   // Filter tournaments based on search term and filters
   const filteredTournaments = tournaments.filter((tournament) => {

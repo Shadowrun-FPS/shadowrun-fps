@@ -43,23 +43,24 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-
-    // Check authentication
     if (!session || !session.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check if user is admin
+    if (!session.user.isAdmin) {
       return NextResponse.json(
-        { error: "You must be logged in to perform this action" },
-        { status: 401 }
+        { error: "Only admins can launch tournaments" },
+        { status: 403 }
       );
     }
+
+    const { id } = params;
 
     const client = await clientPromise;
     const db = client.db();
 
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
-
-    const { id } = params;
+    // Validate tournament ID
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: "Invalid tournament ID" },
@@ -79,52 +80,68 @@ export async function POST(
       );
     }
 
-    // Check admin permissions
-    const isAdmin =
-      user?.roles?.includes("admin") ||
-      tournament.createdBy?.discordId === session.user.id ||
-      session.user.id === "238329746671271936" || // Add your specific ID for testing
-      false;
-
-    if (!isAdmin) {
+    // Check if tournament is already active
+    if (tournament.status === "active") {
       return NextResponse.json(
-        { error: "You must be an administrator to perform this action" },
-        { status: 403 }
-      );
-    }
-
-    // Check if the tournament has the required number of teams
-    if (tournament.registeredTeams.length !== (tournament.maxTeams || 8)) {
-      return NextResponse.json(
-        { error: "Tournament doesn't have the required number of teams" },
+        { error: "Tournament is already active" },
         { status: 400 }
       );
     }
 
-    // Check if tournament is already active or completed
-    if (tournament.status !== "upcoming") {
-      return NextResponse.json(
-        { error: "Tournament is already launched" },
-        { status: 400 }
-      );
-    }
+    // First update existing tournament if it's already set up
+    const updateResult = await db.collection("Tournaments").updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          status: "active",
+          startedAt: new Date(),
+          "brackets.rounds.0.matches.$[].status": "live",
+          "tournamentMatches.$[firstRoundMatch].status": "live",
+        },
+      },
+      {
+        arrayFilters: [{ "firstRoundMatch.roundIndex": 0 }],
+      }
+    );
 
-    // Generate tournament matches for first round
-    const tournamentMatches: TournamentMatch[] = [];
+    const tournamentMatches = [];
 
-    if (tournament.brackets?.rounds && tournament.brackets.rounds.length > 0) {
+    if (tournament.brackets && tournament.brackets.rounds) {
       const firstRound = tournament.brackets.rounds[0];
 
-      firstRound.matches.forEach((match: Match, index: number) => {
+      // Process each match in the first round
+      for (let index = 0; index < firstRound.matches.length; index++) {
+        const match = firstRound.matches[index];
+
         if (match.teamA && match.teamB) {
           // Ensure unique and consistent match ID
           const tournamentMatchId = `${tournament._id.toString()}-R1-M${
             index + 1
           }`;
 
-          // Update match and create tournament match entry
+          // Update match with tournamentMatchId
           match.tournamentMatchId = tournamentMatchId;
 
+          // Get random ranked maps from the Maps collection
+          const rankedMaps = await db
+            .collection("Maps")
+            .find({ rankedMap: true })
+            .toArray();
+
+          // Randomly select 3 maps
+          const shuffledMaps = rankedMaps.sort(() => 0.5 - Math.random());
+          const selectedMaps = shuffledMaps.slice(0, 3).map((map) => {
+            // Randomly decide if we should use small version (if available)
+            const useSmallVersion = map.smallOption && Math.random() > 0.5;
+
+            return {
+              mapName: useSmallVersion ? `${map.name} (Small)` : map.name,
+              gameMode: map.gameMode,
+              smallOption: useSmallVersion,
+            };
+          });
+
+          // Create tournament match object - SET STATUS TO LIVE HERE
           tournamentMatches.push({
             tournamentMatchId,
             tournamentId: tournament._id.toString(),
@@ -133,30 +150,26 @@ export async function POST(
             teamA: match.teamA,
             teamB: match.teamB,
             mapScores: [],
-            status: "upcoming",
+            status: "live", // <-- CHANGED FROM "upcoming" TO "live"
             createdAt: new Date(),
-            maps: [
-              { mapName: "Sanctuary", gameMode: "Extraction" },
-              { mapName: "Foundation", gameMode: "Attrition" },
-              { mapName: "Exchange", gameMode: "Capture the Flag" },
-            ],
+            maps: selectedMaps,
           });
         }
-      });
-    }
-
-    // Update tournament with match IDs and set status to active
-    await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          status: "active",
-          updatedAt: new Date(),
-          "brackets.rounds": tournament.brackets?.rounds,
-          tournamentMatches,
-        },
       }
-    );
+
+      // Only update if we have new matches to add
+      if (tournamentMatches.length > 0) {
+        await db.collection("Tournaments").updateOne(
+          { _id: new ObjectId(id) },
+          {
+            $set: {
+              tournamentMatches,
+              "brackets.rounds.0.matches.$[].status": "live",
+            },
+          }
+        );
+      }
+    }
 
     return NextResponse.json({
       success: true,

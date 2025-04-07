@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { MongoTeam } from "@/types/mongodb";
 
@@ -33,38 +35,30 @@ function containsBadWords(text: string): boolean {
   );
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const { searchParams } = new URL(req.url);
+    const tag = searchParams.get("tag");
+    const name = searchParams.get("name");
+    const { db } = await connectToDatabase();
+
+    let query = {};
+    if (tag) {
+      query = { tag: { $regex: new RegExp(tag, "i") } };
+    } else if (name) {
+      query = { name: { $regex: new RegExp(name, "i") } };
+    }
 
     const teams = await db
       .collection("Teams")
-      .find({})
-      .sort({ teamElo: -1 })
+      .find(query)
+      .sort({ createdAt: -1 })
+      .limit(100)
       .toArray();
 
-    // Log team data for debugging
-    teams.forEach((team) => {
-      if (team.wins === 1 && team.losses === 0) {
-        console.log("Found 1-0 team:", {
-          name: team.name,
-          wins: team.wins,
-          losses: team.losses,
-          winRatio: team.winRatio,
-        });
-      }
-    });
-
-    const teamsWithStats = teams.map((team) => ({
-      ...team,
-      _id: team._id.toString(),
-      winRatio: team.wins / (team.wins + team.losses) || 0,
-    }));
-
-    return NextResponse.json(teamsWithStats);
+    return NextResponse.json(teams);
   } catch (error) {
-    console.error("Failed to fetch teams:", error);
+    console.error("Error fetching teams:", error);
     return NextResponse.json(
       { error: "Failed to fetch teams" },
       { status: 500 }
@@ -74,34 +68,25 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, tag, description, captain } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Validate input
-    if (!name || !tag || !description || !captain) {
+    const { name, description, tag, captain, captainProfilePicture } =
+      await req.json();
+
+    // Validation
+    if (!name || !tag) {
       return NextResponse.json(
-        { error: "All fields are required" },
+        { error: "Team name and tag are required" },
         { status: 400 }
       );
     }
 
-    // Check if team name, tag, or description contains inappropriate language
-    if (
-      containsBadWords(name) ||
-      containsBadWords(tag) ||
-      containsBadWords(description)
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Team name, tag, or description contains inappropriate language",
-        },
-        { status: 400 }
-      );
-    }
+    const { db } = await connectToDatabase();
 
-    // Check if team name or tag already exists
+    // Check if name or tag already exists
     const existingTeam = await db.collection("Teams").findOne({
       $or: [
         { name: { $regex: new RegExp(`^${name}$`, "i") } },
@@ -116,61 +101,63 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if player is already a member of another team
-    const existingTeamMembership = await db.collection("Teams").findOne({
-      "members.discordId": captain,
+    // Check if the user is already in a team
+    const userInTeam = await db.collection("Teams").findOne({
+      "members.discordId": session.user.id,
     });
 
-    if (existingTeamMembership) {
+    if (userInTeam) {
       return NextResponse.json(
-        { error: "Player is already a member of another team" },
+        { error: "You are already a member of a team" },
         { status: 400 }
       );
     }
 
-    // Get captain details
-    const captainDetails = await db.collection("Players").findOne({
-      discordId: captain,
+    // Get player information from Players collection to ensure we have the latest data
+    const player = await db.collection("Players").findOne({
+      discordId: session.user.id,
     });
 
-    if (!captainDetails) {
-      return NextResponse.json({ error: "Captain not found" }, { status: 404 });
-    }
+    // Create the captain object with reference to player data
+    const captainObject = {
+      discordId: session.user.id,
+      discordUsername: player?.discordUsername || session.user.name,
+      discordNickname:
+        player?.discordNickname || session.user.nickname || session.user.name,
+      discordProfilePicture:
+        player?.discordProfilePicture ||
+        captainProfilePicture ||
+        session.user.image,
+      playerId: player?._id ? player._id.toString() : null, // Reference to the player document
+    };
+
+    // Create the member object for the captain (as the first member)
+    const memberObject = {
+      ...captainObject,
+      role: "captain",
+      joinedAt: new Date(),
+    };
 
     // Create team
     const result = await db.collection("Teams").insertOne({
       name,
-      tag: tag.toUpperCase(),
       description,
-      captain: {
-        discordId: captainDetails.discordId,
-        discordUsername: captainDetails.discordUsername,
-        discordNickname: captainDetails.discordNickname,
-      },
-      members: [
-        {
-          discordId: captainDetails.discordId,
-          discordUsername: captainDetails.discordUsername,
-          discordNickname: captainDetails.discordNickname,
-          role: "captain",
-          joinedAt: new Date(),
-        },
-      ],
-      elo: 1500,
-      wins: 0,
-      losses: 0,
+      tag: tag.toUpperCase(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      captain: captainObject,
+      members: [memberObject],
+      teamElo: player?.elo,
     });
 
     return NextResponse.json({
-      _id: result.insertedId,
+      id: result.insertedId.toString(),
       name,
       tag,
       description,
     });
   } catch (error) {
-    console.error("Failed to create team:", error);
+    console.error("Error creating team:", error);
     return NextResponse.json(
       { error: "Failed to create team" },
       { status: 500 }

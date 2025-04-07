@@ -1,505 +1,748 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowLeft,
-  CheckCircle2,
-  Clock,
+  CheckCircle,
   Loader2,
-  Send,
-  MapPin,
-  Shield,
+  UserCircle,
+  X,
+  CalendarIcon,
+  ClockIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/use-toast";
+import { format } from "date-fns";
+import { TournamentMatch, Team } from "@/types/tournament";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import Image from "next/image";
 
-interface TournamentMatch {
-  tournamentMatchId: string;
-  tournamentId: string;
-  roundIndex: number;
-  matchIndex: number;
-  teamA: any;
-  teamB: any;
-  mapScores?: any[];
-  status: "upcoming" | "in_progress" | "completed";
-  createdAt: string;
-  maps?: any[];
-}
-
-interface TeamMember {
-  discordId: string;
-  discordUsername: string;
-  discordNickname?: string;
-  discordProfilePicture?: string;
-  elo?: number;
-}
-
-function TeamCard({ team, teamNumber, title, matchStatus }: any) {
-  if (!team) return null;
-
-  return (
-    <Card className="bg-[#111827] border-[#1f2937]">
-      <CardContent className="p-4">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          <Badge
-            variant={teamNumber === 1 ? "default" : "destructive"}
-            className="uppercase"
-          >
-            Team {teamNumber}
-          </Badge>
-        </div>
-
-        <div className="mt-4 space-y-4">
-          {team.members?.map((member: TeamMember) => (
-            <div key={member.discordId} className="flex items-center gap-3">
-              {member.discordProfilePicture ? (
-                <Image
-                  src={member.discordProfilePicture}
-                  alt={member.discordUsername}
-                  className="w-8 h-8 rounded-full"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400">
-                  {member.discordUsername?.charAt(0).toUpperCase() || "?"}
-                </div>
-              )}
-              <div>
-                <p className="text-white">
-                  {member.discordNickname || member.discordUsername}
-                </p>
-                {member.elo && (
-                  <p className="text-xs text-gray-400">ELO: {member.elo}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-export default function TournamentMatchDetailPage() {
+export default function TournamentMatchPage() {
   const params = useParams();
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session } = useSession();
   const [match, setMatch] = useState<TournamentMatch | null>(null);
   const [loading, setLoading] = useState(true);
-  const [userTeam, setUserTeam] = useState<number | null>(null);
-  const [scoreDialog, setScoreDialog] = useState(false);
-  const [selectedMapIndex, setSelectedMapIndex] = useState<number>(0);
-  const [team1Score, setTeam1Score] = useState("");
-  const [team2Score, setTeam2Score] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  // Define hooks at the top level to avoid conditional hook errors
+  const [scoreSubmitDialogOpen, setScoreSubmitDialogOpen] = useState(false);
+  const [currentMapIndex, setCurrentMapIndex] = useState(0);
+  const [teamAScore, setTeamAScore] = useState(0);
+  const [teamBScore, setTeamBScore] = useState(0);
+  const [scoreSubmitLoading, setScoreSubmitLoading] = useState(false);
+  const [startingMatch, setStartingMatch] = useState(false);
+  const [teamAId, setTeamAId] = useState<string | null>(null);
+  const [teamBId, setTeamBId] = useState<string | null>(null);
 
-  // Get team names
-  const getTeamName = (teamNumber: number) => {
-    if (teamNumber === 1 && match?.teamA) {
-      return match.teamA.name;
-    } else if (teamNumber === 2 && match?.teamB) {
-      return match.teamB.name;
+  // Check which team the user belongs to with proper null checks
+  const checkUserTeamMembership = useCallback(
+    (match: TournamentMatch) => {
+      if (!session?.user?.id) return null;
+
+      // Check if user is in team A with null safety
+      const isInTeamA =
+        match.teamA?.members?.some(
+          (member) => member.discordId === session.user?.id
+        ) || false;
+
+      // Check if user is in team B with null safety
+      const isInTeamB =
+        match.teamB?.members?.some(
+          (member) => member.discordId === session.user?.id
+        ) || false;
+
+      if (isInTeamA) return "teamA";
+      if (isInTeamB) return "teamB";
+      return null;
+    },
+    [session]
+  );
+
+  // Helper for map images
+  const getMapImage = (mapName: string) => {
+    // Convert map name to a format that matches our image filenames
+    // Also, normalize spaces & handle special case for Nerve Center (Small)
+    const formattedMapName = mapName
+      .toLowerCase()
+      .replace(/\s+\(small\)/, "") // Remove (Small) from the name first
+      .replace(/\s+/g, ""); // Remove all spaces completely
+
+    // Return the correct path without "public" prefix
+    return `/maps/map_${formattedMapName}.png`;
+  };
+
+  // Helper for status badge
+  const getStatusBadge = (status: string | undefined) => {
+    if (!status) return null;
+
+    switch (status.toLowerCase()) {
+      case "upcoming":
+        return <Badge className="bg-blue-600">UPCOMING</Badge>;
+      case "live":
+        // Handle live status
+        return <Badge className="bg-yellow-600">IN PROGRESS</Badge>;
+      case "in_progress":
+        // Use separate case for type safety
+        return <Badge className="bg-yellow-600">IN PROGRESS</Badge>;
+      case "completed":
+        return <Badge className="bg-green-600">COMPLETED</Badge>;
+      case "cancelled":
+        return <Badge className="bg-red-600">CANCELLED</Badge>;
+      default:
+        return <Badge>{status.toUpperCase()}</Badge>;
     }
-    return `Team ${teamNumber}`;
   };
 
-  // Function to handle opening the score submission dialog
-  const handleOpenScoreDialog = (mapIndex: number) => {
-    setSelectedMapIndex(mapIndex);
-    setTeam1Score("");
-    setTeam2Score("");
-    setScoreDialog(true);
-  };
+  // Function to check if previous maps have been scored
+  const canSubmitMapScore = (mapIndex: number) => {
+    if (!match || !match.mapScores) return false;
 
-  // Fetch the match data
-  const fetchMatchData = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `/api/tournaments/matches/${params.matchId}`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch match: ${response.statusText}`);
+    // Map 0 (first map) can always be scored
+    if (mapIndex === 0) return true;
+
+    // For subsequent maps, check if previous maps have winners
+    for (let i = 0; i < mapIndex; i++) {
+      const previousMapScore = match.mapScores[i];
+      if (!previousMapScore || previousMapScore.winner === null) {
+        return false;
       }
-      const data = await response.json();
-      setMatch(data);
-      return data;
-    } catch (error) {
-      console.error("Error fetching match data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch match data",
-        variant: "destructive",
-      });
-      throw error;
     }
-  }, [params.matchId]);
 
-  // Submit map scores
+    return true;
+  };
+
+  // Function to open score submission dialog
+  const openScoreSubmitDialog = (mapIndex: number) => {
+    setCurrentMapIndex(mapIndex);
+    // Pre-fill existing scores if available
+    if (match?.mapScores?.[mapIndex]) {
+      setTeamAScore(match.mapScores[mapIndex].team1Score || 0);
+      setTeamBScore(match.mapScores[mapIndex].team2Score || 0);
+    } else {
+      setTeamAScore(0);
+      setTeamBScore(0);
+    }
+    setScoreSubmitDialogOpen(true);
+  };
+
+  // Enhanced score submission function to prevent draws
   const handleSubmitScore = async () => {
-    if (!team1Score || !team2Score) {
+    if (!match) return;
+
+    // Validate scores - one team must win (no draws allowed)
+    if (teamAScore === teamBScore) {
       toast({
-        title: "Error",
-        description: "Please enter scores for both teams",
+        title: "Invalid Score",
+        description: "Scores cannot be equal - one team must win the map.",
         variant: "destructive",
       });
       return;
     }
 
-    const team1ScoreNum = parseInt(team1Score);
-    const team2ScoreNum = parseInt(team2Score);
-
-    if (isNaN(team1ScoreNum) || isNaN(team2ScoreNum)) {
+    // The winning team must have exactly 6 points
+    if (teamAScore !== 6 && teamBScore !== 6) {
       toast({
-        title: "Error",
-        description: "Scores must be numbers",
+        title: "Invalid Score",
+        description: "The winning team must have exactly 6 points.",
         variant: "destructive",
       });
       return;
     }
+
+    // Ensure the losing team has less than 6 points
+    if (teamAScore === 6 && teamBScore >= 6) {
+      toast({
+        title: "Invalid Score",
+        description: "The losing team must have less than 6 points.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (teamBScore === 6 && teamAScore >= 6) {
+      toast({
+        title: "Invalid Score",
+        description: "The losing team must have less than 6 points.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Existing submission logic continues...
+    setScoreSubmitLoading(true);
 
     try {
       const response = await fetch(
-        `/api/tournaments/matches/${params.matchId}/scores`,
+        `/api/tournaments/match/${match.tournamentMatchId}/score`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            mapIndex: selectedMapIndex,
-            scores: {
-              team1Score: team1ScoreNum,
-              team2Score: team2ScoreNum,
-              submittedByTeam: userTeam,
-            },
+            mapIndex: currentMapIndex,
+            team1Score: teamAScore,
+            team2Score: teamBScore,
+            winner: teamAScore === 6 ? 1 : 2,
           }),
         }
       );
 
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to submit scores");
+        const errorData = await response.json();
+
+        // Check if this is a score mismatch error
+        if (errorData.error === "score_mismatch") {
+          toast({
+            title: "Score Mismatch",
+            description:
+              "Your score doesn't match your opponent's submission. Please verify the score with your opponent.",
+            variant: "destructive",
+          });
+          // Reset the form but keep the dialog open
+          setTeamAScore(0);
+          setTeamBScore(0);
+          setScoreSubmitLoading(false);
+          return;
+        }
+
+        throw new Error(errorData.error || "Failed to submit score");
       }
 
+      // Get updated match data
+      await fetchMatchData();
+
       toast({
-        title: "Success",
-        description: "Scores submitted successfully",
+        title: "Score Submitted",
+        description: "The map score has been successfully submitted.",
       });
 
-      setScoreDialog(false);
-      fetchMatchData();
+      // Check if match is now complete (one team has 2 wins)
+      const updatedMatch = await response.json();
+      const team1Wins =
+        updatedMatch.mapScores?.filter(
+          (s: { winner: number }) => s.winner === 1
+        ).length || 0;
+      const team2Wins =
+        updatedMatch.mapScores?.filter(
+          (s: { winner: number }) => s.winner === 2
+        ).length || 0;
+
+      if (team1Wins >= 2 || team2Wins >= 2) {
+        const winningTeam =
+          team1Wins >= 2 ? updatedMatch.teamA?.name : updatedMatch.teamB?.name;
+        toast({
+          title: "Match Complete!",
+          description: `${winningTeam} has won the match! The bracket will be updated automatically.`,
+        });
+      }
+
+      setScoreSubmitDialogOpen(false);
     } catch (error) {
-      console.error("Error submitting scores:", error);
+      console.error("Error submitting score:", error);
       toast({
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to submit scores",
+        description: "Failed to submit the score. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setScoreSubmitLoading(false);
     }
   };
 
-  // Check if the current user is in one of the teams
-  useEffect(() => {
-    if (match && session?.user?.id) {
-      const discordId = session.user.id;
+  // Replace the getMatchIdFromPath function with this more robust version:
+  const getMatchIdFromUrl = useCallback(() => {
+    // Direct extraction from window.location if available
+    if (typeof window !== "undefined") {
+      // Get the current URL
+      const url = window.location.href;
+      console.log("Current URL:", url);
 
-      // Check team A
-      if (match.teamA?.members?.some((m: any) => m.discordId === discordId)) {
-        setUserTeam(1);
-        return;
+      // Extract the match ID from the URL
+      const matchIdRegex = /\/matches\/([^\/]+)$/;
+      const match = url.match(matchIdRegex);
+
+      if (match && match[1] && match[1] !== "%5BmatchId%5D") {
+        console.log("Successfully extracted match ID from URL:", match[1]);
+        return match[1];
       }
 
-      // Check team B
-      if (match.teamB?.members?.some((m: any) => m.discordId === discordId)) {
-        setUserTeam(2);
-        return;
+      // Try another approach - split the URL by "matches/" and take the last part
+      const parts = url.split("matches/");
+      if (parts.length > 1 && parts[1] !== "%5BmatchId%5D") {
+        console.log("Extracted match ID from split URL:", parts[1]);
+        return parts[1];
       }
-
-      setUserTeam(null);
     }
-  }, [match, session]);
 
-  // Initial data fetch
-  useEffect(() => {
-    if (!params.matchId) return;
+    console.error("Could not extract match ID from URL");
+    return null;
+  }, []);
 
-    setLoading(true);
-    fetchMatchData()
-      .then(() => setLoading(false))
-      .catch((error) => {
-        console.error("Error in match fetch:", error);
+  // Update fetchMatchData to remove mock data and only use database
+  const fetchMatchData = useCallback(async () => {
+    try {
+      // Get the match ID directly from the URL
+      const matchId = getMatchIdFromUrl();
+
+      if (!matchId) {
+        console.error("Could not determine match ID");
+        setError("Invalid match ID");
         setLoading(false);
-        // Create basic placeholder data for development
-        if (process.env.NODE_ENV === "development") {
-          setMatch({
-            tournamentMatchId: params.matchId as string,
-            tournamentId: "test-tournament",
-            status: "upcoming",
-            teamA: { name: "Team A", tag: "TA" },
-            teamB: { name: "Team B", tag: "TB" },
-            maps: [
-              { mapName: "Sanctuary", gameMode: "Extraction" },
-              { mapName: "Foundation", gameMode: "Attrition" },
-              { mapName: "Exchange", gameMode: "Capture the Flag" },
-            ],
-            mapScores: [],
-          } as any);
-        }
-      });
-  }, [params.matchId, fetchMatchData]);
+        return;
+      }
 
+      console.log(`Fetching match with ID: ${matchId}`);
+
+      // Now use the extracted ID for the API call
+      const response = await fetch(`/api/tournaments/match/${matchId}`);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API returned ${response.status}: ${errorText}`);
+        throw new Error("Failed to fetch match");
+      }
+
+      const data = await response.json();
+
+      if (!data.match) {
+        console.error("No match found with ID:", matchId);
+        setError("Match not found");
+        return;
+      }
+
+      console.log(`Retrieved match:`, data.match);
+      setMatch(data.match);
+      setTeamAId(data.match.teamA?.teamId);
+      setTeamBId(data.match.teamB?.teamId);
+    } catch (error) {
+      console.error("Error fetching match:", error);
+      setError("Failed to load match");
+    } finally {
+      setLoading(false);
+    }
+  }, [getMatchIdFromUrl]);
+
+  // Fetch match data on mount
+  useEffect(() => {
+    const fetchMatch = async () => {
+      setLoading(true);
+      try {
+        // Get the match ID directly from the URL
+        const matchId = getMatchIdFromUrl();
+
+        if (!matchId) {
+          console.error("Could not determine match ID");
+          setError("Invalid match ID");
+          setLoading(false);
+          return;
+        }
+
+        console.log(`Fetching match with ID: ${matchId}`);
+
+        // Now use the extracted ID for the API call
+        const response = await fetch(`/api/tournaments/match/${matchId}`);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`API returned ${response.status}: ${errorText}`);
+          throw new Error("Failed to fetch match");
+        }
+
+        const data = await response.json();
+
+        if (!data.match) {
+          console.error("No match found with ID:", matchId);
+          setError("Match not found");
+          return;
+        }
+
+        console.log(`Retrieved match:`, data.match);
+        setMatch(data.match);
+        setTeamAId(data.match.teamA?.teamId);
+        setTeamBId(data.match.teamB?.teamId);
+      } catch (error) {
+        console.error("Error fetching match:", error);
+        setError("Failed to load match");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Run the fetch on mount
+    fetchMatch();
+  }, [getMatchIdFromUrl]);
+
+  // Handle loading state
   if (loading) {
     return (
-      <div className="container flex items-center justify-center min-h-[500px]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
       </div>
     );
   }
 
+  // Handle case where match is not found
   if (!match) {
     return (
-      <div className="container p-4 text-center">
-        <h1 className="text-2xl font-bold mb-4">Match not found</h1>
-        <Button variant="outline" onClick={() => router.back()}>
-          Go Back
-        </Button>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">Match not found</h1>
+          <p className="mt-2">
+            The match you&apos;re looking for doesn&apos;t exist or has been
+            removed.
+          </p>
+          <Button asChild className="mt-4">
+            <Link href="/tournaments">Back to Tournaments</Link>
+          </Button>
+        </div>
       </div>
     );
   }
 
+  // Extract match details
+  const roundNumber = parseInt(
+    match.tournamentMatchId.split("-R")[1]?.split("-")[0] || "1"
+  );
+  const matchNumber = parseInt(match.tournamentMatchId.split("-M")[1] || "1");
+
+  // Helper for team member display
+  const MemberAvatar = ({
+    member,
+    isCaptain,
+  }: {
+    member: any;
+    isCaptain: boolean;
+  }) => (
+    <div className="flex items-center gap-3 mb-3">
+      <div className="relative w-10 h-10">
+        {member.discordProfilePicture ? (
+          <Image
+            src={member.discordProfilePicture}
+            alt={member.discordNickname || member.discordUsername}
+            width={40}
+            height={40}
+            className="object-cover rounded-full"
+            unoptimized
+          />
+        ) : (
+          <UserCircle className="w-10 h-10 text-gray-500" />
+        )}
+      </div>
+      <div>
+        <div className="font-medium">
+          {member.discordNickname || member.discordUsername}
+        </div>
+        <div className="text-sm text-gray-400">
+          {isCaptain ? "Captain" : "Member"} • ELO: {member.elo}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Only render the UI when match data is available
   return (
-    <>
-      <div className="container p-4 pt-3 mx-auto">
+    <main className="container py-8">
+      <div className="flex items-center mb-8">
         <Button
           variant="outline"
-          size="sm"
-          className="bg-[#1e293b] text-gray-300 hover:bg-[#334155] border-[#334155]"
-          onClick={() => router.back()}
+          size="icon"
+          className="mr-4"
+          onClick={() => router.push("/tournaments")}
+          aria-label="Back to Tournaments"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Return
+          <ArrowLeft className="w-4 h-4" />
         </Button>
+        <h1 className="text-3xl font-bold">Tournament Match</h1>
+        {match?.status && (
+          <div className="ml-4">{getStatusBadge(match.status)}</div>
+        )}
       </div>
 
-      <main className="container p-4 mx-auto mt-2 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-blue-400">Tournament Match</h1>
-          {match && (
-            <Badge
-              className={`px-3 py-1 text-xs font-medium uppercase ${
-                match.status === "completed"
-                  ? "bg-green-600"
-                  : match.status === "in_progress"
-                  ? "bg-blue-600"
-                  : "bg-yellow-600"
-              }`}
-            >
-              {match.status === "completed"
-                ? "Completed"
-                : match.status === "in_progress"
-                ? "In Progress"
-                : "Upcoming"}
-            </Badge>
-          )}
+      {/* Handle loading state */}
+      {loading && (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin" />
         </div>
+      )}
 
-        <div className="relative mb-6">
-          <Card className="bg-[#111827] border-[#1f2937]">
-            <CardContent className="p-6">
-              <h2 className="mb-2 text-xl font-semibold text-white">
-                Tournament Match
-              </h2>
-              <p className="mb-4 text-sm text-gray-400">
-                Match ID: {match.tournamentMatchId}
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                <div>
-                  <p className="text-gray-400 mb-1">Round</p>
-                  <p className="text-white">Round {match.roundIndex + 1}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400 mb-1">Match</p>
-                  <p className="text-white">Match {match.matchIndex + 1}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Handle error state */}
+      {error && !loading && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <h2 className="mb-4 text-2xl font-bold">Match not found</h2>
+          <p className="mb-8 text-gray-500">
+            The match you&apos;re looking for doesn&apos;t exist or has been
+            removed.
+          </p>
+          <Button onClick={() => router.push("/tournaments")}>
+            Back to Tournaments
+          </Button>
         </div>
+      )}
 
-        {/* Teams Section */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <TeamCard
-            team={match.teamA}
-            teamNumber={1}
-            title={getTeamName(1)}
-            matchStatus={match.status}
-          />
-          <TeamCard
-            team={match.teamB}
-            teamNumber={2}
-            title={getTeamName(2)}
-            matchStatus={match.status}
-          />
-        </div>
+      {/* Only render match content if we have match data and no errors */}
+      {match && !loading && !error && (
+        <>
+          <div className="p-6 mb-6 border rounded-lg bg-card">
+            <h2 className="mb-4 text-xl font-semibold">Tournament Match</h2>
+            <div className="mb-2">
+              <span className="text-gray-400">Match ID:</span>{" "}
+              {match.tournamentMatchId}
+            </div>
 
-        {/* Match Results Section */}
-        <div className="mt-8">
-          <h2 className="text-xl font-semibold mb-4 text-white">
-            Match Results
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {match.maps &&
-              match.maps.map((map, index) => (
-                <Card key={index} className="bg-[#111827] border-[#1f2937]">
-                  <CardContent className="p-4">
-                    <div className="flex flex-col h-full justify-between">
-                      <div>
-                        <div className="mb-2">
-                          <h4 className="text-lg font-medium text-white">
-                            {map.mapName}
-                          </h4>
-                          <p className="text-sm text-gray-400">
-                            {map.gameMode}
-                          </p>
-                        </div>
-
-                        {/* Score display */}
-                        <div className="mt-2">
-                          <div className="flex justify-between mb-2">
-                            <span className="text-white">{getTeamName(1)}</span>
-                            <span
-                              className={`text-xl font-bold ${
-                                match.mapScores?.[index]?.winner === 1
-                                  ? "text-blue-500"
-                                  : "text-gray-400"
-                              }`}
-                            >
-                              {match.mapScores?.[index]?.team1Score || "0"}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-white">{getTeamName(2)}</span>
-                            <span
-                              className={`text-xl font-bold ${
-                                match.mapScores?.[index]?.winner === 2
-                                  ? "text-red-500"
-                                  : "text-gray-400"
-                              }`}
-                            >
-                              {match.mapScores?.[index]?.team2Score || "0"}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Only show Submit Score button if user's team hasn't verified yet */}
-                        {userTeam &&
-                          !match.mapScores?.[index]?.winner &&
-                          !match.mapScores?.[index]?.[
-                            `submittedByTeam${userTeam}`
-                          ] && (
-                            <Button
-                              className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
-                              onClick={() => handleOpenScoreDialog(index)}
-                            >
-                              Submit Score
-                            </Button>
-                          )}
-
-                        {/* Show verification status */}
-                        <div className="flex justify-between mt-2">
-                          <div className="flex items-center gap-2">
-                            {match.mapScores?.[index]?.submittedByTeam1 ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Clock className="w-4 h-4 text-yellow-500" />
-                            )}
-                            <span>
-                              Team 1{" "}
-                              {match.mapScores?.[index]?.submittedByTeam1
-                                ? "Verified"
-                                : "Pending"}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {match.mapScores?.[index]?.submittedByTeam2 ? (
-                              <CheckCircle2 className="w-4 h-4 text-green-500" />
-                            ) : (
-                              <Clock className="w-4 h-4 text-yellow-500" />
-                            )}
-                            <span>
-                              Team 2{" "}
-                              {match.mapScores?.[index]?.submittedByTeam2
-                                ? "Verified"
-                                : "Pending"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-          </div>
-        </div>
-      </main>
-
-      {/* Score Submission Dialog */}
-      <Dialog open={scoreDialog} onOpenChange={setScoreDialog}>
-        <DialogContent className="bg-[#1e293b] text-white border-[#334155]">
-          <DialogHeader>
-            <DialogTitle>Submit Map Score</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-6 mt-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm">
-                  {getTeamName(1)} Score
-                </label>
-                <Input
-                  value={team1Score}
-                  onChange={(e) => setTeam1Score(e.target.value)}
-                  className="bg-[#111827] border-[#334155] text-white"
-                  type="number"
-                />
+                <span className="text-gray-400">Round</span>
+                <div>Round {roundNumber}</div>
               </div>
               <div>
-                <label className="mb-2 block text-sm">
-                  {getTeamName(2)} Score
-                </label>
-                <Input
-                  value={team2Score}
-                  onChange={(e) => setTeam2Score(e.target.value)}
-                  className="bg-[#111827] border-[#334155] text-white"
-                  type="number"
-                />
+                <span className="text-gray-400">Match</span>
+                <div>Match {matchNumber}</div>
               </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setScoreDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmitScore}>Submit Score</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+
+          {/* Teams Section - Added optional chaining for null safety */}
+          <div className="grid grid-cols-1 gap-6 mb-6 md:grid-cols-2">
+            {/* Team A */}
+            <div className="p-6 border rounded-lg bg-card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">{match.teamA?.name}</h2>
+                <Badge className="bg-blue-600">TEAM 1</Badge>
+              </div>
+              <div className="mb-4 text-sm text-gray-400">
+                Tag: {match.teamA?.tag} • Team ELO: {match.teamA?.teamElo}
+              </div>
+
+              <div className="mt-4">
+                <h3 className="mb-3 text-lg font-medium">Team Members</h3>
+
+                {/* Captain with null check */}
+                {match.teamA?.captain && (
+                  <MemberAvatar member={match.teamA.captain} isCaptain={true} />
+                )}
+
+                {/* Other members with null checks */}
+                {match.teamA?.members &&
+                  match.teamA.members
+                    .filter(
+                      (m) => m.discordId !== match.teamA?.captain?.discordId
+                    )
+                    .map((member) => (
+                      <MemberAvatar
+                        key={member.discordId}
+                        member={member}
+                        isCaptain={false}
+                      />
+                    ))}
+              </div>
+            </div>
+
+            {/* Team B */}
+            <div className="p-6 border rounded-lg bg-card">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold">{match.teamB?.name}</h2>
+                <Badge className="bg-red-600">TEAM 2</Badge>
+              </div>
+              <div className="mb-4 text-sm font-medium text-gray-400">
+                Tag: {match.teamB?.tag} • Team ELO: {match.teamB?.teamElo}
+              </div>
+
+              <div className="mt-4">
+                <h3 className="mb-3 text-lg font-medium">Team Members</h3>
+
+                {/* Captain with null check */}
+                {match.teamB?.captain && (
+                  <MemberAvatar member={match.teamB.captain} isCaptain={true} />
+                )}
+
+                {/* Other members with null checks */}
+                {match.teamB?.members &&
+                  match.teamB.members
+                    .filter(
+                      (m) => m.discordId !== match.teamB?.captain?.discordId
+                    )
+                    .map((member) => (
+                      <MemberAvatar
+                        key={member.discordId}
+                        member={member}
+                        isCaptain={false}
+                      />
+                    ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Maps Section */}
+          <div className="mb-8">
+            <h2 className="mb-4 text-2xl font-bold">Match Maps</h2>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {match.maps &&
+                match.maps.map((map, index) => (
+                  <div
+                    key={index}
+                    className="overflow-hidden border rounded-lg bg-card"
+                  >
+                    {/* Map Image */}
+                    <div className="relative h-48">
+                      <Image
+                        src={getMapImage(map.mapName)}
+                        alt={map.mapName}
+                        fill
+                        className="object-cover"
+                        unoptimized
+                      />
+                    </div>
+
+                    {/* Map Info */}
+                    <div className="p-4">
+                      <h3 className="text-xl font-medium">{map.mapName}</h3>
+                      <p className="text-gray-400">{map.gameMode}</p>
+
+                      {/* Scores with null safety */}
+                      <div className="mt-4 mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span>{match.teamA?.name}</span>
+                          <span className="text-2xl font-bold">
+                            {match.mapScores?.[index]?.team1Score || 0}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span>{match.teamB?.name}</span>
+                          <span className="text-2xl font-bold">
+                            {match.mapScores?.[index]?.team2Score || 0}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Verification Status */}
+                      <div className="flex justify-between mt-4">
+                        <div className="flex items-center gap-1 text-sm">
+                          {match.mapScores?.[index]?.submittedByTeamA ===
+                          true ? (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <X className="w-4 h-4 text-red-500" />
+                          )}
+                          <span>Team 1 Verified</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          {match.mapScores?.[index]?.submittedByTeamB ===
+                          true ? (
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <X className="w-4 h-4 text-red-500" />
+                          )}
+                          <span>Team 2 Verified</span>
+                        </div>
+                      </div>
+
+                      {/* Submit Score Button - Only enabled if previous maps are scored */}
+                      {(match.status === "live" ||
+                        // Use type assertion to avoid TypeScript error
+                        (match.status as any) === "in_progress" ||
+                        process.env.NODE_ENV === "development") && (
+                        <Button
+                          className="w-full mt-4"
+                          onClick={() => openScoreSubmitDialog(index)}
+                          disabled={!canSubmitMapScore(index)}
+                        >
+                          {canSubmitMapScore(index)
+                            ? "Submit Score"
+                            : "Score Previous Maps First"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Score Submission Dialog */}
+          <Dialog
+            open={scoreSubmitDialogOpen}
+            onOpenChange={setScoreSubmitDialogOpen}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Submit Map Score</DialogTitle>
+                <DialogDescription>
+                  Enter the final score for{" "}
+                  {match?.maps?.[currentMapIndex]?.mapName || "this map"}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="teamAScore">
+                    {match?.teamA?.name || "Team A"} Score
+                  </Label>
+                  <Input
+                    id="teamAScore"
+                    type="number"
+                    min="0"
+                    max="6"
+                    value={teamAScore}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setTeamAScore(parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="teamBScore">
+                    {match?.teamB?.name || "Team B"} Score
+                  </Label>
+                  <Input
+                    id="teamBScore"
+                    type="number"
+                    min="0"
+                    max="6"
+                    value={teamBScore}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                      setTeamBScore(parseInt(e.target.value) || 0)
+                    }
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setScoreSubmitDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmitScore}
+                  disabled={scoreSubmitLoading}
+                >
+                  {scoreSubmitLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Score"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </main>
   );
 }

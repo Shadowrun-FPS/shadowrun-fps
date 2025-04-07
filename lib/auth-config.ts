@@ -23,6 +23,17 @@ const ROLE_IDS = {
   GM: "1080979865345458256",
 } as const;
 
+// Add a type interface for the guild data structure
+interface GuildData {
+  nick?: string | null;
+  user?: {
+    id: string;
+    username: string;
+    global_name?: string | null;
+    avatar?: string | null;
+  };
+}
+
 export const authOptions: AuthOptions = {
   providers: [
     DiscordProvider({
@@ -47,23 +58,25 @@ export const authOptions: AuthOptions = {
       }
       if (trigger === "signIn") {
         const guildData = await getGuildData(token.accessToken as string);
-        token.guild = guildData;
+        token.guild = guildData as GuildData; // Add type assertion
 
         // Store the correct Discord nickname from guild data with null checks
-        const discordId = guildData.user.id;
-        const discordUsername = guildData.user.username || "";
+        const discordId = (guildData as any)?.user?.id || "";
+        const discordUsername = (guildData as any)?.user?.username || "";
 
         // Ensure nickname is never null, always a string
         const discordNickname = (
-          guildData.nick ||
-          guildData.user.global_name ||
-          guildData.user.username ||
+          guildData?.nick ||
+          (guildData as any)?.user?.global_name ||
+          (guildData as any)?.user?.username ||
           ""
         ).toString();
 
-        const discordProfilePicture = guildData.user.avatar
-          ? `https://cdn.discordapp.com/avatars/${guildData.user.id}/${guildData.user.avatar}.png`
-          : "";
+        const discordProfilePicture = (guildData as any)?.user?.avatar
+          ? `https://cdn.discordapp.com/avatars/${(guildData as any).user.id}/${
+              (guildData as any).user.avatar
+            }.png`
+          : null;
 
         // Update player data with correct nickname
         const client = await clientPromise;
@@ -96,12 +109,12 @@ export const authOptions: AuthOptions = {
       if (session?.user) {
         session.user.id = token.sub!;
 
-        // Add nickname to session
+        // Add nickname to session with proper optional chaining
         if (token.guild) {
           session.user.nickname =
-            token.guild.nick ||
-            token.guild.user?.global_name ||
-            token.guild.user?.username ||
+            (token.guild as GuildData)?.nick ||
+            (token.guild as any)?.user?.global_name ||
+            (token.guild as any)?.user?.username ||
             session.user.name ||
             "Unknown User";
         } else {

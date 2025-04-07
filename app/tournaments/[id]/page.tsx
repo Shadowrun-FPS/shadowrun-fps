@@ -52,6 +52,7 @@ import { TournamentBracket } from "@/components/tournament/bracket";
 import { toast } from "@/components/ui/use-toast";
 import Image from "next/image";
 import { EditTournamentDialog } from "@/components/tournaments/edit-tournament-dialog";
+import { Progress } from "@/components/ui/progress";
 
 // Types
 interface Tournament {
@@ -68,6 +69,13 @@ interface Tournament {
     losersRounds?: Round[]; // For double elimination
   };
   maxTeams?: number;
+  registrationDeadline?: string;
+  tournamentMatches?: {
+    roundIndex: number;
+    matchIndex: number;
+    tournamentMatchId: string;
+  }[];
+  winner?: Team;
 }
 
 interface Team {
@@ -108,11 +116,12 @@ interface Match {
   };
   winner?: "teamA" | "teamB" | "draw";
   status: "upcoming" | "live" | "completed";
+  tournamentMatchId?: string;
 }
 
 // Add type definition for the MemberAvatar props
 interface MemberAvatarProps {
-  profilePicture: string | null;
+  profilePicture: string | null | undefined;
   username: string | null | undefined;
   size: number;
 }
@@ -125,17 +134,69 @@ const MemberAvatar = ({
 }: MemberAvatarProps) => {
   const [imgError, setImgError] = useState(false);
 
-  return imgError || !profilePicture ? (
-    <UserCircle className={`w-${size} h-${size} text-muted-foreground`} />
+  return profilePicture && !imgError ? (
+    <div
+      className={`relative w-${size} h-${size} overflow-hidden rounded-full bg-slate-800`}
+    >
+      <Image
+        src={profilePicture}
+        alt={username || "Member"}
+        width={size * 4}
+        height={size * 4}
+        className="object-cover"
+        unoptimized
+        onError={() => setImgError(true)}
+      />
+    </div>
   ) : (
-    <Image
-      src={profilePicture}
-      alt={username || "Member"}
-      width={size * 4}
-      height={size * 4}
-      className="transition-colors border rounded-full border-border hover:border-primary"
-      onError={() => setImgError(true)}
-    />
+    <div
+      className={`flex items-center justify-center w-${size} h-${size} rounded-full bg-slate-800`}
+    >
+      <UserCircle className="w-full h-full text-slate-400" />
+    </div>
+  );
+};
+
+// Add a helper function to safely format dates
+const safeFormatDate = (dateString: string | undefined | null): string => {
+  if (!dateString) return "N/A";
+
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    return format(date, "MMM d, yyyy");
+  } catch (error) {
+    return "N/A";
+  }
+};
+
+// Add a tournament winner banner at the top of the page when tournament is completed
+const TournamentWinnerBanner = ({ winner }: { winner: Team }) => {
+  return (
+    <div className="mb-6 overflow-hidden border rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600">
+      <div className="px-6 py-4 text-center">
+        <div className="flex items-center justify-center mb-2">
+          <div className="px-3 py-1 mb-2 text-sm font-semibold text-white rounded-full bg-black/20">
+            TOURNAMENT CHAMPION
+          </div>
+        </div>
+        <h2 className="text-3xl font-bold text-white">{winner.name}</h2>
+        {winner.tag && (
+          <p className="text-lg text-white/80">Team {winner.tag}</p>
+        )}
+        <div className="flex justify-center mt-4 space-x-2">
+          {winner.captain && (
+            <div className="px-3 py-1 text-sm text-white rounded-full bg-black/20">
+              Captain:{" "}
+              {winner.captain.discordNickname || winner.captain.discordUsername}
+            </div>
+          )}
+          <div className="px-3 py-1 text-sm text-white rounded-full bg-black/20">
+            {winner.members?.length || 0} players
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -159,104 +220,92 @@ export default function TournamentDetailsPage() {
   const [unregistering, setUnregistering] = useState(false);
   const [unregisterError, setUnregisterError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDeveloper, setIsDeveloper] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [isSeeded, setIsSeeded] = useState(false);
   const [unseeding, setUnseeding] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchTournament = async () => {
     try {
       setLoading(true);
+      const response = await fetch(`/api/tournaments/${params?.id || ""}`);
 
-      const response = await fetch(`/api/tournaments/${params.id}`);
       if (!response.ok) {
+        if (response.status === 404) {
+          // Tournament not found, redirect to overview page
+          toast({
+            title: "Tournament not found",
+            description: "The tournament may have been deleted or moved.",
+            variant: "destructive",
+          });
+          router.push("/tournaments/overview");
+          return;
+        }
         throw new Error("Failed to fetch tournament");
       }
 
-      let data = await response.json();
-
-      // Ensure we have an empty bracket structure when no teams are registered
-      if (!data.registeredTeams || data.registeredTeams.length === 0) {
-        // Reset bracket to empty state
-        if (!data.brackets) {
-          data.brackets = { rounds: [] };
-        }
-
-        // Ensure there's at least an empty first round
-        if (!data.brackets.rounds || data.brackets.rounds.length === 0) {
-          data.brackets.rounds = [
-            {
-              name: "Round 1",
-              matches: [],
-            },
-          ];
-        }
-      }
+      const data = await response.json();
 
       setTournament(data);
 
-      // Set current round to the latest active round
-      if (data.brackets?.rounds) {
-        const activeRoundIndex = Math.max(
-          0,
-          data.brackets.rounds.findIndex(
-            (round: { matches: { status: string }[] }) =>
-              round.matches.some(
-                (match: { status: string }) => match.status === "live"
-              )
-          )
-        );
-        setCurrentRound(activeRoundIndex);
-      }
+      // Reset current round to 0 when tournament is fetched
+      setCurrentRound(0);
 
-      // Ensure there's always a bracket structure
-      const ensureBracketStructure = (tournament: Tournament) => {
-        if (
-          !tournament.brackets ||
-          !tournament.brackets.rounds ||
-          tournament.brackets.rounds.length === 0
-        ) {
-          // Create default bracket structure
-          const roundCount = Math.ceil(Math.log2(tournament.maxTeams || 8));
-          const rounds = [];
+      // Make sure the bracket matches have tournamentMatchIds
+      if (
+        data.status === "active" &&
+        data.tournamentMatches &&
+        data.brackets?.rounds
+      ) {
+        // Map tournamentMatchIds from tournamentMatches to bracket matches
+        const updatedRounds = [...data.brackets.rounds];
 
-          for (let i = 0; i < roundCount; i++) {
-            const matchCount = Math.pow(2, roundCount - i - 1);
-            const matches = Array(matchCount)
-              .fill(0)
-              .map((_, j) => ({
-                matchId: `r${i + 1}_m${j + 1}`,
-                scores: { teamA: 0, teamB: 0 },
-                status: "upcoming" as "upcoming" | "live" | "completed",
-              }));
-
-            rounds.push({
-              name: i === roundCount - 1 ? "Final" : `Round ${i + 1}`,
-              matches,
-            });
+        data.tournamentMatches.forEach(
+          (match: {
+            roundIndex?: number;
+            matchIndex?: number;
+            tournamentMatchId: string;
+          }) => {
+            if (
+              match.roundIndex !== undefined &&
+              match.matchIndex !== undefined
+            ) {
+              const round = updatedRounds[match.roundIndex];
+              if (round && round.matches[match.matchIndex]) {
+                round.matches[match.matchIndex].tournamentMatchId =
+                  match.tournamentMatchId;
+              }
+            }
           }
+        );
 
-          tournament.brackets = { rounds };
-        }
-
-        return tournament;
-      };
-
-      ensureBracketStructure(data);
+        // Update the tournament with the correct match IDs
+        setTournament({
+          ...data,
+          brackets: {
+            ...data.brackets,
+            rounds: updatedRounds,
+          },
+        });
+      }
     } catch (error) {
-      console.error("Failed to fetch tournament", error);
+      console.error("Error fetching tournament:", error);
+      setError("Failed to fetch tournament");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (params.id) {
+    if (params?.id) {
       fetchTournament();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [params?.id]);
 
   useEffect(() => {
     const fetchUserTeams = async () => {
@@ -284,20 +333,26 @@ export default function TournamentDetailsPage() {
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (session?.user?.id) {
-        // Allow your specific ID to be admin for testing
-        if (session.user.id === "238329746671271936") {
-          setIsAdmin(true);
-          return;
-        }
-
         try {
-          const response = await fetch("/api/user/status");
+          // Fetch permissions from our API
+          const response = await fetch("/api/user/permissions");
           if (response.ok) {
             const data = await response.json();
-            setIsAdmin(data.roles?.includes("admin") || false);
+            setIsAdmin(data.isAdmin);
+
+            // Set developer status separately for additional permissions
+            setIsDeveloper(
+              data.isDeveloper || session.user.id === "238329746671271936"
+            );
           }
         } catch (error) {
-          console.error("Error checking admin status:", error);
+          console.error("Error checking permissions:", error);
+
+          // Fallback: grant admin to developer ID
+          if (session.user.id === "238329746671271936") {
+            setIsAdmin(true);
+            setIsDeveloper(true);
+          }
         }
       }
     };
@@ -317,16 +372,8 @@ export default function TournamentDetailsPage() {
 
   useEffect(() => {
     if (tournament) {
-      console.log("Tournament data:", tournament);
       if (tournament.registeredTeams && tournament.registeredTeams.length > 0) {
         const team = tournament.registeredTeams[0];
-        console.log("Team complete object:", JSON.stringify(team));
-        console.log(
-          "Team members type:",
-          Array.isArray(team.members) ? "Array" : typeof team.members
-        );
-        console.log("Captain object:", team.captain);
-        console.log("Team ELO type:", typeof team.teamElo);
       }
     }
   }, [tournament]);
@@ -346,11 +393,14 @@ export default function TournamentDetailsPage() {
     setRegisterError(null);
 
     try {
-      const response = await fetch(`/api/tournaments/${params.id}/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teamId: selectedTeamId }),
-      });
+      const response = await fetch(
+        `/api/tournaments/${params?.id || ""}/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ teamId: selectedTeamId }),
+        }
+      );
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -375,37 +425,50 @@ export default function TournamentDetailsPage() {
   };
 
   const unregisterTeam = async (teamId: string) => {
+    if (!tournament || !teamId) return;
+
+    setUnregistering(true);
+    setUnregisterError(null);
+
     try {
-      setUnregistering(true);
-      setUnregisterError(null);
+      console.log(
+        `Unregistering team ${teamId} from tournament ${tournament._id}`
+      );
 
-      const response = await fetch(`/api/tournaments/${params.id}/unregister`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ teamId }),
-      });
+      const response = await fetch(
+        `/api/tournaments/${tournament._id}/unregister`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ teamId }),
+        }
+      );
 
-      if (response.ok) {
-        setIsUnregisterDialogOpen(false);
-        toast({
-          title: "Team unregistered",
-          description: "Your team has been unregistered from the tournament.",
-        });
+      const data = await response.json();
 
-        // Force a full refresh of tournament data
-        await fetchTournament();
-
-        // Force reload the page to ensure all state is reset
-        window.location.reload();
-      } else {
-        const data = await response.json();
-        setUnregisterError(data.error || "Failed to unregister team");
+      if (!response.ok) {
+        console.error("Error response:", data);
+        throw new Error(data.error || "Failed to unregister team");
       }
+
+      // Update the tournament data
+      await fetchTournament();
+
+      // Close the dialog if it was open
+      setIsUnregisterDialogOpen(false);
+
+      // Show success toast
+      toast({
+        title: "Team unregistered",
+        description: "Your team has been unregistered from the tournament.",
+      });
     } catch (error) {
       console.error("Error unregistering team:", error);
-      setUnregisterError("An unexpected error occurred");
+      setUnregisterError(
+        error instanceof Error ? error.message : "Failed to unregister team"
+      );
     } finally {
       setUnregistering(false);
     }
@@ -468,9 +531,12 @@ export default function TournamentDetailsPage() {
 
   const handleClearTournament = async () => {
     try {
-      const response = await fetch(`/api/tournaments/${params.id}/clear`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        `/api/tournaments/${params?.id || ""}/clear`,
+        {
+          method: "POST",
+        }
+      );
 
       const responseData = await response.json();
 
@@ -515,33 +581,44 @@ export default function TournamentDetailsPage() {
   };
 
   const handleLaunchTournament = async () => {
-    if (!isAdmin) return;
+    if (!tournament) return;
+
+    setLaunching(true);
 
     try {
-      setLaunching(true);
-      const response = await fetch(`/api/tournaments/${params.id}/launch`, {
-        method: "POST",
-      });
+      const response = await fetch(
+        `/api/tournaments/${tournament._id}/launch`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            // Set the first round matches to live status
+            updateMatchStatus: true,
+          }),
+        }
+      );
 
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to launch tournament");
       }
 
+      // Refresh tournament data
+      await fetchTournament();
+
       toast({
         title: "Tournament Launched",
-        description: "The tournament has been successfully launched",
+        description:
+          "The tournament has been successfully launched and first round matches are now live.",
       });
-
-      await fetchTournament();
     } catch (error) {
       console.error("Error launching tournament:", error);
       toast({
         title: "Error",
         description:
-          error instanceof Error
-            ? error.message
-            : "Failed to launch tournament",
+          error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {
@@ -587,12 +664,51 @@ export default function TournamentDetailsPage() {
     }
   };
 
-  const handleEditSuccess = (updatedTournament: Tournament) => {
-    setTournament(updatedTournament);
+  const handleEditSuccess = async () => {
+    // Fetch the updated tournament data
+    await fetchTournament();
+
+    // Show success toast
     toast({
-      title: "Success",
-      description: "Tournament updated successfully",
+      title: "Tournament Updated",
+      description: "The tournament has been successfully updated.",
     });
+  };
+
+  const handleResetTournament = async () => {
+    if (!tournament) return;
+
+    setResetting(true);
+
+    try {
+      const response = await fetch(`/api/tournaments/${tournament._id}/reset`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to reset tournament");
+      }
+
+      // Refresh tournament data
+      await fetchTournament();
+
+      toast({
+        title: "Tournament Reset",
+        description:
+          "The tournament has been reset to upcoming status and all matches have been reset.",
+      });
+    } catch (error) {
+      console.error("Error resetting tournament:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setResetting(false);
+    }
   };
 
   if (loading) {
@@ -652,58 +768,113 @@ export default function TournamentDetailsPage() {
     <div className="min-h-screen">
       <div className="container px-4 py-6 mx-auto">
         {/* Tournament Header */}
-        <div className="flex items-center mb-2">
-          <Button variant="ghost" size="sm" asChild className="mr-2">
-            <Link href="/tournaments">
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Back
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">{tournament.name}</h1>
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditDialogOpen(true)}
-              className="ml-auto"
-            >
-              Edit Tournament
-            </Button>
-          )}
+        <div className="mb-6">
+          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto p-0"
+                  onClick={() => router.push("/tournaments/overview")}
+                >
+                  <ChevronLeft className="w-5 h-5 mr-1" />
+                  <span className="text-sm">Back</span>
+                </Button>
+
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="ml-auto sm:ml-0"
+                    onClick={() => setIsEditDialogOpen(true)}
+                  >
+                    Edit Tournament
+                  </Button>
+                )}
+              </div>
+
+              <h1 className="text-2xl font-bold sm:text-3xl">
+                {tournament.name}
+              </h1>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
+              <div className="flex items-center text-sm">
+                <Calendar className="w-4 h-4 mr-1" />
+                {format(new Date(tournament.startDate), "MMMM d, yyyy")}
+              </div>
+
+              <div className="flex items-center text-sm">
+                <Trophy className="w-4 h-4 mr-1" />
+                {tournament.format === "single_elimination"
+                  ? "Single Elimination"
+                  : "Double Elimination"}
+              </div>
+
+              <div className="flex items-center text-sm">
+                <Users className="w-4 h-4 mr-1" />
+                {tournament.teamSize} vs {tournament.teamSize}
+              </div>
+
+              <Badge
+                variant={
+                  tournament.status === "upcoming"
+                    ? "outline"
+                    : tournament.status === "active"
+                    ? "default"
+                    : "secondary"
+                }
+                className={
+                  tournament.status === "upcoming"
+                    ? "bg-blue-900/20 text-blue-400 hover:bg-blue-900/20"
+                    : tournament.status === "active"
+                    ? "bg-green-900/20 text-green-400 hover:bg-green-900/20"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-800"
+                }
+              >
+                {tournament.status === "upcoming"
+                  ? "Upcoming"
+                  : tournament.status === "active"
+                  ? "Active"
+                  : "Completed"}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Registration Progress */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-muted-foreground">
+                Registration: {tournament.registeredTeams.length}/
+                {tournament.maxTeams || 8} teams
+              </span>
+              {tournament.registrationDeadline && (
+                <span className="text-sm text-muted-foreground">
+                  <Clock className="inline w-4 h-4 mr-1" />
+                  Deadline:{" "}
+                  {format(
+                    new Date(tournament.registrationDeadline),
+                    "MMM d, yyyy"
+                  )}
+                </span>
+              )}
+            </div>
+            <Progress
+              value={
+                (tournament.registeredTeams.length /
+                  (tournament.maxTeams || 8)) *
+                100
+              }
+              className="h-2"
+            />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-6">
-          <Badge variant="outline" className="flex items-center gap-1 text-sm">
-            <Calendar className="w-3.5 h-3.5" />
-            {format(new Date(tournament.startDate), "MMMM d, yyyy")}
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1 text-sm">
-            <Trophy className="w-3.5 h-3.5" />
-            {tournament.format === "single_elimination"
-              ? "Single Elimination"
-              : "Double Elimination"}
-          </Badge>
-          <Badge variant="outline" className="flex items-center gap-1 text-sm">
-            <Users className="w-3.5 h-3.5" />
-            {tournament.registeredTeams.length} Teams
-          </Badge>
-          <Badge
-            variant={
-              tournament.status === "upcoming"
-                ? "secondary"
-                : tournament.status === "active"
-                ? "default"
-                : "outline"
-            }
-            className="text-sm"
-          >
-            {tournament.status === "upcoming"
-              ? "Upcoming"
-              : tournament.status === "active"
-              ? "In Progress"
-              : "Completed"}
-          </Badge>
-        </div>
+        {/* Add this inside your Tournament component before the tabs section */}
+        {tournament.status === "completed" && tournament.winner && (
+          <TournamentWinnerBanner winner={tournament.winner} />
+        )}
 
         {/* Tabs Navigation */}
         <Tabs
@@ -823,177 +994,143 @@ export default function TournamentDetailsPage() {
           </TabsContent>
 
           {/* Teams Content */}
-          <TabsContent value="teams">
-            <div className="mt-2 space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold">
-                  Registered Teams
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    {tournament.registeredTeams.length}/
-                    {tournament.maxTeams || 8} Teams Registered
-                  </span>
-                </h2>
+          <TabsContent value="teams" className="pt-4">
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">
+                    Registered Teams
+                    <Badge variant="outline" className="ml-2">
+                      {tournament.registeredTeams.length}/
+                      {tournament.maxTeams || 8} Teams
+                    </Badge>
+                  </h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Teams that have registered for this tournament
+                  </p>
+                </div>
 
-                {/* Registration actions */}
-                {session?.user && tournament.status === "upcoming" && (
-                  <div className="flex gap-2">
-                    {isTeamRegistered(selectedTeamId) ? (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => setIsUnregisterDialogOpen(true)}
-                        disabled={unregistering}
-                      >
-                        {unregistering ? "Unregistering..." : "Unregister Team"}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setIsRegisterDialogOpen(true)}
-                        disabled={
-                          registering ||
-                          tournament.registeredTeams.length >=
-                            (tournament.maxTeams || 8)
-                        }
-                      >
-                        {registering ? "Registering..." : "Register Team"}
-                      </Button>
-                    )}
-                  </div>
+                {tournament.status === "upcoming" && session && (
+                  <Button
+                    onClick={() => setIsRegisterDialogOpen(true)}
+                    disabled={
+                      tournament.registeredTeams.length >=
+                        (tournament.maxTeams || 8) ||
+                      userTeams.length === 0 ||
+                      userTeams.every((team) => isTeamRegistered(team._id))
+                    }
+                    className="mt-4 sm:mt-0"
+                  >
+                    Register Team
+                  </Button>
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {tournament.registeredTeams.map((team, index) => (
-                  <Card
-                    key={team._id}
-                    className="flex flex-col overflow-hidden"
-                  >
-                    <CardContent className="flex-1 pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <h4 className="flex items-center font-semibold">
-                            <span className="mr-2 bg-muted px-1.5 py-0.5 rounded-md text-xs">
-                              #{index + 1}
-                            </span>
-                            {team.name}
-                            {team.tag && (
-                              <span className="ml-1 text-muted-foreground">
+              {/* Teams Grid - Responsive for mobile */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {tournament.registeredTeams.map((team) => (
+                  <Card key={team._id} className="overflow-hidden">
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Badge
+                            variant="outline"
+                            className="h-6 px-2 font-mono"
+                          >
+                            #
+                            {tournament.registeredTeams.findIndex(
+                              (t) => t._id === team._id
+                            ) + 1}
+                          </Badge>
+                          <div>
+                            <h3 className="font-semibold">
+                              {team.name}{" "}
+                              <span className="text-sm text-muted-foreground">
                                 [{team.tag}]
                               </span>
-                            )}
-                          </h4>
-                        </div>
-                        {team.teamElo !== undefined && (
-                          <Badge variant="secondary">
-                            ELO: {team.teamElo.toLocaleString()}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="space-y-3">
-                        {/* Captain Section with fallbacks */}
-                        <div className="space-y-1">
-                          <p className="text-sm font-medium">Team Captain:</p>
-                          {team.captain ? (
-                            <div className="flex items-center space-x-2">
-                              <MemberAvatar
-                                profilePicture={
-                                  team.captain.discordProfilePicture
-                                }
-                                username={team.captain.discordUsername}
-                                size={6}
-                              />
-                              <span>
-                                {team.captain.discordNickname ||
-                                  team.captain.discordUsername ||
-                                  "Unknown"}
-                                {team.captain.elo !== undefined && (
-                                  <span className="ml-1 text-xs text-muted-foreground"></span>
-                                )}
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">
-                              No captain information
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Team Members section with row layout and tooltips */}
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium">Team Members</p>
-                          {Array.isArray(team.members) &&
-                          team.members.length > 0 ? (
-                            <div>
-                              {/* Avatars in a row */}
-                              <div className="flex flex-wrap gap-2 mb-1">
-                                {team.members.map((member) => (
-                                  <TooltipProvider key={member.discordId}>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div className="relative">
-                                          <MemberAvatar
-                                            profilePicture={
-                                              member.discordProfilePicture
-                                            }
-                                            username={member.discordUsername}
-                                            size={8}
-                                          />
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent
-                                        side="bottom"
-                                        className="text-xs"
-                                      >
-                                        <p className="font-medium">
-                                          {member.discordNickname ||
-                                            member.discordUsername ||
-                                            "Unknown"}
-                                        </p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                ))}
+                            </h3>
+                            {team.teamElo && (
+                              <div className="text-xs text-muted-foreground">
+                                ELO: {team.teamElo.toLocaleString()}
                               </div>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">
-                              No team members found
-                            </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Action buttons - aligned to the right */}
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              router.push(`/tournaments/teams/${team._id}`)
+                            }
+                          >
+                            View Team
+                          </Button>
+                          {(isAdmin ||
+                            (session?.user?.id === team.captain?.discordId &&
+                              tournament.status === "upcoming")) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-600 hover:bg-red-100/10"
+                              onClick={() => unregisterTeam(team._id)}
+                              disabled={unregistering}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </div>
-                    </CardContent>
 
-                    <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/20">
-                      <span className="text-xs text-muted-foreground">
-                        {format(
-                          new Date(team.createdAt || Date.now()),
-                          "MMM d, yyyy"
-                        )}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/tournaments/teams/${team._id}`}>
-                            View Team
-                          </Link>
-                        </Button>
+                      {/* Team members section - more compact on mobile */}
+                      <div className="mt-4">
+                        <div className="flex flex-col space-y-3">
+                          <div className="flex items-center space-x-2">
+                            <MemberAvatar
+                              profilePicture={
+                                team.captain?.discordProfilePicture
+                              }
+                              username={team.captain?.discordUsername}
+                              size={8}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {team.captain?.discordNickname ||
+                                  team.captain?.discordUsername}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Team Captain
+                              </p>
+                            </div>
+                          </div>
 
-                        {/* Admin remove button */}
-                        {(team.captain?.discordId === session?.user?.id ||
-                          isAdmin) && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-500 hover:text-red-700 dark:hover:bg-red-900/20"
-                            onClick={() => unregisterTeam(team._id)}
-                            disabled={unregistering}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
+                          <div className="flex flex-wrap gap-2">
+                            {team.members
+                              ?.filter(
+                                (member) =>
+                                  member.discordId !== team.captain?.discordId
+                              )
+                              .map((member) => (
+                                <div
+                                  key={member.discordId}
+                                  title={
+                                    member.discordNickname ||
+                                    member.discordUsername
+                                  }
+                                >
+                                  <MemberAvatar
+                                    profilePicture={
+                                      member.discordProfilePicture
+                                    }
+                                    username={member.discordUsername}
+                                    size={8}
+                                  />
+                                </div>
+                              ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -1010,7 +1147,7 @@ export default function TournamentDetailsPage() {
                       key={`empty-${index}`}
                       className="bg-transparent border border-dashed"
                     >
-                      <div className="flex flex-col items-center justify-center p-6 h-full min-h-[200px] text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center p-6 h-full min-h-[150px] text-muted-foreground">
                         <Users className="w-8 h-8 mb-2 opacity-40" />
                         <p className="text-center">Waiting for team...</p>
                       </div>
@@ -1021,126 +1158,152 @@ export default function TournamentDetailsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Admin Controls */}
-        {tournament?.status === "upcoming" && isAdmin && (
-          <div className="flex flex-wrap items-center gap-2 mb-4">
-            {/* Admin control buttons */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={isSeeded ? handleUndoSeeding : handlePreseed}
-                    disabled={
-                      (isSeeded ? unseeding : seeding) ||
-                      tournament.status !== "upcoming" ||
-                      (!isSeeded &&
-                        tournament.registeredTeams.length !==
-                          (tournament.maxTeams || 8))
-                    }
-                    className="flex items-center gap-1"
-                  >
-                    {isSeeded ? (
-                      unseeding ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" /> Removing
-                          Seeding...
-                        </>
+        {/* Admin Controls Section */}
+        {isAdmin && tournament && (
+          <div className="p-4 mt-8 border rounded-lg bg-slate-900">
+            <h3 className="mb-4 text-lg font-semibold">Admin Controls</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              {tournament.status === "upcoming" && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={isSeeded ? handleUndoSeeding : handlePreseed}
+                        disabled={
+                          (isSeeded ? unseeding : seeding) ||
+                          tournament.status !== "upcoming" ||
+                          (!isSeeded &&
+                            tournament.registeredTeams.length !==
+                              (tournament.maxTeams || 8))
+                        }
+                        className="flex items-center gap-1"
+                      >
+                        {isSeeded ? (
+                          unseeding ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                              Removing Seeding...
+                            </>
+                          ) : (
+                            <>
+                              <RotateCcw className="w-4 h-4" /> Undo Seeding
+                            </>
+                          )
+                        ) : seeding ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />{" "}
+                            Pre-seeding...
+                          </>
+                        ) : (
+                          <>
+                            <Shuffle className="w-4 h-4" /> Pre-seed Teams
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      {isSeeded ? (
+                        <p>Reset the tournament bracket to unseeded state</p>
                       ) : (
-                        <>
-                          <RotateCcw className="w-4 h-4" /> Undo Seeding
-                        </>
-                      )
-                    ) : seeding ? (
+                        tournament.registeredTeams.length !==
+                          (tournament.maxTeams || 8) && (
+                          <p>
+                            ({tournament.registeredTeams.length}/
+                            {tournament.maxTeams || 8} teams required for
+                            pre-seeding)
+                          </p>
+                        )
+                      )}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
+              {/* Testing buttons - only visible to developer */}
+              {isDeveloper && (
+                <>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-2"
+                          onClick={() => handleFillTournament()}
+                        >
+                          <Users className="w-4 h-4" />
+                          Fill Tournament
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Fill tournament with random teams (testing)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-2 text-red-500 hover:text-red-600"
+                          onClick={() => handleClearTournament()}
+                        >
+                          <X className="w-4 h-4" />
+                          Clear Teams
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Remove all teams from tournament (testing)</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </>
+              )}
+
+              {/* Launch tournament button - visible to all admins */}
+              {tournament.status === "upcoming" &&
+                tournament.registeredTeams.length === tournament.maxTeams && (
+                  <Button
+                    variant="default"
+                    className="text-white bg-green-600 hover:bg-green-700"
+                    onClick={handleLaunchTournament}
+                    disabled={launching}
+                  >
+                    {launching ? (
                       <>
-                        <Loader2 className="w-4 h-4 animate-spin" />{" "}
-                        Pre-seeding...
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Launching...
                       </>
                     ) : (
                       <>
-                        <Shuffle className="w-4 h-4" /> Pre-seed Teams
+                        <Play className="w-4 h-4 mr-2" />
+                        Launch Tournament
                       </>
                     )}
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSeeded ? (
-                    <p>Reset the tournament bracket to unseeded state</p>
-                  ) : (
-                    tournament.registeredTeams.length !==
-                      (tournament.maxTeams || 8) && (
-                      <p>
-                        ({tournament.registeredTeams.length}/
-                        {tournament.maxTeams || 8} teams required for
-                        pre-seeding)
-                      </p>
-                    )
-                  )}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+                )}
 
-            {/* Add testing buttons */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2"
-                    onClick={() => handleFillTournament()}
-                  >
-                    <Users className="w-4 h-4" />
-                    Fill Tournament
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Fill tournament with random teams (testing)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center gap-2 text-red-500 hover:text-red-600"
-                    onClick={() => handleClearTournament()}
-                  >
-                    <X className="w-4 h-4" />
-                    Clear Teams
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Remove all teams from tournament (testing)</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-
-            {isAdmin &&
-              tournament?.status === "upcoming" &&
-              tournament.registeredTeams.length === tournament.maxTeams && (
+              {tournament.status === "active" && isAdmin && (
                 <Button
-                  variant="default"
-                  size="sm"
-                  className="text-white bg-green-600 hover:bg-green-700"
-                  onClick={handleLaunchTournament}
-                  disabled={launching}
+                  variant="outline"
+                  className="flex items-center gap-2 text-yellow-500 hover:text-yellow-600"
+                  onClick={handleResetTournament}
+                  disabled={resetting}
                 >
-                  {launching ? (
+                  {resetting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Launching...
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Resetting...
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 mr-2" />
-                      Launch Tournament
+                      <RotateCcw className="w-4 h-4" />
+                      Reset Tournament
                     </>
                   )}
                 </Button>
               )}
+            </div>
           </div>
         )}
 

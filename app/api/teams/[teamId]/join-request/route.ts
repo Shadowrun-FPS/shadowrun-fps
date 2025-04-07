@@ -61,13 +61,21 @@ export async function POST(
       );
     }
 
-    // Create the join request
+    // Get player data to ensure we have the latest information
+    const player = await db.collection("Players").findOne({
+      discordId: currentUserId,
+    });
+
+    // Create the join request with player reference
     await db.collection("TeamJoinRequests").insertOne({
       teamId: teamId,
       teamName: team.name,
       userId: currentUserId,
       userName: currentUserName,
       userImage: currentUserImage,
+      userNickname:
+        player?.discordNickname || session.user.nickname || currentUserName,
+      playerId: player?._id ? player._id.toString() : null, // Reference to player document
       status: "pending",
       createdAt: new Date(),
     });

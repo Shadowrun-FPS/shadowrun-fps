@@ -30,6 +30,9 @@ import {
 import { PlayerContextMenu } from "@/components/moderation/player-context-menu";
 import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 import { TeamCard } from "@/components/match/team-card";
+import Link from "next/link";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { UserCircle } from "lucide-react";
 
 interface MatchPlayer {
   discordId: string;
@@ -64,6 +67,12 @@ interface MapScore {
     discordNickname: string;
   };
   winner?: number;
+  scoresVerified?: boolean;
+  scoresMismatch?: boolean;
+  team1SubmittedByTeam1Score?: number | null;
+  team2SubmittedByTeam1Score?: number | null;
+  team1SubmittedByTeam2Score?: number | null;
+  team2SubmittedByTeam2Score?: number | null;
 }
 
 interface Match {
@@ -433,6 +442,30 @@ export default function MatchDetailPage() {
     };
   }, [params.matchId, session?.user]);
 
+  // Add this helper function here, inside the component
+  const canSubmitMapScore = (mapIndex: number) => {
+    if (!match || !match.mapScores) return mapIndex === 0;
+
+    // First map can always be scored
+    if (mapIndex === 0) return true;
+
+    // For subsequent maps, check if previous maps have verified scores
+    for (let i = 0; i < mapIndex; i++) {
+      const previousMapScore = match.mapScores[i];
+      if (!previousMapScore || !previousMapScore.scoresVerified) {
+        // Check if both teams have submitted scores (alternative to verified)
+        if (
+          !previousMapScore.submittedByTeam1 ||
+          !previousMapScore.submittedByTeam2
+        ) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center p-8">Loading match details...</div>
@@ -521,7 +554,10 @@ export default function MatchDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-400">Launched By</p>
+                  <p className="text-sm text-gray-400">
+                    without changing any designs, any layouts, or any
+                    functionality, can you fix these build errors?
+                  </p>
                   <p className="font-medium text-white">
                     {match.createdBy.discordNickname}
                   </p>
@@ -857,10 +893,19 @@ export default function MatchDetailPage() {
                             `submittedByTeam${userTeam}`
                           ] && (
                             <Button
-                              className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                              variant="outline"
+                              className="w-full mt-2"
                               onClick={() => handleOpenScoreDialog(index)}
+                              disabled={
+                                !canSubmitMapScore(index) ||
+                                match.status === "completed"
+                              }
                             >
-                              Submit Score
+                              {match.status === "completed"
+                                ? "Match Completed"
+                                : canSubmitMapScore(index)
+                                ? "Submit Score"
+                                : "Score Previous Maps First"}
                             </Button>
                           )}
 

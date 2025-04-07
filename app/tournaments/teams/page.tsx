@@ -123,17 +123,30 @@ export default function TeamsPage() {
     try {
       setLoading(true);
       const response = await fetch("/api/teams");
-      if (!response.ok) throw new Error("Failed to fetch teams");
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch teams: ${response.statusText}`);
+      }
+
       const data = await response.json();
 
-      // Make sure we're using the actual teamElo value from the database
-      setTeams(data);
+      // Ensure data is an array
+      const teamsArray = Array.isArray(data) ? data : [];
 
-      // Find user's team
-      const userTeam = data.find((team: Team) =>
-        team.members.some((member) => member.discordId === session?.user?.id)
-      );
-      setUserTeam(userTeam || null);
+      // Set teams directly if it's already an array
+      setTeams(teamsArray);
+
+      // Find user's team if logged in
+      if (session?.user?.id) {
+        const userTeam = teamsArray.find(
+          (team) =>
+            team.members?.some(
+              (member: { discordId: string }) =>
+                member.discordId === session.user.id
+            ) || team.captain?.discordId === session.user.id
+        );
+        setUserTeam(userTeam || null);
+      }
 
       // Fetch tournaments
       try {
@@ -164,7 +177,7 @@ export default function TeamsPage() {
             });
 
             // Enhance team objects with tournament data
-            const enhancedTeams = data.map((team: Team) => ({
+            const enhancedTeams = teamsArray.map((team: Team) => ({
               ...team,
               tournaments: teamTournamentMap.get(team._id.toString()) || [],
             }));
@@ -178,15 +191,13 @@ export default function TeamsPage() {
       }
     } catch (error) {
       console.error("Error fetching teams:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load teams",
-        variant: "destructive",
-      });
+      // Set empty arrays as fallback
+      setTeams([]);
+      setUserTeam(null);
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id]);
+  }, [session]);
 
   useEffect(() => {
     fetchTeams();
@@ -260,6 +271,20 @@ export default function TeamsPage() {
 
   const handleChallenge = (teamId: string) => {
     // Implementation of handleChallenge function
+  };
+
+  const getTeamRankings = (teams: string | any[]) => {
+    if (!Array.isArray(teams) || teams.length === 0) {
+      return [];
+    }
+
+    // Make a copy of the array before sorting
+    return [...teams]
+      .sort((a, b) => (b.teamElo || 0) - (a.teamElo || 0))
+      .map((team, index) => ({
+        ...team,
+        rank: index + 1,
+      }));
   };
 
   return (
