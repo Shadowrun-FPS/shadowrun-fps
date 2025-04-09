@@ -49,11 +49,9 @@ export async function POST(
 
     // Remove the user from the team using a simple type assertion
     // This is the most direct way to fix the type error
-    await db
-      .collection("Teams")
-      .updateOne({ _id: new ObjectId(teamId) }, {
-        $pull: { members: { discordId: userId } },
-      } as any);
+    await db.collection("Teams").updateOne({ _id: new ObjectId(teamId) }, {
+      $pull: { members: { discordId: userId } },
+    } as any);
 
     // Create a notification for the team captain
     await db.collection("Notifications").insertOne({
@@ -72,6 +70,37 @@ export async function POST(
         memberId: userId,
       },
     });
+
+    // Calculate and update team ELO after member leaves
+    // Get updated team data
+    const updatedTeam = await db.collection("Teams").findOne({
+      _id: new ObjectId(teamId),
+    });
+
+    if (updatedTeam && updatedTeam.members.length > 0) {
+      // Get all remaining member IDs
+      const memberIds = updatedTeam.members.map((m: any) => m.discordId);
+
+      // Get player data for all remaining members
+      const teamPlayers = await db
+        .collection("Players")
+        .find({ discordId: { $in: memberIds } })
+        .toArray();
+
+      // Calculate total ELO (sum of all members)
+      const totalElo = teamPlayers.reduce(
+        (sum: number, player: any) => sum + (player.elo || 1000),
+        0
+      );
+
+      // Update team ELO with the total
+      await db
+        .collection("Teams")
+        .updateOne(
+          { _id: new ObjectId(teamId) },
+          { $set: { teamElo: totalElo } }
+        );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

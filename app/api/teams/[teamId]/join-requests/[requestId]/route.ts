@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 // Handle accepting/rejecting join requests
 export async function POST(
@@ -98,6 +99,16 @@ export async function POST(
           teamName: team.name,
         },
       });
+
+      // Recalculate the team's ELO
+      const updatedElo = await recalculateTeamElo(teamId);
+
+      return NextResponse.json({
+        success: true,
+        action: action,
+        message: "Join request accepted",
+        teamElo: updatedElo,
+      });
     } else {
       // Create notification for the rejected user
       await db.collection("Notifications").insertOne({
@@ -112,14 +123,13 @@ export async function POST(
           teamName: team.name,
         },
       });
-    }
 
-    return NextResponse.json({
-      success: true,
-      action: action,
-      message:
-        action === "accept" ? "Join request accepted" : "Join request rejected",
-    });
+      return NextResponse.json({
+        success: true,
+        action: action,
+        message: "Join request rejected",
+      });
+    }
   } catch (error) {
     console.error(`Error ${req.method} join request:`, error);
     return NextResponse.json(

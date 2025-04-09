@@ -6,6 +6,7 @@ import {
   updateTeamMember,
 } from "@/lib/team-helpers";
 import clientPromise from "@/lib/mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 interface TeamMember {
   discordId: string;
@@ -47,9 +48,13 @@ export async function DELETE(
     }
 
     // After removing member, update team ELO
-    await updateTeamElo(params.teamId);
+    const updatedElo = await recalculateTeamElo(params.teamId);
 
-    return NextResponse.json(team);
+    return NextResponse.json({
+      success: true,
+      message: "Member removed",
+      teamElo: updatedElo,
+    });
   } catch (error) {
     console.error("Failed to remove team member:", error);
     return NextResponse.json(

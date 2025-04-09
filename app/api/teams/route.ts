@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { MongoTeam } from "@/types/mongodb";
+import { containsProfanity } from "@/lib/profanity-filter";
 
 interface TeamMember {
   discordId: string;
@@ -75,6 +76,28 @@ export async function POST(req: NextRequest) {
 
     const { name, description, tag, captain, captainProfilePicture } =
       await req.json();
+
+    // Check for profanity in team name, tag, and description
+    if (containsProfanity(name)) {
+      return NextResponse.json(
+        { error: "Team name contains inappropriate language" },
+        { status: 400 }
+      );
+    }
+
+    if (containsProfanity(tag)) {
+      return NextResponse.json(
+        { error: "Team tag contains inappropriate language" },
+        { status: 400 }
+      );
+    }
+
+    if (containsProfanity(description)) {
+      return NextResponse.json(
+        { error: "Team description contains inappropriate language" },
+        { status: 400 }
+      );
+    }
 
     // Validation
     if (!name || !tag) {

@@ -38,7 +38,7 @@ export function TeamCard({
   wins = 0,
   losses = 0,
   onClick,
-  description = "",
+  description,
   userTeam,
   tournamentWins = 0,
   isUserTeam = false,

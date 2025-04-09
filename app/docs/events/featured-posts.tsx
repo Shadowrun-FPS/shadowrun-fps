@@ -1,69 +1,80 @@
-import clientPromise from "@/lib/mongodb";
-import Image from "next/image";
-import { Post } from "@/types/types";
-import PostCard from "./post-card";
+import { PostCard } from "@/components/posts/post-card";
+import React from "react";
 
-function formatDate(dateStr: string) {
-  const [month, day, year] = dateStr.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+// Define the Post interface to match your data structure
+interface Post {
+  _id: string;
+  title: string;
+  content?: string;
+  description?: string;
+  imageUrl?: string;
+  slug?: string;
+  type?: string;
+  date?: string;
+  author?: string;
+  createdAt?: string;
+  // Add any other properties your posts have
 }
 
-export async function getFeaturedPosts() {
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-  const posts = await db
-    .collection("Posts")
-    .find({ published: true })
-    .toArray();
+// Remove async/await from the component
+export default function FeaturedPosts() {
+  // Use React's useEffect for client-side data fetching
+  const [posts, setPosts] = React.useState<Post[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // Sort by date manually since we have string dates
-  posts.sort((a, b) => {
-    const [monthA, dayA, yearA] = a.datePublished.split("-").map(Number);
-    const [monthB, dayB, yearB] = b.datePublished.split("-").map(Number);
+  React.useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const baseUrl = window.location.origin;
+        const res = await fetch(`${baseUrl}/api/posts`);
 
-    // Create Date objects for comparison
-    const dateA = new Date(yearA, monthA - 1, dayA);
-    const dateB = new Date(yearB, monthB - 1, dayB);
+        if (!res.ok) {
+          throw new Error("Failed to fetch posts");
+        }
 
-    return dateB.getTime() - dateA.getTime(); // Newest first
-  });
+        const data = await res.json();
+        setPosts(data);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+        setError(
+          err instanceof Error ? err.message : "An unknown error occurred"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Format the dates for display
-  return posts.map((post) => ({
-    ...post,
-    datePublished: formatDate(post.datePublished),
-  })) as unknown as Post[];
-}
+    fetchPosts();
+  }, []);
 
-export default async function FeaturedPosts() {
-  const posts = await getFeaturedPosts();
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-96 bg-muted animate-pulse rounded-md"></div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-lg text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-[1400px] mx-auto">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {posts && posts.length > 0 ? (
-          posts.map((post, index) => (
-            <div
-              key={index}
-              className="animate-in fade-in slide-in-from-bottom duration-500"
-              style={{ animationDelay: `${index * 150}ms` }}
-            >
-              <PostCard post={post} />
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12">
-            <p className="text-lg text-muted-foreground">
-              No featured posts available.
-            </p>
-          </div>
-        )}
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {posts && posts.length > 0 ? (
+        posts.map((post) => <PostCard key={post._id} post={post} />)
+      ) : (
+        <div className="col-span-full text-center py-12">
+          <p className="text-lg text-muted-foreground">No posts available.</p>
+        </div>
+      )}
     </div>
   );
 }
