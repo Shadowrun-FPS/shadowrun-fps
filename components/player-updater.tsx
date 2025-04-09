@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
 /**
- * Component that silently updates player data when session changes
+ * Component that updates player data periodically, not just on login
  */
 export function PlayerUpdater() {
   const { data: session } = useSession();
   const lastUpdateRef = useRef<string | null>(null);
   const updateTimeRef = useRef<number>(0);
   const [guildNickname, setGuildNickname] = useState<string | null>(null);
+  const pathname = usePathname();
 
   // Fetch guild nickname if available
   useEffect(() => {
@@ -34,16 +36,24 @@ export function PlayerUpdater() {
     fetchGuildNickname();
   }, [session?.user?.id]);
 
+  // Main update effect
   useEffect(() => {
     if (!session?.user) return;
 
-    // Check if we've already updated this user recently (last 5 minutes)
     const currentTime = Date.now();
     const userId = session.user.id;
     const timeSinceLastUpdate = currentTime - updateTimeRef.current;
 
-    // Only update if this is a different user or it's been more than 5 minutes
-    if (lastUpdateRef.current !== userId || timeSinceLastUpdate > 300000) {
+    // Update on these conditions:
+    // 1. Different user logged in
+    // 2. It's been more than 30 minutes since last update (reduced from 5 minutes)
+    // 3. User navigated to a new page AND it's been at least 5 minutes
+    const shouldUpdate =
+      lastUpdateRef.current !== userId ||
+      timeSinceLastUpdate > 1800000 || // 30 minutes
+      (timeSinceLastUpdate > 300000 && pathname); // 5 minutes + navigation
+
+    if (shouldUpdate) {
       const updatePlayerData = async () => {
         try {
           // Update tracking refs before the API call
@@ -60,15 +70,16 @@ export function PlayerUpdater() {
               // Include the nickname fallback hierarchy
               nickname:
                 guildNickname || session.user.nickname || session.user.name,
-              // This ensures we send the global nickname as a fallback
-              // The API will use: guildNickname → user.nickname → user.name
+              // Always update team member info
+              updateTeamInfo: true,
+              // Force refresh from Discord API (use sparingly due to rate limits)
+              forceDiscordRefresh: timeSinceLastUpdate > 1800000,
             }),
           });
 
-          const data = await response.json();
-
           if (process.env.NODE_ENV === "development") {
-            // Console log removed to reduce noise
+            const data = await response.json();
+            console.log("Player data refreshed:", data);
           }
         } catch (error) {
           console.error("Error refreshing player data:", error);
@@ -77,11 +88,10 @@ export function PlayerUpdater() {
 
       updatePlayerData();
     }
-    // Add eslint disable comment to suppress the warning without changing functionality
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, guildNickname]);
+    // Include pathname in dependencies to trigger updates on navigation
+  }, [session?.user?.id, guildNickname, pathname, session?.user]);
 
-  return null; // This component doesn't render anything
+  return null;
 }
 
 // Helper function to extract display name from username (often username has underscores while display name has spaces)

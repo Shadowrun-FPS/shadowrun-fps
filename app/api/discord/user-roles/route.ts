@@ -1,80 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getGuildData } from "@/lib/discord-helpers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user || !session.accessToken) {
-      return NextResponse.json(
-        { error: "Unauthorized or missing access token" },
-        { status: 401 }
-      );
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // For the developer account, return hardcoded admin role without calling Discord API
-    if (session.user.id === "238329746671271936") {
-      // Use nickname from session if available
-      const nickname = session.user.nickname || session.user.name;
+    const userId = session.user.id;
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const guildId = process.env.DISCORD_GUILD_ID;
 
-      return NextResponse.json({
-        roles: ["932585751332421642"], // Admin role ID
-        guildNickname: nickname,
-        isModerator: true,
-        isAdmin: true,
-      });
+    if (!botToken || !guildId) {
+      console.error("Missing Discord bot token or guild ID");
+      return NextResponse.json({ roles: [], guildNickname: null });
     }
 
     try {
-      const guildData = await getGuildData(session.accessToken);
+      // Fetch member data from Discord API
+      const discordResponse = await fetch(
+        `https://discord.com/api/v10/guilds/${guildId}/members/${userId}`,
+        {
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-      if (!guildData) {
-        console.log("No guild data returned for user", session.user.id);
-        // Use nickname from session if available
-        const fallbackName = session.user.nickname || session.user.name;
-
-        return NextResponse.json({
-          roles: [],
-          guildNickname: fallbackName,
-          isModerator: false,
-          isAdmin: false,
-        });
+      if (!discordResponse.ok) {
+        console.error(
+          `Discord API error: ${discordResponse.status} ${discordResponse.statusText}`
+        );
+        return NextResponse.json({ roles: [], guildNickname: null });
       }
 
-      const modRoleIds = [
-        "932585751332421642", // Admin
-        "1095126043918082109", // Founder
-        "1042168064805965864", // Mod
-      ];
+      const memberData = await discordResponse.json();
 
-      // Create a copy of the roles array, ensuring it exists
-      const roles = Array.isArray(guildData.roles) ? [...guildData.roles] : [];
+      // Extract roles and nickname
+      const roles = memberData.roles || [];
+      const guildNickname = memberData.nick || null;
 
-      // Prioritize guild nickname from API, then session nickname
-      const nickname =
-        guildData.nick || session.user.nickname || session.user.name;
-
-      return NextResponse.json({
-        roles: roles,
-        guildNickname: nickname,
-        isModerator: roles.some((roleId) => modRoleIds.includes(roleId)),
-        isAdmin: roles.includes("932585751332421642"),
-      });
-    } catch (error) {
-      console.error("Error in guild data fetching:", error);
-
-      // Fall back to session data if guild data fails
-      const fallbackName = session.user.nickname || session.user.name;
-
-      return NextResponse.json({
-        roles: [],
-        guildNickname: fallbackName,
-        isModerator: session.user.id === "238329746671271936",
-        isAdmin: session.user.id === "238329746671271936",
-      });
+      return NextResponse.json({ roles, guildNickname });
+    } catch (discordError) {
+      console.error("Discord API fetch error:", discordError);
+      return NextResponse.json({ roles: [], guildNickname: null });
     }
   } catch (error) {
     console.error("Error fetching user roles:", error);

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { format, isPast, isFuture, isToday } from "date-fns";
 import {
@@ -46,6 +46,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTournamentDialog } from "@/components/tournaments/create-tournament-dialog";
+import { TournamentCard } from "@/components/tournaments/tournament-card";
+
+// Create these components if they don't exist
+interface EmptyStateProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
+const EmptyState = ({ title, description, icon }: EmptyStateProps) => (
+  <Card className="p-8 text-center">
+    <div className="flex items-center justify-center mx-auto mb-4 rounded-full bg-muted w-14 h-14">
+      {icon}
+    </div>
+    <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+    <p className="mb-4 text-muted-foreground">{description}</p>
+  </Card>
+);
 
 interface Tournament {
   _id: string;
@@ -60,7 +78,8 @@ interface Tournament {
   maxTeams?: number;
 }
 
-export default function TournamentsOverviewPage() {
+// Create a client component that uses useSearchParams
+function TournamentsOverviewContent() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -71,6 +90,9 @@ export default function TournamentsOverviewPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [canCreateTournament, setCanCreateTournament] = useState(false);
+  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
 
   // Wrap fetchTournaments in useCallback to avoid infinite loops
   const fetchTournaments = useCallback(async () => {
@@ -88,14 +110,34 @@ export default function TournamentsOverviewPage() {
       setCanCreateTournament(
         userData.isAdmin ||
           userData.isModerator ||
-          session?.user?.id === "238329746671271936"
+          userData.isDeveloper ||
+          false
       );
+
+      // Determine which tab to show initially
+      const hasActiveTournaments = data.some((t: any) => t.status === "active");
+      const hasUpcomingTournaments = data.some(
+        (t: any) => t.status === "upcoming"
+      );
+
+      // If URL has a tab parameter, use that
+      if (tabParam && ["active", "upcoming", "completed"].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+      // Otherwise, select based on available tournaments
+      else if (hasActiveTournaments) {
+        setActiveTab("active");
+      } else if (hasUpcomingTournaments) {
+        setActiveTab("upcoming");
+      } else {
+        setActiveTab("completed");
+      }
     } catch (error) {
       console.error("Error fetching tournaments:", error);
     } finally {
       setLoading(false);
     }
-  }, [session?.user?.id]);
+  }, [tabParam]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -149,92 +191,27 @@ export default function TournamentsOverviewPage() {
     (t) => t.status === "completed"
   );
 
-  // Tournament card component
-  const TournamentCard = ({ tournament }: { tournament: Tournament }) => {
-    const startDate = new Date(tournament.startDate);
-    const isUpcoming = tournament.status === "upcoming";
-    const isActive = tournament.status === "active";
-    const teamsCount = tournament.registeredTeams?.length || 0;
-    const maxTeams = tournament.maxTeams || 8;
-    const teamsProgress = (teamsCount / maxTeams) * 100;
-
-    return (
-      <Card className="overflow-hidden transition-all border-l-4 hover:shadow-md border-l-primary/30 hover:border-l-primary">
-        <CardHeader className="pb-2">
-          <div className="flex justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={
-                    isUpcoming ? "secondary" : isActive ? "default" : "outline"
-                  }
-                >
-                  {isUpcoming ? "Upcoming" : isActive ? "Active" : "Completed"}
-                </Badge>
-                <Badge variant="outline" className="font-normal">
-                  {tournament.format === "single_elimination"
-                    ? "Single Elimination"
-                    : "Double Elimination"}
-                </Badge>
-              </div>
-              <CardTitle className="mt-2 text-xl">{tournament.name}</CardTitle>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3">
-            <div className="flex items-center text-sm">
-              <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-              <span>
-                {format(startDate, "MMMM d, yyyy")} at{" "}
-                {format(startDate, "h:mm a")}
-              </span>
-            </div>
-            <div className="flex items-center text-sm">
-              <Users className="w-4 h-4 mr-2 text-muted-foreground" />
-              <span>
-                {tournament.teamSize}v{tournament.teamSize} • {teamsCount}/
-                {maxTeams} Teams
-              </span>
-            </div>
-            {tournament.description && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                {tournament.description.length > 120
-                  ? `${tournament.description.substring(0, 120)}...`
-                  : tournament.description}
-              </p>
-            )}
-          </div>
-        </CardContent>
-        <div className="h-1 bg-muted">
-          <div
-            className="h-full bg-primary"
-            style={{ width: `${teamsProgress}%` }}
-          ></div>
-        </div>
-        <CardFooter className="flex justify-between p-4 border-t">
-          <div className="text-sm text-muted-foreground">
-            {isUpcoming && tournament.registrationDeadline && (
-              <span className="flex items-center">
-                <Clock className="w-4 h-4 mr-1" />
-                Registration closes on{" "}
-                {format(
-                  new Date(tournament.registrationDeadline),
-                  "MMM d, yyyy"
-                )}
-              </span>
-            )}
-          </div>
-          <Button asChild>
-            <Link href={`/tournaments/${tournament._id}`}>
-              View Details
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-          </Button>
-        </CardFooter>
-      </Card>
-    );
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    router.push(`/tournaments/overview?tab=${value}`, { scroll: false });
   };
+
+  // Don't render until we've determined the initial tab
+  if (!activeTab) {
+    return (
+      <div className="container py-8">
+        <div className="space-y-4">
+          <Skeleton className="w-full h-10 max-w-md" />
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="w-full h-64 rounded-lg" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container px-4 py-6 mx-auto">
@@ -257,23 +234,66 @@ export default function TournamentsOverviewPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-4 mt-8 md:flex-row md:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search tournaments..."
-            className="pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col gap-4 mt-4 md:mt-0">
+        {/* Search and Clear All row */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute w-4 h-4 left-2.5 top-2.5 text-muted-foreground" />
+            <Input
+              placeholder="Search tournaments..."
+              className="pl-8"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute p-1 rounded-full right-2 top-2 hover:bg-muted"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+
+          {/* Clear All Filters Button - only show if any filter is active */}
+          {(formatFilter !== "all" ||
+            teamSizeFilter !== "all" ||
+            statusFilter !== "all" ||
+            searchTerm) && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setFormatFilter("all");
+                setTeamSizeFilter("all");
+                setStatusFilter("all");
+                setSearchTerm("");
+              }}
+              className="whitespace-nowrap"
+            >
+              <X className="w-4 h-4 mr-1" />
+              Clear All
+            </Button>
+          )}
         </div>
-        <div className="flex flex-1 gap-2">
-          <Select value={formatFilter} onValueChange={setFormatFilter}>
-            <SelectTrigger className="w-full">
-              <div className="flex items-center">
-                <Trophy className="w-4 h-4 mr-2" />
-                <span>Format</span>
-              </div>
+
+        {/* Filter controls */}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {/* Format Filter */}
+          <Select
+            value={formatFilter}
+            onValueChange={(value) => setFormatFilter(value)}
+          >
+            <SelectTrigger className="w-full pl-8 h-9">
+              <Filter className="absolute w-4 h-4 left-2 text-muted-foreground" />
+              <SelectValue placeholder="Format">
+                {formatFilter === "all"
+                  ? "Format"
+                  : formatFilter === "single_elimination"
+                  ? "Single Elim"
+                  : "Double Elim"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Formats</SelectItem>
@@ -286,43 +306,45 @@ export default function TournamentsOverviewPage() {
             </SelectContent>
           </Select>
 
-          <Select value={teamSizeFilter} onValueChange={setTeamSizeFilter}>
-            <SelectTrigger className="w-full">
-              <div className="flex items-center">
-                <Users className="w-4 h-4 mr-2" />
-                <span>Team Size</span>
-              </div>
+          {/* Team Size Filter */}
+          <Select
+            value={teamSizeFilter}
+            onValueChange={(value) => setTeamSizeFilter(value)}
+          >
+            <SelectTrigger className="w-full pl-8 h-9">
+              <Users className="absolute w-4 h-4 left-2 text-muted-foreground" />
+              <SelectValue placeholder="Team Size">
+                {teamSizeFilter === "all"
+                  ? "Team Size"
+                  : `${teamSizeFilter}v${teamSizeFilter}`}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sizes</SelectItem>
-              {/* <SelectItem className="disabled" value="1">
-                1v1
-              </SelectItem>
-              <SelectItem className="disabled" value="2">
-                2v2
-              </SelectItem>
-              <SelectItem className="disabled" value="3">
-                3v3
-              </SelectItem> */}
+              <SelectItem value="1">1v1</SelectItem>
+              <SelectItem value="2">2v2</SelectItem>
+              <SelectItem value="3">3v3</SelectItem>
               <SelectItem value="4">4v4</SelectItem>
-              {/* <SelectItem className="disabled" value="5">
-                5v5
-              </SelectItem>
-              <SelectItem className="disabled" value="6">
-                6v6
-              </SelectItem> */}
+              <SelectItem value="5">5v5</SelectItem>
             </SelectContent>
           </Select>
 
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full">
-              <div className="flex items-center">
-                <CalendarDays className="w-4 h-4 mr-2" />
-                <span>Status</span>
-              </div>
+          {/* Status Filter */}
+          <Select
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value)}
+          >
+            <SelectTrigger className="w-full pl-8 h-9">
+              <Clock className="absolute w-4 h-4 left-2 text-muted-foreground" />
+              <SelectValue placeholder="Status">
+                {statusFilter === "all"
+                  ? "Status"
+                  : statusFilter.charAt(0).toUpperCase() +
+                    statusFilter.slice(1)}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="upcoming">Upcoming</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="completed">Completed</SelectItem>
@@ -398,54 +420,50 @@ export default function TournamentsOverviewPage() {
         </div>
       ) : (
         // Default view with tabs (no filters active)
-        <Tabs defaultValue="active" className="mt-6">
-          <TabsList className="w-full mb-6">
-            <TabsTrigger value="active" className="flex-1">
-              <Clock8 className="w-4 h-4 mr-2" />
-              Active
-              <Badge variant="secondary" className="ml-2">
-                {activeTournaments.length}
-              </Badge>
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="space-y-8"
+        >
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              <span>Active</span>
+              {activeTournaments.length > 0 && (
+                <span className="px-2 ml-1 text-xs rounded-full bg-primary text-primary-foreground">
+                  {activeTournaments.length}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="upcoming" className="flex-1">
-              <Calendar className="w-4 h-4 mr-2" />
-              Upcoming
-              <Badge variant="secondary" className="ml-2">
-                {upcomingTournaments.length}
-              </Badge>
+            <TabsTrigger value="upcoming" className="flex items-center gap-2">
+              <CalendarDays className="w-4 h-4" />
+              <span>Upcoming</span>
+              {upcomingTournaments.length > 0 && (
+                <span className="px-2 ml-1 text-xs rounded-full bg-primary text-primary-foreground">
+                  {upcomingTournaments.length}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="completed" className="flex-1">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              Completed
-              <Badge variant="secondary" className="ml-2">
-                {completedTournaments.length}
-              </Badge>
+            <TabsTrigger value="completed" className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              <span>Completed</span>
+              {completedTournaments.length > 0 && (
+                <span className="px-2 ml-1 text-xs rounded-full bg-primary text-primary-foreground">
+                  {completedTournaments.length}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="active">
+          <TabsContent value="active" className="space-y-6">
             {loading ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <CardHeader>
-                      <Skeleton className="w-24 h-4" />
-                      <Skeleton className="w-full h-6 mt-2" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="w-full h-4 mb-2" />
-                      <Skeleton className="w-3/4 h-4" />
-                    </CardContent>
-                    <CardFooter className="border-t">
-                      <div className="flex justify-end w-full">
-                        <Skeleton className="h-9 w-28" />
-                      </div>
-                    </CardFooter>
-                  </Card>
+                  <Skeleton key={i} className="w-full h-64 rounded-lg" />
                 ))}
               </div>
             ) : activeTournaments.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {activeTournaments.map((tournament) => (
                   <TournamentCard
                     key={tournament._id}
@@ -454,49 +472,23 @@ export default function TournamentsOverviewPage() {
                 ))}
               </div>
             ) : (
-              <Card className="p-8 text-center">
-                <div className="flex items-center justify-center mx-auto mb-4 rounded-full bg-muted w-14 h-14">
-                  <Clock8 className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold">
-                  No active tournaments
-                </h3>
-                <p className="mb-4 text-muted-foreground">
-                  There are no tournaments currently in progress. Check upcoming
-                  tournaments or create your own!
-                </p>
-                {canCreateTournament && (
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    Create Tournament
-                  </Button>
-                )}
-              </Card>
+              <EmptyState
+                title="No active tournaments"
+                description="There are no tournaments currently in progress. Check upcoming tournaments or create your own!"
+                icon={<Clock className="w-12 h-12 text-muted-foreground" />}
+              />
             )}
           </TabsContent>
 
-          <TabsContent value="upcoming">
+          <TabsContent value="upcoming" className="space-y-6">
             {loading ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <CardHeader>
-                      <Skeleton className="w-24 h-4" />
-                      <Skeleton className="w-full h-6 mt-2" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="w-full h-4 mb-2" />
-                      <Skeleton className="w-3/4 h-4" />
-                    </CardContent>
-                    <CardFooter className="border-t">
-                      <div className="flex justify-end w-full">
-                        <Skeleton className="h-9 w-28" />
-                      </div>
-                    </CardFooter>
-                  </Card>
+                  <Skeleton key={i} className="w-full h-64 rounded-lg" />
                 ))}
               </div>
             ) : upcomingTournaments.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {upcomingTournaments.map((tournament) => (
                   <TournamentCard
                     key={tournament._id}
@@ -505,49 +497,25 @@ export default function TournamentsOverviewPage() {
                 ))}
               </div>
             ) : (
-              <Card className="p-8 text-center">
-                <div className="flex items-center justify-center mx-auto mb-4 rounded-full bg-muted w-14 h-14">
-                  <Calendar className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold">
-                  No upcoming tournaments
-                </h3>
-                <p className="mb-4 text-muted-foreground">
-                  There are no tournaments scheduled for the future. Be the
-                  first to create one!
-                </p>
-                {canCreateTournament && (
-                  <Button onClick={() => setIsCreateDialogOpen(true)}>
-                    Create Tournament
-                  </Button>
-                )}
-              </Card>
+              <EmptyState
+                title="No upcoming tournaments"
+                description="There are no upcoming tournaments scheduled. Check back later or create your own!"
+                icon={
+                  <CalendarDays className="w-12 h-12 text-muted-foreground" />
+                }
+              />
             )}
           </TabsContent>
 
-          <TabsContent value="completed">
+          <TabsContent value="completed" className="space-y-6">
             {loading ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {[1, 2, 3].map((i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <CardHeader>
-                      <Skeleton className="w-24 h-4" />
-                      <Skeleton className="w-full h-6 mt-2" />
-                    </CardHeader>
-                    <CardContent>
-                      <Skeleton className="w-full h-4 mb-2" />
-                      <Skeleton className="w-3/4 h-4" />
-                    </CardContent>
-                    <CardFooter className="border-t">
-                      <div className="flex justify-end w-full">
-                        <Skeleton className="h-9 w-28" />
-                      </div>
-                    </CardFooter>
-                  </Card>
+                  <Skeleton key={i} className="w-full h-64 rounded-lg" />
                 ))}
               </div>
             ) : completedTournaments.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {completedTournaments.map((tournament) => (
                   <TournamentCard
                     key={tournament._id}
@@ -556,18 +524,13 @@ export default function TournamentsOverviewPage() {
                 ))}
               </div>
             ) : (
-              <Card className="p-8 text-center">
-                <div className="flex items-center justify-center mx-auto mb-4 rounded-full bg-muted w-14 h-14">
-                  <CheckCircle className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold">
-                  No completed tournaments
-                </h3>
-                <p className="mb-4 text-muted-foreground">
-                  There are no completed tournaments yet. Check active or
-                  upcoming tournaments.
-                </p>
-              </Card>
+              <EmptyState
+                title="No completed tournaments"
+                description="There are no completed tournaments yet. Check active or upcoming tournaments!"
+                icon={
+                  <CheckCircle className="w-12 h-12 text-muted-foreground" />
+                }
+              />
             )}
           </TabsContent>
         </Tabs>
@@ -579,5 +542,16 @@ export default function TournamentsOverviewPage() {
         onSuccess={fetchTournaments}
       />
     </div>
+  );
+}
+
+// Main page component that wraps the content in Suspense
+export default function TournamentsOverviewPage() {
+  return (
+    <Suspense
+      fallback={<div className="p-8 text-center">Loading tournaments...</div>}
+    >
+      <TournamentsOverviewContent />
+    </Suspense>
   );
 }

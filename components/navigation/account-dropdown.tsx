@@ -60,6 +60,7 @@ export default function AccountDropdown() {
 
           const data = await response.json();
 
+          // Store the user's roles
           setUserRoles(data.roles || []);
 
           // Set the guild nickname from the API response
@@ -105,6 +106,27 @@ export default function AccountDropdown() {
 
     // Check if user has any of the mod role IDs
     return userRoles.some((roleId) => Object.keys(ROLES).includes(roleId));
+  };
+
+  // Add new functions to check for specific role types
+  const hasAdminAccess = () => {
+    // Developer always has admin access
+    if (session?.user?.id === DEVELOPER_ID) return true;
+
+    // Check for admin or founder roles
+    return userRoles.some(
+      (roleId) =>
+        roleId === "932585751332421642" || // Admin
+        roleId === "1095126043918082109" // Founder
+    );
+  };
+
+  const hasModeratorAccess = () => {
+    // Admin access includes moderator access
+    if (hasAdminAccess()) return true;
+
+    // Check for moderator role
+    return userRoles.includes("1042168064805965864");
   };
 
   // Handle sign out

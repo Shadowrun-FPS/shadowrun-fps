@@ -462,6 +462,7 @@ export default function TeamsPage() {
                       key={userTeam._id}
                       _id={userTeam._id}
                       name={userTeam.name}
+                      description={userTeam.description}
                       tag={userTeam.tag}
                       members={userTeam.members}
                       wins={userTeam.wins || 0}
@@ -624,6 +625,7 @@ export default function TeamsPage() {
                             _id={team._id}
                             name={team.name}
                             tag={team.tag}
+                            description={team.description}
                             members={team.members}
                             wins={team.wins || 0}
                             losses={team.losses || 0}
