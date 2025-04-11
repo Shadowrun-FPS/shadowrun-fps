@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Bell, Shield, Users, BarChart2 } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { Badge } from "@/components/ui/badge";
+import AnnouncementEditor from "../announcement/announcement-editor";
 
 // Define the moderator role IDs and names with proper typing
 interface RoleInfo {
@@ -133,6 +134,9 @@ export default function AccountDropdown() {
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" });
   };
+
+  // Check if the user is the developer
+  const isDeveloper = session?.user?.id === DEVELOPER_ID;
 
   // Display login button if not authenticated
   if (status === "unauthenticated") {
@@ -262,8 +266,17 @@ export default function AccountDropdown() {
               </Link>
             </DropdownMenuItem>
           )}
-
           <DropdownMenuSeparator />
+
+          {/* Developer-only announcement management */}
+          {isDeveloper && (
+            <>
+              <DropdownMenuItem asChild>
+                <AnnouncementEditor className="gap-2" />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          )}
 
           <DropdownMenuItem
             className="cursor-pointer"

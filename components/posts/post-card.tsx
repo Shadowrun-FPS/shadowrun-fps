@@ -71,12 +71,13 @@ export function PostCard({ post }: { post: Post }) {
     );
   };
 
-  // Update the getLink function to ensure it always returns a string
+  // Update the getLink function to not return a fallback "#"
   const getLink = () => {
-    return post.link || post.url || post.externalLink || post.href || "#";
+    return post.link || post.url || post.externalLink || post.href || "";
   };
 
-  const hasLink = !!getLink();
+  // Now hasLink will only be true if there's an actual link
+  const hasLink = Boolean(getLink());
   const hasImage = !!getImageUrl() && !imageError;
 
   const CardWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -167,6 +168,7 @@ export function PostCard({ post }: { post: Post }) {
           <span className="text-xs text-muted-foreground">
             By {post.authorNickname || post.author || post.creator || "Unknown"}
           </span>
+          {/* Only show "Read more" if there's actually a link */}
           {hasLink && (
             <span className="flex items-center gap-1 text-sm font-medium text-primary">
               <span>Read more</span>

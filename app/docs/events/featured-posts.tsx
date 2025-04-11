@@ -50,9 +50,9 @@ export default function FeaturedPosts() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-96 bg-muted animate-pulse rounded-md"></div>
+          <div key={i} className="rounded-md h-96 bg-muted animate-pulse"></div>
         ))}
       </div>
     );
@@ -60,18 +60,18 @@ export default function FeaturedPosts() {
 
   if (error) {
     return (
-      <div className="text-center py-12">
+      <div className="py-12 text-center">
         <p className="text-lg text-red-500">Error: {error}</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {posts && posts.length > 0 ? (
         posts.map((post) => <PostCard key={post._id} post={post} />)
       ) : (
-        <div className="col-span-full text-center py-12">
+        <div className="py-12 text-center col-span-full">
           <p className="text-lg text-muted-foreground">No posts available.</p>
         </div>
       )}
