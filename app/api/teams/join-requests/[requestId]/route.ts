@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 // Helper function to get a join request by ID
 async function getJoinRequest(db: any, requestId: string) {
@@ -114,6 +115,9 @@ export async function PATCH(
           teamName: team.name,
         },
       });
+
+      // UPDATED: Recalculate team ELO with the new member
+      await recalculateTeamElo(joinRequest.teamId);
     } else {
       // Notify the user that their request was rejected
       await db.collection("Notifications").insertOne({

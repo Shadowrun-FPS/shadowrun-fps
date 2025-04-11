@@ -109,6 +109,37 @@ export async function POST(
     // Calculate team Elo based on tournament team size
     const teamSize = tournament.teamSize || 5;
 
+    // IMPROVED VALIDATION: Check if team has enough members for the tournament
+    // Count members properly, ensuring we don't double-count the captain
+    let memberCount = team.members.length;
+
+    // If captain is not already included in members array, add them to the count
+    const captainInMembersArray = team.members.some(
+      (member: TeamMember) => member.discordId === team.captain?.discordId
+    );
+    if (team.captain && !captainInMembersArray) {
+      memberCount += 1;
+    }
+
+    // Debug logs (will appear in server logs)
+    console.log("Required team size:", teamSize);
+    console.log("Current team members:", memberCount);
+    console.log(
+      "Team members array:",
+      team.members.map((m: any) => m.discordId)
+    );
+    console.log("Captain ID:", team.captain?.discordId);
+
+    // Strictly enforce team size requirement
+    if (memberCount < teamSize) {
+      return NextResponse.json(
+        {
+          error: `Your team needs exactly ${teamSize} members to register for this tournament. Current team size: ${memberCount}`,
+        },
+        { status: 400 }
+      );
+    }
+
     // Build enhanced member details
     const enhancedMembers = team.members.map(
       (member: {

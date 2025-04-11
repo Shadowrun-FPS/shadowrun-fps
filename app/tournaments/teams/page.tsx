@@ -61,6 +61,7 @@ import {
 } from "@/components/ui/sheet";
 import { TeamCard } from "@/components/teams/team-card";
 import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface Team {
   _id: string;
@@ -113,6 +114,7 @@ export default function TeamsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
   const [view, setView] = useState<string>("grid");
+  const [teamStatus, setTeamStatus] = useState<"all" | "full" | "open">("all");
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -229,6 +231,15 @@ export default function TeamsPage() {
         if (!isRegistered) return false;
       }
 
+      // Filter by team status (full or open)
+      if (teamStatus !== "all") {
+        // Most teams need at least 4 players to be considered full
+        const isFull = (team.members?.length || 0) >= 4;
+
+        if (teamStatus === "full" && !isFull) return false;
+        if (teamStatus === "open" && isFull) return false;
+      }
+
       // Search filtering with null checks
       if (searchQuery) {
         const lowercaseSearch = searchQuery.toLowerCase();
@@ -285,6 +296,16 @@ export default function TeamsPage() {
         ...team,
         rank: index + 1,
       }));
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    // Format as "Month DD, YYYY" (e.g., "July 6, 2025")
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   };
 
   return (
@@ -346,6 +367,38 @@ export default function TeamsPage() {
                             )}
                           </SelectContent>
                         </Select>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <label className="text-sm font-medium">
+                          Team Status
+                        </label>
+                        <RadioGroup
+                          value={teamStatus}
+                          onValueChange={(value) =>
+                            setTeamStatus(value as "all" | "full" | "open")
+                          }
+                          className="flex flex-col space-y-1"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="all" id="all-teams" />
+                            <label htmlFor="all-teams" className="text-sm">
+                              All Teams
+                            </label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="full" id="full-teams" />
+                            <label htmlFor="full-teams" className="text-sm">
+                              Full Teams (4+ members)
+                            </label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="open" id="open-teams" />
+                            <label htmlFor="open-teams" className="text-sm">
+                              Teams Looking for Members
+                            </label>
+                          </div>
+                        </RadioGroup>
                       </div>
                     </div>
                   </SheetContent>
@@ -415,11 +468,7 @@ export default function TeamsPage() {
                           <div className="grid grid-cols-2 gap-3 mt-auto">
                             <div className="flex items-center gap-2 text-sm">
                               <Calendar className="w-4 h-4 text-muted-foreground" />
-                              <span>
-                                {new Date(
-                                  tournament.startDate
-                                ).toLocaleDateString()}
-                              </span>
+                              <span>{formatDate(tournament.startDate)}</span>
                             </div>
                             <div className="flex items-center gap-2 text-sm">
                               <Users className="w-4 h-4 text-muted-foreground" />
@@ -555,6 +604,38 @@ export default function TeamsPage() {
                               )}
                             </SelectContent>
                           </Select>
+                        </div>
+
+                        <div className="grid gap-2">
+                          <label className="text-sm font-medium">
+                            Team Status
+                          </label>
+                          <RadioGroup
+                            value={teamStatus}
+                            onValueChange={(value) =>
+                              setTeamStatus(value as "all" | "full" | "open")
+                            }
+                            className="flex flex-col space-y-1"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="all" id="all-teams-2" />
+                              <label htmlFor="all-teams-2" className="text-sm">
+                                All Teams
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="full" id="full-teams-2" />
+                              <label htmlFor="full-teams-2" className="text-sm">
+                                Full Teams (4+ members)
+                              </label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="open" id="open-teams-2" />
+                              <label htmlFor="open-teams-2" className="text-sm">
+                                Teams Looking for Members
+                              </label>
+                            </div>
+                          </RadioGroup>
                         </div>
                       </div>
                     </SheetContent>
