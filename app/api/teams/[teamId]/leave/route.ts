@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { UpdateFilter } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 export async function POST(
   req: NextRequest,
@@ -48,7 +49,6 @@ export async function POST(
     }
 
     // Remove the user from the team using a simple type assertion
-    // This is the most direct way to fix the type error
     await db.collection("Teams").updateOne({ _id: new ObjectId(teamId) }, {
       $pull: { members: { discordId: userId } },
     } as any);
@@ -71,36 +71,8 @@ export async function POST(
       },
     });
 
-    // Calculate and update team ELO after member leaves
-    // Get updated team data
-    const updatedTeam = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (updatedTeam && updatedTeam.members.length > 0) {
-      // Get all remaining member IDs
-      const memberIds = updatedTeam.members.map((m: any) => m.discordId);
-
-      // Get player data for all remaining members
-      const teamPlayers = await db
-        .collection("Players")
-        .find({ discordId: { $in: memberIds } })
-        .toArray();
-
-      // Calculate total ELO (sum of all members)
-      const totalElo = teamPlayers.reduce(
-        (sum: number, player: any) => sum + (player.elo || 1000),
-        0
-      );
-
-      // Update team ELO with the total
-      await db
-        .collection("Teams")
-        .updateOne(
-          { _id: new ObjectId(teamId) },
-          { $set: { teamElo: totalElo } }
-        );
-    }
+    // UPDATED: Use the recalculateTeamElo function to update the team's ELO
+    await recalculateTeamElo(teamId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

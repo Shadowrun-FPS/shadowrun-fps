@@ -42,6 +42,10 @@ import {
   ChevronDown,
   ChevronUp,
   Plus,
+  Trash2,
+  Bell,
+  Users,
+  AlertCircle,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -141,6 +145,12 @@ export default function QueuesPage() {
     useState<boolean>(false);
   const [has4v4, setHas4v4] = useState<boolean>(false);
   const router = useRouter();
+  const [queueToDelete, setQueueToDelete] = useState<{
+    queueId: string;
+    name: string;
+    eloTier?: string;
+    teamSize?: number;
+  } | null>(null);
 
   // Create queue form
   const form = useForm<z.infer<typeof createQueueSchema>>({
@@ -753,6 +763,65 @@ export default function QueuesPage() {
     }
   };
 
+  // Check if user is developer (you) or admin
+  const isDeveloperOrAdmin = () => {
+    return (
+      isAdmin() ||
+      (session?.user?.id && session.user.id === "238329746671271936")
+    );
+  };
+
+  // First, update the handleDeleteQueue function to include more information
+  const handleDeleteQueue = async (
+    queueId: string,
+    queueName: string,
+    eloTier: string,
+    teamSize: number
+  ) => {
+    setQueueToDelete({ queueId, name: queueName, eloTier, teamSize });
+  };
+
+  // Then update the dialog description
+  const confirmDeleteQueue = async () => {
+    if (!queueToDelete || !session?.user) return;
+
+    setJoiningQueue(queueToDelete.queueId);
+
+    try {
+      const response = await fetch(`/api/queues/${queueToDelete.queueId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete queue");
+      }
+
+      toast({
+        title: "Queue Deleted",
+        description: `Queue "${queueToDelete.name}" has been deleted`,
+        duration: 3000,
+      });
+
+      // The socket connection will automatically update the queues
+      // No need to manually refresh as the server will emit an update
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to delete queue",
+        variant: "destructive",
+        duration: 3000,
+      });
+    } finally {
+      setJoiningQueue(null);
+      setQueueToDelete(null);
+    }
+  };
+
   if (!session) {
     return (
       <div className="container px-4 py-8 mx-auto">
@@ -1338,7 +1407,7 @@ export default function QueuesPage() {
                             Copy Queue ID
                           </ContextMenuItem>
 
-                          {isAdminOrMod() && (
+                          {isDeveloperOrAdmin() && (
                             <>
                               <ContextMenuSeparator />
                               <ContextMenuSub>
@@ -1374,6 +1443,23 @@ export default function QueuesPage() {
                                   )}
                                 </ContextMenuSubContent>
                               </ContextMenuSub>
+
+                              <ContextMenuSeparator />
+                              {/* Simple Delete Queue option at the bottom with destructive style */}
+                              <ContextMenuItem
+                                onClick={() =>
+                                  handleDeleteQueue(
+                                    queue._id,
+                                    queue.name,
+                                    queue.eloTier || "any", // Add eloTier
+                                    queue.teamSize // Add teamSize
+                                  )
+                                }
+                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Queue
+                              </ContextMenuItem>
                             </>
                           )}
                         </ContextMenuContent>
@@ -1807,7 +1893,7 @@ export default function QueuesPage() {
                                   Copy Queue ID
                                 </ContextMenuItem>
 
-                                {isAdminOrMod() && (
+                                {isDeveloperOrAdmin() && (
                                   <>
                                     <ContextMenuSeparator />
                                     <ContextMenuSub>
@@ -1846,6 +1932,23 @@ export default function QueuesPage() {
                                         )}
                                       </ContextMenuSubContent>
                                     </ContextMenuSub>
+
+                                    <ContextMenuSeparator />
+                                    {/* Simple Delete Queue option at the bottom with destructive style */}
+                                    <ContextMenuItem
+                                      onClick={() =>
+                                        handleDeleteQueue(
+                                          queue._id,
+                                          queue.name,
+                                          queue.eloTier || "any", // Add eloTier
+                                          queue.teamSize // Add teamSize
+                                        )
+                                      }
+                                      className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete Queue
+                                    </ContextMenuItem>
                                   </>
                                 )}
                               </ContextMenuContent>
@@ -1878,6 +1981,28 @@ export default function QueuesPage() {
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={confirmRemovePlayer}>
                   Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+        {queueToDelete && (
+          <AlertDialog
+            open={!!queueToDelete}
+            onOpenChange={() => setQueueToDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Queue</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this queue? This action cannot
+                  be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={confirmDeleteQueue}>
+                  Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

@@ -25,7 +25,7 @@ export default function EventsClient() {
 
   // Check if user is admin or developer
   const isAdmin =
-    session?.user?.id === process.env.NEXT_PUBLIC_DEVELOPER_ID ||
+    session?.user?.id === process.env.MY_DISCORD_USER_ID ||
     session?.user?.id === "238329746671271936" || // Your Discord ID
     session?.user?.roles?.some(
       (role) =>

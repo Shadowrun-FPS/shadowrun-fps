@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
+import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 export async function POST(
   req: NextRequest,
@@ -61,11 +62,9 @@ export async function POST(
     }
 
     // Remove the member from the team
-    await db
-      .collection("Teams")
-      .updateOne({ _id: new ObjectId(teamId) }, {
-        $pull: { members: { discordId: memberId } },
-      } as any);
+    await db.collection("Teams").updateOne({ _id: new ObjectId(teamId) }, {
+      $pull: { members: { discordId: memberId } },
+    } as any);
 
     // Create notification for the removed member
     await db.collection("Notifications").insertOne({
@@ -80,6 +79,9 @@ export async function POST(
         teamName: team.name,
       },
     });
+
+    // UPDATED: Use the recalculateTeamElo function to update the team's ELO
+    await recalculateTeamElo(teamId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

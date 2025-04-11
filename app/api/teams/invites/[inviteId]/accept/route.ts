@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 export async function POST(
   req: NextRequest,
@@ -164,6 +165,9 @@ export async function POST(
         },
       });
     }
+
+    // UPDATED: Recalculate team ELO with the new member
+    await recalculateTeamElo(invite.teamId.toString());
 
     return NextResponse.json({
       success: true,
