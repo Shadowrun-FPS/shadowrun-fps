@@ -17,7 +17,6 @@ import Link from "next/link";
 import { Bell, Shield, Users, BarChart2 } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { Badge } from "@/components/ui/badge";
-import AnnouncementEditor from "../announcement/announcement-editor";
 
 // Define the moderator role IDs and names with proper typing
 interface RoleInfo {
@@ -267,16 +266,6 @@ export default function AccountDropdown() {
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-
-          {/* Developer-only announcement management */}
-          {isDeveloper && (
-            <>
-              <DropdownMenuItem asChild>
-                <AnnouncementEditor className="gap-2" />
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-            </>
-          )}
 
           <DropdownMenuItem
             className="cursor-pointer"

@@ -18,12 +18,10 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import MainLogo from "./icons/main-logo";
 import { Navbar } from "./navbar";
-import AnnouncementBar from "./announcement/announcement-bar";
 
 export function Header() {
   return (
     <>
-      <AnnouncementBar />
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur">
         <div className="container flex items-center h-14 max-w-screen-2xl">
           <MainLogo />
