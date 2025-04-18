@@ -4,10 +4,10 @@ import { Metadata } from "next";
 // We'll use a simpler approach with static metadata
 
 export const metadata: Metadata = {
-  title: "Player Stats - Shadowrun FPS",
+  title: "Player Stats | Shadowrun FPS",
   description: "View detailed player statistics and match history",
   openGraph: {
-    title: "Player Stats - Shadowrun FPS",
+    title: "Player Stats | Shadowrun FPS",
     description: "View detailed player statistics and match history",
     type: "profile",
     images: [
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Player Stats - Shadowrun FPS",
+    title: "Player Stats | Shadowrun FPS",
     description: "View detailed player statistics and match history",
   },
 };

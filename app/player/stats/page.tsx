@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import PlayerStatsPage from "@/components/player-stats-page";
 import { Skeleton } from "@/components/ui/skeleton";
+import Head from "next/head";
 
 // Create a client component that uses useSearchParams
 function PlayerStatsContent() {
@@ -13,8 +14,18 @@ function PlayerStatsContent() {
   const [player, setPlayer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pageTitle, setPageTitle] = useState<string>(
+    "Player Stats | Shadowrun FPS"
+  );
 
   useEffect(() => {
+    // Update document title when player name is available
+    if (playerName) {
+      const title = `${playerName} - Player Stats | Shadowrun FPS`;
+      document.title = title;
+      setPageTitle(title);
+    }
+
     async function fetchPlayer() {
       setLoading(true);
       setError(null);
@@ -40,6 +51,13 @@ function PlayerStatsContent() {
 
         const data = await response.json();
         setPlayer(data);
+
+        // Update title with player's nickname if available
+        if (data.discordNickname) {
+          const title = `${data.discordNickname} - Player Stats | Shadowrun FPS`;
+          document.title = title;
+          setPageTitle(title);
+        }
       } catch (error) {
         console.error("Error fetching player:", error);
         setError(
@@ -93,9 +111,16 @@ function PlayerStatsContent() {
   }
 
   return (
-    <div className="container py-6 mx-auto">
-      <PlayerStatsPage player={player} />
-    </div>
+    <>
+      <Head>
+        <title>{pageTitle}</title>
+        <meta property="og:title" content={pageTitle} />
+        <meta name="twitter:title" content={pageTitle} />
+      </Head>
+      <div className="container py-6 mx-auto">
+        <PlayerStatsPage player={player} />
+      </div>
+    </>
   );
 }
 

@@ -27,18 +27,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Add player to the specified queue
-    const result = await db.collection("Queues").updateOne(
-      { _id: new ObjectId(queueId) },
-      {
-        $push: {
-          players: {
-            ...player,
-            joinedAt: Date.now(),
-          },
-        },
-      }
-    );
+    // Instead of storing all player data, just store the discordId and joinedAt timestamp
+    // This will allow us to always fetch the current nickname when displaying the queue
+    const playerData = {
+      discordId: player.discordId,
+      joinedAt: Date.now(),
+      elo: player.elo,
+    };
+
+    const result = await db
+      .collection("Queues")
+      .updateOne(
+        { _id: new ObjectId(queueId) },
+        { $push: { players: playerData } as any }
+      );
 
     if (result.modifiedCount === 0) {
       return NextResponse.json(

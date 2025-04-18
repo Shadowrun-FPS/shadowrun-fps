@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 interface TeamMember {
   discordId: string;
@@ -42,6 +43,9 @@ export async function PUT(
         { status: 400 }
       );
     }
+
+    // Recalculate team ELO after role change
+    await recalculateTeamElo(params.teamId);
 
     return NextResponse.json(result.value);
   } catch (error) {

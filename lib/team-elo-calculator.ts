@@ -26,9 +26,6 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
 
     // Check the team's configured size (default to 4 if not specified)
     const configuredTeamSize = team.teamSize || 4;
-    console.log(
-      `Team ${team.name} is configured for ${configuredTeamSize}v${configuredTeamSize}`
-    );
 
     // Get all member IDs including captain
     const memberIds = team.members.map((member: any) => member.discordId);

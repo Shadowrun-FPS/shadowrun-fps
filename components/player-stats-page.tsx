@@ -61,18 +61,56 @@ interface PlayerProps {
 
 export default function PlayerStatsPage({ player }: PlayerProps) {
   const { data: session } = useSession();
+  const [currentDate] = useState(new Date());
 
   // Filter stats to only include objects with teamSize
   const validStats = player.stats.filter(
     (stat) => typeof stat.teamSize === "number"
   );
 
-  // Create stats by team size for easier access
+  // Create stats by team size for easier access, filtering out inactive ones (>30 days)
   const statsByTeamSize = {
-    "1v1": validStats.find((stat) => stat.teamSize === 1) || null,
-    "2v2": validStats.find((stat) => stat.teamSize === 2) || null,
-    "4v4": validStats.find((stat) => stat.teamSize === 4) || null,
-    "5v5": validStats.find((stat) => stat.teamSize === 5) || null,
+    "1v1":
+      validStats.find((stat) => {
+        if (stat.teamSize !== 1) return false;
+        // Check if last match date is within 30 days
+        if (!stat.lastMatchDate) return false;
+        const lastMatch = new Date(stat.lastMatchDate);
+        const daysSinceLastMatch = Math.floor(
+          (currentDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysSinceLastMatch <= 30;
+      }) || null,
+    "2v2":
+      validStats.find((stat) => {
+        if (stat.teamSize !== 2) return false;
+        if (!stat.lastMatchDate) return false;
+        const lastMatch = new Date(stat.lastMatchDate);
+        const daysSinceLastMatch = Math.floor(
+          (currentDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysSinceLastMatch <= 30;
+      }) || null,
+    "4v4":
+      validStats.find((stat) => {
+        if (stat.teamSize !== 4) return false;
+        if (!stat.lastMatchDate) return false;
+        const lastMatch = new Date(stat.lastMatchDate);
+        const daysSinceLastMatch = Math.floor(
+          (currentDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysSinceLastMatch <= 30;
+      }) || null,
+    "5v5":
+      validStats.find((stat) => {
+        if (stat.teamSize !== 5) return false;
+        if (!stat.lastMatchDate) return false;
+        const lastMatch = new Date(stat.lastMatchDate);
+        const daysSinceLastMatch = Math.floor(
+          (currentDate.getTime() - lastMatch.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        return daysSinceLastMatch <= 30;
+      }) || null,
   };
 
   // Find the latest match date across all team sizes
@@ -229,7 +267,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
         {/* ELO Stats Cards in 2x2 Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 sm:gap-6">
           {Object.entries(statsByTeamSize).map(([mode, stats]) => {
-            if (!stats) return null; // Skip if no stats for this mode
+            if (!stats) return null; // Skip if no stats for this mode or inactive
 
             const rank = getRankByElo(stats.elo);
             const winRate = Math.round(
@@ -375,10 +413,11 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
         {Object.values(statsByTeamSize).every((stat) => stat === null) && (
           <div className="p-8 text-center border border-gray-700 bg-gray-800/60 rounded-xl">
             <h2 className="text-xl font-semibold text-gray-100">
-              No Match History
+              No Active Ratings
             </h2>
             <p className="mt-2 text-gray-300">
-              This player hasn&apos;t played any ranked matches yet.
+              This player hasn&apos;t played any ranked matches in the last 30
+              days.
             </p>
           </div>
         )}

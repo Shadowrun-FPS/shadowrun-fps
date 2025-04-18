@@ -3,6 +3,7 @@ import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 export async function POST(
   req: NextRequest,
