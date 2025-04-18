@@ -17,6 +17,12 @@ function PlayerStatsContent() {
   const [pageTitle, setPageTitle] = useState<string>(
     "Player Stats | Shadowrun FPS"
   );
+  const [pageDescription, setPageDescription] = useState<string>(
+    "View detailed player statistics and match history"
+  );
+  const [profileImage, setProfileImage] = useState<string>(
+    "/shadowrun_invite_banner.png"
+  );
 
   useEffect(() => {
     // Update document title when player name is available
@@ -24,6 +30,9 @@ function PlayerStatsContent() {
       const title = `${playerName} - Player Stats | Shadowrun FPS`;
       document.title = title;
       setPageTitle(title);
+      setPageDescription(
+        `View detailed player statistics and match history for ${playerName}`
+      );
     }
 
     async function fetchPlayer() {
@@ -53,10 +62,28 @@ function PlayerStatsContent() {
         setPlayer(data);
 
         // Update title with player's nickname if available
-        if (data.discordNickname) {
-          const title = `${data.discordNickname} - Player Stats | Shadowrun FPS`;
+        const displayName =
+          data.discordNickname || data.discordUsername || playerName;
+        if (displayName) {
+          const title = `${displayName} - Player Stats | Shadowrun FPS`;
           document.title = title;
           setPageTitle(title);
+
+          // Update description with ELO if available
+          let description = `View detailed player statistics and match history for ${displayName}`;
+          if (data.stats && data.stats.length > 0) {
+            const mainStats =
+              data.stats.find((s: any) => s.teamSize === 4) || data.stats[0];
+            if (mainStats?.elo) {
+              description += ` - Current ELO: ${mainStats.elo}`;
+            }
+          }
+          setPageDescription(description);
+        }
+
+        // Set profile image if available
+        if (data.discordAvatar) {
+          setProfileImage(data.discordAvatar);
         }
       } catch (error) {
         console.error("Error fetching player:", error);
@@ -114,8 +141,19 @@ function PlayerStatsContent() {
     <>
       <Head>
         <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+
+        {/* OpenGraph meta tags for social sharing */}
         <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:image" content={profileImage} />
+        <meta property="og:type" content="profile" />
+
+        {/* Twitter meta tags */}
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content={profileImage} />
       </Head>
       <div className="container py-6 mx-auto">
         <PlayerStatsPage player={player} />
