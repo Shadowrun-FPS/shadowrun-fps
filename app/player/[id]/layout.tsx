@@ -37,6 +37,9 @@ export async function generateMetadata(
       }
     }
 
+    // Use player's Discord avatar if available
+    const imageUrl = player.discordAvatar || "/shadowrun_invite_banner.png";
+
     return {
       title,
       description,
@@ -46,7 +49,7 @@ export async function generateMetadata(
         type: "profile",
         images: [
           {
-            url: "/shadowrun_invite_banner.png",
+            url: imageUrl,
             width: 1200,
             height: 630,
             alt: `${displayName} - Shadowrun FPS Player Stats`,
@@ -57,6 +60,7 @@ export async function generateMetadata(
         card: "summary_large_image",
         title,
         description,
+        images: [imageUrl],
       },
     };
   } catch (error) {
