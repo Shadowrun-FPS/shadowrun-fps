@@ -23,8 +23,7 @@ export async function generateMetadata(
 
     if (!player) return {};
 
-    const displayName =
-      player.discordNickname || player.discordUsername || "Unknown Player";
+    const displayName = player.discordNickname || player.discordUsername;
 
     const title = `${displayName} - Player Stats | Shadowrun FPS`;
     let description = `View detailed player statistics and match history for ${displayName}`;
@@ -37,8 +36,19 @@ export async function generateMetadata(
       }
     }
 
-    // Use player's Discord avatar if available
-    const imageUrl = player.discordAvatar || "/shadowrun_invite_banner.png";
+    // Use player's avatar with fallback
+    let imageUrl = "/shadowrun_invite_banner.png";
+    if (player.discordAvatar) {
+      try {
+        // We can't do a fetch here in server component, so we'll just use the URL
+        // and handle potential 404s with proper fallback in the frontend
+        imageUrl = player.discordAvatar;
+      } catch (error) {
+        console.warn("Error with Discord avatar:", error);
+      }
+    } else if (player.playerAvatar) {
+      imageUrl = player.playerAvatar;
+    }
 
     return {
       title,

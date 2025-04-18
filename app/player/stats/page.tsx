@@ -81,9 +81,27 @@ function PlayerStatsContent() {
           setPageDescription(description);
         }
 
-        // Set profile image if available
+        // Update profile image if available, with fallback and error handling
         if (data.discordAvatar) {
-          setProfileImage(data.discordAvatar);
+          // Check if the avatar URL is valid
+          fetch(data.discordAvatar, { method: "HEAD" })
+            .then((response) => {
+              if (response.ok) {
+                setProfileImage(data.discordAvatar);
+              } else {
+                console.warn(
+                  "Discord avatar URL returned an error, using fallback image"
+                );
+                setProfileImage("/shadowrun_invite_banner.png");
+              }
+            })
+            .catch((error) => {
+              console.warn("Error checking Discord avatar URL:", error);
+              setProfileImage("/shadowrun_invite_banner.png");
+            });
+        } else if (data.playerAvatar) {
+          // Try playerAvatar as fallback
+          setProfileImage(data.playerAvatar);
         }
       } catch (error) {
         console.error("Error fetching player:", error);

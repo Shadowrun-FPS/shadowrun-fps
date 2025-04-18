@@ -1,8 +1,7 @@
 import { Metadata } from "next";
 
-// For layout components, we can't directly access searchParams in generateMetadata
-// We'll use a simpler approach with static metadata
-
+// For the stats page with search parameters, we'll use a static metadata
+// The actual dynamic metadata will be handled client-side with Head component
 export const metadata: Metadata = {
   title: "Player Stats | Shadowrun FPS",
   description: "View detailed player statistics and match history",
