@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 // Add an interface for team members at the top of the file
 interface TeamMember {
@@ -177,6 +178,9 @@ export async function POST(
         previousCaptainName: session.user.name || "Unknown",
       },
     });
+
+    // Recalculate team ELO after captain transfer
+    await recalculateTeamElo(teamId);
 
     return NextResponse.json({
       success: true,

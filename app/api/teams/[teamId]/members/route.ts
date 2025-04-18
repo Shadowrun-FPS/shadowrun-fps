@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 interface TeamMember {
   discordId: string;
@@ -58,8 +59,8 @@ export async function DELETE(
       }
     );
 
-    // Recalculate team ELO
-    await updateTeamElo(db, params.teamId);
+    // Recalculate team ELO using the shared function
+    await recalculateTeamElo(params.teamId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -69,45 +70,6 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
-
-async function updateTeamElo(db: any, teamId: string) {
-  const team = await db.collection("Teams").findOne({
-    _id: new ObjectId(teamId),
-  });
-
-  // Get all member ELOs
-  const memberIds = team.members.map((m: any) => m.discordId);
-  const players = await db
-    .collection("Players")
-    .find({ discordId: { $in: memberIds } })
-    .toArray();
-
-  // Calculate weighted average ELO
-  // Weights: Captain (1.2), Active players (1.0), Inactive players (0.8)
-  let totalWeight = 0;
-  let weightedEloSum = 0;
-
-  for (const member of team.members) {
-    const player = players.find((p: any) => p.discordId === member.discordId);
-    if (!player) continue;
-
-    let weight = 1.0;
-    if (member.role === "captain") weight = 1.2;
-    else if (member.role === "inactive") weight = 0.8;
-
-    weightedEloSum += player.elo * weight;
-    totalWeight += weight;
-  }
-
-  const newTeamElo = Math.round(weightedEloSum / totalWeight);
-
-  // Update team ELO
-  await db
-    .collection("Teams")
-    .updateOne({ _id: new ObjectId(teamId) }, { $set: { elo: newTeamElo } });
-
-  return newTeamElo;
 }
 
 export async function POST(
@@ -161,6 +123,9 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Recalculate team ELO after adding a member
+    await recalculateTeamElo(params.teamId);
 
     return NextResponse.json(result.value);
   } catch (error) {

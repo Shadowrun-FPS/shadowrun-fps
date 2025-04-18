@@ -26,7 +26,7 @@ export async function generateMetadata(
     const displayName =
       player.discordNickname || player.discordUsername || "Unknown Player";
 
-    const title = `${displayName} Player Stats - Shadowrun FPS`;
+    const title = `${displayName} - Player Stats | Shadowrun FPS`;
     let description = `View detailed player statistics and match history for ${displayName}`;
 
     if (player.stats && player.stats.length > 0) {
@@ -49,7 +49,7 @@ export async function generateMetadata(
             url: "/shadowrun_invite_banner.png",
             width: 1200,
             height: 630,
-            alt: "Shadowrun FPS Player Stats",
+            alt: `${displayName} - Shadowrun FPS Player Stats`,
           },
         ],
       },
