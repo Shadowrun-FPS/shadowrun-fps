@@ -7,8 +7,7 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title:
-    "Shadowrun FPS - FASA Studios&apos; 2007 First Person Multiplayer Shooter",
+  title: "Shadowrun FPS - FASA Studios' 2007 First Person Multiplayer Shooter",
   description:
     "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
   openGraph: {

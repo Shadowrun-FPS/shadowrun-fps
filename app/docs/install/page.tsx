@@ -89,7 +89,9 @@ export default function InstallPage() {
               <CardContent className="px-3 pt-2 sm:px-6">
                 <div className="grid gap-6 sm:grid-cols-3">
                   <div>
-                    <h3 className="mb-2 text-medium">File Archiver</h3>
+                    <h3 className="mb-2 underline text-medium">
+                      File Archiver
+                    </h3>
                     <a
                       href="https://www.7-zip.org/a/7z2201-x64.exe"
                       className="text-primary hover:underline"
@@ -97,12 +99,14 @@ export default function InstallPage() {
                       7-Zip
                     </a>
                     <p className="mt-1 font-medium text-muted-foreground">
-                      Required for extracting game files. Note: WinRAR is not
-                      recommended.
+                      Required for extracting game files.
+                    </p>
+                    <p className="mt-1 font-medium text-muted-foreground">
+                      Note: WinRAR is not recommended.
                     </p>
                   </div>
                   <div>
-                    <h3 className="mb-2 font-medium">Game Service</h3>
+                    <h3 className="mb-2 font-medium underline">Game Service</h3>
                     <a
                       href="https://community.pcgamingwiki.com/files/file/1012-microsoft-games-for-windows-live/"
                       className="text-primary hover:underline"
@@ -114,7 +118,7 @@ export default function InstallPage() {
                     </p>
                   </div>
                   <div>
-                    <h3 className="mb-2 font-medium">Game Files</h3>
+                    <h3 className="mb-2 font-medium underline">Game Files</h3>
                     <a
                       href="https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg"
                       className="text-primary hover:underline"
@@ -189,16 +193,17 @@ export default function InstallPage() {
                   </ul>
                 </li>
                 <li>
-                  <h3 className="mb-2 text-lg font-medium">3. First Launch</h3>e
+                  <h3 className="mb-2 text-lg font-medium">3. First Launch</h3>
                   <ul className="space-y-2 text-muted-foreground">
-                    <li>Launch Shadowrun.exe</li>
+                    <li>Double click the Shadowrun.exe to launch the game.</li>
                     <li>
                       Configure Windows compatibility settings by clicking
                       &apos;Run&apos;, if prompted.
                     </li>
+                    <li>Press Home (or Fn+Home) to open the GFWL overlay.</li>
                     <li>
-                      Press Home or Fn+Home to sign in to your Microsoft
-                      account.
+                      Click &quot;Use existing LIVE profile&quot; to sign in to
+                      your Microsoft account.
                     </li>
                     <li>Enter your key when prompted.</li>
                     <div className="p-3 rounded-lg bg-muted">
@@ -222,10 +227,25 @@ export default function InstallPage() {
             <CardContent className="pt-6">
               <div className="space-y-4 text-lg font-medium text-muted-foreground">
                 <ul className="space-y-2">
-                  <li>Configure graphics settings for optimal performance</li>
-                  <li>Set up your controls and key bindings</li>
-                  <li>Test your microphone for in-game communication</li>
-                  <li>Join the community Discord for support</li>
+                  <li>
+                    Configure graphics settings for your system. The game&apos;s
+                    resolution will likely not match your screen on first load.
+                  </li>
+                  <li>
+                    Set up your controls and key bindings thru the main menu.
+                    Settings -{">"} Gamepad
+                  </li>
+
+                  <li>
+                    Join the community{" "}
+                    <a
+                      href="discord://discord.com/servers/this-is-shadowrun-930362820627943495"
+                      className="text-primary hover:underline"
+                    >
+                      Discord
+                    </a>{" "}
+                    for support.
+                  </li>
                 </ul>
                 <div className="p-3 rounded-lg bg-muted">
                   <p className="font-medium">Important Note:</p>
@@ -302,9 +322,12 @@ export default function InstallPage() {
                       <div className="p-3 rounded-lg bg-muted">
                         <p className="font-medium">Key Usage:</p>
                         <ul className="mt-2 space-y-1">
-                          <li>Each key can be used 10-15 times</li>
-                          <li>No account or computer restrictions</li>
-                          <li>Keys can be shared until depleted</li>
+                          <li>Each key can be used up to 10 times.</li>
+                          <li>Keys can be shared until depleted.</li>
+                          <li>
+                            Keys are tied to your PCID. Changing PC hardware may
+                            require re-activation.
+                          </li>
                         </ul>
                       </div>
                     </div>
@@ -372,6 +395,16 @@ export default function InstallPage() {
                   <li>DirectX 11</li>
                   <li>15GB available space</li>
                   <li>Stable internet connection</li>
+                  <li>
+                    Open NAT. See{" "}
+                    <a
+                      href="https://support.xbox.com/en-US/help/hardware-network/connect-network/xbox-one-nat-error"
+                      className="text-primary hover:underline"
+                    >
+                      here
+                    </a>{" "}
+                    for more info.
+                  </li>
                 </ul>
               </CardContent>
             </Card>

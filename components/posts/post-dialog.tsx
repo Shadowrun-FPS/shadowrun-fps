@@ -55,7 +55,11 @@ export function PostDialog({
     imageUrl: initialData?.imageUrl || "",
     type: initialData?.type || "EVENT",
     link: initialData?.link || "",
-    author: initialData?.author || session?.user?.name || "",
+    author:
+      initialData?.author ||
+      session?.user?.nickname ||
+      session?.user?.name ||
+      "",
     authorId: initialData?.authorId || session?.user?.id || "",
   });
 
@@ -136,7 +140,7 @@ export function PostDialog({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="title" className="text-right">
               Title*
             </Label>
@@ -150,7 +154,7 @@ export function PostDialog({
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="description" className="text-right">
               Description*
             </Label>
@@ -165,7 +169,7 @@ export function PostDialog({
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="imageUrl" className="text-right">
               Image URL*
             </Label>
@@ -179,7 +183,7 @@ export function PostDialog({
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="type" className="text-right">
               Type*
             </Label>
@@ -198,7 +202,7 @@ export function PostDialog({
             </Select>
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="link" className="text-right">
               Link
             </Label>
@@ -212,7 +216,7 @@ export function PostDialog({
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="author" className="text-right">
               Author
             </Label>
@@ -226,7 +230,7 @@ export function PostDialog({
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
+          <div className="grid items-center grid-cols-4 gap-4">
             <Label htmlFor="date" className="text-right">
               Date
             </Label>
@@ -239,7 +243,7 @@ export function PostDialog({
                     !date && "text-muted-foreground"
                   )}
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  <CalendarIcon className="w-4 h-4 mr-2" />
                   {date ? format(date, "PPP") : <span>Pick a date</span>}
                 </Button>
               </PopoverTrigger>
@@ -257,7 +261,7 @@ export function PostDialog({
 
         <DialogFooter>
           <Button type="submit" onClick={handleSubmit} disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {initialData ? "Update Post" : "Create Post"}
           </Button>
         </DialogFooter>
