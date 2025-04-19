@@ -85,7 +85,8 @@ export async function generateMetadata(
           playerName ||
           "Player";
 
-        title = `${displayName} - Player Stats | Shadowrun FPS`;
+        // Update title to use the display name
+        title = `${displayName} - Stats | Shadowrun FPS`;
         description = `View detailed statistics and match history for ${displayName} in Shadowrun FPS`;
 
         // Update the metadata objects with the new title and description
@@ -123,6 +124,63 @@ export async function generateMetadata(
         }
       } else {
         console.log(`Player not found for discordId: ${discordId}`);
+      }
+    } catch (error) {
+      console.error("Error fetching player data for metadata:", error);
+    }
+  } else if (playerName) {
+    // If we have a playerName but no discordId, try to find the player by name
+    try {
+      const client = await clientPromise;
+      const db = client.db();
+
+      // Try to find player by nickname first, then by username
+      const player = await db.collection("Players").findOne({
+        $or: [{ discordNickname: playerName }, { discordUsername: playerName }],
+      });
+
+      if (player) {
+        // Use nickname if available, otherwise use username
+        const displayName =
+          player.discordNickname || player.discordUsername || playerName;
+
+        // Update title to use the display name
+        title = `${displayName} - Stats | Shadowrun FPS`;
+        description = `View detailed statistics and match history for ${displayName} in Shadowrun FPS`;
+
+        // Update the metadata objects with the new title and description
+        openGraph.title = title;
+        openGraph.description = description;
+        twitter.title = title;
+        twitter.description = description;
+
+        // Add ELO information if available
+        if (player.stats && player.stats.length > 0) {
+          const mainStats =
+            player.stats.find((s: PlayerStats) => s.teamSize === 4) ||
+            player.stats[0];
+          if (mainStats?.elo) {
+            description += ` - Current ELO: ${mainStats.elo}`;
+            openGraph.description = description;
+            twitter.description = description;
+          }
+        }
+
+        // Use player's profile picture if available
+        if (
+          player.discordProfilePicture &&
+          typeof player.discordProfilePicture === "string"
+        ) {
+          const image = {
+            url: player.discordProfilePicture,
+            width: 800,
+            height: 800,
+            alt: `${displayName} - Shadowrun FPS Stats`,
+          };
+
+          openGraph.images = [image];
+          twitter.images = [player.discordProfilePicture];
+        }
       }
     } catch (error) {
       console.error("Error fetching player data for metadata:", error);
