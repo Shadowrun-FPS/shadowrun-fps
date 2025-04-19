@@ -51,8 +51,8 @@ export function TeamCard({
               </Avatar>
               <div>
                 <Link
-                  href={`/player/stats?playerName=${encodeURIComponent(
-                    player.discordUsername
+                  href={`/player/stats?discordId=${encodeURIComponent(
+                    player.discordId || ""
                   )}`}
                   className="font-medium text-blue-400 hover:text-blue-300 hover:underline"
                 >

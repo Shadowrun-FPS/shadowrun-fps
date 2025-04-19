@@ -4,7 +4,7 @@ import FeaturedPosts from "./featured-posts";
 import EventsClient from "./events-client";
 
 export const metadata: Metadata = {
-  title: "Events - Shadowrun FPS",
+  title: "Events",
   description:
     "Stay updated with the latest Shadowrun FPS community events, tournaments, and news.",
 };

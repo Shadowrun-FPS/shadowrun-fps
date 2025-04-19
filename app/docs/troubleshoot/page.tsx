@@ -11,11 +11,11 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: "Troubleshooting - Shadowrun FPS",
+  title: "Troubleshooting",
   description:
     "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips.",
   openGraph: {
-    title: "Troubleshooting - Shadowrun FPS",
+    title: "Troubleshooting",
     description:
       "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips. Join the Shadowrun community for more tips.",
     url: "https://ShadowrunFPS.com/docs/troubleshooting",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Troubleshooting - Shadowrun FPS",
+    title: "Troubleshooting",
     description:
       "Find solutions to common issues and troubleshooting tips for Shadowrun FPS, including errors, activation issues, and performance tips. Join the Shadowrun community for more tips.",
     images: [

@@ -45,7 +45,7 @@ export function TournamentTeamCard({
           teamMembers.map((member, idx) => (
             <div
               key={member.discordId || idx}
-              className="flex items-center gap-2 p-2 bg-muted/40 rounded-md"
+              className="flex items-center gap-2 p-2 rounded-md bg-muted/40"
             >
               <Avatar className="w-8 h-8">
                 {member.discordProfilePicture ? (
@@ -66,7 +66,7 @@ export function TournamentTeamCard({
                     )}`}
                     className="text-sm font-medium hover:underline"
                   >
-                    {member.discordUsername}
+                    {member.discordNickname || member.discordUsername}
                   </Link>
                 </PlayerContextMenu>
                 <div className="text-xs text-muted-foreground">

@@ -14,18 +14,21 @@ function PlayerStatsContent() {
   const [player, setPlayer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Initialize with the player name from URL if available
+  const initialPlayerName = playerName || "Player";
   const [pageTitle, setPageTitle] = useState<string>(
-    "Player Stats | Shadowrun FPS"
+    `${initialPlayerName} - Player Stats | Shadowrun FPS`
   );
   const [pageDescription, setPageDescription] = useState<string>(
-    "View detailed player statistics and match history"
+    `View detailed player statistics and match history for ${initialPlayerName}`
   );
   const [profileImage, setProfileImage] = useState<string>(
     "/shadowrun_invite_banner.png"
   );
 
   useEffect(() => {
-    // Update document title when player name is available
+    // Update document title immediately when player name is available from URL
     if (playerName) {
       const title = `${playerName} - Player Stats | Shadowrun FPS`;
       document.title = title;
