@@ -44,17 +44,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }
 
     // Check if user has admin rights
-    if (status === "authenticated" && session?.user) {
-      const isAdmin =
-        session.user.id === "238329746671271936" ||
-        session.user.roles?.some((role) =>
-          ["admin", "moderator", "founder"].includes(role)
-        );
-
-      if (!isAdmin) {
-        router.push("/");
-        return;
-      }
+    if (
+      status === "authenticated" &&
+      !session?.user?.roles?.includes("admin")
+    ) {
+      router.push("/");
+      return;
     }
 
     setIsMounted(true);
@@ -70,48 +65,55 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Mobile sidebar toggle */}
-      <div className="flex items-center justify-between p-4 md:hidden">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-        >
-          <Menu className="h-6 w-6" />
-        </Button>
-        <h1 className="text-xl font-bold">Admin Panel</h1>
-        <div className="w-10"></div>
-      </div>
+    <>
+      {/* Add a meta robots tag to ensure no indexing */}
+      <head>
+        <meta name="robots" content="noindex, nofollow" />
+      </head>
 
-      {/* Mobile sidebar */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
-          <div className="fixed inset-y-0 left-0 w-64 bg-background shadow-lg">
-            <div className="flex items-center justify-between p-4">
-              <h1 className="text-xl font-bold">Admin Panel</h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <X className="h-6 w-6" />
-              </Button>
+      <div className="min-h-screen bg-background">
+        {/* Mobile sidebar toggle */}
+        <div className="flex items-center justify-between p-4 md:hidden">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            <Menu className="w-6 h-6" />
+          </Button>
+          <h1 className="text-xl font-bold">Admin Panel</h1>
+          <div className="w-10"></div>
+        </div>
+
+        {/* Mobile sidebar */}
+        {sidebarOpen && (
+          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
+            <div className="fixed inset-y-0 left-0 w-64 shadow-lg bg-background">
+              <div className="flex items-center justify-between p-4">
+                <h1 className="text-xl font-bold">Admin Panel</h1>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+              <AdminSidebar />
             </div>
+          </div>
+        )}
+
+        <div className="flex">
+          {/* Desktop sidebar */}
+          <div className="hidden w-64 p-4 border-r md:block border-slate-800">
             <AdminSidebar />
           </div>
-        </div>
-      )}
 
-      <div className="flex">
-        {/* Desktop sidebar */}
-        <div className="hidden md:block w-64 p-4 border-r border-slate-800">
-          <AdminSidebar />
+          {/* Main content */}
+          <main className="flex-1 p-4 md:p-8">{children}</main>
         </div>
-
-        {/* Main content */}
-        <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
-    </div>
+    </>
   );
 }
