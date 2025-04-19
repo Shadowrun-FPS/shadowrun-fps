@@ -43,13 +43,19 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       return;
     }
 
-    // Check if user has admin rights
-    if (
-      status === "authenticated" &&
-      !session?.user?.roles?.includes("admin")
-    ) {
-      router.push("/");
-      return;
+    // Check if user has admin rights - more permissive check
+    if (status === "authenticated" && session?.user) {
+      const isAdmin =
+        session.user.id === "238329746671271936" || // Hardcoded admin ID
+        (session.user.roles &&
+          (session.user.roles.includes("admin") ||
+            session.user.roles.includes("moderator") ||
+            session.user.roles.includes("founder")));
+
+      if (!isAdmin) {
+        router.push("/");
+        return;
+      }
     }
 
     setIsMounted(true);

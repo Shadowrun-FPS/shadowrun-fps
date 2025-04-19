@@ -459,7 +459,7 @@ const errorAccordions = [
       "Must be configured in the main menu's Gamepad settings",
       "Cannot switch between Gamepad and Mouse & Keyboard during a match",
       "Settings changes must be done from the main menu",
-      "For PlayStation controllers, use <Link href='/troubleshoot#controller'>Steam's controller configuration</Link>",
+      "For PlayStation controllers, use Steam's controller configuration",
     ],
   },
 ];

@@ -44,6 +44,7 @@ export async function generateMetadata(
       }
     }
 
+    // Only include basic metadata without default images
     return {
       title,
       description,
@@ -51,20 +52,11 @@ export async function generateMetadata(
         title,
         description,
         type: "article",
-        images: [
-          {
-            url: "https://shadowrunfps.com/shadowrun_invite_banner.png",
-            width: 1200,
-            height: 630,
-            alt: `${tournament.name} - Shadowrun FPS Tournament`,
-          },
-        ],
       },
       twitter: {
         card: "summary_large_image",
         title,
         description,
-        images: ["https://shadowrunfps.com/shadowrun_invite_banner.png"],
       },
     };
   } catch (error) {
