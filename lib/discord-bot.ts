@@ -44,6 +44,7 @@ export async function sendDirectMessage(
       playerCount: number;
       timeLimit: number;
       timestamp: string;
+      teamSize?: number;
     };
   }
 ) {
@@ -66,7 +67,7 @@ export async function sendDirectMessage(
     // If queue info is provided, create a formatted embed
     if (options?.queueInfo) {
       // Create embed with the queue information
-      const { queueName, playerCount, timeLimit } = options.queueInfo;
+      const { queueName, playerCount, timeLimit, teamSize } = options.queueInfo;
 
       // Calculate expiration timestamp for Discord's timestamp formatting
       const expirationTime = new Date();
@@ -89,7 +90,25 @@ export async function sendDirectMessage(
         footer: { text: "Shadowrun FPS Matchmaking" },
       };
 
-      // Create button row with only the View Queue button
+      // Determine the URL based on team size
+      let queueUrl = `${
+        process.env.NEXT_PUBLIC_APP_URL || "https://shadowrunfps.com"
+      }/matches/queues#4v4`;
+
+      // Add the appropriate hash based on team size
+      if (teamSize === 1) {
+        queueUrl += "#1v1";
+      } else if (teamSize === 2) {
+        queueUrl += "#2v2";
+      } else if (teamSize === 4) {
+        queueUrl += "#4v4";
+      } else if (teamSize === 5) {
+        queueUrl += "#5v5";
+      }
+
+      console.log("Sending Discord message with URL:", queueUrl);
+
+      // Create button row with the View Queue button
       const components = [
         {
           type: ComponentType.ActionRow,
@@ -98,9 +117,7 @@ export async function sendDirectMessage(
               type: ComponentType.Button,
               style: ButtonStyle.Link,
               label: "View Queue",
-              url: `${
-                process.env.NEXT_PUBLIC_APP_URL || "https://yourwebsite.com"
-              }/matches/queues`,
+              url: queueUrl,
             },
           ],
         },

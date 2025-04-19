@@ -125,9 +125,7 @@ export default function QueuesPage() {
   const { data: session } = useSession();
   const { toast } = useToast();
   const [queues, setQueues] = useState<Array<any>>([]);
-  const [activeTab, setActiveTab] = useState<"4v4" | "5v5" | "2v2" | "1v1">(
-    "4v4"
-  );
+  const [activeTab, setActiveTab] = useState<string>("all");
   const [joiningQueue, setJoiningQueue] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreatingQueue, setIsCreatingQueue] = useState(false);
@@ -822,6 +820,41 @@ export default function QueuesPage() {
     }
   };
 
+  // Function to handle tab changes and update URL
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    // Update URL hash without full page reload
+    window.history.pushState(null, "", `#${value}`);
+  };
+
+  // Effect to sync with URL hash on load and hash changes
+  useEffect(() => {
+    console.log("URL search:", window.location.search);
+    console.log("URL hash:", window.location.hash);
+
+    // First check for query parameter
+    const params = new URLSearchParams(window.location.search);
+    const teamSizeParam = params.get("teamSize");
+    console.log("Team size param:", teamSizeParam);
+
+    if (teamSizeParam) {
+      console.log(
+        "Setting active tab to:",
+        `${teamSizeParam}v${teamSizeParam}`
+      );
+      setActiveTab(`${teamSizeParam}v${teamSizeParam}`);
+      return;
+    }
+
+    // Then check for hash
+    const hashTab = window.location.hash.replace("#", "");
+    console.log("Hash tab:", hashTab);
+    if (hashTab && ["1v1", "2v2", "4v4", "5v5"].includes(hashTab)) {
+      console.log("Setting active tab from hash to:", hashTab);
+      setActiveTab(hashTab);
+    }
+  }, []);
+
   if (!session) {
     return (
       <div className="container px-4 py-8 mx-auto">
@@ -1470,34 +1503,52 @@ export default function QueuesPage() {
             ) : (
               <Tabs
                 value={activeTab}
-                onValueChange={(v) => setActiveTab(v as typeof activeTab)}
+                onValueChange={handleTabChange}
+                className="w-full"
               >
-                <TabsList className="grid w-full h-auto grid-cols-4">
+                <TabsList className="grid w-full grid-cols-4 mb-6">
                   <TabsTrigger
                     value="1v1"
-                    className="py-2 text-sm sm:text-base"
-                    onClick={() => setActiveTab("1v1")}
+                    onClick={() => handleTabChange("1v1")}
+                    className={
+                      activeTab === "1v1"
+                        ? "data-[state=active]:bg-blue-600"
+                        : ""
+                    }
                   >
                     1v1
                   </TabsTrigger>
                   <TabsTrigger
                     value="2v2"
-                    className="py-2 text-sm sm:text-base"
-                    onClick={() => setActiveTab("2v2")}
+                    onClick={() => handleTabChange("2v2")}
+                    className={
+                      activeTab === "2v2"
+                        ? "data-[state=active]:bg-blue-600"
+                        : ""
+                    }
                   >
                     2v2
                   </TabsTrigger>
+
                   <TabsTrigger
                     value="4v4"
-                    className="py-2 text-sm sm:text-base"
-                    onClick={() => setActiveTab("4v4")}
+                    onClick={() => handleTabChange("4v4")}
+                    className={
+                      activeTab === "4v4"
+                        ? "data-[state=active]:bg-blue-600"
+                        : ""
+                    }
                   >
                     4v4
                   </TabsTrigger>
                   <TabsTrigger
                     value="5v5"
-                    className="py-2 text-sm sm:text-base"
-                    onClick={() => setActiveTab("5v5")}
+                    onClick={() => handleTabChange("5v5")}
+                    className={
+                      activeTab === "5v5"
+                        ? "data-[state=active]:bg-blue-600"
+                        : ""
+                    }
                   >
                     5v5
                   </TabsTrigger>
