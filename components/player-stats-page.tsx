@@ -15,6 +15,7 @@ import {
   ArrowDown,
   ChevronLeft,
   Medal,
+  ArrowLeft,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { PlayerContextMenu } from "@/components/player-context-menu";
 import { useSession } from "next-auth/react";
 import { getRankByElo, getRankProgress } from "@/lib/rank-utils";
+import { useRouter } from "next/navigation";
 
 // Format date to Month DD, YYYY
 const formatDate = (dateString: string | number | Date) => {
@@ -62,6 +64,7 @@ interface PlayerProps {
 export default function PlayerStatsPage({ player }: PlayerProps) {
   const { data: session } = useSession();
   const [currentDate] = useState(new Date());
+  const router = useRouter();
 
   // Filter stats to only include objects with teamSize
   const validStats = player.stats.filter(
@@ -150,19 +153,22 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
         session?.user?.roles.includes("moderator") ||
         session?.user?.roles.includes("founder")));
 
+  // Function to handle going back to previous page
+  const handleBack = () => {
+    router.back();
+  };
+
   return (
     <div className="min-h-screen p-3 text-gray-100 sm:p-4 md:p-6 lg:p-8">
       <div className="max-w-6xl mx-auto">
         <div className="mb-6">
           <Button
             variant="ghost"
-            asChild
-            className="text-gray-300 hover:text-white"
+            className="flex items-center gap-2 text-sm"
+            onClick={handleBack}
           >
-            <Link href="/leaderboard">
-              <ChevronLeft className="w-4 h-4 mr-2" />
-              Back to Leaderboard
-            </Link>
+            <ArrowLeft className="w-4 h-4" />
+            Back
           </Button>
         </div>
 

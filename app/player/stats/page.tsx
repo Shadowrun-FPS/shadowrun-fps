@@ -1,186 +1,140 @@
-"use client";
-
-import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import PlayerStatsPage from "@/components/player-stats-page";
+import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import Head from "next/head";
+import PlayerStatsContent from "@/components/player-stats-content";
+import { Metadata, ResolvingMetadata } from "next";
+import clientPromise from "@/lib/mongodb";
 
-// Create a client component that uses useSearchParams
-function PlayerStatsContent() {
-  const searchParams = useSearchParams();
-  const playerName = searchParams?.get("playerName");
-  const discordId = searchParams?.get("discordId");
-  const [player, setPlayer] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Define types for our OpenGraph and Twitter objects
+interface OpenGraphMetadata {
+  title: string;
+  description: string;
+  type: string;
+  images?: Array<{
+    url: string;
+    width: number;
+    height: number;
+    alt: string;
+  }>;
+}
 
-  // Initialize with the player name from URL if available
-  const initialPlayerName = playerName || "Player";
-  const [pageTitle, setPageTitle] = useState<string>(
-    `${initialPlayerName} - Player Stats | Shadowrun FPS`
-  );
-  const [pageDescription, setPageDescription] = useState<string>(
-    `View detailed player statistics and match history for ${initialPlayerName}`
-  );
-  const [profileImage, setProfileImage] = useState<string>(
-    "/shadowrun_invite_banner.png"
-  );
+interface TwitterMetadata {
+  card: string;
+  title: string;
+  description: string;
+  images?: string[];
+}
 
-  useEffect(() => {
-    // Update document title immediately when player name is available from URL
-    if (playerName) {
-      const title = `${playerName} - Player Stats | Shadowrun FPS`;
-      document.title = title;
-      setPageTitle(title);
-      setPageDescription(
-        `View detailed player statistics and match history for ${playerName}`
-      );
-    }
+interface PlayerStats {
+  teamSize: number;
+  elo: number;
+  // Add other stats properties as needed
+}
 
-    async function fetchPlayer() {
-      setLoading(true);
-      setError(null);
+// For Next.js page/layout metadata
+type MetadataProps = {
+  params: Record<string, string>;
+  searchParams: { [key: string]: string | string[] | undefined };
+};
 
-      try {
-        let url;
-        // Prefer playerName if available
-        if (playerName) {
-          url = `/api/players/byName?name=${encodeURIComponent(playerName)}`;
-        } else if (discordId) {
-          url = `/api/players/byId?id=${encodeURIComponent(discordId)}`;
-        } else {
-          throw new Error("No player identifier provided");
-        }
+export async function generateMetadata(
+  { searchParams }: MetadataProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  // Read route params
+  const playerName =
+    typeof searchParams.playerName === "string"
+      ? searchParams.playerName
+      : undefined;
 
-        const response = await fetch(url);
+  const discordId =
+    typeof searchParams.discordId === "string"
+      ? searchParams.discordId
+      : undefined;
 
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch player data: ${response.statusText}`
-          );
-        }
+  let title = `${playerName || "Player"} - Stats | Shadowrun FPS`;
+  let description = `View detailed statistics and match history for ${
+    playerName || "this player"
+  } in Shadowrun FPS`;
 
-        const data = await response.json();
-        setPlayer(data);
+  // Create base metadata objects
+  const openGraph: OpenGraphMetadata = {
+    title,
+    description,
+    type: "profile",
+  };
 
-        // Update title with player's nickname if available
+  const twitter: TwitterMetadata = {
+    card: "summary",
+    title,
+    description,
+  };
+
+  // If we have a discordId, try to fetch the player's data for a better card
+  if (discordId) {
+    try {
+      const client = await clientPromise;
+      const db = client.db();
+
+      const player = await db.collection("Players").findOne({ discordId });
+
+      if (player) {
+        // Use nickname if available, otherwise use username or default to playerName
         const displayName =
-          data.discordNickname || data.discordUsername || playerName;
-        if (displayName) {
-          const title = `${displayName} - Player Stats | Shadowrun FPS`;
-          document.title = title;
-          setPageTitle(title);
+          player.discordNickname ||
+          player.discordUsername ||
+          playerName ||
+          "Player";
 
-          // Update description with ELO if available
-          let description = `View detailed player statistics and match history for ${displayName}`;
-          if (data.stats && data.stats.length > 0) {
-            const mainStats =
-              data.stats.find((s: any) => s.teamSize === 4) || data.stats[0];
-            if (mainStats?.elo) {
-              description += ` - Current ELO: ${mainStats.elo}`;
-            }
+        title = `${displayName} - Player Stats | Shadowrun FPS`;
+        description = `View detailed statistics and match history for ${displayName} in Shadowrun FPS`;
+
+        // Update the metadata objects with the new title and description
+        openGraph.title = title;
+        openGraph.description = description;
+        twitter.title = title;
+        twitter.description = description;
+
+        // Add ELO information if available
+        if (player.stats && player.stats.length > 0) {
+          const mainStats =
+            player.stats.find((s: PlayerStats) => s.teamSize === 4) ||
+            player.stats[0];
+          if (mainStats?.elo) {
+            description += ` - Current ELO: ${mainStats.elo}`;
+            openGraph.description = description;
+            twitter.description = description;
           }
-          setPageDescription(description);
         }
 
-        // Update profile image if available, with fallback and error handling
-        if (data.discordAvatar) {
-          // Check if the avatar URL is valid
-          fetch(data.discordAvatar, { method: "HEAD" })
-            .then((response) => {
-              if (response.ok) {
-                setProfileImage(data.discordAvatar);
-              } else {
-                console.warn(
-                  "Discord avatar URL returned an error, using fallback image"
-                );
-                setProfileImage("/shadowrun_invite_banner.png");
-              }
-            })
-            .catch((error) => {
-              console.warn("Error checking Discord avatar URL:", error);
-              setProfileImage("/shadowrun_invite_banner.png");
-            });
-        } else if (data.playerAvatar) {
-          // Try playerAvatar as fallback
-          setProfileImage(data.playerAvatar);
+        // Use player's profile picture if available
+        if (
+          player.discordProfilePicture &&
+          typeof player.discordProfilePicture === "string"
+        ) {
+          const image = {
+            url: player.discordProfilePicture,
+            width: 800,
+            height: 800,
+            alt: `${displayName} - Shadowrun FPS Stats`,
+          };
+
+          openGraph.images = [image];
+          twitter.images = [player.discordProfilePicture];
         }
-      } catch (error) {
-        console.error("Error fetching player:", error);
-        setError(
-          error instanceof Error ? error.message : "Failed to load player data"
-        );
-      } finally {
-        setLoading(false);
+      } else {
+        console.log(`Player not found for discordId: ${discordId}`);
       }
+    } catch (error) {
+      console.error("Error fetching player data for metadata:", error);
     }
-
-    if (playerName || discordId) {
-      fetchPlayer();
-    } else {
-      setError("No player specified");
-      setLoading(false);
-    }
-  }, [playerName, discordId]);
-
-  if (loading) {
-    return (
-      <div className="container py-6 mx-auto">
-        <div className="space-y-4">
-          <Skeleton className="w-1/3 h-12" />
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Skeleton className="h-64" />
-            <Skeleton className="h-64" />
-            <Skeleton className="h-64" />
-            <Skeleton className="h-64" />
-          </div>
-        </div>
-      </div>
-    );
   }
 
-  if (error) {
-    return (
-      <div className="container py-6 mx-auto text-center">
-        <h1 className="mb-4 text-2xl font-bold">Error</h1>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (!player) {
-    return (
-      <div className="container py-6 mx-auto text-center">
-        <h1 className="mb-4 text-2xl font-bold">Player Not Found</h1>
-        <p>The player you&apos;re looking for doesn&apos;t exist</p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      <Head>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDescription} />
-
-        {/* OpenGraph meta tags for social sharing */}
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDescription} />
-        <meta property="og:image" content={profileImage} />
-        <meta property="og:type" content="profile" />
-
-        {/* Twitter meta tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content={pageDescription} />
-        <meta name="twitter:image" content={profileImage} />
-      </Head>
-      <div className="container py-6 mx-auto">
-        <PlayerStatsPage player={player} />
-      </div>
-    </>
-  );
+  return {
+    title,
+    description,
+    openGraph,
+    twitter,
+  };
 }
 
 // Main page component with Suspense boundary
