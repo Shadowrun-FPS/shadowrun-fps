@@ -217,7 +217,7 @@ export function NotificationDropdown() {
                           className="ml-auto"
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push("/matches/queues");
+                            router.push("/matches/queues#4v4");
                           }}
                         >
                           View Queue

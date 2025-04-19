@@ -456,8 +456,8 @@ export default function MatchDetailPage() {
       if (!previousMapScore || !previousMapScore.scoresVerified) {
         // Check if both teams have submitted scores (alternative to verified)
         if (
-          !previousMapScore.submittedByTeam1 ||
-          !previousMapScore.submittedByTeam2
+          !previousMapScore?.submittedByTeam1 ||
+          !previousMapScore?.submittedByTeam2
         ) {
           return false;
         }
@@ -774,7 +774,7 @@ export default function MatchDetailPage() {
               <div className="mt-8 text-center">
                 <Button
                   className="text-white bg-blue-600 hover:bg-blue-700"
-                  onClick={() => router.push("/matches/queues")}
+                  onClick={() => router.push("/matches/queues#4v4")}
                 >
                   Return to Queues
                 </Button>
