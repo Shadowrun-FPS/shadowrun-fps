@@ -1,81 +1,115 @@
 import { Metadata, ResolvingMetadata } from "next";
 import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
 
 interface LayoutProps {
   children: React.ReactNode;
   params: { id: string };
 }
 
+// Define types for our OpenGraph and Twitter objects
+interface OpenGraphMetadata {
+  title: string;
+  description: string;
+  type: string;
+  images?: Array<{
+    url: string;
+    width: number;
+    height: number;
+    alt: string;
+  }>;
+}
+
+interface TwitterMetadata {
+  card: string;
+  title: string;
+  description: string;
+  images?: string[];
+}
+
+interface PlayerStats {
+  teamSize: number;
+  elo: number;
+  // Add other stats properties as needed
+}
+
 export async function generateMetadata(
   { params }: LayoutProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  if (!ObjectId.isValid(params.id)) return {};
-
   try {
     const client = await clientPromise;
     const db = client.db();
 
-    const player = await db
-      .collection("Players")
-      .findOne({ _id: new ObjectId(params.id) });
+    // Try to find the player by ID or username
+    const player = await db.collection("Players").findOne({
+      $or: [
+        { discordId: params.id },
+        { discordUsername: params.id },
+        { discordNickname: params.id },
+      ],
+    });
 
-    if (!player) return {};
+    if (!player) {
+      return {
+        title: "Player Not Found | Shadowrun FPS",
+        description: "The player you're looking for doesn't exist",
+      };
+    }
 
-    const displayName = player.discordNickname || player.discordUsername;
+    // Create dynamic metadata based on player data
+    const displayName =
+      player.discordNickname || player.discordUsername || "Player";
+    const title = `${displayName} | Shadowrun FPS Player Stats`;
 
-    const title = `${displayName} - Player Stats | Shadowrun FPS`;
-    let description = `View detailed player statistics and match history for ${displayName}`;
-
+    // Create description with player stats if available
+    let description = `View ${displayName}'s player statistics and match history in Shadowrun FPS`;
     if (player.stats && player.stats.length > 0) {
       const mainStats =
-        player.stats.find((s: any) => s.teamSize === 4) || player.stats[0];
+        player.stats.find((s: PlayerStats) => s.teamSize === 4) ||
+        player.stats[0];
       if (mainStats?.elo) {
         description += ` - Current ELO: ${mainStats.elo}`;
       }
     }
 
-    // Use player's avatar with fallback
-    let imageUrl = "/shadowrun_invite_banner.png";
-    if (player.discordAvatar) {
-      try {
-        // We can't do a fetch here in server component, so we'll just use the URL
-        // and handle potential 404s with proper fallback in the frontend
-        imageUrl = player.discordAvatar;
-      } catch (error) {
-        console.warn("Error with Discord avatar:", error);
-      }
-    } else if (player.playerAvatar) {
-      imageUrl = player.playerAvatar;
+    // Create metadata object
+    const openGraph: OpenGraphMetadata = {
+      title,
+      description,
+      type: "profile",
+    };
+
+    const twitter: TwitterMetadata = {
+      card: "summary",
+      title,
+      description,
+    };
+
+    // Add player profile image if available
+    if (player.discordProfilePicture) {
+      const image = {
+        url: player.discordProfilePicture,
+        width: 800,
+        height: 800,
+        alt: `${displayName} - Shadowrun FPS Player`,
+      };
+
+      openGraph.images = [image];
+      twitter.images = [player.discordProfilePicture];
     }
 
     return {
       title,
       description,
-      openGraph: {
-        title,
-        description,
-        type: "profile",
-        images: [
-          {
-            url: imageUrl,
-            width: 1200,
-            height: 630,
-            alt: `${displayName} - Shadowrun FPS Player Stats`,
-          },
-        ],
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description,
-        images: [imageUrl],
-      },
+      openGraph,
+      twitter,
     };
   } catch (error) {
     console.error("Error generating player metadata:", error);
-    return {};
+    return {
+      title: "Player Stats | Shadowrun FPS",
+      description: "View player statistics and match history",
+    };
   }
 }
 
