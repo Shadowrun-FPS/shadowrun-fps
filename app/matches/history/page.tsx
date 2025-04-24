@@ -48,6 +48,7 @@ import {
   ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 import { useToast } from "@/components/ui/use-toast";
+import { FeatureGate } from "@/components/feature-gate";
 
 interface Match {
   matchId: string;
@@ -358,302 +359,306 @@ export default function MatchHistoryPage() {
   };
 
   return (
-    <div className="container py-8">
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-white">Match History</h1>
-          <p className="text-sm text-gray-400">
-            {matches.length} results found
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="flex-1">
-            <Select
-              value={statusFilter || "all"}
-              onValueChange={setStatusFilter}
-            >
-              <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="In-Progress">In-Progress</SelectItem>
-                <SelectItem value="Canceled">Canceled</SelectItem>
-              </SelectContent>
-            </Select>
+    <FeatureGate feature="matches">
+      <div className="container py-8">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold text-white">Match History</h1>
+            <p className="text-sm text-gray-400">
+              {matches.length} results found
+            </p>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Select
-              value={eloTierFilter || "all"}
-              onValueChange={setEloTierFilter}
-            >
-              <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
-                <SelectValue placeholder="ELO tier" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
-                <SelectItem value="all">All Tiers</SelectItem>
-                <SelectItem value="low">Low</SelectItem>
-                <SelectItem value="medium">Mid</SelectItem>
-                <SelectItem value="high">High</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="flex-1">
+              <Select
+                value={statusFilter || "all"}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="Completed">Completed</SelectItem>
+                  <SelectItem value="In-Progress">In-Progress</SelectItem>
+                  <SelectItem value="Canceled">Canceled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <Select
-              value={teamSizeFilter || "all"}
-              onValueChange={setTeamSizeFilter}
-            >
-              <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
-                <SelectValue placeholder="Team Size" />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
-                <SelectItem value="all">All Sizes</SelectItem>
-                <SelectItem value="2v2">2v2</SelectItem>
-                <SelectItem value="4v4">4v4</SelectItem>
-                <SelectItem value="5v5">5v5</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Select
+                value={eloTierFilter || "all"}
+                onValueChange={setEloTierFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
+                  <SelectValue placeholder="ELO tier" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
+                  <SelectItem value="all">All Tiers</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Mid</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <div className="relative" ref={datePickerRef}>
-              <Popover>
-                <PopoverTrigger asChild>
+              <Select
+                value={teamSizeFilter || "all"}
+                onValueChange={setTeamSizeFilter}
+              >
+                <SelectTrigger className="w-full sm:w-[180px] bg-[#111827] border-[#1f2937]">
+                  <SelectValue placeholder="Team Size" />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1f2937] border-[#3b82f6]">
+                  <SelectItem value="all">All Sizes</SelectItem>
+                  <SelectItem value="2v2">2v2</SelectItem>
+                  <SelectItem value="4v4">4v4</SelectItem>
+                  <SelectItem value="5v5">5v5</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <div className="relative" ref={datePickerRef}>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto bg-[#111827] border-[#1f2937] flex items-center"
+                    >
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {dateFilter
+                        ? format(dateFilter, "MMM d, yyyy")
+                        : "Pick date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0 bg-[#1f2937] border-[#3b82f6]">
+                    <CalendarComponent
+                      mode="single"
+                      selected={dateFilter}
+                      onSelect={setDateFilter}
+                      initialFocus
+                      className="border-none"
+                    />
+                    <div className="flex items-center justify-between p-3 border-t border-[#3b82f6]">
+                      <Button
+                        variant="ghost"
+                        className="text-sm text-blue-400 hover:text-blue-300"
+                        onClick={() => setDateFilter(undefined)}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="text-sm text-blue-400 hover:text-blue-300"
+                        onClick={() => setDateFilter(new Date())}
+                      >
+                        Today
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <Button
+                variant="outline"
+                className="bg-[#111827] border-[#1f2937]"
+                onClick={clearFilters}
+              >
+                Clear
+              </Button>
+            </div>
+          </div>
+
+          <Card className="bg-[#111827] border-[#1f2937] overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-[#1f2937]">
+                    <th className="p-4 text-left">
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        onClick={() => handleSort("status")}
+                      >
+                        Status
+                        <ArrowUpDown className="w-4 h-4" />
+                      </Button>
+                    </th>
+                    <th className="p-4 text-left">
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        onClick={() => handleSort("eloTier")}
+                      >
+                        ELO Tier
+                        <ArrowUpDown className="w-4 h-4" />
+                      </Button>
+                    </th>
+                    <th className="p-4 text-left">
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        onClick={() => handleSort("teamSize")}
+                      >
+                        Team Size
+                        <ArrowUpDown className="w-4 h-4" />
+                      </Button>
+                    </th>
+                    <th className="p-4 text-left">
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        onClick={() => handleSort("winner")}
+                      >
+                        Winner
+                        <ArrowUpDown className="w-4 h-4" />
+                      </Button>
+                    </th>
+                    <th className="p-4 text-left">
+                      <Button
+                        variant="ghost"
+                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        onClick={() => handleSort("createdAt")}
+                      >
+                        Date and Time
+                        <ArrowUpDown className="w-4 h-4" />
+                      </Button>
+                    </th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-gray-400">
+                        Loading matches...
+                      </td>
+                    </tr>
+                  ) : matches.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="p-4 text-center text-gray-400">
+                        No matches found
+                      </td>
+                    </tr>
+                  ) : (
+                    matches.map((match) => (
+                      <ContextMenu key={match.matchId}>
+                        <ContextMenuTrigger asChild>
+                          <tr className="border-b border-[#1f2937] hover:bg-[#1a2234]">
+                            <td className="p-4">
+                              {getStatusBadge(match.status)}
+                            </td>
+                            <td className="p-4 text-white capitalize">
+                              {match.eloTier}
+                            </td>
+                            <td className="p-4 text-white">
+                              {match.teamSize}v{match.teamSize}
+                            </td>
+                            <td className={`p-4 ${getWinnerColor(match)}`}>
+                              {match.winner && (
+                                <div className="flex items-center gap-2">
+                                  <Trophy className="w-4 h-4 text-yellow-500" />
+                                  <span className="text-sm font-medium">
+                                    {getTeamName(match, match.winner)}
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-300">
+                              {formatDateDisplay(match.createdAt)}
+                            </td>
+                            <td className="p-4 text-right">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                onClick={() => handleViewMatch(match.matchId)}
+                              >
+                                View Match
+                              </Button>
+                            </td>
+                          </tr>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-64 bg-[#1f2937] border-[#3b82f6] text-white">
+                          <ContextMenuItem
+                            className="flex items-center gap-2 cursor-pointer hover:bg-[#2d3748]"
+                            onClick={() => handleCopyMatchId(match.matchId)}
+                          >
+                            <Copy className="w-4 h-4" />
+                            <span>Copy Match ID</span>
+                          </ContextMenuItem>
+
+                          {/* Only show delete option for admins/moderators */}
+                          {(session?.user?.id === "238329746671271936" || // Your ID - always allow
+                            (session?.user?.roles &&
+                              (session.user.roles.includes("admin") ||
+                                session.user.roles.includes("moderator") ||
+                                session.user.roles.includes("founder")))) && (
+                            <>
+                              <ContextMenuSeparator className="bg-[#3b82f6]/30" />
+                              <ContextMenuItem
+                                className="flex items-center gap-2 text-red-400 cursor-pointer hover:bg-[#2d3748] hover:text-red-300"
+                                onClick={() => handleDeleteMatch(match.matchId)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>Delete Match</span>
+                              </ContextMenuItem>
+                            </>
+                          )}
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className="bg-[#111827] border-[#1f2937]"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
                   <Button
-                    variant="outline"
-                    className="w-full sm:w-auto bg-[#111827] border-[#1f2937] flex items-center"
+                    key={page}
+                    variant={page === currentPage ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(page)}
+                    className={
+                      page === currentPage
+                        ? "bg-blue-600 hover:bg-blue-700"
+                        : "bg-[#111827] border-[#1f2937]"
+                    }
                   >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {dateFilter
-                      ? format(dateFilter, "MMM d, yyyy")
-                      : "Pick date"}
+                    {page}
                   </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0 bg-[#1f2937] border-[#3b82f6]">
-                  <CalendarComponent
-                    mode="single"
-                    selected={dateFilter}
-                    onSelect={setDateFilter}
-                    initialFocus
-                    className="border-none"
-                  />
-                  <div className="flex items-center justify-between p-3 border-t border-[#3b82f6]">
-                    <Button
-                      variant="ghost"
-                      className="text-sm text-blue-400 hover:text-blue-300"
-                      onClick={() => setDateFilter(undefined)}
-                    >
-                      Clear
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="text-sm text-blue-400 hover:text-blue-300"
-                      onClick={() => setDateFilter(new Date())}
-                    >
-                      Today
-                    </Button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                )
+              )}
             </div>
 
             <Button
               variant="outline"
+              size="icon"
+              onClick={() =>
+                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+              }
+              disabled={currentPage === totalPages}
               className="bg-[#111827] border-[#1f2937]"
-              onClick={clearFilters}
             >
-              Clear
+              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>
-
-        <Card className="bg-[#111827] border-[#1f2937] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#1f2937]">
-                  <th className="p-4 text-left">
-                    <Button
-                      variant="ghost"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
-                      onClick={() => handleSort("status")}
-                    >
-                      Status
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="p-4 text-left">
-                    <Button
-                      variant="ghost"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
-                      onClick={() => handleSort("eloTier")}
-                    >
-                      ELO Tier
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="p-4 text-left">
-                    <Button
-                      variant="ghost"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
-                      onClick={() => handleSort("teamSize")}
-                    >
-                      Team Size
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="p-4 text-left">
-                    <Button
-                      variant="ghost"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
-                      onClick={() => handleSort("winner")}
-                    >
-                      Winner
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="p-4 text-left">
-                    <Button
-                      variant="ghost"
-                      className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
-                      onClick={() => handleSort("createdAt")}
-                    >
-                      Date and Time
-                      <ArrowUpDown className="w-4 h-4" />
-                    </Button>
-                  </th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-4 text-center text-gray-400">
-                      Loading matches...
-                    </td>
-                  </tr>
-                ) : matches.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="p-4 text-center text-gray-400">
-                      No matches found
-                    </td>
-                  </tr>
-                ) : (
-                  matches.map((match) => (
-                    <ContextMenu key={match.matchId}>
-                      <ContextMenuTrigger asChild>
-                        <tr className="border-b border-[#1f2937] hover:bg-[#1a2234]">
-                          <td className="p-4">
-                            {getStatusBadge(match.status)}
-                          </td>
-                          <td className="p-4 text-white capitalize">
-                            {match.eloTier}
-                          </td>
-                          <td className="p-4 text-white">
-                            {match.teamSize}v{match.teamSize}
-                          </td>
-                          <td className={`p-4 ${getWinnerColor(match)}`}>
-                            {match.winner && (
-                              <div className="flex items-center gap-2">
-                                <Trophy className="w-4 h-4 text-yellow-500" />
-                                <span className="text-sm font-medium">
-                                  {getTeamName(match, match.winner)}
-                                </span>
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-300">
-                            {formatDateDisplay(match.createdAt)}
-                          </td>
-                          <td className="p-4 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
-                              onClick={() => handleViewMatch(match.matchId)}
-                            >
-                              View Match
-                            </Button>
-                          </td>
-                        </tr>
-                      </ContextMenuTrigger>
-                      <ContextMenuContent className="w-64 bg-[#1f2937] border-[#3b82f6] text-white">
-                        <ContextMenuItem
-                          className="flex items-center gap-2 cursor-pointer hover:bg-[#2d3748]"
-                          onClick={() => handleCopyMatchId(match.matchId)}
-                        >
-                          <Copy className="w-4 h-4" />
-                          <span>Copy Match ID</span>
-                        </ContextMenuItem>
-
-                        {/* Only show delete option for admins/moderators */}
-                        {(session?.user?.id === "238329746671271936" || // Your ID - always allow
-                          (session?.user?.roles &&
-                            (session.user.roles.includes("admin") ||
-                              session.user.roles.includes("moderator") ||
-                              session.user.roles.includes("founder")))) && (
-                          <>
-                            <ContextMenuSeparator className="bg-[#3b82f6]/30" />
-                            <ContextMenuItem
-                              className="flex items-center gap-2 text-red-400 cursor-pointer hover:bg-[#2d3748] hover:text-red-300"
-                              onClick={() => handleDeleteMatch(match.matchId)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              <span>Delete Match</span>
-                            </ContextMenuItem>
-                          </>
-                        )}
-                      </ContextMenuContent>
-                    </ContextMenu>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="bg-[#111827] border-[#1f2937]"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <Button
-                key={page}
-                variant={page === currentPage ? "default" : "outline"}
-                size="sm"
-                onClick={() => setCurrentPage(page)}
-                className={
-                  page === currentPage
-                    ? "bg-blue-600 hover:bg-blue-700"
-                    : "bg-[#111827] border-[#1f2937]"
-                }
-              >
-                {page}
-              </Button>
-            ))}
-          </div>
-
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() =>
-              setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-            }
-            disabled={currentPage === totalPages}
-            className="bg-[#111827] border-[#1f2937]"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
       </div>
-    </div>
+    </FeatureGate>
   );
 }

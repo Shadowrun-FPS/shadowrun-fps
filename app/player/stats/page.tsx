@@ -3,6 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatsContent from "@/components/player-stats-content";
 import { Metadata, ResolvingMetadata } from "next";
 import clientPromise from "@/lib/mongodb";
+import { FeatureGate } from "@/components/feature-gate";
 
 // Define types for our OpenGraph and Twitter objects
 interface OpenGraphMetadata {
@@ -198,22 +199,24 @@ export async function generateMetadata(
 // Main page component with Suspense boundary
 export default function StatsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="container py-6 mx-auto">
-          <div className="space-y-4">
-            <Skeleton className="w-1/3 h-12" />
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
-              <Skeleton className="h-64" />
+    <FeatureGate feature="playerStats">
+      <Suspense
+        fallback={
+          <div className="container py-6 mx-auto">
+            <div className="space-y-4">
+              <Skeleton className="w-1/3 h-12" />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+              </div>
             </div>
           </div>
-        </div>
-      }
-    >
-      <PlayerStatsContent />
-    </Suspense>
+        }
+      >
+        <PlayerStatsContent />
+      </Suspense>
+    </FeatureGate>
   );
 }
