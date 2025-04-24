@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { isFeatureEnabled, FeatureFlag } from "@/lib/features";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -39,6 +40,14 @@ import {
   GamepadIcon,
 } from "lucide-react";
 
+interface NavLink {
+  title: string;
+  href: string;
+  description: string;
+  icon: React.ReactNode;
+  feature?: FeatureFlag;
+}
+
 const DocLinks = [
   {
     title: "Events",
@@ -60,57 +69,77 @@ const DocLinks = [
   },
 ];
 
-const MatchesLinks = [
+const MatchesLinks: NavLink[] = [
   {
     title: "Queues",
     href: "/matches/queues#4v4",
     description: "Join active match queues",
     icon: <Clock className="w-5 h-5 mr-2 text-primary" />,
+    feature: "queues",
   },
   {
     title: "Match History",
     href: "/matches/history",
     description: "View your previous matches",
     icon: <PanelLeft className="w-5 h-5 mr-2 text-primary" />,
+    feature: "matches",
   },
   {
     title: "Leaderboard",
     href: "/leaderboard",
     description: "See the top players and rankings",
     icon: <BarChart3 className="w-5 h-5 mr-2 text-primary" />,
+    feature: "leaderboard",
   },
 ];
 
-const TournamentsLinks = [
+const TournamentsLinks: NavLink[] = [
   {
     title: "Overview",
     href: "/tournaments/overview",
     description: "View upcoming and ongoing tournaments",
     icon: <Trophy className="w-5 h-5 mr-2 text-primary" />,
+    feature: "tournaments",
   },
   {
     title: "Teams",
     href: "/tournaments/teams",
     description: "Manage your teams and recruitment",
     icon: <Users className="w-5 h-5 mr-2 text-primary" />,
+    feature: "teams",
   },
   {
     title: "Scrimmages",
     href: "/tournaments/scrimmages",
     description: "View scrimmage matches with other teams",
     icon: <HeartHandshake className="w-5 h-5 mr-2 text-primary" />,
+    feature: "scrimmage",
   },
   {
     title: "Rankings",
     href: "/tournaments/rankings",
     description: "Team rankings and tournament standings",
     icon: <BarChart3 className="w-5 h-5 mr-2 text-primary" />,
+    feature: "rankings",
   },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+
+  // Filter the links based on feature flags
+  const filteredMatchesLinks = MatchesLinks.filter((link) =>
+    link.feature ? isFeatureEnabled(link.feature) : true
+  );
+
+  const filteredTournamentsLinks = TournamentsLinks.filter((link) =>
+    link.feature ? isFeatureEnabled(link.feature) : true
+  );
+
+  // Only show the dropdown if there are enabled links
+  const showMatchesMenu = filteredMatchesLinks.length > 0;
+  const showTournamentsMenu = filteredTournamentsLinks.length > 0;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -167,47 +196,51 @@ export function Navbar() {
                 </Link>
               </NavigationMenuItem>
 
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>
-                  <Clock className="w-4 h-4 mr-2" />
-                  Matches
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    {MatchesLinks.map((link) => (
-                      <ListItem
-                        key={link.title}
-                        title={link.title}
-                        href={link.href}
-                        icon={link.icon}
-                      >
-                        {link.description}
-                      </ListItem>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+              {showMatchesMenu && (
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>
+                    <Clock className="w-4 h-4 mr-2" />
+                    Matches
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      {filteredMatchesLinks.map((link) => (
+                        <ListItem
+                          key={link.title}
+                          title={link.title}
+                          href={link.href}
+                          icon={link.icon}
+                        >
+                          {link.description}
+                        </ListItem>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              )}
 
-              <NavigationMenuItem>
-                <NavigationMenuTrigger>
-                  <Trophy className="w-4 h-4 mr-2" />
-                  Tournaments
-                </NavigationMenuTrigger>
-                <NavigationMenuContent>
-                  <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
-                    {TournamentsLinks.map((link) => (
-                      <ListItem
-                        key={link.title}
-                        title={link.title}
-                        href={link.href}
-                        icon={link.icon}
-                      >
-                        {link.description}
-                      </ListItem>
-                    ))}
-                  </ul>
-                </NavigationMenuContent>
-              </NavigationMenuItem>
+              {showTournamentsMenu && (
+                <NavigationMenuItem>
+                  <NavigationMenuTrigger>
+                    <Trophy className="w-4 h-4 mr-2" />
+                    Tournaments
+                  </NavigationMenuTrigger>
+                  <NavigationMenuContent>
+                    <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
+                      {filteredTournamentsLinks.map((link) => (
+                        <ListItem
+                          key={link.title}
+                          title={link.title}
+                          href={link.href}
+                          icon={link.icon}
+                        >
+                          {link.description}
+                        </ListItem>
+                      ))}
+                    </ul>
+                  </NavigationMenuContent>
+                </NavigationMenuItem>
+              )}
             </NavigationMenuList>
           </NavigationMenu>
         </div>
@@ -258,6 +291,19 @@ ListItem.displayName = "ListItem";
 function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
 
+  // Filter the links based on feature flags
+  const filteredMatchesLinks = MatchesLinks.filter((link) =>
+    link.feature ? isFeatureEnabled(link.feature) : true
+  );
+
+  const filteredTournamentsLinks = TournamentsLinks.filter((link) =>
+    link.feature ? isFeatureEnabled(link.feature) : true
+  );
+
+  // Only show the sections if there are enabled links
+  const showMatchesSection = filteredMatchesLinks.length > 0;
+  const showTournamentsSection = filteredTournamentsLinks.length > 0;
+
   const handleLinkClick = () => {
     onNavigate();
   };
@@ -296,45 +342,49 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         </div>
       </div>
 
-      <div className="px-3 py-2">
-        <h4 className="mb-2 text-sm font-semibold">Matches</h4>
-        <div className="flex flex-col gap-1 pl-2">
-          {MatchesLinks.map((link) => (
-            <Link
-              key={link.title}
-              href={link.href}
-              className={cn(
-                "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
-                pathname === link.href ? "bg-accent" : ""
-              )}
-              onClick={handleLinkClick}
-            >
-              {link.icon}
-              {link.title}
-            </Link>
-          ))}
+      {showMatchesSection && (
+        <div className="px-3 py-2">
+          <h4 className="mb-2 text-sm font-semibold">Matches</h4>
+          <div className="flex flex-col gap-1 pl-2">
+            {filteredMatchesLinks.map((link) => (
+              <Link
+                key={link.title}
+                href={link.href}
+                className={cn(
+                  "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
+                  pathname === link.href ? "bg-accent" : ""
+                )}
+                onClick={handleLinkClick}
+              >
+                {link.icon}
+                {link.title}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="px-3 py-2">
-        <h4 className="mb-2 text-sm font-semibold">Tournaments</h4>
-        <div className="flex flex-col gap-1 pl-2">
-          {TournamentsLinks.map((link) => (
-            <Link
-              key={link.title}
-              href={link.href}
-              className={cn(
-                "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
-                pathname === link.href ? "bg-accent" : ""
-              )}
-              onClick={handleLinkClick}
-            >
-              {link.icon}
-              {link.title}
-            </Link>
-          ))}
+      {showTournamentsSection && (
+        <div className="px-3 py-2">
+          <h4 className="mb-2 text-sm font-semibold">Tournaments</h4>
+          <div className="flex flex-col gap-1 pl-2">
+            {filteredTournamentsLinks.map((link) => (
+              <Link
+                key={link.title}
+                href={link.href}
+                className={cn(
+                  "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
+                  pathname === link.href ? "bg-accent" : ""
+                )}
+                onClick={handleLinkClick}
+              >
+                {link.icon}
+                {link.title}
+              </Link>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Bottom margin to ensure scrolling works properly */}
       <div className="h-6"></div>

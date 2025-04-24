@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import PlayerStatsPage from "@/components/player-stats-page";
+import { FeatureGate } from "@/components/feature-gate";
 
 export default async function PlayerPage({
   params,
@@ -42,9 +43,11 @@ export default async function PlayerPage({
     };
 
     return (
-      <div className="container py-6 mx-auto">
-        <PlayerStatsPage player={cleanedPlayer} />
-      </div>
+      <FeatureGate feature="playerStats">
+        <div className="container py-6 mx-auto">
+          <PlayerStatsPage player={cleanedPlayer} />
+        </div>
+      </FeatureGate>
     );
   } catch (error) {
     console.error("Error fetching player:", error);

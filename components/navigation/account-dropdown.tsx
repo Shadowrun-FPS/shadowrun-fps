@@ -17,6 +17,7 @@ import Link from "next/link";
 import { Bell, Shield, Users, BarChart2 } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { Badge } from "@/components/ui/badge";
+import { isFeatureEnabled } from "@/lib/features";
 
 // Define the moderator role IDs and names with proper typing
 interface RoleInfo {
@@ -137,6 +138,9 @@ export default function AccountDropdown() {
   // Check if the user is the developer
   const isDeveloper = session?.user?.id === DEVELOPER_ID;
 
+  // Check if player stats is enabled
+  const playerStatsEnabled = isFeatureEnabled("playerStats");
+
   // Display login button if not authenticated
   if (status === "unauthenticated") {
     return (
@@ -218,20 +222,22 @@ export default function AccountDropdown() {
 
           <DropdownMenuSeparator />
 
-          {/* Link to player stats page instead of generic profile */}
-          <DropdownMenuItem asChild>
-            <Link
-              href={
-                discordUsername
-                  ? `/player/stats?playerName=${discordUsername}`
-                  : "/profile"
-              }
-              className="flex items-center cursor-pointer"
-            >
-              <BarChart2 className="w-4 h-4 mr-2" />
-              Player Stats
-            </Link>
-          </DropdownMenuItem>
+          {/* Only show Player Stats link if feature is enabled */}
+          {playerStatsEnabled && (
+            <DropdownMenuItem asChild>
+              <Link
+                href={
+                  discordUsername
+                    ? `/player/stats?playerName=${discordUsername}`
+                    : "/profile"
+                }
+                className="flex items-center cursor-pointer"
+              >
+                <BarChart2 className="w-4 h-4 mr-2" />
+                Player Stats
+              </Link>
+            </DropdownMenuItem>
+          )}
 
           {/* Link to team page if user has a team, otherwise show "Find Team" */}
           <DropdownMenuItem asChild>

@@ -33,6 +33,7 @@ import { TeamCard } from "@/components/match/team-card";
 import Link from "next/link";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserCircle } from "lucide-react";
+import { FeatureGate } from "@/components/feature-gate";
 
 interface MatchPlayer {
   discordId: string;
@@ -490,103 +491,82 @@ export default function MatchDetailPage() {
   const team2Elo = team2.reduce((sum, player) => sum + player.elo, 0);
 
   return (
-    <div className="min-h-screen ">
-      {/* Add Back button at the top */}
-      <div className="container p-4 pt-3 mx-auto">
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-[#1e293b] text-gray-300 hover:bg-[#334155] border-[#334155]"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Return
-        </Button>
-      </div>
-
-      <main className="container p-4 mx-auto mt-2 mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-blue-400">Match Details</h1>
-          {match && (
-            <Badge
-              className={`px-3 py-1 text-xs font-medium uppercase ${
-                match.status === "completed"
-                  ? "bg-green-600"
-                  : match.status === "in_progress"
-                  ? "bg-blue-600"
-                  : "bg-yellow-600"
-              }`}
-            >
-              {match.status === "completed"
-                ? "Completed"
-                : match.status === "in_progress"
-                ? "In Progress"
-                : "Draft"}
-            </Badge>
-          )}
+    <FeatureGate feature="matches">
+      <div className="min-h-screen ">
+        {/* Add Back button at the top */}
+        <div className="container p-4 pt-3 mx-auto">
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-[#1e293b] text-gray-300 hover:bg-[#334155] border-[#334155]"
+            onClick={() => router.back()}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Return
+          </Button>
         </div>
 
-        <div className="relative mb-6">
-          <Card className=" border-[#1f2937]">
-            <CardContent className="p-6">
-              <h2 className="mb-2 text-xl font-semibold text-white capitalize">
-                {match.eloTier} Queue
-              </h2>
-              <p className="mb-4 text-sm text-gray-400">
-                Match ID: {match.matchId}
-              </p>
+        <main className="container p-4 mx-auto mt-2 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold text-blue-400">Match Details</h1>
+            {match && (
+              <Badge
+                className={`px-3 py-1 text-xs font-medium uppercase ${
+                  match.status === "completed"
+                    ? "bg-green-600"
+                    : match.status === "in_progress"
+                    ? "bg-blue-600"
+                    : "bg-yellow-600"
+                }`}
+              >
+                {match.status === "completed"
+                  ? "Completed"
+                  : match.status === "in_progress"
+                  ? "In Progress"
+                  : "Draft"}
+              </Badge>
+            )}
+          </div>
 
-              {/* Match details grid */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <p className="text-sm text-gray-400">Type</p>
-                  <p className="font-medium text-white">{match.type}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">ELO Tier</p>
-                  <p className="font-medium text-white capitalize">
-                    {match.eloTier}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Team Size</p>
-                  <p className="font-medium text-white">
-                    {match.teamSize}v{match.teamSize}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-400">Launched By</p>
-                  <p className="font-medium text-white">
-                    {match.createdBy.discordNickname}
-                  </p>
-                </div>
-              </div>
+          <div className="relative mb-6">
+            <Card className=" border-[#1f2937]">
+              <CardContent className="p-6">
+                <h2 className="mb-2 text-xl font-semibold text-white capitalize">
+                  {match.eloTier} Queue
+                </h2>
+                <p className="mb-4 text-sm text-gray-400">
+                  Match ID: {match.matchId}
+                </p>
 
-              {/* Timestamps */}
-              <div className="mb-4">
-                <div className="flex items-center mb-2">
-                  <div className="w-4 h-4 mr-2 text-gray-400">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
+                {/* Match details grid */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-400">Type</p>
+                    <p className="font-medium text-white">{match.type}</p>
                   </div>
-                  <p className="text-sm text-gray-400">Created</p>
-                  <p className="ml-2 text-sm font-medium text-white">
-                    {format(new Date(match.createdAt), "MMM d, yyyy, h:mm a")}
-                  </p>
+                  <div>
+                    <p className="text-sm text-gray-400">ELO Tier</p>
+                    <p className="font-medium text-white capitalize">
+                      {match.eloTier}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Team Size</p>
+                    <p className="font-medium text-white">
+                      {match.teamSize}v{match.teamSize}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Launched By</p>
+                    <p className="font-medium text-white">
+                      {match.createdBy.discordNickname}
+                    </p>
+                  </div>
                 </div>
 
-                {match.completedAt && (
-                  <div className="flex items-center">
+                {/* Timestamps */}
+                <div className="mb-4">
+                  <div className="flex items-center mb-2">
                     <div className="w-4 h-4 mr-2 text-gray-400">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -597,406 +577,436 @@ export default function MatchDetailPage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       >
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
                       </svg>
                     </div>
-                    <p className="text-sm text-gray-400">Completed</p>
+                    <p className="text-sm text-gray-400">Created</p>
                     <p className="ml-2 text-sm font-medium text-white">
-                      {format(
-                        new Date(match.completedAt),
-                        "MMM d, yyyy, h:mm a"
-                      )}
+                      {format(new Date(match.createdAt), "MMM d, yyyy, h:mm a")}
                     </p>
                   </div>
-                )}
-              </div>
 
-              {/* First Pick */}
-              <div className="p-4 mb-4 bg-[#0f172a] rounded-lg">
-                <div className="flex items-center">
-                  <div className="w-5 h-5 mr-2 text-blue-400">
-                    <Trophy size={20} />
+                  {match.completedAt && (
+                    <div className="flex items-center">
+                      <div className="w-4 h-4 mr-2 text-gray-400">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-400">Completed</p>
+                      <p className="ml-2 text-sm font-medium text-white">
+                        {format(
+                          new Date(match.completedAt),
+                          "MMM d, yyyy, h:mm a"
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* First Pick */}
+                <div className="p-4 mb-4 bg-[#0f172a] rounded-lg">
+                  <div className="flex items-center">
+                    <div className="w-5 h-5 mr-2 text-blue-400">
+                      <Trophy size={20} />
+                    </div>
+                    <p className="text-sm font-medium text-blue-400">
+                      First Pick
+                    </p>
                   </div>
-                  <p className="text-sm font-medium text-blue-400">
-                    First Pick
+                  <p className="mt-1 text-white">
+                    Team {match.firstPick} picks side or server first.
                   </p>
                 </div>
-                <p className="mt-1 text-white">
-                  Team {match.firstPick} picks side or server first.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        {/* Teams Section */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <TeamCard
-            team={team1}
-            teamNumber={1}
-            title={getTeamName(1)}
-            matchStatus={match.status}
-          />
-          <TeamCard
-            team={team2}
-            teamNumber={2}
-            title={getTeamName(2)}
-            matchStatus={match.status}
-          />
-        </div>
+          {/* Teams Section */}
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <TeamCard
+              team={team1}
+              teamNumber={1}
+              title={getTeamName(1)}
+              matchStatus={match.status}
+            />
+            <TeamCard
+              team={team2}
+              teamNumber={2}
+              title={getTeamName(2)}
+              matchStatus={match.status}
+            />
+          </div>
 
-        {/* Match Results Section */}
-        {match.status === "completed" ? (
-          <Card className=" border-[#1f2937]">
-            <CardContent className="p-6">
-              <h3 className="mb-4 text-xl font-semibold text-white">
-                Match Results
-              </h3>
-              <p className="mb-4 text-sm text-gray-400">Best of 3 series</p>
+          {/* Match Results Section */}
+          {match.status === "completed" ? (
+            <Card className=" border-[#1f2937]">
+              <CardContent className="p-6">
+                <h3 className="mb-4 text-xl font-semibold text-white">
+                  Match Results
+                </h3>
+                <p className="mb-4 text-sm text-gray-400">Best of 3 series</p>
 
-              <div className="flex items-center justify-center mb-6">
-                <div className="text-center">
-                  <p className="text-sm text-gray-400">Team 1</p>
-                  <p className="text-4xl font-bold text-white">2</p>
+                <div className="flex items-center justify-center mb-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-400">Team 1</p>
+                    <p className="text-4xl font-bold text-white">2</p>
+                  </div>
+                  <div className="mx-4 text-sm text-gray-400">VS</div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-400">Team 2</p>
+                    <p className="text-4xl font-bold text-white">1</p>
+                  </div>
                 </div>
-                <div className="mx-4 text-sm text-gray-400">VS</div>
-                <div className="text-center">
-                  <p className="text-sm text-gray-400">Team 2</p>
-                  <p className="text-4xl font-bold text-white">1</p>
-                </div>
-              </div>
 
-              <Tabs defaultValue="map1" className="w-full">
-                <TabsList className="w-full bg-[#1f2937]">
-                  <TabsTrigger value="map1" className="flex-1">
-                    Map 1
-                  </TabsTrigger>
-                  <TabsTrigger value="map2" className="flex-1">
-                    Map 2
-                  </TabsTrigger>
-                  <TabsTrigger value="map3" className="flex-1">
-                    Map 3
-                  </TabsTrigger>
-                </TabsList>
+                <Tabs defaultValue="map1" className="w-full">
+                  <TabsList className="w-full bg-[#1f2937]">
+                    <TabsTrigger value="map1" className="flex-1">
+                      Map 1
+                    </TabsTrigger>
+                    <TabsTrigger value="map2" className="flex-1">
+                      Map 2
+                    </TabsTrigger>
+                    <TabsTrigger value="map3" className="flex-1">
+                      Map 3
+                    </TabsTrigger>
+                  </TabsList>
 
-                {match.maps.map((map, index) => (
-                  <TabsContent
-                    key={index}
-                    value={`map${index + 1}`}
-                    className="mt-4"
-                  >
-                    {/* Show an alert if there's a discrepancy for this map */}
-                    {scoreDiscrepancy?.mapIndex === index && (
-                      <div className="p-3 mb-4 bg-red-100 border border-red-500 rounded-md dark:bg-red-900/20">
-                        <p className="flex items-center text-red-600 dark:text-red-400">
-                          <AlertCircle className="w-4 h-4 mr-2" />
-                          {scoreDiscrepancy.message}
-                        </p>
+                  {match.maps.map((map, index) => (
+                    <TabsContent
+                      key={index}
+                      value={`map${index + 1}`}
+                      className="mt-4"
+                    >
+                      {/* Show an alert if there's a discrepancy for this map */}
+                      {scoreDiscrepancy?.mapIndex === index && (
+                        <div className="p-3 mb-4 bg-red-100 border border-red-500 rounded-md dark:bg-red-900/20">
+                          <p className="flex items-center text-red-600 dark:text-red-400">
+                            <AlertCircle className="w-4 h-4 mr-2" />
+                            {scoreDiscrepancy.message}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="relative w-full h-32 mb-3 overflow-hidden rounded-md">
+                        <Image
+                          src={`/maps/${formatMapNameForImage(map.mapName)}`}
+                          alt={map.mapName}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                        <div className="absolute bottom-0 left-0 p-3">
+                          <p className="text-lg font-semibold text-white">
+                            {map.mapName}
+                          </p>
+                          <p className="text-xs text-gray-300">
+                            {map.gameMode}
+                          </p>
+                        </div>
                       </div>
-                    )}
 
-                    <div className="relative w-full h-32 mb-3 overflow-hidden rounded-md">
+                      <div className="mt-4">
+                        <h2 className="mb-4 text-xl font-semibold text-white">
+                          Map Score
+                        </h2>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="text-center">
+                            <div className="mb-1 text-gray-400">Team 1</div>
+                            <div className="text-3xl font-bold text-white">
+                              {match.mapScores?.[index]?.team1Score || 0}
+                            </div>
+                          </div>
+                          <div className="text-gray-400">VS</div>
+                          <div className="text-center">
+                            <div className="mb-1 text-gray-400">Team 2</div>
+                            <div className="text-3xl font-bold text-white">
+                              {match.mapScores?.[index]?.team2Score || 0}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <h3 className="mb-2 text-sm text-gray-400">
+                              Scored By
+                            </h3>
+                            <div className="bg-[#1f2937] rounded p-3">
+                              {match.mapScores?.[index]?.submittedByTeam1 ? (
+                                <div className="text-white">
+                                  {match.mapScores[index].submittedByTeam1User
+                                    ?.discordNickname || "Unknown"}
+                                </div>
+                              ) : (
+                                <div className="text-gray-400">Pending</div>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <h3 className="mb-2 text-sm text-gray-400">
+                              Scored By
+                            </h3>
+                            <div className="bg-[#1f2937] rounded p-3">
+                              {match.mapScores?.[index]?.submittedByTeam2 ? (
+                                <div className="text-white">
+                                  {match.mapScores[index].submittedByTeam2User
+                                    ?.discordNickname || "Unknown"}
+                                </div>
+                              ) : (
+                                <div className="text-gray-400">Pending</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
+
+                {/* At the end of the match results section */}
+                <div className="mt-8 text-center">
+                  <Button
+                    className="text-white bg-blue-600 hover:bg-blue-700"
+                    onClick={() => router.push("/matches/queues#4v4")}
+                  >
+                    Return to Queues
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            // Maps Section for in-progress matches
+            <Card></Card>
+          )}
+
+          {/* Maps Section */}
+          <div className="mt-6">
+            <h2 className="mb-4 text-2xl font-bold text-blue-400">
+              Match Maps
+            </h2>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              {match.maps.map((map, index) => {
+                // Only hide third map if it wasn't played (match ended 2-0)
+                const team1Wins =
+                  match.mapScores?.filter((s) => s.winner === 1).length || 0;
+                const team2Wins =
+                  match.mapScores?.filter((s) => s.winner === 2).length || 0;
+
+                if (
+                  index === 2 &&
+                  !match.mapScores?.[index]?.winner &&
+                  (team1Wins === 2 || team2Wins === 2)
+                ) {
+                  return null;
+                }
+
+                // Update to use fixed team names instead of dynamic ones
+                const team1Name = "Team 1";
+                const team2Name = "Team 2";
+
+                return (
+                  <div
+                    key={index}
+                    className="overflow-hidden  rounded-lg border border-[#1f2937]"
+                  >
+                    <div className="p-2 text-center font-medium  bg-[#0f172a]">
+                      Map {index + 1}
+                    </div>
+                    <div className="relative w-full h-40">
                       <Image
-                        src={`/maps/${formatMapNameForImage(map.mapName)}`}
+                        src={
+                          map.mapImage
+                            ? map.mapImage
+                            : `/maps/${formatMapNameForImage(map.mapName)}`
+                        }
                         alt={map.mapName}
                         fill
-                        className="object-cover"
+                        priority={index === 0}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
+                        className="object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-                      <div className="absolute bottom-0 left-0 p-3">
-                        <p className="text-lg font-semibold text-white">
-                          {map.mapName}
-                        </p>
-                        <p className="text-xs text-gray-300">{map.gameMode}</p>
-                      </div>
                     </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-white">
+                        {map.mapName}
+                      </h3>
+                      <p className="mb-4 text-sm text-gray-400">
+                        {map.gameMode}
+                      </p>
 
-                    <div className="mt-4">
-                      <h2 className="mb-4 text-xl font-semibold text-white">
-                        Map Score
-                      </h2>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="text-center">
-                          <div className="mb-1 text-gray-400">Team 1</div>
-                          <div className="text-3xl font-bold text-white">
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-white">{team1Name}</span>
+                          <span className="font-bold text-white">
                             {match.mapScores?.[index]?.team1Score || 0}
-                          </div>
+                          </span>
                         </div>
-                        <div className="text-gray-400">VS</div>
-                        <div className="text-center">
-                          <div className="mb-1 text-gray-400">Team 2</div>
-                          <div className="text-3xl font-bold text-white">
+                        <div className="flex items-center justify-between">
+                          <span className="text-white">{team2Name}</span>
+                          <span className="font-bold text-white">
                             {match.mapScores?.[index]?.team2Score || 0}
-                          </div>
+                          </span>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <h3 className="mb-2 text-sm text-gray-400">
-                            Scored By
-                          </h3>
-                          <div className="bg-[#1f2937] rounded p-3">
-                            {match.mapScores?.[index]?.submittedByTeam1 ? (
-                              <div className="text-white">
-                                {match.mapScores[index].submittedByTeam1User
-                                  ?.discordNickname || "Unknown"}
-                              </div>
-                            ) : (
-                              <div className="text-gray-400">Pending</div>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h3 className="mb-2 text-sm text-gray-400">
-                            Scored By
-                          </h3>
-                          <div className="bg-[#1f2937] rounded p-3">
-                            {match.mapScores?.[index]?.submittedByTeam2 ? (
-                              <div className="text-white">
-                                {match.mapScores[index].submittedByTeam2User
-                                  ?.discordNickname || "Unknown"}
-                              </div>
-                            ) : (
-                              <div className="text-gray-400">Pending</div>
-                            )}
-                          </div>
-                        </div>
+                      <div className="mb-3 text-sm text-gray-400">
+                        {match.mapScores?.[index]?.scoresVerified
+                          ? "Scores verified"
+                          : match.mapScores?.[index]?.submittedByTeam1 ||
+                            match.mapScores?.[index]?.submittedByTeam2
+                          ? "Waiting for verification"
+                          : "No scores yet"}
                       </div>
+
+                      {userTeam &&
+                        !match.mapScores?.[index]?.winner &&
+                        !match.mapScores?.[index]?.[
+                          `submittedByTeam${userTeam}`
+                        ] && (
+                          <Button
+                            variant={
+                              canSubmitMapScore(index) ? "default" : "outline"
+                            }
+                            className="w-full"
+                            onClick={() => handleOpenScoreDialog(index)}
+                            disabled={
+                              !canSubmitMapScore(index) ||
+                              match.status === "completed"
+                            }
+                          >
+                            {match.status === "completed"
+                              ? "Match Completed"
+                              : canSubmitMapScore(index)
+                              ? "Submit Score"
+                              : "Score Previous Maps First"}
+                          </Button>
+                        )}
                     </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
-
-              {/* At the end of the match results section */}
-              <div className="mt-8 text-center">
-                <Button
-                  className="text-white bg-blue-600 hover:bg-blue-700"
-                  onClick={() => router.push("/matches/queues#4v4")}
-                >
-                  Return to Queues
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          // Maps Section for in-progress matches
-          <Card></Card>
-        )}
-
-        {/* Maps Section */}
-        <div className="mt-6">
-          <h2 className="mb-4 text-2xl font-bold text-blue-400">Match Maps</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {match.maps.map((map, index) => {
-              // Only hide third map if it wasn't played (match ended 2-0)
-              const team1Wins =
-                match.mapScores?.filter((s) => s.winner === 1).length || 0;
-              const team2Wins =
-                match.mapScores?.filter((s) => s.winner === 2).length || 0;
-
-              if (
-                index === 2 &&
-                !match.mapScores?.[index]?.winner &&
-                (team1Wins === 2 || team2Wins === 2)
-              ) {
-                return null;
-              }
-
-              // Update to use fixed team names instead of dynamic ones
-              const team1Name = "Team 1";
-              const team2Name = "Team 2";
-
-              return (
-                <div
-                  key={index}
-                  className="overflow-hidden  rounded-lg border border-[#1f2937]"
-                >
-                  <div className="p-2 text-center font-medium  bg-[#0f172a]">
-                    Map {index + 1}
                   </div>
-                  <div className="relative w-full h-40">
-                    <Image
-                      src={
-                        map.mapImage
-                          ? map.mapImage
-                          : `/maps/${formatMapNameForImage(map.mapName)}`
-                      }
-                      alt={map.mapName}
-                      fill
-                      priority={index === 0}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold text-white">
-                      {map.mapName}
-                    </h3>
-                    <p className="mb-4 text-sm text-gray-400">{map.gameMode}</p>
-
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-white">{team1Name}</span>
-                        <span className="font-bold text-white">
-                          {match.mapScores?.[index]?.team1Score || 0}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-white">{team2Name}</span>
-                        <span className="font-bold text-white">
-                          {match.mapScores?.[index]?.team2Score || 0}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mb-3 text-sm text-gray-400">
-                      {match.mapScores?.[index]?.scoresVerified
-                        ? "Scores verified"
-                        : match.mapScores?.[index]?.submittedByTeam1 ||
-                          match.mapScores?.[index]?.submittedByTeam2
-                        ? "Waiting for verification"
-                        : "No scores yet"}
-                    </div>
-
-                    {userTeam &&
-                      !match.mapScores?.[index]?.winner &&
-                      !match.mapScores?.[index]?.[
-                        `submittedByTeam${userTeam}`
-                      ] && (
-                        <Button
-                          variant={
-                            canSubmitMapScore(index) ? "default" : "outline"
-                          }
-                          className="w-full"
-                          onClick={() => handleOpenScoreDialog(index)}
-                          disabled={
-                            !canSubmitMapScore(index) ||
-                            match.status === "completed"
-                          }
-                        >
-                          {match.status === "completed"
-                            ? "Match Completed"
-                            : canSubmitMapScore(index)
-                            ? "Submit Score"
-                            : "Score Previous Maps First"}
-                        </Button>
-                      )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Score Submission Dialog */}
-        <Dialog open={scoreDialog} onOpenChange={setScoreDialog}>
-          <DialogContent className=" border-[#3b82f6] text-white">
-            <DialogHeader>
-              <DialogTitle>Submit Score</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Enter the final score for{" "}
-                {match?.maps[selectedMapIndex]?.mapName || "this map"}.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-4 py-4">
-              <div className="grid items-center grid-cols-3 gap-4">
-                <Label htmlFor="team1Score" className="text-right">
-                  {getTeamName(1)} Score
-                </Label>
-                <Input
-                  id="team1Score"
-                  type="number"
-                  min="0"
-                  max="6"
-                  value={team1Score}
-                  onChange={(e) => setTeam1Score(e.target.value)}
-                  className="col-span-2  border-[#3b82f6]"
-                />
-              </div>
-              <div className="grid items-center grid-cols-3 gap-4">
-                <Label htmlFor="team2Score" className="text-right">
-                  {getTeamName(2)} Score
-                </Label>
-                <Input
-                  id="team2Score"
-                  type="number"
-                  min="0"
-                  max="6"
-                  value={team2Score}
-                  onChange={(e) => setTeam2Score(e.target.value)}
-                  className="col-span-2  border-[#3b82f6]"
-                />
-              </div>
+                );
+              })}
             </div>
+          </div>
 
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setScoreDialog(false)}
-                className="text-gray-300 border-gray-600"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={() =>
-                  handleSubmitScore({
-                    mapIndex: selectedMapIndex,
-                    team1Score: parseInt(team1Score),
-                    team2Score: parseInt(team2Score),
-                    submittingTeam: userTeam,
-                  })
-                }
-                disabled={submitting}
-                className="bg-[#3b82f6] hover:bg-[#2563eb]"
-              >
-                {submitting
-                  ? "Submitting..."
-                  : `Submit Score for Team ${userTeam}`}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          {/* Score Submission Dialog */}
+          <Dialog open={scoreDialog} onOpenChange={setScoreDialog}>
+            <DialogContent className=" border-[#3b82f6] text-white">
+              <DialogHeader>
+                <DialogTitle>Submit Score</DialogTitle>
+                <DialogDescription className="text-gray-400">
+                  Enter the final score for{" "}
+                  {match?.maps[selectedMapIndex]?.mapName || "this map"}.
+                </DialogDescription>
+              </DialogHeader>
 
-        {/* Match status section at the bottom */}
-        {match.status === "completed" && (
-          <Card className="mt-6  border-[#1f2937]">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-xl font-semibold text-white">
-                    Match Status
-                  </h3>
-                  <Badge className="mt-2 bg-green-600">COMPLETED</Badge>
+              <div className="grid gap-4 py-4">
+                <div className="grid items-center grid-cols-3 gap-4">
+                  <Label htmlFor="team1Score" className="text-right">
+                    {getTeamName(1)} Score
+                  </Label>
+                  <Input
+                    id="team1Score"
+                    type="number"
+                    min="0"
+                    max="6"
+                    value={team1Score}
+                    onChange={(e) => setTeam1Score(e.target.value)}
+                    className="col-span-2  border-[#3b82f6]"
+                  />
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-400">Winner</div>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="w-5 h-5 text-yellow-500" />
-                    <span className="text-lg font-semibold text-white">
-                      {getTeamName(match.winner || 1)}
-                    </span>
-                  </div>
-                  <div className="text-sm text-gray-400">
-                    {match.mapScores?.filter(
-                      (score) => score?.winner === match.winner
-                    ).length || 0}{" "}
-                    -{" "}
-                    {match.mapScores?.filter(
-                      (score) => score?.winner !== match.winner && score?.winner
-                    ).length || 0}
-                  </div>
+                <div className="grid items-center grid-cols-3 gap-4">
+                  <Label htmlFor="team2Score" className="text-right">
+                    {getTeamName(2)} Score
+                  </Label>
+                  <Input
+                    id="team2Score"
+                    type="number"
+                    min="0"
+                    max="6"
+                    value={team2Score}
+                    onChange={(e) => setTeam2Score(e.target.value)}
+                    className="col-span-2  border-[#3b82f6]"
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        )}
-      </main>
-    </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setScoreDialog(false)}
+                  className="text-gray-300 border-gray-600"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() =>
+                    handleSubmitScore({
+                      mapIndex: selectedMapIndex,
+                      team1Score: parseInt(team1Score),
+                      team2Score: parseInt(team2Score),
+                      submittingTeam: userTeam,
+                    })
+                  }
+                  disabled={submitting}
+                  className="bg-[#3b82f6] hover:bg-[#2563eb]"
+                >
+                  {submitting
+                    ? "Submitting..."
+                    : `Submit Score for Team ${userTeam}`}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Match status section at the bottom */}
+          {match.status === "completed" && (
+            <Card className="mt-6  border-[#1f2937]">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">
+                      Match Status
+                    </h3>
+                    <Badge className="mt-2 bg-green-600">COMPLETED</Badge>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-400">Winner</div>
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-5 h-5 text-yellow-500" />
+                      <span className="text-lg font-semibold text-white">
+                        {getTeamName(match.winner || 1)}
+                      </span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {match.mapScores?.filter(
+                        (score) => score?.winner === match.winner
+                      ).length || 0}{" "}
+                      -{" "}
+                      {match.mapScores?.filter(
+                        (score) =>
+                          score?.winner !== match.winner && score?.winner
+                      ).length || 0}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </main>
+      </div>
+    </FeatureGate>
   );
 }

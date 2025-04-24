@@ -13,7 +13,7 @@ import { PlayerUpdater } from "@/components/player-updater";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ShadowrunFPS.com"),
+  metadataBase: new URL("https://www.shadowrunfps.com"),
   title: {
     default: "Shadowrun FPS - Classic Multiplayer Shooter",
     template: "%s | Shadowrun FPS",
@@ -102,7 +102,7 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#000000" />
-        <link rel="canonical" href="https://shadowrunfps.com" />
+        <link rel="canonical" href="https://www.shadowrunfps.com" />
         <meta
           name="google-site-verification"
           content="your-verification-code"
@@ -110,6 +110,31 @@ export default function RootLayout({
         <meta property="og:site_name" content="Shadowrun FPS" />
         <meta name="application-name" content="Shadowrun FPS" />
         <link rel="manifest" href="/manifest.json" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Shadowrun FPS",
+              url: "https://www.shadowrunfps.com",
+              description:
+                "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
+              potentialAction: {
+                "@type": "SearchAction",
+                target:
+                  "https://www.shadowrunfps.com/search?q={search_term_string}",
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
       </head>
       <body
         className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className}`}
