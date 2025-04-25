@@ -9,13 +9,14 @@ import clientPromise from "@/lib/mongodb";
 export async function recalculateTeamElo(teamId: string): Promise<number> {
   try {
     const client = await clientPromise;
-    const db = client.db();
+    const webDb = client.db("ShadowrunWeb");
+    const db2 = client.db("ShadowrunDB2");
 
     // Default individual ELO value
     const DEFAULT_INDIVIDUAL_ELO = 800;
 
     // Get the team with members
-    const team = await db.collection("Teams").findOne({
+    const team = await webDb.collection("Teams").findOne({
       _id: new ObjectId(teamId),
     });
 
@@ -38,11 +39,20 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
     // For debugging
     console.log("Team members:", memberIds);
 
-    // Get players data
-    const players = await db
+    // Get players data from ShadowrunWeb
+    const webPlayers = await webDb
       .collection("Players")
       .find({ discordId: { $in: memberIds } })
       .toArray();
+
+    // If team size is 4, also get players from ShadowrunDB2
+    let db2Players: any[] = [];
+    if (configuredTeamSize === 4) {
+      db2Players = await db2
+        .collection("players")
+        .find({ discordId: { $in: memberIds } })
+        .toArray();
+    }
 
     // Only calculate ELO for the relevant team size
     const teamElos: Record<string, number> = {};
@@ -50,29 +60,39 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
 
     // Calculate ELO for the configured team size
     for (const playerId of memberIds) {
-      const player = players.find((p) => p.discordId === playerId);
-      if (player && player.stats && Array.isArray(player.stats)) {
+      let playerElo = DEFAULT_INDIVIDUAL_ELO;
+
+      // First check ShadowrunWeb for player stats
+      const webPlayer = webPlayers.find((p) => p.discordId === playerId);
+      if (webPlayer && webPlayer.stats && Array.isArray(webPlayer.stats)) {
         // Find stats for this team size
-        const statForSize = player.stats.find(
+        const statForSize = webPlayer.stats.find(
           (s) => s.teamSize === configuredTeamSize
         );
 
-        // Log for debugging
-        console.log(
-          `Player ${
-            player.discordUsername || playerId
-          } (size ${configuredTeamSize}v${configuredTeamSize}):`,
-          statForSize ? statForSize.elo : "No ELO data"
-        );
-
         if (statForSize && typeof statForSize.elo === "number") {
-          memberElos.push(statForSize.elo);
-        } else {
-          memberElos.push(DEFAULT_INDIVIDUAL_ELO); // Default individual ELO
+          playerElo = statForSize.elo;
         }
-      } else {
-        memberElos.push(DEFAULT_INDIVIDUAL_ELO); // Default for players without stats
       }
+
+      // For teamSize 4, prioritize DB2 data if available
+      if (configuredTeamSize === 4) {
+        const db2Player = db2Players.find((p) => p.discordId === playerId);
+        if (db2Player && db2Player.rating !== undefined) {
+          playerElo = db2Player.rating;
+          console.log(`Using DB2 rating for player ${playerId}: ${playerElo}`);
+        }
+      }
+
+      // Log for debugging
+      console.log(
+        `Player ${
+          webPlayers.find((p) => p.discordId === playerId)?.discordUsername ||
+          playerId
+        } (size ${configuredTeamSize}v${configuredTeamSize}): ${playerElo}`
+      );
+
+      memberElos.push(playerElo);
     }
 
     // Take top players based on team size
@@ -92,7 +112,7 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
     const fallbackElo = DEFAULT_INDIVIDUAL_ELO * configuredTeamSize;
 
     // Update the team with calculated ELO
-    await db.collection("Teams").updateOne(
+    await webDb.collection("Teams").updateOne(
       { _id: new ObjectId(teamId) },
       {
         $set: {

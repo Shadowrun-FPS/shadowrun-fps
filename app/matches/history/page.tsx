@@ -231,7 +231,7 @@ export default function MatchHistoryPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status) {
       case "completed":
         return <Badge className="bg-green-600">Completed</Badge>;
       case "in-progress":
@@ -301,11 +301,15 @@ export default function MatchHistoryPage() {
 
       // Check if the current user is you by ID
       const isYourAccount = session?.user?.id === "238329746671271936";
+      const isstaff =
+        session?.user?.roles?.includes("admin") ||
+        session?.user?.roles?.includes("moderator") ||
+        session?.user?.roles?.includes("founder");
 
       let response;
 
       // Use different endpoints based on who is making the request
-      if (isYourAccount) {
+      if (isYourAccount || isstaff) {
         // For your account, use the admin override endpoint that we know works
         console.log("Using admin override endpoint for your account");
         response = await fetch("/api/admin-override/delete-match", {

@@ -482,7 +482,7 @@ export function ModerationDialog({
             <AlertDialogDescription>
               Are you sure you want to{" "}
               {action === "warn" ? "warn" : action === "ban" ? "ban" : "unban"}{" "}
-              {player.discordUsername}?
+              {player.discordNickname || player.discordUsername}?
               {action === "ban" && duration !== "permanent" && (
                 <>
                   {" "}

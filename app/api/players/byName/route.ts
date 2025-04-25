@@ -15,16 +15,58 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Connect to both databases
     const client = await clientPromise;
-    const db = client.db();
+    const webDb = client.db("ShadowrunWeb");
+    const db2 = client.db("ShadowrunDB2");
 
     // Find by username (case insensitive)
-    const player = await db.collection("Players").findOne({
+    const webPlayer = await webDb.collection("Players").findOne({
       discordUsername: { $regex: new RegExp(`^${name}$`, "i") },
     });
 
-    if (!player) {
+    if (!webPlayer) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
+    }
+
+    // Check if player exists in ShadowrunDB2
+    const db2Player = await db2.collection("players").findOne({
+      discordId: webPlayer.discordId,
+    });
+
+    // Create a copy of the player to modify
+    const player = { ...webPlayer };
+
+    // Initialize stats array if it doesn't exist
+    if (!player.stats) {
+      player.stats = [];
+    } else {
+      // Make a copy of the stats array
+      player.stats = [...player.stats];
+    }
+
+    // If db2Player exists, update the teamSize 4 stats with data from ShadowrunDB2
+    if (db2Player && db2Player.rating !== undefined) {
+      // Find the index of teamSize 4 stats
+      const team4Index = player.stats.findIndex(
+        (stat: { teamSize: number }) => stat.teamSize === 4
+      );
+
+      const db2Stats = {
+        teamSize: 4,
+        elo: db2Player.rating,
+        wins: db2Player.wins || 0,
+        losses: db2Player.losses || 0,
+        lastMatchDate: db2Player.lastMatchDate,
+      };
+
+      if (team4Index >= 0) {
+        // Replace existing teamSize 4 stats
+        player.stats[team4Index] = db2Stats;
+      } else {
+        // Add new teamSize 4 stats
+        player.stats.push(db2Stats);
+      }
     }
 
     return NextResponse.json(player);

@@ -18,6 +18,7 @@ function MainLogo({ className }: MainLogoProps) {
     >
       <Image
         src="/serverIcon.png"
+        unoptimized
         alt="Shadowrun Icon"
         width={32}
         height={32}

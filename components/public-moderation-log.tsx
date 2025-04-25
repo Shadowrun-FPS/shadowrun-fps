@@ -108,9 +108,9 @@ export default function PublicModerationLog() {
   // Function to get action badge based on action type
   const getActionBadge = (action: string) => {
     switch (action) {
-      case "warning":
+      case "warn":
         return (
-          <Badge className="text-white bg-amber-500 border-0 hover:bg-amber-600">
+          <Badge className="text-white border-0 bg-amber-500 hover:bg-amber-600">
             Warning
           </Badge>
         );
@@ -166,14 +166,14 @@ export default function PublicModerationLog() {
           <Input
             type="text"
             placeholder="Search by player or reason..."
-            className="h-10 pl-9 pr-4"
+            className="h-10 pr-4 pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
 
-      <div className="border rounded-md overflow-hidden">
+      <div className="overflow-hidden border rounded-md">
         {loading ? (
           <div className="flex items-center justify-center h-48">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -206,7 +206,7 @@ export default function PublicModerationLog() {
                       <TableCell>{getActionBadge(log.action)}</TableCell>
                       <TableCell className="font-medium">
                         {/* Player name with blur effect */}
-                        <span className="inline-block cursor-default blur-sm hover:blur-none transition-all duration-200">
+                        <span className="inline-block transition-all duration-200 cursor-default blur-sm hover:blur-none">
                           {log.playerName}
                         </span>
                       </TableCell>
