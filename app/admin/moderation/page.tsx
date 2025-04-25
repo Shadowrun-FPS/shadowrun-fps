@@ -56,6 +56,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import styles from "./page.module.css";
+import { useRouter } from "next/navigation";
 
 interface ModerationLog {
   _id: string;
@@ -125,6 +126,7 @@ export default function ModerationPage() {
     totalActions: 0,
   });
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     fetchData();
@@ -346,6 +348,11 @@ export default function ModerationPage() {
         return "Overview";
     }
   };
+
+  function handleViewHistory(action: ModerationLog): void {
+    // Navigate to the player stats page
+    router.push(`/admin/players/${action.playerId}/history`);
+  }
 
   return (
     <div className="container py-6 space-y-6">
@@ -684,12 +691,16 @@ export default function ModerationPage() {
                           </div>
                           <Badge
                             variant={
-                              isPlayerUnbanned(action.playerId, action)
+                              action.action === "warn"
+                                ? "warning"
+                                : isPlayerUnbanned(action.playerId, action)
                                 ? "outline"
                                 : "destructive"
                             }
                           >
-                            {isPlayerUnbanned(action.playerId, action)
+                            {action.action === "warn"
+                              ? "Warning"
+                              : isPlayerUnbanned(action.playerId, action)
                               ? "Unbanned"
                               : "Ban"}
                           </Badge>
@@ -799,17 +810,21 @@ export default function ModerationPage() {
                     {getFilteredActions(recentActions).map((action) => (
                       <TableRow key={action._id}>
                         <TableCell>
-                          <Badge
-                            variant={
-                              isPlayerUnbanned(action.playerId, action)
-                                ? "outline"
-                                : "destructive"
-                            }
-                          >
-                            {isPlayerUnbanned(action.playerId, action)
-                              ? "Unbanned"
-                              : "Ban"}
-                          </Badge>
+                          {action.action === "warn" ? (
+                            <Badge variant="warning">Warning</Badge>
+                          ) : (
+                            <Badge
+                              variant={
+                                isPlayerUnbanned(action.playerId, action)
+                                  ? "outline"
+                                  : "destructive"
+                              }
+                            >
+                              {isPlayerUnbanned(action.playerId, action)
+                                ? "Unbanned"
+                                : "Ban"}
+                            </Badge>
+                          )}
                         </TableCell>
                         <TableCell className="font-medium">
                           {action.playerName}
@@ -827,7 +842,9 @@ export default function ModerationPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleViewHistory(action)}
+                              >
                                 <History className="w-4 h-4 mr-2" />
                                 View Player History
                               </DropdownMenuItem>
@@ -881,12 +898,16 @@ export default function ModerationPage() {
                         </div>
                         <Badge
                           variant={
-                            isPlayerUnbanned(action.playerId, action)
+                            action.action === "warn"
+                              ? "warning"
+                              : isPlayerUnbanned(action.playerId, action)
                               ? "outline"
                               : "destructive"
                           }
                         >
-                          {isPlayerUnbanned(action.playerId, action)
+                          {action.action === "warn"
+                            ? "Warning"
+                            : isPlayerUnbanned(action.playerId, action)
                             ? "Unbanned"
                             : "Ban"}
                         </Badge>

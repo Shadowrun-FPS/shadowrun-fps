@@ -61,9 +61,6 @@ export async function POST(
             timestamp: new Date(),
           },
         },
-        $set: {
-          updatedAt: new Date(),
-        },
       }
     );
 

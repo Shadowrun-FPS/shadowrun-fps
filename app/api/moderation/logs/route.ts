@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { connectToDatabase } from "@/lib/mongodb";
+import { ObjectId } from "mongodb";
 
 // Fetch moderation logs
 export async function GET(request: Request) {
@@ -128,8 +130,47 @@ export async function GET(request: Request) {
       return log;
     });
 
+    // Get all unique player IDs from logs
+    const playerIds = new Set();
+    formattedLogs.forEach((log) => {
+      if (log.playerId) playerIds.add(log.playerId);
+    });
+
+    // Convert playerIds to an array of valid ObjectIds
+    const validPlayerIds = Array.from(playerIds)
+      .filter((id): id is string => typeof id === "string")
+      .map((id) => new ObjectId(id));
+
+    // Fetch current player information
+    const players = await db
+      .collection("Players")
+      .find({
+        _id: { $in: validPlayerIds },
+      })
+      .toArray();
+
+    // Create lookup map for quick access
+    const playerMap = new Map();
+    players.forEach((player) => {
+      playerMap.set(player._id.toString(), {
+        nickname: player.discordNickname || player.discordUsername,
+        username: player.discordUsername,
+      });
+    });
+
+    // Update logs with current names
+    const updatedLogs = formattedLogs.map((log) => {
+      const playerInfo = log.playerId ? playerMap.get(log.playerId) : null;
+
+      return {
+        ...log,
+        // Update player name if we have current info
+        playerName: playerInfo ? playerInfo.nickname : log.playerName,
+      };
+    });
+
     return NextResponse.json({
-      logs: formattedLogs,
+      logs: updatedLogs,
       total,
       stats: isAdmin ? stats : undefined,
     });

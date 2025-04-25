@@ -97,6 +97,23 @@ function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
+// Add this component at the top level of your file, outside the main component
+function PlayerAvatar({ src, alt }: { src: string | null; alt: string }) {
+  const [imgSrc, setImgSrc] = useState<string>(src || "/placeholder.svg");
+
+  return (
+    <Image
+      src={imgSrc}
+      alt={alt}
+      fill
+      className="object-cover"
+      onError={() => {
+        setImgSrc("https://cdn.discordapp.com/embed/avatars/0.png");
+      }}
+    />
+  );
+}
+
 // Create a wrapper component that uses the search params
 function LeaderboardContent() {
   const router = useRouter();
@@ -111,6 +128,9 @@ function LeaderboardContent() {
     limit: 10,
     pages: 0,
   });
+
+  // Add state for available teamSizes
+  const [availableTeamSizes, setAvailableTeamSizes] = useState<number[]>([4]);
 
   const initialTeamSize = searchParams?.get("teamSize") || "4";
   const initialPage = searchParams?.get("page") || "1";
@@ -229,6 +249,41 @@ function LeaderboardContent() {
     }
   };
 
+  // Add function to fetch available teamSizes
+  const fetchAvailableTeamSizes = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/players/leaderboard?getAvailableTeamSizes=true`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch team sizes");
+      }
+
+      const data = await response.json();
+      if (data.availableTeamSizes && data.availableTeamSizes.length > 0) {
+        setAvailableTeamSizes(data.availableTeamSizes);
+
+        // If current teamSize is not available, switch to the first available
+        if (!data.availableTeamSizes.includes(Number(teamSize))) {
+          handleTeamSizeChange(data.availableTeamSizes[0].toString());
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching available team sizes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load available team sizes",
+        variant: "destructive",
+      });
+    }
+  }, [teamSize]);
+
+  // Call this in useEffect
+  useEffect(() => {
+    fetchAvailableTeamSizes();
+  }, [fetchAvailableTeamSizes]);
+
   return (
     <FeatureGate feature="leaderboard">
       <div className="container py-8 mx-auto">
@@ -244,22 +299,19 @@ function LeaderboardContent() {
 
           <div className="flex flex-col gap-2 sm:flex-row">
             <Select value={teamSize} onValueChange={handleTeamSizeChange}>
-              <SelectTrigger className="w-[120px]">
-                <span className="flex items-center gap-2">
-                  <span className="font-medium">
-                    {teamSize}v{teamSize}
-                  </span>
-                </span>
+              <SelectTrigger className="w-full sm:w-[120px]" id="teamsize">
+                <SelectValue placeholder="Team Size" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1v1</SelectItem>
-                <SelectItem value="2">2v2</SelectItem>
-                <SelectItem value="4">4v4</SelectItem>
-                <SelectItem value="5">5v5</SelectItem>
+                {availableTeamSizes.map((size) => (
+                  <SelectItem key={size} value={size.toString()}>
+                    {size}v{size}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
-            <div className="relative">
+            <div className="relative w-full sm:flex-1">
               <Input
                 placeholder="Search players..."
                 value={searchInputRaw}
@@ -424,18 +476,13 @@ function LeaderboardContent() {
                               className="flex items-center gap-3 hover:underline"
                             >
                               <div className="relative w-8 h-8 overflow-hidden rounded-full">
-                                <Image
-                                  src={
-                                    player.discordProfilePicture ||
-                                    "/placeholder.svg"
-                                  }
+                                <PlayerAvatar
+                                  src={player.discordProfilePicture}
                                   alt={
                                     player.discordNickname ||
                                     player.discordUsername ||
                                     "Player"
                                   }
-                                  fill
-                                  className="object-cover"
                                 />
                               </div>
                               <div>

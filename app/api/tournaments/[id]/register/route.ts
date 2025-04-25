@@ -100,9 +100,16 @@ export async function POST(
       }
     }
 
-    // Get player data from Players collection for accurate ELO
-    const players = await db
+    // Get player data from both databases for accurate ELO
+    const webPlayers = await db
       .collection("Players")
+      .find({ discordId: { $in: memberIds } })
+      .toArray();
+
+    // Also get players from ShadowrunDB2
+    const db2 = client.db("ShadowrunDB2");
+    const db2Players = await db2
+      .collection("players")
       .find({ discordId: { $in: memberIds } })
       .toArray();
 
@@ -150,7 +157,7 @@ export async function POST(
         role: any;
       }) => {
         // Find player data for this member
-        const player = players.find((p) => p.discordId === member.discordId);
+        const player = webPlayers.find((p) => p.discordId === member.discordId);
 
         // Find the correct ELO for this team size
         let playerElo = 0;
@@ -158,6 +165,16 @@ export async function POST(
           const statForSize = player.stats.find((s) => s.teamSize === teamSize);
           if (statForSize && typeof statForSize.elo === "number") {
             playerElo = statForSize.elo;
+          }
+        }
+
+        // For teamSize 4, prioritize DB2 data
+        if (teamSize === 4) {
+          const db2Player = db2Players.find(
+            (p) => p.discordId === member.discordId
+          );
+          if (db2Player && db2Player.rating !== undefined) {
+            playerElo = db2Player.rating;
           }
         }
 
@@ -178,7 +195,7 @@ export async function POST(
     );
 
     // Properly handle the captain data
-    const captainPlayer = players.find(
+    const captainPlayer = webPlayers.find(
       (p) => p.discordId === team.captain?.discordId
     );
 

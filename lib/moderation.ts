@@ -14,27 +14,49 @@ interface ModerationLogData {
   timestamp: Date;
 }
 
-export async function createModerationLog(data: ModerationLogData) {
-  const { db } = await connectToDatabase();
+export async function createModerationLog(data: {
+  playerId: string;
+  moderatorId: string;
+  playerName: string;
+  moderatorName: string;
+  action: string;
+  reason: string;
+  ruleId?: string | null;
+  duration?: string;
+  expiry?: Date | null;
+  timestamp: Date;
+}) {
+  try {
+    const { db } = await connectToDatabase();
 
-  // Safely convert string IDs to ObjectIds for MongoDB
-  const logData = {
-    ...data,
-    // Only convert to ObjectId if the ID is a valid 24-character hex string
-    playerId: isValidObjectId(data.playerId)
-      ? new ObjectId(data.playerId)
-      : data.playerId,
-    moderatorId: isValidObjectId(data.moderatorId)
-      ? new ObjectId(data.moderatorId)
-      : data.moderatorId,
-    // Only attempt to convert ruleId if it's not null and is a valid ObjectId
-    ruleId:
-      data.ruleId && isValidObjectId(data.ruleId)
-        ? new ObjectId(data.ruleId)
-        : data.ruleId,
-  };
+    // Get the current player and moderator details
+    const player = await db.collection("Players").findOne({
+      _id: new ObjectId(data.playerId),
+    });
 
-  await db.collection("moderation_logs").insertOne(logData);
+    const moderator = await db.collection("Players").findOne({
+      discordId: data.moderatorId,
+    });
+
+    // Create the log entry with player and moderator IDs
+    // Names are still stored but will be updated in API responses
+    const logEntry = {
+      ...data,
+      playerName:
+        player?.discordNickname || player?.discordUsername || data.playerName,
+      moderatorName:
+        moderator?.discordNickname ||
+        moderator?.discordUsername ||
+        data.moderatorName,
+      timestamp: data.timestamp || new Date(),
+    };
+
+    const result = await db.collection("moderation_logs").insertOne(logEntry);
+    return result;
+  } catch (error) {
+    console.error("Error creating moderation log:", error);
+    throw error;
+  }
 }
 
 // Helper function to check if a string is a valid MongoDB ObjectId

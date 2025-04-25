@@ -44,10 +44,6 @@ export function PlayerUpdater() {
     const userId = session.user.id;
     const timeSinceLastUpdate = currentTime - updateTimeRef.current;
 
-    // Update on these conditions:
-    // 1. Different user logged in
-    // 2. It's been more than 30 minutes since last update (reduced from 5 minutes)
-    // 3. User navigated to a new page AND it's been at least 5 minutes
     const shouldUpdate =
       lastUpdateRef.current !== userId ||
       timeSinceLastUpdate > 1800000 || // 30 minutes
