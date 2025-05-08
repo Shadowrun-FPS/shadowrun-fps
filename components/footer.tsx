@@ -87,20 +87,20 @@ export function Footer() {
               </div>
             </div>
             <nav className="flex flex-wrap justify-center gap-4 sm:gap-6">
-              <Link
-                href="/privacy"
-                prefetch={false}
-                className="text-sm text-gray-400 transition-colors hover:text-white"
+              <a
+                href="#"
+                onClick={(e) => handleComingSoon(e, "Privacy Policy")}
+                className="text-sm text-gray-400 transition-colors cursor-not-allowed hover:text-white opacity-60"
               >
                 Privacy Policy
-              </Link>
-              <Link
-                href="/terms"
-                prefetch={false}
-                className="text-sm text-gray-400 transition-colors hover:text-white"
+              </a>
+              <a
+                href="#"
+                onClick={(e) => handleComingSoon(e, "Terms")}
+                className="text-sm text-gray-400 transition-colors cursor-not-allowed hover:text-white opacity-60"
               >
                 Terms
-              </Link>
+              </a>
             </nav>
           </div>
         </div>
