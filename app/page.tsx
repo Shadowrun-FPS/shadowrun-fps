@@ -130,11 +130,12 @@ export default function Home() {
               {/* Buttons - made visible on all screen sizes */}
               <div className="flex flex-wrap justify-center gap-4">
                 <Link
-                  href="/docs/install"
+                  href="/download"
                   className="relative inline-flex items-center px-6 py-3 overflow-hidden text-lg font-medium transition-all rounded-lg group bg-primary hover:bg-primary/90"
                 >
-                  <span className="relative z-10 text-primary-foreground">
-                    Installation Guide
+                  <span className="relative z-10 flex items-center text-primary-foreground">
+                    <Download className="w-5 h-5 mr-2" />
+                    Download Game Launcher
                   </span>
                   <div className="absolute inset-0 transition-transform duration-300 -z-10 bg-gradient-to-r from-primary to-primary/90 group-hover:scale-110" />
                   <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
