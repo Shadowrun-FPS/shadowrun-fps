@@ -63,14 +63,6 @@ export async function generateMetadata(
 
     // Create description with player stats if available
     let description = `View ${displayName}'s player statistics and match history in Shadowrun FPS`;
-    if (player.stats && player.stats.length > 0) {
-      const mainStats =
-        player.stats.find((s: PlayerStats) => s.teamSize === 4) ||
-        player.stats[0];
-      if (mainStats?.elo) {
-        description += ` - Current ELO: ${mainStats.elo}`;
-      }
-    }
 
     // Create metadata object
     const openGraph: OpenGraphMetadata = {

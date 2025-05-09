@@ -96,18 +96,6 @@ export async function generateMetadata(
         twitter.title = title;
         twitter.description = description;
 
-        // Add ELO information if available
-        if (player.stats && player.stats.length > 0) {
-          const mainStats =
-            player.stats.find((s: PlayerStats) => s.teamSize === 4) ||
-            player.stats[0];
-          if (mainStats?.elo) {
-            description += ` - Current ELO: ${mainStats.elo}`;
-            openGraph.description = description;
-            twitter.description = description;
-          }
-        }
-
         // Use player's profile picture if available
         if (
           player.discordProfilePicture &&
@@ -154,18 +142,6 @@ export async function generateMetadata(
         openGraph.description = description;
         twitter.title = title;
         twitter.description = description;
-
-        // Add ELO information if available
-        if (player.stats && player.stats.length > 0) {
-          const mainStats =
-            player.stats.find((s: PlayerStats) => s.teamSize === 4) ||
-            player.stats[0];
-          if (mainStats?.elo) {
-            description += ` - Current ELO: ${mainStats.elo}`;
-            openGraph.description = description;
-            twitter.description = description;
-          }
-        }
 
         // Use player's profile picture if available
         if (

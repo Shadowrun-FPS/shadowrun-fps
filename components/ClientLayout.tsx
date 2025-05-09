@@ -16,8 +16,8 @@ export function ClientLayout({ children }: ClientLayoutProps) {
     <SessionProvider>
       <ThemeProvider
         attribute="class"
-        defaultTheme="dark"
-        enableSystem
+        forcedTheme="dark"
+        enableSystem={false}
         disableTransitionOnChange
       >
         <div className="flex flex-col w-full min-h-screen">
