@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   Github,
@@ -11,10 +11,31 @@ import {
 import VirusTotalWidget from "@/components/VirusTotalWidget";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+// Feature flag check
+const ENABLE_DOWNLOAD_PAGE =
+  process.env.NEXT_PUBLIC_ENABLE_DOWNLOAD_PAGE === "true";
 
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if download page is enabled
+    if (!ENABLE_DOWNLOAD_PAGE) {
+      // Redirect to home page after a short delay
+      const timer = setTimeout(() => {
+        router.push("/");
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    } else {
+      setIsAuthorized(true);
+    }
+  }, [router]);
 
   const handleDownload = () => {
     setDownloading(true);
@@ -23,6 +44,26 @@ export default function DownloadPage() {
     setTimeout(() => setDownloading(false), 3000);
   };
 
+  // If not authorized, show coming soon message
+  if (!isAuthorized) {
+    return (
+      <div className="container flex flex-col items-center justify-center min-h-[70vh] px-4 py-12 mx-auto text-center">
+        <h1 className="mb-6 text-4xl font-bold">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/90 to-primary animate-gradient">
+            Download Coming Soon
+          </span>
+        </h1>
+        <p className="mb-8 text-xl text-muted-foreground">
+          The Shadowrun FPS Launcher download page is not available yet.
+        </p>
+        <Button asChild>
+          <Link href="/">Return to Home</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // Original download page content
   return (
     <div className="container px-4 py-12 mx-auto">
       <div className="max-w-4xl mx-auto">

@@ -73,13 +73,6 @@ export default function PlayerStatsContent() {
 
           // Update description with ELO if available
           let description = `View detailed player statistics and match history for ${displayName}`;
-          if (data.stats && data.stats.length > 0) {
-            const mainStats =
-              data.stats.find((s: any) => s.teamSize === 4) || data.stats[0];
-            if (mainStats?.elo) {
-              description += ` - Current ELO: ${mainStats.elo}`;
-            }
-          }
           setPageDescription(description);
         }
 
