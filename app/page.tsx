@@ -99,7 +99,7 @@ export default function Home() {
   return (
     <>
       {/* Hero Section - Full width with breakout */}
-      <div className="relative w-screen -mx-4 -mt-6 -translate-x-1/2 left-1/2 right-1/2">
+      <div className="relative right-1/2 left-1/2 -mx-4 -mt-6 w-screen -translate-x-1/2">
         <section className="relative flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-screen">
           {/* Background with proper full-width positioning */}
           <div className="absolute inset-0 w-full h-full">
@@ -122,33 +122,33 @@ export default function Home() {
               </h1>
             </div>
 
-            <div className="max-w-3xl mx-auto space-y-6 duration-1000 delay-300 animate-in fade-in">
+            <div className="mx-auto space-y-6 max-w-3xl duration-1000 delay-300 animate-in fade-in">
               <p className="text-lg text-gray-200 sm:text-xl md:text-2xl [text-shadow:_0_2px_12px_rgba(0,0,0,0.5)]">
                 Welcome to the community hub for the Shadowrun FPS
               </p>
 
               {/* Buttons - made visible on all screen sizes */}
-              <div className="flex flex-wrap justify-center gap-4">
+              <div className="flex flex-wrap gap-4 justify-center">
                 <Link
-                  href="/docs/install"
-                  className="relative inline-flex items-center px-6 py-3 overflow-hidden text-lg font-medium transition-all rounded-lg group bg-primary hover:bg-primary/90"
+                  href="/download"
+                  className="inline-flex overflow-hidden relative items-center px-6 py-3 text-lg font-medium rounded-lg transition-all group bg-primary hover:bg-primary/90"
                 >
-                  <span className="relative z-10 flex items-center text-primary-foreground">
-                    <Download className="w-5 h-5 mr-2" />
-                    Installation Guide
+                  <span className="flex relative z-10 items-center text-primary-foreground">
+                    <Download className="mr-2 w-5 h-5" />
+                    Download Launcher
                   </span>
-                  <div className="absolute inset-0 transition-transform duration-300 -z-10 bg-gradient-to-r from-primary to-primary/90 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-primary to-primary/90 group-hover:scale-110" />
                   <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
                 </Link>
 
                 <Link
                   href="/docs/troubleshoot"
-                  className="relative inline-flex items-center px-6 py-3 overflow-hidden text-lg font-medium transition-all rounded-lg group bg-secondary hover:bg-secondary/90"
+                  className="inline-flex overflow-hidden relative items-center px-6 py-3 text-lg font-medium rounded-lg transition-all group bg-secondary hover:bg-secondary/90"
                 >
                   <span className="relative z-10 text-secondary-foreground">
                     Troubleshooting
                   </span>
-                  <div className="absolute inset-0 transition-transform duration-300 -z-10 bg-gradient-to-r from-secondary to-secondary/90 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-secondary to-secondary/90 group-hover:scale-110" />
                   <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
                 </Link>
               </div>
@@ -156,24 +156,24 @@ export default function Home() {
           </div>
 
           {/* Enhanced bottom gradient */}
-          <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t from-background via-background/90 to-transparent" />
+          <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t to-transparent from-background via-background/90" />
         </section>
       </div>
 
       {/* Regular page content starts here */}
       <main className="flex flex-col">
         {/* About Section - Enhanced */}
-        <section className="relative py-16 overflow-hidden sm:py-24">
+        <section className="overflow-hidden relative py-16 sm:py-24">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-grid-white/5 opacity-20 animate-grid-flow" />
-            <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+            <div className="absolute inset-0 opacity-20 bg-grid-white/5 animate-grid-flow" />
+            <div className="absolute inset-0 bg-gradient-to-b via-transparent from-background to-background" />
           </div>
 
           <div className="container relative px-4 mx-auto">
-            <div className="max-w-5xl mx-auto">
-              <div className="p-8 transition-all duration-500 rounded-2xl bg-card/30 backdrop-blur-sm hover:bg-card/40 hover:shadow-2xl hover:shadow-primary/5">
+            <div className="mx-auto max-w-5xl">
+              <div className="p-8 rounded-2xl backdrop-blur-sm transition-all duration-500 bg-card/30 hover:bg-card/40 hover:shadow-2xl hover:shadow-primary/5">
                 <h2 className="text-3xl font-bold text-center sm:text-4xl lg:text-5xl">
-                  <span className="inline-block text-transparent bg-gradient-to-r from-primary via-primary/90 to-primary bg-clip-text animate-gradient">
+                  <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/90 to-primary animate-gradient">
                     About Shadowrun FPS
                   </span>
                 </h2>
@@ -201,16 +201,16 @@ export default function Home() {
               <div className="relative mb-12 text-center">
                 <h2 className="inline-block text-3xl font-bold sm:text-4xl lg:text-5xl">
                   Featured Videos
-                  <div className="absolute left-0 right-0 h-px -bottom-4 bg-gradient-to-r from-transparent via-primary to-transparent animate-pulse" />
+                  <div className="absolute right-0 left-0 -bottom-4 h-px bg-gradient-to-r from-transparent to-transparent animate-pulse via-primary" />
                 </h2>
               </div>
               <div className="relative">
-                <div className="absolute w-64 h-64 transition-all duration-1000 rounded-full -top-32 -left-32 bg-primary/5 blur-3xl animate-pulse-slow" />
-                <div className="absolute w-64 h-64 transition-all duration-1000 delay-500 rounded-full -bottom-32 -right-32 bg-primary/5 blur-3xl animate-pulse-slow" />
+                <div className="absolute -top-32 -left-32 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 bg-primary/5 animate-pulse-slow" />
+                <div className="absolute -right-32 -bottom-32 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 delay-500 bg-primary/5 animate-pulse-slow" />
 
-                <div className="relative overflow-hidden rounded-xl bg-card/30 backdrop-blur-sm">
+                <div className="overflow-hidden relative rounded-xl backdrop-blur-sm bg-card/30">
                   <div className="absolute inset-0">
-                    <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/50 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t to-transparent from-background/90 via-background/50" />
                   </div>
 
                   <div className="relative z-10 p-2 sm:p-6">
