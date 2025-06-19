@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Download Shadowrun FPS Launcher | Shadowrun FPS",
   description:
-    "Download the official Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
+    "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
   openGraph: {
     title: "Download Shadowrun FPS Launcher",
     description:
-      "Download the official Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
+      "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
     images: [
       {
         url: "https://ShadowrunFPS.com/download-banner.png",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Download Shadowrun FPS Launcher",
     description:
-      "Download the official Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
+      "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
     images: ["https://ShadowrunFPS.com/download-banner.png"],
   },
 };
