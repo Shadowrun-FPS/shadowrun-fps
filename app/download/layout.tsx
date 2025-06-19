@@ -10,7 +10,7 @@ export const metadata: Metadata = {
       "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
     images: [
       {
-        url: "https://ShadowrunFPS.com/download-banner.png",
+        url: "/hero.png",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Download Page",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     title: "Download Shadowrun FPS Launcher",
     description:
       "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
-    images: ["https://ShadowrunFPS.com/download-banner.png"],
+    images: ["/hero.png"],
   },
 };
 
