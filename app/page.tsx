@@ -3,6 +3,7 @@ import FeaturedVideos from "./featured-videos";
 import { Download } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
+import { FloatingPlayer } from "@/components/floating-player";
 
 export const dynamic = "force-dynamic";
 
@@ -224,6 +225,13 @@ export default function Home() {
           </div>
         </section>
       </main>
+
+      {/* Floating Audio Player */}
+      <FloatingPlayer
+        audioSrc="/baiana.mp3"
+        trackTitle="Baiana"
+        duration={29}
+      />
 
       {/* Schema Data */}
       <script

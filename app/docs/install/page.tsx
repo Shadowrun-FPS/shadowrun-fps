@@ -69,10 +69,30 @@ export default function InstallPage() {
             process.
           </p>
 
+          {/* Launcher Recommendation Alert */}
+          <Alert className="border-blue-500/30 bg-blue-500/10">
+            <InfoIcon className="w-4 h-4 text-blue-500" />
+            <AlertTitle className="text-blue-700 dark:text-blue-300">
+              Recommended: Use Our Launcher
+            </AlertTitle>
+            <AlertDescription className="text-blue-600 dark:text-blue-400">
+              For the smoothest installation experience, we recommend using our{" "}
+              <Link
+                href="/download"
+                className="font-medium underline hover:no-underline"
+              >
+                custom launcher
+              </Link>
+              . It automates most of the setup process and handles key
+              generation automatically. This manual guide is provided for
+              advanced users or those who prefer manual installation.
+            </AlertDescription>
+          </Alert>
+
           <div className="flex flex-wrap gap-4">
             <Link
               href="/docs/troubleshoot"
-              className="inline-flex items-center gap-2 text-primary hover:underline"
+              className="inline-flex gap-2 items-center text-primary hover:underline"
             >
               Troubleshooting Guide
             </Link>

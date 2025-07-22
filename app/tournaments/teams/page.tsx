@@ -420,86 +420,76 @@ export default function TeamsPage() {
             </div>
 
             {/* Active Tournaments Section */}
-            <div className="mt-12">
-              <h2 className="text-2xl font-bold">Active Tournaments</h2>
-              <div className="grid grid-cols-1 gap-6 mt-4 md:grid-cols-2 lg:grid-cols-3">
-                {tournaments
-                  .filter(
-                    (tournament) =>
-                      tournament.status === "active" ||
-                      tournament.status === "upcoming"
-                  )
-                  .map((tournament) => (
-                    <Link
-                      key={tournament._id}
-                      href={`/tournaments/${tournament._id}`}
-                      className="transition-transform hover:scale-[1.02]"
-                    >
-                      <Card className="h-full overflow-hidden border-t-4 border-t-primary">
-                        <div className="flex flex-col h-full p-6">
-                          {/* Tournament Header */}
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-xl font-bold">
-                              {tournament.name}
-                            </h3>
-                            <Badge variant="outline" className="bg-muted/50">
-                              {tournament.status === "upcoming"
-                                ? "UPCOMING"
-                                : tournament.status === "active"
-                                ? "LIVE"
-                                : "COMPLETED"}
-                            </Badge>
-                          </div>
-
-                          {/* Tournament Format & Description */}
-                          <div className="mb-4">
-                            <p className="text-sm text-muted-foreground">
-                              {tournament.format === "single_elimination"
-                                ? "Single Elimination"
-                                : "Double Elimination"}
-                            </p>
-                            <p className="mt-1 text-sm">
-                              {tournament.description ||
-                                "Our first tournament!"}
-                            </p>
-                          </div>
-
-                          {/* Tournament Details Grid */}
-                          <div className="grid grid-cols-2 gap-3 mt-auto">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Calendar className="w-4 h-4 text-muted-foreground" />
-                              <span>{formatDate(tournament.startDate)}</span>
+            {tournaments.filter(
+              (tournament) =>
+                tournament.status === "active" ||
+                tournament.status === "upcoming"
+            ).length > 0 && (
+              <div className="mt-12">
+                <h2 className="text-2xl font-bold">Active Tournaments</h2>
+                <div className="grid grid-cols-1 gap-6 mt-4 md:grid-cols-2 lg:grid-cols-3">
+                  {tournaments
+                    .filter(
+                      (tournament) =>
+                        tournament.status === "active" ||
+                        tournament.status === "upcoming"
+                    )
+                    .map((tournament) => (
+                      <Link
+                        key={tournament._id}
+                        href={`/tournaments/${tournament._id}`}
+                        className="transition-transform hover:scale-[1.02]"
+                      >
+                        <Card className="overflow-hidden h-full border-t-4 border-t-primary">
+                          <div className="flex flex-col p-6 h-full">
+                            {/* Tournament Header */}
+                            <div className="flex justify-between items-start mb-2">
+                              <h3 className="text-xl font-bold">
+                                {tournament.name}
+                              </h3>
+                              <Badge variant="outline" className="bg-muted/50">
+                                {tournament.status === "upcoming"
+                                  ? "UPCOMING"
+                                  : tournament.status === "active"
+                                  ? "LIVE"
+                                  : "COMPLETED"}
+                              </Badge>
                             </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Users className="w-4 h-4 text-muted-foreground" />
-                              <span>
-                                {tournament.registeredTeams?.length || 0}/
-                                {tournament.maxTeams || 8} teams
-                              </span>
+
+                            {/* Tournament Format & Description */}
+                            <div className="mb-4">
+                              <p className="text-sm text-muted-foreground">
+                                {tournament.format === "single_elimination"
+                                  ? "Single Elimination"
+                                  : "Double Elimination"}
+                              </p>
+                              <p className="mt-1 text-sm">
+                                {tournament.description ||
+                                  "Our first tournament!"}
+                              </p>
+                            </div>
+
+                            {/* Tournament Details Grid */}
+                            <div className="grid grid-cols-2 gap-3 mt-auto">
+                              <div className="flex gap-2 items-center text-sm">
+                                <Calendar className="w-4 h-4 text-muted-foreground" />
+                                <span>{formatDate(tournament.startDate)}</span>
+                              </div>
+                              <div className="flex gap-2 items-center text-sm">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span>
+                                  {tournament.registeredTeams?.length || 0}/
+                                  {tournament.maxTeams || 8} teams
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Card>
-                    </Link>
-                  ))}
-
-                {tournaments.filter(
-                  (tournament) =>
-                    tournament.status === "active" ||
-                    tournament.status === "upcoming"
-                ).length === 0 && (
-                  <div className="p-8 text-center border border-dashed rounded-lg col-span-full">
-                    <Trophy className="w-10 h-10 mx-auto text-muted-foreground opacity-30" />
-                    <h3 className="mt-4 text-lg font-medium">
-                      No Active Tournaments
-                    </h3>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      There are no active tournaments at this time.
-                    </p>
-                  </div>
-                )}
+                        </Card>
+                      </Link>
+                    ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* My Team Section */}
             {userTeam && (
@@ -523,7 +513,7 @@ export default function TeamsPage() {
                     />
 
                     <Card className="border-dashed bg-primary/5 border-primary/30">
-                      <CardContent className="flex flex-col items-center justify-center h-full py-8">
+                      <CardContent className="flex flex-col justify-center items-center py-8 h-full">
                         <h3 className="mb-2 text-lg font-medium">
                           Team Management
                         </h3>
@@ -535,7 +525,7 @@ export default function TeamsPage() {
                           <Link
                             href={`/tournaments/teams/${userTeam._id.toString()}`}
                           >
-                            <Shield className="w-4 h-4 mr-2" />
+                            <Shield className="mr-2 w-4 h-4" />
                             Manage Team
                           </Link>
                         </Button>
@@ -549,7 +539,7 @@ export default function TeamsPage() {
 
             {/* All Teams Section */}
             <div className="mt-8">
-              <div className="flex flex-col justify-between gap-4 mb-6 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-4 justify-between mb-6 sm:flex-row sm:items-center">
                 <div>
                   <h2 className="text-xl font-semibold">All Teams</h2>
                   <p className="text-sm text-muted-foreground">
@@ -657,16 +647,16 @@ export default function TeamsPage() {
               {/* Main content section with fixed Tabs structure */}
               <Tabs value={view} onValueChange={setView}>
                 <div className="flex justify-between mb-6">
-                  <div className="flex items-center gap-2">
+                  <div className="flex gap-2 items-center">
                     <p className="text-sm text-muted-foreground">
                       {filteredTeams.length} teams found
                     </p>
                   </div>
                   <TabsList className="h-8">
-                    <TabsTrigger value="grid" className="h-8 px-3">
+                    <TabsTrigger value="grid" className="px-3 h-8">
                       Grid
                     </TabsTrigger>
-                    <TabsTrigger value="list" className="h-8 px-3">
+                    <TabsTrigger value="list" className="px-3 h-8">
                       List
                     </TabsTrigger>
                   </TabsList>
@@ -677,8 +667,8 @@ export default function TeamsPage() {
                     {Array.from({ length: 6 }).map((_, i) => (
                       <Card key={i} className="overflow-hidden">
                         <CardHeader>
-                          <Skeleton className="h-6 w-36" />
-                          <Skeleton className="w-24 h-4 mt-1" />
+                          <Skeleton className="w-36 h-6" />
+                          <Skeleton className="mt-1 w-24 h-4" />
                         </CardHeader>
                         <CardContent>
                           <Skeleton className="w-full h-16" />
@@ -688,7 +678,7 @@ export default function TeamsPage() {
                           </div>
                         </CardContent>
                         <CardFooter className="border-t">
-                          <div className="flex justify-end w-full gap-2">
+                          <div className="flex gap-2 justify-end w-full">
                             <Skeleton className="w-24 h-8" />
                             <Skeleton className="w-24 h-8" />
                           </div>
@@ -792,7 +782,7 @@ export default function TeamsPage() {
 
                     {/* Pagination UI */}
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-between p-4 mt-6 border rounded-md bg-card">
+                      <div className="flex justify-between items-center p-4 mt-6 rounded-md border bg-card">
                         <div className="text-sm text-muted-foreground">
                           Showing {indexOfFirstTeam + 1} to{" "}
                           {Math.min(indexOfLastTeam, filteredTeams.length)} of{" "}
@@ -804,7 +794,7 @@ export default function TeamsPage() {
                             size="sm"
                             onClick={() => handlePageChange(1)}
                             disabled={currentPage === 1}
-                            className="h-8 px-3"
+                            className="px-3 h-8"
                           >
                             First
                           </Button>
@@ -815,11 +805,11 @@ export default function TeamsPage() {
                               handlePageChange(Math.max(1, currentPage - 1))
                             }
                             disabled={currentPage === 1}
-                            className="h-8 px-3"
+                            className="px-3 h-8"
                           >
                             <ChevronLeft className="w-4 h-4" />
                           </Button>
-                          <div className="flex items-center h-8 px-3 text-sm border rounded-md bg-background border-input">
+                          <div className="flex items-center px-3 h-8 text-sm rounded-md border bg-background border-input">
                             Page {currentPage} of {totalPages}
                           </div>
                           <Button
@@ -831,7 +821,7 @@ export default function TeamsPage() {
                               )
                             }
                             disabled={currentPage === totalPages}
-                            className="h-8 px-3"
+                            className="px-3 h-8"
                           >
                             <ChevronRight className="w-4 h-4" />
                           </Button>
@@ -840,7 +830,7 @@ export default function TeamsPage() {
                             size="sm"
                             onClick={() => handlePageChange(totalPages)}
                             disabled={currentPage === totalPages}
-                            className="h-8 px-3"
+                            className="px-3 h-8"
                           >
                             Last
                           </Button>
@@ -849,9 +839,9 @@ export default function TeamsPage() {
                     )}
                   </>
                 ) : (
-                  <Card className="flex items-center justify-center p-8">
+                  <Card className="flex justify-center items-center p-8">
                     <div className="text-center">
-                      <Users className="w-8 h-8 mx-auto mb-3 text-muted-foreground" />
+                      <Users className="mx-auto mb-3 w-8 h-8 text-muted-foreground" />
                       <h3 className="text-lg font-medium">No Teams Found</h3>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {searchQuery
@@ -863,7 +853,7 @@ export default function TeamsPage() {
                       <Sheet>
                         <SheetTrigger asChild>
                           <Button className="mt-4">
-                            <Plus className="w-4 h-4 mr-2" />
+                            <Plus className="mr-2 w-4 h-4" />
                             Create a Team
                           </Button>
                         </SheetTrigger>
