@@ -3,6 +3,7 @@ import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export async function DELETE(
     }
 
     // Special case for your Discord ID - always allow
-    const isYourAccount = session.user.id === "238329746671271936";
+    const isYourAccount = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 
     // Check if user has the required roles
     const hasRequiredRole =

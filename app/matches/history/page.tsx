@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { FeatureGate } from "@/components/feature-gate";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 interface Match {
   matchId: string;
@@ -300,7 +301,7 @@ export default function MatchHistoryPage() {
       console.log("Current user:", session?.user);
 
       // Check if the current user is you by ID
-      const isYourAccount = session?.user?.id === "238329746671271936";
+      const isYourAccount = session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID;
       const isstaff =
         session?.user?.roles?.includes("admin") ||
         session?.user?.roles?.includes("moderator") ||
@@ -366,7 +367,7 @@ export default function MatchHistoryPage() {
     <FeatureGate feature="matches">
       <div className="container py-8">
         <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
+          <div className="flex justify-between items-center">
             <h1 className="text-2xl font-bold text-white">Match History</h1>
             <p className="text-sm text-gray-400">
               {matches.length} results found
@@ -429,7 +430,7 @@ export default function MatchHistoryPage() {
                       variant="outline"
                       className="w-full sm:w-auto bg-[#111827] border-[#1f2937] flex items-center"
                     >
-                      <Calendar className="w-4 h-4 mr-2" />
+                      <Calendar className="mr-2 w-4 h-4" />
                       {dateFilter
                         ? format(dateFilter, "MMM d, yyyy")
                         : "Pick date"}
@@ -481,7 +482,7 @@ export default function MatchHistoryPage() {
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
                         onClick={() => handleSort("status")}
                       >
                         Status
@@ -491,7 +492,7 @@ export default function MatchHistoryPage() {
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
                         onClick={() => handleSort("eloTier")}
                       >
                         ELO Tier
@@ -501,7 +502,7 @@ export default function MatchHistoryPage() {
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
                         onClick={() => handleSort("teamSize")}
                       >
                         Team Size
@@ -511,7 +512,7 @@ export default function MatchHistoryPage() {
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
                         onClick={() => handleSort("winner")}
                       >
                         Winner
@@ -521,7 +522,7 @@ export default function MatchHistoryPage() {
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex items-center gap-1 text-sm font-medium text-gray-400 hover:text-white"
+                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
                         onClick={() => handleSort("createdAt")}
                       >
                         Date and Time
@@ -560,7 +561,7 @@ export default function MatchHistoryPage() {
                             </td>
                             <td className={`p-4 ${getWinnerColor(match)}`}>
                               {match.winner && (
-                                <div className="flex items-center gap-2">
+                                <div className="flex gap-2 items-center">
                                   <Trophy className="w-4 h-4 text-yellow-500" />
                                   <span className="text-sm font-medium">
                                     {getTeamName(match, match.winner)}
@@ -593,7 +594,8 @@ export default function MatchHistoryPage() {
                           </ContextMenuItem>
 
                           {/* Only show delete option for admins/moderators */}
-                          {(session?.user?.id === "238329746671271936" || // Your ID - always allow
+                          {(session?.user?.id ===
+                            SECURITY_CONFIG.DEVELOPER_ID ||
                             (session?.user?.roles &&
                               (session.user.roles.includes("admin") ||
                                 session.user.roles.includes("moderator") ||
@@ -618,7 +620,7 @@ export default function MatchHistoryPage() {
             </div>
           </Card>
 
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex gap-2 justify-center items-center">
             <Button
               variant="outline"
               size="icon"
@@ -629,7 +631,7 @@ export default function MatchHistoryPage() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
 
-            <div className="flex items-center gap-1">
+            <div className="flex gap-1 items-center">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(
                 (page) => (
                   <Button

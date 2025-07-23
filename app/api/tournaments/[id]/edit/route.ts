@@ -3,31 +3,30 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import {
+  SECURITY_CONFIG,
+  ADMIN_ROLE_IDS,
+  MODERATOR_ROLE_IDS,
+} from "@/lib/security-config";
+import { withErrorHandling, createError } from "@/lib/error-handling";
+import { secureLogger } from "@/lib/secure-logger";
 
 // Developer ID for special permissions
-const DEVELOPER_ID = "238329746671271936";
+const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
 
 // Admin role IDs
-const ADMIN_ROLES = [
-  "932585751332421642", // Admin
-  "1095126043918082109", // Founder
-];
+const ADMIN_ROLES = ADMIN_ROLE_IDS;
 
 // Moderator role IDs (includes admin roles)
-const MOD_ROLES = [
-  ...ADMIN_ROLES,
-  "1042168064805965864", // Mod
-  "1080979865345458256", // GM
-];
+const MOD_ROLES = MODERATOR_ROLE_IDS;
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
+export const PUT = withErrorHandling(
+  async (req: NextRequest, { params }: { params: { id: string } }) => {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      throw createError.unauthorized(
+        "Authentication required to edit tournaments"
+      );
     }
 
     // Check if user is admin or developer
@@ -43,19 +42,18 @@ export async function PUT(
       userRoles.some((role) => MOD_ROLES.includes(role));
 
     if (!isAdmin) {
-      console.log("User is not admin:", session.user.id, userRoles);
-      return NextResponse.json(
-        { error: "You don't have permission to edit this tournament" },
-        { status: 403 }
+      secureLogger.warn("Unauthorized tournament edit attempt", {
+        userId: session.user.id,
+        tournamentId: params.id,
+      });
+      throw createError.forbidden(
+        "You don't have permission to edit this tournament"
       );
     }
 
     const tournamentId = params.id;
     if (!ObjectId.isValid(tournamentId)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
+      throw createError.badRequest("Invalid tournament ID");
     }
 
     const { db } = await connectToDatabase();
@@ -65,10 +63,7 @@ export async function PUT(
 
     // Validate required fields
     if (!tournamentData.name || !tournamentData.startDate) {
-      return NextResponse.json(
-        { error: "Name and start date are required" },
-        { status: 400 }
-      );
+      throw createError.badRequest("Name and start date are required");
     }
 
     // Update the tournament
@@ -90,21 +85,17 @@ export async function PUT(
     );
 
     if (result.matchedCount === 0) {
-      return NextResponse.json(
-        { error: "Tournament not found" },
-        { status: 404 }
-      );
+      throw createError.notFound("Tournament not found");
     }
+
+    secureLogger.info("Tournament updated successfully", {
+      tournamentId,
+      adminId: session.user.id,
+    });
 
     return NextResponse.json({
       success: true,
       message: "Tournament updated successfully",
     });
-  } catch (error) {
-    console.error("Error updating tournament:", error);
-    return NextResponse.json(
-      { error: "Failed to update tournament" },
-      { status: 500 }
-    );
   }
-}
+);

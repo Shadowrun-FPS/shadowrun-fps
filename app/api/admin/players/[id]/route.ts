@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function GET(
   req: Request,
@@ -14,7 +15,7 @@ export async function GET(
 
     // Check if user has required roles
     const isAuthorized =
-      session?.user?.id === "238329746671271936" || // Your ID
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles &&
         (session?.user?.roles.includes("admin") ||
           session?.user?.roles.includes("moderator") ||

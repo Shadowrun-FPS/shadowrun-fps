@@ -369,12 +369,12 @@ export default function ModerationPage() {
         className={styles.tabs}
       >
         {/* Replace TabsList with dropdown */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex justify-between items-center mb-6">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="w-[180px] justify-between">
                 {getTabLabel(activeTab)}
-                <ChevronDown className="w-4 h-4 ml-2" />
+                <ChevronDown className="ml-2 w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
@@ -411,7 +411,7 @@ export default function ModerationPage() {
         <TabsContent className={styles.tabsContent} value="overview">
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">
                   Active Warnings
                 </CardTitle>
@@ -432,7 +432,7 @@ export default function ModerationPage() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">
                   Active Bans
                 </CardTitle>
@@ -453,7 +453,7 @@ export default function ModerationPage() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0">
                 <CardTitle className="text-sm font-medium">
                   Total Actions
                 </CardTitle>
@@ -482,7 +482,7 @@ export default function ModerationPage() {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="flex items-center justify-center h-48">
+                  <div className="flex justify-center items-center h-48">
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
@@ -490,9 +490,9 @@ export default function ModerationPage() {
                     {recentActions.slice(0, 5).map((action) => (
                       <div
                         key={action._id}
-                        className="flex items-center justify-between pb-2 border-b last:border-0 last:pb-0"
+                        className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0"
                       >
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2 items-center">
                           {action.action === "warn" ? (
                             <AlertTriangle className="w-4 h-4 text-amber-500" />
                           ) : action.action === "ban" ? (
@@ -548,7 +548,7 @@ export default function ModerationPage() {
               </CardHeader>
               <CardContent>
                 {loading ? (
-                  <div className="flex items-center justify-center h-48">
+                  <div className="flex justify-center items-center h-48">
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : disputes.length > 0 ? (
@@ -556,7 +556,7 @@ export default function ModerationPage() {
                     {disputes.slice(0, 3).map((dispute) => (
                       <div
                         key={dispute._id}
-                        className="flex items-center justify-between pb-2 border-b last:border-0 last:pb-0"
+                        className="flex justify-between items-center pb-2 border-b last:border-0 last:pb-0"
                       >
                         <div>
                           <p className="text-sm font-medium">
@@ -580,8 +580,8 @@ export default function ModerationPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-48 text-center">
-                    <Shield className="w-8 h-8 mb-4 text-muted-foreground" />
+                  <div className="flex flex-col justify-center items-center h-48 text-center">
+                    <Shield className="mb-4 w-8 h-8 text-muted-foreground" />
                     <p className="text-muted-foreground">No pending disputes</p>
                   </div>
                 )}
@@ -602,12 +602,12 @@ export default function ModerationPage() {
 
         <TabsContent className={styles.tabsContent} value="active">
           {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <div className="flex justify-center items-center h-48">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex justify-between items-center">
                 <h2 className="text-xl font-semibold">Active Bans</h2>
                 <div className="relative w-full max-w-sm">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -659,7 +659,7 @@ export default function ModerationPage() {
                                 action
                               )}
                             >
-                              <Check className="w-4 h-4 mr-1" />
+                              <Check className="mr-1 w-4 h-4" />
                               Unban
                             </Button>
                           </TableCell>
@@ -682,7 +682,7 @@ export default function ModerationPage() {
                   activeActions.map((action) => (
                     <Card key={action._id}>
                       <CardContent className="p-4">
-                        <div className="flex items-start justify-between mb-2">
+                        <div className="flex justify-between items-start mb-2">
                           <div>
                             <h3 className="font-medium">{action.playerName}</h3>
                             <p className="text-sm text-muted-foreground">
@@ -738,7 +738,7 @@ export default function ModerationPage() {
                             }
                             disabled={isPlayerUnbanned(action.playerId, action)}
                           >
-                            <Check className="w-4 h-4 mr-1" />
+                            <Check className="mr-1 w-4 h-4" />
                             Unban
                           </Button>
                         </div>
@@ -746,7 +746,7 @@ export default function ModerationPage() {
                     </Card>
                   ))
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-24 text-center">
+                  <div className="flex flex-col justify-center items-center h-24 text-center">
                     <p className="text-muted-foreground">
                       No active bans found
                     </p>
@@ -759,7 +759,7 @@ export default function ModerationPage() {
 
         <TabsContent className={styles.tabsContent} value="recent">
           {loading ? (
-            <div className="flex items-center justify-center h-48">
+            <div className="flex justify-center items-center h-48">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
@@ -781,7 +781,7 @@ export default function ModerationPage() {
                 >
                   <SelectTrigger className="w-full sm:w-[180px]">
                     <div className="flex items-center">
-                      <Filter className="w-4 h-4 mr-2" />
+                      <Filter className="mr-2 w-4 h-4" />
                       <SelectValue placeholder="Filter" />
                     </div>
                   </SelectTrigger>
@@ -794,7 +794,7 @@ export default function ModerationPage() {
                 </Select>
               </div>
 
-              <div className="hidden border rounded-md md:block">
+              <div className="hidden rounded-md border md:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -845,7 +845,7 @@ export default function ModerationPage() {
                               <DropdownMenuItem
                                 onClick={() => handleViewHistory(action)}
                               >
-                                <History className="w-4 h-4 mr-2" />
+                                <History className="mr-2 w-4 h-4" />
                                 View Player History
                               </DropdownMenuItem>
                               {action.action === "ban" && (
@@ -861,7 +861,7 @@ export default function ModerationPage() {
                                     action
                                   )}
                                 >
-                                  <Check className="w-4 h-4 mr-2" />
+                                  <Check className="mr-2 w-4 h-4" />
                                   Unban Player
                                 </DropdownMenuItem>
                               )}
@@ -889,7 +889,7 @@ export default function ModerationPage() {
                 {getFilteredActions(recentActions).map((action) => (
                   <Card key={action._id}>
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex justify-between items-start mb-2">
                         <div>
                           <p className="font-medium">{action.playerName}</p>
                           <p className="text-sm text-muted-foreground">
@@ -913,7 +913,7 @@ export default function ModerationPage() {
                         </Badge>
                       </div>
                       <p className="mb-2 text-sm">{action.reason}</p>
-                      <div className="flex items-center justify-between">
+                      <div className="flex justify-between items-center">
                         <p className="text-sm text-muted-foreground">
                           By {action.moderatorName}
                         </p>
@@ -921,7 +921,7 @@ export default function ModerationPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="w-8 h-8 p-0"
+                            className="p-0 w-8 h-8"
                           >
                             <History className="w-4 h-4" />
                           </Button>
@@ -929,7 +929,7 @@ export default function ModerationPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="w-8 h-8 p-0"
+                              className="p-0 w-8 h-8"
                               onClick={() =>
                                 handleUnban(action.playerId, action.playerName)
                               }
@@ -959,7 +959,7 @@ export default function ModerationPage() {
         <TabsContent className={styles.tabsContent} value="disputes">
           <div className="grid gap-4">
             {loading ? (
-              <div className="flex items-center justify-center h-48">
+              <div className="flex justify-center items-center h-48">
                 <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
               </div>
             ) : disputes.length > 0 ? (
@@ -967,7 +967,7 @@ export default function ModerationPage() {
                 <Card key={dispute._id}>
                   <CardContent className="pt-6">
                     <div className="flex flex-col gap-4">
-                      <div className="flex items-start justify-between">
+                      <div className="flex justify-between items-start">
                         <div>
                           <p className="font-medium">{dispute.playerName}</p>
                           <div className="text-sm text-muted-foreground">
@@ -1004,8 +1004,8 @@ export default function ModerationPage() {
                 </Card>
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center h-48 text-center">
-                <Shield className="w-12 h-12 mb-4 text-muted-foreground" />
+              <div className="flex flex-col justify-center items-center h-48 text-center">
+                <Shield className="mb-4 w-12 h-12 text-muted-foreground" />
                 <p className="text-muted-foreground">No pending disputes</p>
               </div>
             )}

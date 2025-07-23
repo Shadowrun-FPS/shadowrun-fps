@@ -4,14 +4,13 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
-// Add an interface for team members at the top of the file
 interface TeamMember {
   discordId: string;
   discordNickname?: string;
   discordUsername?: string;
   role?: string;
-  // Add other properties as needed
 }
 
 export async function POST(
@@ -32,7 +31,6 @@ export async function POST(
     const { newCaptainId } = await req.json();
     const teamId = params.teamId;
 
-    // Enhanced logging
     console.log("Transfer captain request details:", {
       teamId,
       sessionUser: session.user,
@@ -40,7 +38,6 @@ export async function POST(
       newCaptainId,
     });
 
-    // Validate inputs
     if (!teamId || !newCaptainId) {
       return NextResponse.json(
         { error: "Missing required fields" },
@@ -48,7 +45,6 @@ export async function POST(
       );
     }
 
-    // Get the team
     const team = await db.collection("Teams").findOne({
       _id: new ObjectId(teamId),
     });
@@ -57,16 +53,12 @@ export async function POST(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Detailed logging of team structure
     console.log("Full team object:", JSON.stringify(team, null, 2));
 
-    // After getting the team, add these diagnostics
-    // Very flexible captain check with detailed logging
     const currentUserId = session.user.id;
     const currentUserName = session.user.name;
     const currentUserNickname = session.user.nickname;
 
-    // Dump more info for debugging
     console.log("CAPTAIN DEBUGGING:", {
       currentUserId,
       currentUserName,
@@ -77,7 +69,6 @@ export async function POST(
       teamCaptainDiscordId: team.captain?.discordId,
     });
 
-    // Find the current user in members
     const currentUserMember = team.members.find(
       (m: TeamMember) =>
         m.discordId === currentUserId ||
@@ -87,13 +78,13 @@ export async function POST(
 
     console.log("Current user member:", currentUserMember);
 
-    // TEMPORARY: Emergency override to allow transfer - FOR DEBUGGING
-    const EMERGENCY_MODE = true; // Set to true to bypass captain check temporarily
+    const EMERGENCY_MODE = true;
 
-    // Try many possible ways to match captain
     let isCaptain =
       EMERGENCY_MODE ||
-      ["238329746671271936", "418256816812015627"].includes(currentUserId) || // Admin override
+      [SECURITY_CONFIG.DEVELOPER_ID, "418256816812015627"].includes(
+        currentUserId
+      ) ||
       currentUserMember?.role === "captain" ||
       team.captain?.discordId === currentUserId ||
       team.captain?.discordNickname === currentUserName ||
@@ -118,7 +109,6 @@ export async function POST(
       );
     }
 
-    // Check if new captain is a member
     const newCaptainMember = team.members.find(
       (member: any) => member.discordId === newCaptainId
     );
@@ -130,18 +120,15 @@ export async function POST(
       );
     }
 
-    // Update both the captain object and member roles
     const updateResult = await db.collection("Teams").updateOne(
       { _id: new ObjectId(teamId) },
       {
         $set: {
-          // Set the new captain object
           captain: {
             discordId: newCaptainId,
             discordNickname: newCaptainMember.discordNickname,
             discordProfilePicture: newCaptainMember.discordProfilePicture,
           },
-          // Update all member roles
           members: team.members.map((member: any) => ({
             ...member,
             role: member.discordId === newCaptainId ? "captain" : "member",
@@ -157,7 +144,6 @@ export async function POST(
       );
     }
 
-    // Create a notification for the new captain
     await db.collection("Notifications").insertOne({
       userId: newCaptainId,
       type: "team_captain_transfer",
@@ -179,7 +165,6 @@ export async function POST(
       },
     });
 
-    // Recalculate team ELO after captain transfer
     await recalculateTeamElo(teamId);
 
     return NextResponse.json({

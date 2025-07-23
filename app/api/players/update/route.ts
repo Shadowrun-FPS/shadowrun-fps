@@ -6,8 +6,8 @@ import {
   upsertPlayerDiscordData,
   updatePlayerGuildNickname,
 } from "@/lib/discord-helpers";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
-// Extend the Session type to include accessToken
 interface ExtendedSession {
   user: {
     id: string;
@@ -33,9 +33,7 @@ export async function POST(req: NextRequest) {
     console.log("Session nickname:", session.user.nickname);
     console.log("Session name:", session.user.name);
 
-    // Developer account special case - bypass Discord API calls
-    if (session.user.id === "238329746671271936") {
-      // For developer, prioritize the nickname from session if available
+    if (session.user.id === SECURITY_CONFIG.DEVELOPER_ID) {
       const nickname =
         session.user.nickname || session.user.name || "Developer";
       console.log(`Developer account: using nickname ${nickname}`);
@@ -49,13 +47,11 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Get the access token from the session
     const accessToken = session.accessToken;
 
     if (!accessToken) {
       console.log("No access token available for user", session.user.id);
 
-      // Use the user's nickname from session if available
       const fallbackName = session.user.nickname || session.user.name || "User";
       console.log(`No access token: using fallback name ${fallbackName}`);
 
@@ -69,13 +65,11 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      // Get Discord guild data
       const guildData = await getGuildData(accessToken);
 
       if (!guildData) {
         console.log("Failed to get guild data for user", session.user.id);
 
-        // Fallback to session nickname
         const fallbackName =
           session.user.nickname || session.user.name || "User";
         console.log(`No guild data: using fallback name ${fallbackName}`);
@@ -89,7 +83,6 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // IMPORTANT: Prioritize guild nickname from API, then session nickname, then username
       const guildNickname =
         guildData.nick || session.user.nickname || session.user.name;
 
@@ -97,7 +90,6 @@ export async function POST(req: NextRequest) {
         `Using guild nickname: ${guildNickname} for user ${session.user.id}`
       );
 
-      // Update player with guild nickname
       await updatePlayerGuildNickname(session.user.id, guildNickname);
 
       return NextResponse.json({
@@ -112,7 +104,6 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.error("Error getting guild data:", error);
 
-      // If Discord API fails, still update with existing nickname from session
       const fallbackName = session.user.nickname || session.user.name || "User";
       console.log(`API error: using fallback name ${fallbackName}`);
 

@@ -518,8 +518,7 @@ export default function TeamsPage() {
                           Team Management
                         </h3>
                         <p className="mb-4 text-sm text-center text-muted-foreground">
-                          Manage your team roster, invites, and tournament
-                          registrations
+                          Manage your team roster and invites
                         </p>
                         <Button asChild>
                           <Link

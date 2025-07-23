@@ -84,6 +84,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 /*
   TODO SIN: Define a single source of truth for the Queue, QueuePlayer, etc. types
@@ -164,7 +165,7 @@ export default function QueuesPage() {
   // Check if user is admin
   const isAdmin = () => {
     return (
-      session?.user?.id === "238329746671271936" ||
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles && session?.user?.roles.includes("admin"))
     );
   };
@@ -172,7 +173,7 @@ export default function QueuesPage() {
   // Update the isAdmin function to also check for moderator role
   const isAdminOrMod = () => {
     return (
-      session?.user?.id === "238329746671271936" ||
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles &&
         (session?.user?.roles.includes("admin") ||
           session?.user?.roles.includes("moderator")))
@@ -495,7 +496,7 @@ export default function QueuesPage() {
     // I see you doing this role check in multiple places
     // ex. hasAnyRole(user, ["admin", "moderator", "founder", "GM"])
     const hasRequiredRole =
-      session?.user?.id === "238329746671271936" || // Your ID
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles &&
         (session?.user?.roles.includes("admin") ||
           session?.user?.roles.includes("moderator") ||
@@ -765,7 +766,7 @@ export default function QueuesPage() {
   const isDeveloperOrAdmin = () => {
     return (
       isAdmin() ||
-      (session?.user?.id && session.user.id === "238329746671271936")
+      (session?.user?.id && session.user.id === SECURITY_CONFIG.DEVELOPER_ID)
     );
   };
 
@@ -871,12 +872,12 @@ export default function QueuesPage() {
     <FeatureGate feature="queues">
       <div className="container px-4 py-8 mx-auto">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-row justify-between items-center">
             <CardTitle>Ranked Matchmaking</CardTitle>
             {isAdmin() && (
               <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="flex items-center gap-1">
+                  <Button size="sm" className="flex gap-1 items-center">
                     <PlusCircle className="w-4 h-4" />
                     <span>Create Queue</span>
                   </Button>
@@ -990,7 +991,7 @@ export default function QueuesPage() {
               <div className="mb-6">
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="flex flex-col items-center justify-center gap-4 text-center">
+                    <div className="flex flex-col gap-4 justify-center items-center text-center">
                       <h3 className="text-lg font-semibold">
                         Register for Ranked Matchmaking
                       </h3>
@@ -1015,7 +1016,7 @@ export default function QueuesPage() {
               <div className="mb-6">
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="flex flex-col items-center justify-center gap-4 text-center">
+                    <div className="flex flex-col gap-4 justify-center items-center text-center">
                       <h3 className="text-lg font-semibold">
                         Register for Ranked
                       </h3>
@@ -1053,7 +1054,7 @@ export default function QueuesPage() {
                       {activeTab === "5v5" && "5v5 Queues"}
                       {activeTab === "2v2" && "2v2 Queues"}
                       {activeTab === "1v1" && "1v1 Queues"}
-                      <ChevronDown className="w-4 h-4 ml-2" />
+                      <ChevronDown className="ml-2 w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-full">
@@ -1086,7 +1087,7 @@ export default function QueuesPage() {
                         <ContextMenuTrigger>
                           <Card className="overflow-hidden min-h-[600px] flex flex-col">
                             <CardHeader className="bg-muted/50">
-                              <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                              <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
                                 <div>
                                   <CardTitle className="text-lg">
                                     {queue.eloTier.charAt(0).toUpperCase() +
@@ -1120,7 +1121,7 @@ export default function QueuesPage() {
                             <CardContent className="flex flex-col flex-1 p-4 sm:p-6">
                               {/* Active Players List */}
                               <div className="flex-1 mb-4">
-                                <div className="flex items-center gap-2 mb-2">
+                                <div className="flex gap-2 items-center mb-2">
                                   <h4 className="text-sm font-medium">
                                     Players
                                   </h4>
@@ -1171,8 +1172,8 @@ export default function QueuesPage() {
 
                               {/* Waitlist Section */}
                               <div className="pt-4 mb-4 border-t">
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
+                                <div className="flex justify-between items-center mb-2">
+                                  <div className="flex gap-2 items-center">
                                     <h4 className="text-sm font-medium">
                                       Waitlist
                                     </h4>
@@ -1191,21 +1192,21 @@ export default function QueuesPage() {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-6 px-2"
+                                      className="px-2 h-6"
                                       onClick={() =>
                                         toggleWaitlistExpansion(queue._id)
                                       }
                                     >
                                       {expandedWaitlists[queue._id] ? (
                                         <>
-                                          <ChevronUp className="w-4 h-4 mr-1" />
+                                          <ChevronUp className="mr-1 w-4 h-4" />
                                           <span className="text-xs">
                                             Show Less
                                           </span>
                                         </>
                                       ) : (
                                         <>
-                                          <ChevronDown className="w-4 h-4 mr-1" />
+                                          <ChevronDown className="mr-1 w-4 h-4" />
                                           <span className="text-xs">
                                             Show All
                                           </span>
@@ -1307,7 +1308,7 @@ export default function QueuesPage() {
                                               variant="outline"
                                               className="w-full h-[60px] flex items-center justify-center"
                                             >
-                                              <Plus className="w-4 h-4 mr-2" />
+                                              <Plus className="mr-2 w-4 h-4" />
                                               {getQueueSections(queue)
                                                 .waitlistPlayers.length -
                                                 2}{" "}
@@ -1332,7 +1333,7 @@ export default function QueuesPage() {
                                                 (player, index) => (
                                                   <div
                                                     key={player.discordId}
-                                                    className="flex items-center justify-between p-3 rounded-lg bg-muted/20"
+                                                    className="flex justify-between items-center p-3 rounded-lg bg-muted/20"
                                                   >
                                                     <div className="flex flex-col">
                                                       <div className="flex items-center">
@@ -1436,7 +1437,7 @@ export default function QueuesPage() {
                           <ContextMenuItem
                             onClick={() => copyToClipboard(queue.queueId)}
                           >
-                            <Copy className="w-4 h-4 mr-2" />
+                            <Copy className="mr-2 w-4 h-4" />
                             Copy Queue ID
                           </ContextMenuItem>
 
@@ -1445,7 +1446,7 @@ export default function QueuesPage() {
                               <ContextMenuSeparator />
                               <ContextMenuSub>
                                 <ContextMenuSubTrigger>
-                                  <UserMinus className="w-4 h-4 mr-2" />
+                                  <UserMinus className="mr-2 w-4 h-4" />
                                   Remove Player
                                 </ContextMenuSubTrigger>
                                 <ContextMenuSubContent className="w-48">
@@ -1490,7 +1491,7 @@ export default function QueuesPage() {
                                 }
                                 className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
                               >
-                                <Trash2 className="w-4 h-4 mr-2" />
+                                <Trash2 className="mr-2 w-4 h-4" />
                                 Delete Queue
                               </ContextMenuItem>
                             </>
@@ -1506,7 +1507,7 @@ export default function QueuesPage() {
                 onValueChange={handleTabChange}
                 className="w-full"
               >
-                <TabsList className="grid w-full grid-cols-4 mb-6">
+                <TabsList className="grid grid-cols-4 mb-6 w-full">
                   <TabsTrigger
                     value="1v1"
                     onClick={() => handleTabChange("1v1")}
@@ -1568,7 +1569,7 @@ export default function QueuesPage() {
                               <ContextMenuTrigger>
                                 <Card className="overflow-hidden min-h-[600px] flex flex-col">
                                   <CardHeader className="bg-muted/50">
-                                    <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+                                    <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
                                       <div>
                                         <CardTitle className="text-lg">
                                           {queue.eloTier
@@ -1608,7 +1609,7 @@ export default function QueuesPage() {
                                   <CardContent className="flex flex-col flex-1 p-4 sm:p-6">
                                     {/* Active Players List */}
                                     <div className="flex-1 mb-4">
-                                      <div className="flex items-center gap-2 mb-2">
+                                      <div className="flex gap-2 items-center mb-2">
                                         <h4 className="text-sm font-medium">
                                           Players
                                         </h4>
@@ -1663,8 +1664,8 @@ export default function QueuesPage() {
 
                                     {/* Waitlist Section */}
                                     <div className="pt-4 mb-4 border-t">
-                                      <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
+                                      <div className="flex justify-between items-center mb-2">
+                                        <div className="flex gap-2 items-center">
                                           <h4 className="text-sm font-medium">
                                             Waitlist
                                           </h4>
@@ -1683,21 +1684,21 @@ export default function QueuesPage() {
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="h-6 px-2"
+                                            className="px-2 h-6"
                                             onClick={() =>
                                               toggleWaitlistExpansion(queue._id)
                                             }
                                           >
                                             {expandedWaitlists[queue._id] ? (
                                               <>
-                                                <ChevronUp className="w-4 h-4 mr-1" />
+                                                <ChevronUp className="mr-1 w-4 h-4" />
                                                 <span className="text-xs">
                                                   Show Less
                                                 </span>
                                               </>
                                             ) : (
                                               <>
-                                                <ChevronDown className="w-4 h-4 mr-1" />
+                                                <ChevronDown className="mr-1 w-4 h-4" />
                                                 <span className="text-xs">
                                                   Show All
                                                 </span>
@@ -1805,7 +1806,7 @@ export default function QueuesPage() {
                                                     variant="outline"
                                                     className="w-full h-[60px] flex items-center justify-center"
                                                   >
-                                                    <Plus className="w-4 h-4 mr-2" />
+                                                    <Plus className="mr-2 w-4 h-4" />
                                                     {getQueueSections(queue)
                                                       .waitlistPlayers.length -
                                                       2}{" "}
@@ -1832,7 +1833,7 @@ export default function QueuesPage() {
                                                       (player, index) => (
                                                         <div
                                                           key={player.discordId}
-                                                          className="flex items-center justify-between p-3 rounded-lg bg-muted/20"
+                                                          className="flex justify-between items-center p-3 rounded-lg bg-muted/20"
                                                         >
                                                           <div className="flex flex-col">
                                                             <div className="flex items-center">
@@ -1940,7 +1941,7 @@ export default function QueuesPage() {
                                 <ContextMenuItem
                                   onClick={() => copyToClipboard(queue.queueId)}
                                 >
-                                  <Copy className="w-4 h-4 mr-2" />
+                                  <Copy className="mr-2 w-4 h-4" />
                                   Copy Queue ID
                                 </ContextMenuItem>
 
@@ -1949,7 +1950,7 @@ export default function QueuesPage() {
                                     <ContextMenuSeparator />
                                     <ContextMenuSub>
                                       <ContextMenuSubTrigger>
-                                        <UserMinus className="w-4 h-4 mr-2" />
+                                        <UserMinus className="mr-2 w-4 h-4" />
                                         Remove Player
                                       </ContextMenuSubTrigger>
                                       <ContextMenuSubContent className="w-48">
@@ -1997,7 +1998,7 @@ export default function QueuesPage() {
                                       }
                                       className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
                                     >
-                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      <Trash2 className="mr-2 w-4 h-4" />
                                       Delete Queue
                                     </ContextMenuItem>
                                   </>

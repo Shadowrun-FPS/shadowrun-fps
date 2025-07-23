@@ -5,6 +5,7 @@ import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 import { sendDirectMessage } from "@/lib/discord-bot";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
 
@@ -138,7 +139,6 @@ export async function POST(
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    // Find the stats object for the queue's team size
     const statsForTeamSize = player.stats.find(
       (stat: { teamSize: any }) => stat.teamSize === queue.teamSize
     );
@@ -152,7 +152,6 @@ export async function POST(
       );
     }
 
-    // Check ELO requirements using the found stats
     if (statsForTeamSize.elo > queue.maxElo) {
       return NextResponse.json(
         {
@@ -171,7 +170,6 @@ export async function POST(
       );
     }
 
-    // Check if the player is in an active match
     const activeMatch = await db.collection("Matches").findOne({
       $or: [
         { "team1.discordId": session.user.id },
@@ -190,7 +188,6 @@ export async function POST(
       );
     }
 
-    // Create the player object for the queue
     const newPlayer = {
       discordId: session.user.id,
       discordUsername: player.discordUsername,
@@ -202,7 +199,6 @@ export async function POST(
       elo: statsForTeamSize.elo,
     };
 
-    // Add player to queue with proper typing
     const result = await db.collection<Queue>("Queues").updateOne(
       { _id: new ObjectId(params.queueId) },
       {
@@ -219,10 +215,8 @@ export async function POST(
       );
     }
 
-    // Fetch all queues to send the updated data
     const updatedQueues = await db.collection("Queues").find({}).toArray();
 
-    // Emit the update event to all connected clients
     if (global.io) {
       global.io.emit("queues:update", updatedQueues);
     }
@@ -232,25 +226,20 @@ export async function POST(
       _id: new ObjectId(params.queueId),
     });
 
-    // If queue is full, send notifications with expiration time
     if (
       updatedQueue &&
       updatedQueue.players.length === updatedQueue.teamSize * 2
     ) {
       console.log("Queue is now full, sending notifications to players");
 
-      // Create expiration time (5 minutes from now)
       const expirationTime = new Date();
       expirationTime.setMinutes(expirationTime.getMinutes() + 5);
 
-      // FOR TESTING - only send notifications to specific Discord ID
-      const testingDiscordId = "238329746671271936"; // Your Discord ID
+      const testingDiscordId = SECURITY_CONFIG.DEVELOPER_ID;
 
       for (const player of updatedQueue.players) {
-        // Skip if not the testing Discord ID during testing
         if (player.discordId !== testingDiscordId) continue;
 
-        // Create the notification message
         const formattedQueueName =
           updatedQueue.name ||
           `${updatedQueue.teamSize}v${updatedQueue.teamSize} ${
@@ -262,7 +251,6 @@ export async function POST(
 
         const notificationMessage = `Your ${updatedQueue.teamSize}v${updatedQueue.teamSize} ${formattedQueueName} queue is now full and ready to launch! You have 5 minutes to ready up!`;
 
-        // Send the enhanced Discord DM
         await sendDirectMessage(
           player.discordId,
           "A match is ready! Join now:",
@@ -288,7 +276,6 @@ export async function POST(
           );
         });
 
-        // If socket.io is available, emit the notifications update
         if (global.io) {
           const userNotifications = await db
             .collection("Notifications")

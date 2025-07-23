@@ -2,41 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
+import { withErrorHandling, createError } from "@/lib/error-handling";
+import { secureLogger } from "@/lib/secure-logger";
 
 export const dynamic = "force-dynamic";
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { matchId: string } }
-) {
-  try {
+export const DELETE = withErrorHandling(
+  async (req: NextRequest, { params }: { params: { matchId: string } }) => {
     const session = await getServerSession(authOptions);
 
     // Check if user is authenticated
     if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to delete a match" },
-        { status: 401 }
+      throw createError.unauthorized(
+        "Authentication required to delete matches"
       );
     }
 
-    // Debug session information
-    console.log("Session user ID:", session.user.id);
-    console.log("Expected ID:", "238329746671271936");
-    console.log("ID comparison:", session.user.id === "238329746671271936");
-    console.log("ID type:", typeof session.user.id);
-    console.log("Full session user:", JSON.stringify(session.user, null, 2));
-
-    // Only allow your specific Discord ID - with more flexible comparison
-    if (
-      session.user.id !== "238329746671271936" &&
-      session.user.id.toString() !== "238329746671271936"
-    ) {
-      return NextResponse.json(
-        { error: "This endpoint is restricted" },
-        { status: 403 }
+    // Only allow developer access to this endpoint
+    if (session.user.id !== SECURITY_CONFIG.DEVELOPER_ID) {
+      secureLogger.warn(
+        "Unauthorized access attempt to admin delete endpoint",
+        {
+          userId: session.user.id,
+          matchId: params.matchId,
+        }
       );
+      throw createError.forbidden("Access denied");
     }
+
+    secureLogger.info("Admin match deletion initiated", {
+      matchId: params.matchId,
+      adminId: session.user.id,
+    });
 
     // Connect to database
     const { db } = await connectToDatabase();
@@ -47,18 +45,17 @@ export async function DELETE(
     });
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Match not found" }, { status: 404 });
+      throw createError.notFound("Match not found");
     }
+
+    secureLogger.info("Match deleted successfully", {
+      matchId: params.matchId,
+      adminId: session.user.id,
+    });
 
     return NextResponse.json({
       success: true,
       message: "Match deleted successfully",
     });
-  } catch (error) {
-    console.error("Error deleting match:", error);
-    return NextResponse.json(
-      { error: "Failed to delete match" },
-      { status: 500 }
-    );
   }
-}
+);

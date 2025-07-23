@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/context-menu";
 import { AlertTriangle, Ban } from "lucide-react";
 import { ReactNode } from "react";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 interface PlayerContextMenuProps {
   children: ReactNode;
@@ -26,7 +27,7 @@ export function PlayerContextMenu({
 
   // Check if user has moderation permissions
   const hasModerationPermissions =
-    session?.user?.id === "238329746671271936" || // Your ID - always allow
+    session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
     (session?.user?.roles &&
       (session.user.roles.includes("admin") ||
         session.user.roles.includes("moderator") ||
@@ -45,14 +46,14 @@ export function PlayerContextMenu({
         </div>
         <ContextMenuSeparator className="bg-[#3b82f6]/30" />
         <ContextMenuItem
-          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+          className="flex gap-2 items-center opacity-50 cursor-not-allowed"
           // onClick will be implemented later
         >
           <AlertTriangle className="w-4 h-4 text-yellow-500" />
           <span>Issue Warning</span>
         </ContextMenuItem>
         <ContextMenuItem
-          className="flex items-center gap-2 opacity-50 cursor-not-allowed"
+          className="flex gap-2 items-center opacity-50 cursor-not-allowed"
           // onClick will be implemented later
         >
           <Ban className="w-4 h-4 text-red-500" />

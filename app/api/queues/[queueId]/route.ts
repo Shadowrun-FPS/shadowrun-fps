@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // DELETE endpoint to delete a queue
 export async function DELETE(
@@ -19,7 +20,7 @@ export async function DELETE(
     // Only allow admins or the specific developer to delete queues
     const isAuthorized =
       session.user.roles?.includes("admin") ||
-      session.user.id === "238329746671271936";
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 
     if (!isAuthorized) {
       return NextResponse.json(

@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     // Use the isAdmin property from the session
     if (!session.user.isAdmin) {
       // Special case for your account specifically
-      if (session.user.id !== "238329746671271936") {
+      if (session.user.id !== SECURITY_CONFIG.DEVELOPER_ID) {
         return NextResponse.json(
           { error: "Only administrators can create tournaments" },
           { status: 403 }

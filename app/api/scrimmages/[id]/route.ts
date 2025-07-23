@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function GET(
   request: NextRequest,
@@ -151,9 +152,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is authorized to delete scrimmages
     const isAdmin = session.user.roles?.includes("admin");
-    const isSpecificUser = session.user.id === "238329746671271936";
+    const isSpecificUser = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 
     if (!isAdmin && !isSpecificUser) {
       return NextResponse.json(
@@ -165,7 +165,6 @@ export async function DELETE(
     const { db } = await connectToDatabase();
     const scrimmageId = params.id;
 
-    // Try to delete by _id first
     let result;
     try {
       result = await db.collection("Scrimmages").deleteOne({
