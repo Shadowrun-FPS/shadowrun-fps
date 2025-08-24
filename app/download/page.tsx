@@ -39,8 +39,7 @@ export default function DownloadPage() {
 
   const handleDownload = () => {
     setDownloading(true);
-    window.location.href =
-      "http://157.245.214.234/releases/ShadowrunLauncher.zip";
+    window.location.href = "/api/download";
     setTimeout(() => setDownloading(false), 3000);
   };
 
