@@ -9,10 +9,18 @@ export async function GET(req: NextRequest) {
     // Create server without immediately listening
     const httpServer = createServer();
 
+    // Secure CORS configuration
+    const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
+      "http://localhost:3000",
+      "https://shadowrunfps.com",
+      process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+    ];
+
     io = new ServerIO(httpServer, {
       cors: {
-        origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        origin: allowedOrigins,
         methods: ["GET", "POST"],
+        credentials: true,
       },
       path: "/api/socketio",
       addTrailingSlash: false,

@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
     // Log a sample player to verify the data structure
     console.log(
       "Sample player from Players collection:",
-      players.find((p) => p.discordId === "238329746671271936")
+      players.find((p) => p.discordId === SECURITY_CONFIG.DEVELOPER_ID)
     );
 
     // Get all queues

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +23,9 @@ export async function GET(req: NextRequest) {
         isAdmin: session.user.isAdmin,
       },
       idCheck: {
-        exactMatch: session.user.id === "238329746671271936",
-        stringMatch: session.user.id.toString() === "238329746671271936",
+        exactMatch: session.user.id === SECURITY_CONFIG.DEVELOPER_ID,
+        stringMatch:
+          session.user.id.toString() === SECURITY_CONFIG.DEVELOPER_ID,
         idType: typeof session.user.id,
       },
     });

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function POST(
   req: NextRequest,
@@ -35,9 +36,8 @@ export async function POST(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Check if user is the team captain or has admin privileges
     const isAdmin =
-      session.user.id === "238329746671271936" ||
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (Array.isArray(session.user.roles) &&
         session.user.roles.includes("admin"));
 

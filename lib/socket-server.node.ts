@@ -2,14 +2,17 @@
 // This file will only be used in Node.js environments
 import { Server as SocketIOServer } from "socket.io";
 import { Server as NetServer } from "http";
+import { SECURITY_CONFIG } from "./security-config";
 
 // Export your existing Socket.IO setup
 export function initSocketServer(httpServer: NetServer) {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: "*",
+      origin: SECURITY_CONFIG.ALLOWED_ORIGINS,
       methods: ["GET", "POST"],
+      credentials: true,
     },
+    transports: ["websocket", "polling"],
   });
 
   // Your existing Socket.IO setup code

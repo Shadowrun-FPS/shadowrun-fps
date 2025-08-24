@@ -1,9 +1,10 @@
 import { AuthOptions } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import { getGuildData } from "@/lib/discord-helpers";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 import clientPromise from "@/lib/mongodb";
 
-// Only keep the DiscordProfile interface and ROLE_IDs
+// Only keep the DiscordProfile interface and use SECURITY_CONFIG for role IDs
 interface DiscordProfile {
   id: string;
   username: string;
@@ -17,10 +18,10 @@ interface DiscordProfile {
 }
 
 const ROLE_IDS = {
-  ADMIN: "932585751332421642",
-  FOUNDER: "1095126043918082109",
-  MOD: "1042168064805965864",
-  GM: "1080979865345458256",
+  ADMIN: SECURITY_CONFIG.ROLES.ADMIN,
+  FOUNDER: SECURITY_CONFIG.ROLES.FOUNDER,
+  MOD: SECURITY_CONFIG.ROLES.MODERATOR,
+  GM: SECURITY_CONFIG.ROLES.GM,
 } as const;
 
 // Add a type interface for the guild data structure

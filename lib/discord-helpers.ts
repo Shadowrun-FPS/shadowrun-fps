@@ -50,7 +50,6 @@ export async function getGuildData(accessToken: string) {
     );
 
     if (!isInGuild) {
-      console.log(`User ${userData.id} is not a member of guild ${guildId}`);
       return null;
     }
 
@@ -117,7 +116,6 @@ export async function getUserData(accessToken: string | undefined) {
     const data = await response.json();
     return data;
   } catch (error) {
-    console.log(error);
     return null;
   }
 }
@@ -127,7 +125,6 @@ export async function getPlayerNickname(accessToken: string | undefined) {
   try {
     // Get guild-specific data first
     if (!accessToken) {
-      console.log("No access token provided to getPlayerNickname");
       return null;
     }
 
@@ -146,7 +143,6 @@ export async function getPlayerNickname(accessToken: string | undefined) {
 
     return null;
   } catch (error) {
-    console.log("Error getting player nickname:", error);
     return null;
   }
 }
@@ -184,7 +180,6 @@ export async function upsertPlayerDiscordData(
     );
     return result;
   } catch (error) {
-    console.log(error);
     return null;
   }
 }
@@ -197,30 +192,10 @@ export async function updatePlayerGuildNickname(
   try {
     // Don't update if the nickname is null or empty
     if (!guildNickname || guildNickname.trim() === "") {
-      console.error(`Cannot update player ${discordId} with empty nickname`);
       return null;
     }
 
-    console.log(
-      `Updating player ${discordId} with guild nickname: "${guildNickname}"`
-    );
-
     const { db } = await connectToDatabase();
-
-    // First check if the player exists and what their current nickname is
-    const existingPlayer = await db
-      .collection("Players")
-      .findOne({ discordId });
-
-    if (existingPlayer) {
-      console.log(
-        `Current nickname for ${discordId}: "${
-          existingPlayer.discordNickname || "null"
-        }"`
-      );
-    } else {
-      console.log(`Player ${discordId} not found in database`);
-    }
 
     // Update the player document
     const result = await db.collection("Players").updateOne(
@@ -232,11 +207,6 @@ export async function updatePlayerGuildNickname(
         },
       }
     );
-
-    console.log(`Update result for ${discordId}:`, {
-      matched: result.matchedCount,
-      modified: result.modifiedCount,
-    });
 
     // Update all team references where this player is a member
     await db.collection("Teams").updateMany(

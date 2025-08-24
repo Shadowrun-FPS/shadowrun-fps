@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import {
+  ADMIN_ROLE_IDS,
+  MODERATOR_ROLE_IDS,
+  SECURITY_CONFIG,
+} from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +17,7 @@ export async function GET() {
 
     // Check if user has required roles
     const isAuthorized =
-      session?.user?.id === "238329746671271936" || // Your ID
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles &&
         (session?.user?.roles.includes("admin") ||
           session?.user?.roles.includes("moderator") ||

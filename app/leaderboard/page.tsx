@@ -46,6 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerContextMenu } from "@/components/player-context-menu";
 import { toast } from "@/components/ui/use-toast";
 import { FeatureGate } from "@/components/feature-gate";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 interface Player {
   _id: string;
@@ -150,7 +151,7 @@ function LeaderboardContent() {
 
   // Check if user has mod access
   const hasModAccess =
-    session?.user?.id === "238329746671271936" || // Admin ID
+    session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
     (session?.user?.roles &&
       (session?.user?.roles.includes("admin") ||
         session?.user?.roles.includes("moderator") ||
@@ -287,7 +288,7 @@ function LeaderboardContent() {
   return (
     <FeatureGate feature="leaderboard">
       <div className="container py-8 mx-auto">
-        <div className="flex flex-col justify-between gap-4 mb-6 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-4 justify-between mb-6 sm:flex-row sm:items-center">
           <div className="flex flex-col gap-2">
             <h1 className="text-2xl font-bold">
               {teamSize}v{teamSize} Leaderboard
@@ -318,12 +319,12 @@ function LeaderboardContent() {
                 onChange={(e) => setSearchInputRaw(e.target.value)}
                 className="pl-9"
               />
-              <Search className="absolute w-4 h-4 transform -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 w-4 h-4 transform -translate-y-1/2 text-muted-foreground" />
               {searchInputRaw && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="absolute w-6 h-6 p-0 transform -translate-y-1/2 right-1 top-1/2"
+                  className="absolute right-1 top-1/2 p-0 w-6 h-6 transform -translate-y-1/2"
                   onClick={() => {
                     setSearchInputRaw("");
                     setSearch("");
@@ -347,12 +348,12 @@ function LeaderboardContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-center w-14">Rank</TableHead>
+                  <TableHead className="w-14 text-center">Rank</TableHead>
                   <TableHead>Player</TableHead>
                   <TableHead className="text-right">
                     <button
                       onClick={() => handleSort("elo")}
-                      className="flex items-center justify-end w-full gap-1"
+                      className="flex gap-1 justify-end items-center w-full"
                     >
                       <span>ELO</span>
                       {getSortIcon("elo")}
@@ -361,7 +362,7 @@ function LeaderboardContent() {
                   <TableHead className="text-right">
                     <button
                       onClick={() => handleSort("wins")}
-                      className="flex items-center justify-end w-full gap-1"
+                      className="flex gap-1 justify-end items-center w-full"
                     >
                       <span>Wins</span>
                       {getSortIcon("wins")}
@@ -370,7 +371,7 @@ function LeaderboardContent() {
                   <TableHead className="text-right">
                     <button
                       onClick={() => handleSort("losses")}
-                      className="flex items-center justify-end w-full gap-1"
+                      className="flex gap-1 justify-end items-center w-full"
                     >
                       <span>Losses</span>
                       {getSortIcon("losses")}
@@ -384,28 +385,28 @@ function LeaderboardContent() {
                   Array.from({ length: 10 }).map((_, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-center">
-                        <Skeleton className="w-5 h-5 mx-auto" />
+                        <Skeleton className="mx-auto w-5 h-5" />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-3">
+                        <div className="flex gap-3 items-center">
                           <Skeleton className="w-8 h-8 rounded-full" />
                           <div>
                             <Skeleton className="w-24 h-4" />
-                            <Skeleton className="w-16 h-3 mt-1" />
+                            <Skeleton className="mt-1 w-16 h-3" />
                           </div>
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Skeleton className="w-12 h-4 ml-auto" />
+                        <Skeleton className="ml-auto w-12 h-4" />
                       </TableCell>
                       <TableCell className="text-right">
-                        <Skeleton className="w-12 h-4 ml-auto" />
+                        <Skeleton className="ml-auto w-12 h-4" />
                       </TableCell>
                       <TableCell className="text-right">
-                        <Skeleton className="w-12 h-4 ml-auto" />
+                        <Skeleton className="ml-auto w-12 h-4" />
                       </TableCell>
                       <TableCell className="text-right">
-                        <Skeleton className="w-12 h-4 ml-auto" />
+                        <Skeleton className="ml-auto w-12 h-4" />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -423,7 +424,7 @@ function LeaderboardContent() {
                         <TableCell className="text-center">
                           {player.globalRank === 1 ? (
                             <div className="flex justify-center">
-                              <div className="relative inline-flex items-center justify-center">
+                              <div className="inline-flex relative justify-center items-center">
                                 <Trophy
                                   className="w-6 h-6 text-yellow-500 animate-pulse"
                                   fill="#FFC107"
@@ -435,7 +436,7 @@ function LeaderboardContent() {
                             </div>
                           ) : player.globalRank === 2 ? (
                             <div className="flex justify-center">
-                              <div className="relative inline-flex items-center justify-center">
+                              <div className="inline-flex relative justify-center items-center">
                                 <Medal
                                   className="w-5 h-5 text-gray-300"
                                   fill="#E0E0E0"
@@ -447,7 +448,7 @@ function LeaderboardContent() {
                             </div>
                           ) : player.globalRank === 3 ? (
                             <div className="flex justify-center">
-                              <div className="relative inline-flex items-center justify-center">
+                              <div className="inline-flex relative justify-center items-center">
                                 <Medal
                                   className="w-5 h-5 text-amber-700"
                                   fill="#B45309"
@@ -473,9 +474,9 @@ function LeaderboardContent() {
                               href={`/player/stats?playerName=${encodeURIComponent(
                                 player.discordUsername
                               )}`}
-                              className="flex items-center gap-3 hover:underline"
+                              className="flex gap-3 items-center hover:underline"
                             >
-                              <div className="relative w-8 h-8 overflow-hidden rounded-full">
+                              <div className="overflow-hidden relative w-8 h-8 rounded-full">
                                 <PlayerAvatar
                                   src={player.discordProfilePicture}
                                   alt={
@@ -496,7 +497,7 @@ function LeaderboardContent() {
                           </PlayerContextMenu>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex gap-2 justify-end items-center">
                             <div className="relative w-7 h-7">
                               <Image
                                 src={`/rankedicons/${rank.name.toLowerCase()}.png`}
@@ -549,14 +550,14 @@ function LeaderboardContent() {
         </Card>
 
         {pagination.pages > 1 && (
-          <div className="flex flex-col items-center justify-between p-4 space-y-4 border-t border-gray-800 sm:flex-row sm:space-y-0">
+          <div className="flex flex-col justify-between items-center p-4 space-y-4 border-t border-gray-800 sm:flex-row sm:space-y-0">
             <div className="text-sm text-center text-gray-400 sm:text-left">
               Showing {(page - 1) * pagination.limit + 1} to{" "}
               {Math.min(page * pagination.limit, pagination.total)} of{" "}
               {pagination.total} players
             </div>
 
-            <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-wrap gap-2 justify-center">
               {/* On mobile, show fewer options */}
               <div className="hidden space-x-2 sm:flex">
                 <Button
@@ -564,7 +565,7 @@ function LeaderboardContent() {
                   size="sm"
                   onClick={() => handlePageChange(1)}
                   disabled={page === 1}
-                  className="h-8 px-3"
+                  className="px-3 h-8"
                 >
                   First
                 </Button>
@@ -575,12 +576,12 @@ function LeaderboardContent() {
                 size="sm"
                 onClick={() => handlePageChange(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="h-8 px-3"
+                className="px-3 h-8"
               >
                 Previous
               </Button>
 
-              <div className="flex items-center h-8 px-2 text-sm border rounded-md bg-background border-input">
+              <div className="flex items-center px-2 h-8 text-sm rounded-md border bg-background border-input">
                 Page {page} of {pagination.pages}
               </div>
 
@@ -591,7 +592,7 @@ function LeaderboardContent() {
                   handlePageChange(Math.min(pagination.pages, page + 1))
                 }
                 disabled={page === pagination.pages}
-                className="h-8 px-3"
+                className="px-3 h-8"
               >
                 Next
               </Button>
@@ -603,7 +604,7 @@ function LeaderboardContent() {
                   size="sm"
                   onClick={() => handlePageChange(pagination.pages)}
                   disabled={page === pagination.pages}
-                  className="h-8 px-3"
+                  className="px-3 h-8"
                 >
                   Last
                 </Button>

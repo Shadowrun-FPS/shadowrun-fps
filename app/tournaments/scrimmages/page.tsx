@@ -47,6 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 interface MapSelection {
   id: string;
@@ -372,7 +373,7 @@ export default function ScrimmagesPage() {
               <ContextMenuTrigger>
                 <Card className="overflow-hidden">
                   <CardHeader className="p-4 pb-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <CardTitle className="text-lg">
                         {scrimmage.challengerTeam?.name} vs{" "}
                         {scrimmage.challengedTeam?.name}
@@ -382,7 +383,7 @@ export default function ScrimmagesPage() {
                   </CardHeader>
                   <CardContent className="p-4 pt-2 pb-0">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex gap-2 items-center text-sm">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span>
                           {format(
@@ -391,7 +392,7 @@ export default function ScrimmagesPage() {
                           )}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
+                      <div className="flex gap-2 items-center text-sm">
                         <Trophy className="w-4 h-4 text-yellow-500" />
                         <span className="font-medium">
                           {winnerTeam?.name || "Unknown team"} won
@@ -422,7 +423,7 @@ export default function ScrimmagesPage() {
                       )
                     }
                   >
-                    <Copy className="w-4 h-4 mr-2" />
+                    <Copy className="mr-2 w-4 h-4" />
                     Copy Scrimmage ID
                   </ContextMenuItem>
                   <ContextMenuItem
@@ -433,14 +434,14 @@ export default function ScrimmagesPage() {
                       )
                     }
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" />
+                    <ExternalLink className="mr-2 w-4 h-4" />
                     Copy Scrimmage URL
                   </ContextMenuItem>
                   <ContextMenuItem
                     className="text-red-600"
                     onClick={() => setScrimmageToDelete(scrimmage._id)}
                   >
-                    <Trash2 className="w-4 h-4 mr-2" />
+                    <Trash2 className="mr-2 w-4 h-4" />
                     Delete Scrimmage
                   </ContextMenuItem>
                 </ContextMenuContent>
@@ -455,7 +456,7 @@ export default function ScrimmagesPage() {
   const canManageScrimmages = () => {
     return (
       session?.user?.roles?.includes("admin") ||
-      session?.user?.id === "238329746671271936"
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID
     );
   };
 
@@ -499,14 +500,14 @@ export default function ScrimmagesPage() {
 
   return (
     <FeatureGate feature="scrimmage">
-      <div className="min-h-screen ">
+      <div className="min-h-screen">
         <main className="container py-8 mx-auto">
           <h1 className="mb-6 text-2xl font-bold">Scrimmages</h1>
 
           <div className="space-y-6">
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex gap-4 items-center mb-6">
               <div className="relative flex-1 max-w-sm">
-                <Search className="absolute w-4 h-4 -translate-y-1/2 left-3 top-1/2 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Filter by team name or tag..."
                   className="pl-9"
@@ -556,11 +557,11 @@ export default function ScrimmagesPage() {
             {activeTab === "pending" && (
               <div>
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex justify-center items-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : !session?.user ? (
-                  <div className="p-12 text-center border rounded-lg">
+                  <div className="p-12 text-center rounded-lg border">
                     <h3 className="text-lg font-medium">
                       Sign in to view pending scrimmages
                     </h3>
@@ -573,7 +574,7 @@ export default function ScrimmagesPage() {
                     </Button>
                   </div>
                 ) : pendingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center border rounded-lg">
+                  <div className="p-12 text-center rounded-lg border">
                     <h3 className="text-lg font-medium">
                       No pending challenges
                     </h3>
@@ -582,7 +583,7 @@ export default function ScrimmagesPage() {
                     </p>
                   </div>
                 ) : filteredPendingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center border rounded-lg">
+                  <div className="p-12 text-center rounded-lg border">
                     <h3 className="text-lg font-medium">No matches found</h3>
                     <p className="mt-2 text-muted-foreground">
                       Try adjusting your team filter.
@@ -610,11 +611,11 @@ export default function ScrimmagesPage() {
               <div>
                 {/* Upcoming scrimmages content */}
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex justify-center items-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : upcomingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center border rounded-lg">
+                  <div className="p-12 text-center rounded-lg border">
                     <h3 className="text-lg font-medium">
                       No upcoming scrimmages
                     </h3>
@@ -623,7 +624,7 @@ export default function ScrimmagesPage() {
                     </p>
                   </div>
                 ) : filteredUpcomingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center border rounded-lg">
+                  <div className="p-12 text-center rounded-lg border">
                     <h3 className="text-lg font-medium">No matches found</h3>
                     <p className="mt-2 text-muted-foreground">
                       Try adjusting your team filter.
@@ -636,7 +637,7 @@ export default function ScrimmagesPage() {
                         <ContextMenuTrigger>
                           <Card className="overflow-hidden">
                             <CardHeader className="p-4 pb-2">
-                              <div className="flex items-center justify-between">
+                              <div className="flex justify-between items-center">
                                 <CardTitle className="text-lg">
                                   {scrimmage.challengerTeam?.name} vs{" "}
                                   {scrimmage.challengedTeam?.name}
@@ -646,7 +647,7 @@ export default function ScrimmagesPage() {
                             </CardHeader>
                             <CardContent className="p-4 pt-2 pb-0">
                               <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-sm">
+                                <div className="flex gap-2 items-center text-sm">
                                   <Calendar className="w-4 h-4 text-muted-foreground" />
                                   <span>
                                     {format(
@@ -655,7 +656,7 @@ export default function ScrimmagesPage() {
                                     )}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-2 text-sm">
+                                <div className="flex gap-2 items-center text-sm">
                                   <Clock className="w-4 h-4 text-muted-foreground" />
                                   <span>
                                     {format(
@@ -689,7 +690,7 @@ export default function ScrimmagesPage() {
                                 )
                               }
                             >
-                              <Copy className="w-4 h-4 mr-2" />
+                              <Copy className="mr-2 w-4 h-4" />
                               Copy Scrimmage ID
                             </ContextMenuItem>
                             <ContextMenuItem
@@ -700,7 +701,7 @@ export default function ScrimmagesPage() {
                                 )
                               }
                             >
-                              <ExternalLink className="w-4 h-4 mr-2" />
+                              <ExternalLink className="mr-2 w-4 h-4" />
                               Copy Scrimmage URL
                             </ContextMenuItem>
                             <ContextMenuItem
@@ -709,7 +710,7 @@ export default function ScrimmagesPage() {
                                 setScrimmageToDelete(scrimmage._id)
                               }
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
+                              <Trash2 className="mr-2 w-4 h-4" />
                               Delete Scrimmage
                             </ContextMenuItem>
                           </ContextMenuContent>
@@ -725,11 +726,11 @@ export default function ScrimmagesPage() {
               <div>
                 {/* Completed scrimmages content */}
                 {loading ? (
-                  <div className="flex items-center justify-center py-12">
+                  <div className="flex justify-center items-center py-12">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : completedScrimmages.length === 0 ? (
-                  <div className="p-12 text-center border rounded-lg">
+                  <div className="p-12 text-center rounded-lg border">
                     <h3 className="text-lg font-medium">
                       No completed scrimmages
                     </h3>

@@ -44,6 +44,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 interface TeamMember {
   discordId: string;
@@ -314,7 +315,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
         body: JSON.stringify({
           // Add a flag to indicate this is an admin or special user request
           isAdminRequest:
-            session?.user?.id === "238329746671271936" ||
+            session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
             (Array.isArray(session?.user?.roles) &&
               session?.user?.roles.includes("admin")),
         }),
@@ -360,7 +361,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
     if (isTeamCaptain) return true;
 
     // Allow specific admin user (you)
-    if (session.user.id === "238329746671271936") return true;
+    if (session.user.id === SECURITY_CONFIG.DEVELOPER_ID) return true;
 
     // Allow users with admin roles
     return (
@@ -433,7 +434,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex justify-center items-center h-screen">
         <Loader2 className="w-8 h-8 animate-spin" />
       </div>
     );
@@ -473,7 +474,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
             {/* Team Details Card */}
             <Card className="md:col-span-2">
               <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex justify-between items-center">
                   <div className="space-y-1">
                     <CardTitle className="text-2xl font-bold">
                       Team Details
@@ -482,8 +483,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       Information about {team.name}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {/* <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-card">
+                  <div className="flex gap-2 items-center">
+                    {/* <div className="flex gap-2 items-center px-4 py-2 rounded-lg bg-card">
                       <TrendingUp className="w-5 h-5 text-primary" />
                       <span className="text-xl font-bold">
                         {team &&
@@ -502,12 +503,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       >
                         {isRefreshingElo ? (
                           <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                             Refreshing...
                           </>
                         ) : (
                           <>
-                            <RefreshCw className="w-4 h-4 mr-2" />
+                            <RefreshCw className="mr-2 w-4 h-4" />
                             Refresh ELO
                           </>
                         )}
@@ -564,8 +565,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
             {/* Team Members Card */}
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex gap-2 items-center">
                     <Users className="w-5 h-5" />
                     Team Members
                   </CardTitle>
@@ -579,7 +580,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         window.dispatchEvent(event);
                       }}
                     >
-                      <Users className="w-4 h-4 mr-2" />
+                      <Users className="mr-2 w-4 h-4" />
                       Invite Player
                     </Button>
                   )}
@@ -592,9 +593,9 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     <h3 className="mb-2 text-sm font-medium text-muted-foreground">
                       Captain
                     </h3>
-                    <div className="p-3 border rounded-lg bg-card/50 border-border/50">
-                      <div className="flex items-center gap-3">
-                        <div className="relative flex items-center justify-center w-10 h-10 overflow-hidden rounded-full bg-accent">
+                    <div className="p-3 rounded-lg border bg-card/50 border-border/50">
+                      <div className="flex gap-3 items-center">
+                        <div className="flex overflow-hidden relative justify-center items-center w-10 h-10 rounded-full bg-accent">
                           {team.captain.discordProfilePicture ? (
                             <Image
                               src={team.captain.discordProfilePicture}
@@ -611,7 +612,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                           <p className="font-medium">
                             {team.captain.discordNickname}
                           </p>
-                          <Badge className="mt-1 bg-amber-900/20 text-amber-300 border-amber-700">
+                          <Badge className="mt-1 text-amber-300 border-amber-700 bg-amber-900/20">
                             Captain
                           </Badge>
                         </div>
@@ -634,10 +635,10 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         .map((member) => (
                           <div
                             key={member.discordId}
-                            className="flex items-center justify-between p-3 border rounded-lg bg-card border-border"
+                            className="flex justify-between items-center p-3 rounded-lg border bg-card border-border"
                           >
-                            <div className="flex items-center gap-3">
-                              <div className="relative w-10 h-10 overflow-hidden rounded-full">
+                            <div className="flex gap-3 items-center">
+                              <div className="overflow-hidden relative w-10 h-10 rounded-full">
                                 {member.discordProfilePicture ? (
                                   <Image
                                     src={member.discordProfilePicture}
@@ -647,7 +648,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                     className="object-cover w-full h-full"
                                   />
                                 ) : (
-                                  <div className="flex items-center justify-center w-full h-full bg-secondary">
+                                  <div className="flex justify-center items-center w-full h-full bg-secondary">
                                     <Users className="w-5 h-5 text-muted-foreground" />
                                   </div>
                                 )}
@@ -693,10 +694,10 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                           .map((member) => (
                             <div
                               key={member.discordId}
-                              className="flex items-center justify-between p-3 border rounded-lg bg-card border-border"
+                              className="flex justify-between items-center p-3 rounded-lg border bg-card border-border"
                             >
-                              <div className="flex items-center gap-3">
-                                <div className="relative w-10 h-10 overflow-hidden rounded-full">
+                              <div className="flex gap-3 items-center">
+                                <div className="overflow-hidden relative w-10 h-10 rounded-full">
                                   {member.discordProfilePicture ? (
                                     <Image
                                       src={member.discordProfilePicture}
@@ -706,7 +707,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                       className="object-cover w-full h-full"
                                     />
                                   ) : (
-                                    <div className="flex items-center justify-center w-full h-full bg-secondary">
+                                    <div className="flex justify-center items-center w-full h-full bg-secondary">
                                       <Users className="w-5 h-5 text-muted-foreground" />
                                     </div>
                                   )}
@@ -806,7 +807,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       >
                         {isSubmitting ? (
                           <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                             Leaving...
                           </>
                         ) : (
@@ -824,7 +825,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <Card className="md:col-span-2 lg:col-span-3">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex gap-2 items-center">
                     <Settings className="w-5 h-5" />
                     Captain Settings
                   </CardTitle>
@@ -842,7 +843,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                       <div className="space-y-2">
                         <Label htmlFor="newCaptain">Select New Captain</Label>
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2 items-center">
                           <Select
                             value={newCaptainId}
                             onValueChange={setNewCaptainId}
@@ -894,12 +895,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       >
                         {isSubmitting ? (
                           <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                             Transferring...
                           </>
                         ) : (
                           <>
-                            <Shield className="w-4 h-4 mr-2" />
+                            <Shield className="mr-2 w-4 h-4" />
                             Transfer Captain Role
                           </>
                         )}
@@ -919,7 +920,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                 <Card className="border-red-800">
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="mt-4 rounded-md ">
+                      <div className="mt-4 rounded-md">
                         <h3 className="mb-2 font-semibold text-red-500">
                           Delete Team
                         </h3>
@@ -935,7 +936,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         >
                           {isSubmitting ? (
                             <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />{" "}
+                              <Loader2 className="mr-2 w-4 h-4 animate-spin" />{" "}
                               Deleting...
                             </>
                           ) : (
@@ -975,7 +976,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
                         if (isTeamFull) {
                           return (
-                            <div className="p-3 border border-yellow-800 rounded bg-yellow-900/20">
+                            <div className="p-3 rounded border border-yellow-800 bg-yellow-900/20">
                               <p className="text-sm font-medium text-yellow-400">
                                 This team is full (4/4 members)
                               </p>
@@ -986,7 +987,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         if (hasPendingRequest) {
                           return (
                             <div className="space-y-4">
-                              <div className="p-3 border border-blue-800 rounded bg-blue-900/20">
+                              <div className="p-3 rounded border border-blue-800 bg-blue-900/20">
                                 <p className="text-sm font-medium text-blue-400">
                                   You have a pending request to join this team
                                 </p>
@@ -1045,12 +1046,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                               >
                                 {isSubmitting ? (
                                   <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                                     Cancelling...
                                   </>
                                 ) : (
                                   <>
-                                    <X className="w-4 h-4 mr-2" />
+                                    <X className="mr-2 w-4 h-4" />
                                     Cancel Join Request
                                   </>
                                 )}
@@ -1072,7 +1073,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                     <span>
                                       <Button
                                         disabled={true}
-                                        className="flex items-center gap-2 mt-2 cursor-not-allowed"
+                                        className="flex gap-2 items-center mt-2 cursor-not-allowed"
                                       >
                                         <UserPlus className="w-4 h-4" />
                                         Request to Join
@@ -1135,12 +1136,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                               >
                                 {isSubmitting ? (
                                   <>
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                                     Sending Request...
                                   </>
                                 ) : (
                                   <>
-                                    <UserPlus className="w-4 h-4 mr-2" />
+                                    <UserPlus className="mr-2 w-4 h-4" />
                                     Request to Join
                                   </>
                                 )}
@@ -1156,12 +1157,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
             )}
 
           {/* Back button */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex justify-between items-center mb-4">
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.back()}
-              className="flex items-center gap-1"
+              className="flex gap-1 items-center"
             >
               <ArrowLeft className="w-4 h-4" />
               Back

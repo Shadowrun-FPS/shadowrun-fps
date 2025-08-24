@@ -4,6 +4,7 @@ import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { createModerationLog } from "@/lib/moderation";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // Add interface for the request body at the top of the file
 interface UnbanRequest {
@@ -20,7 +21,7 @@ export async function POST(
 
     // Check if user has required roles
     const isAuthorized =
-      session?.user?.id === "238329746671271936" || // Your ID
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles &&
         (session?.user?.roles.includes("admin") ||
           session?.user?.roles.includes("moderator") ||

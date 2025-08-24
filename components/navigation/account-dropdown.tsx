@@ -18,59 +18,54 @@ import { Bell, Shield, Users, BarChart2 } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { Badge } from "@/components/ui/badge";
 import { isFeatureEnabled } from "@/lib/features";
-
-// Define the moderator role IDs and names with proper typing
-interface RoleInfo {
-  name: string;
-  color: string;
-}
-
-interface RolesMap {
-  [key: string]: RoleInfo;
-}
-
-// Define the moderator role IDs and names
-const ROLES: RolesMap = {
-  "932585751332421642": { name: "Admin", color: "bg-red-500" },
-  "1095126043918082109": { name: "Founder", color: "bg-purple-500" },
-  "1042168064805965864": { name: "Mod", color: "bg-blue-500" },
-  "1080979865345458256": { name: "GM", color: "bg-green-500" },
-};
-
-// Developer ID for special permissions
-const DEVELOPER_ID = "238329746671271936";
+import { UserPermissions, UserRoleInfo } from "@/lib/client-config";
 
 export default function AccountDropdown() {
   const { data: session, status } = useSession();
-  const [userRoles, setUserRoles] = useState<string[]>([]);
+  const [userPermissions, setUserPermissions] =
+    useState<UserPermissions | null>(null);
+  const [userRoleDisplay, setUserRoleDisplay] = useState<UserRoleInfo[]>([]);
   const [guildNickname, setGuildNickname] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userTeam, setUserTeam] = useState<any>(null);
   const { unreadCount } = useNotifications();
   const [discordUsername, setDiscordUsername] = useState<string | null>(null);
 
-  // Fetch user roles from Discord when session is available
+  // Fetch user data when session is available
   useEffect(() => {
-    const fetchUserRoles = async () => {
+    const fetchUserData = async () => {
       if (session?.user) {
         setIsLoading(true);
         try {
-          // Fetch user roles from our API
-          const response = await fetch("/api/discord/user-roles");
-          if (!response.ok) throw new Error("Failed to fetch user roles");
+          // Fetch user permissions and role display information
+          const [permissionsResponse, roleDisplayResponse] = await Promise.all([
+            fetch("/api/user/permissions"),
+            fetch("/api/user/role-display"),
+          ]);
 
-          const data = await response.json();
+          if (permissionsResponse.ok) {
+            const permissionsData = await permissionsResponse.json();
+            setUserPermissions(permissionsData);
+          }
 
-          // Store the user's roles
-          setUserRoles(data.roles || []);
+          if (roleDisplayResponse.ok) {
+            const roleDisplayData = await roleDisplayResponse.json();
+            setUserRoleDisplay(roleDisplayData.roles || []);
 
-          // Set the guild nickname from the API response
-          const nickname =
-            data.guildNickname ||
-            session.user.nickname ||
-            session.user.name ||
-            null;
-          setGuildNickname(nickname);
+            // Set the guild nickname from the API response
+            const nickname =
+              roleDisplayData.guildNickname ||
+              session.user.nickname ||
+              session.user.name ||
+              null;
+            setGuildNickname(nickname);
+          } else {
+            // Fallback: Just use session data if role display fails
+            console.warn("Role display endpoint failed, using session data");
+            const fallbackName =
+              session.user.nickname || session.user.name || null;
+            setGuildNickname(fallbackName);
+          }
 
           // Get the user's Discord username for profile link
           const playerResponse = await fetch(`/api/players/${session.user.id}`);
@@ -97,46 +92,30 @@ export default function AccountDropdown() {
       }
     };
 
-    fetchUserRoles();
+    fetchUserData();
   }, [session]);
 
-  // Check if the user has mod access based on their roles
-  const hasModAccess = () => {
-    // Always grant access to this specific user ID (developer)
-    if (session?.user?.id === DEVELOPER_ID) return true;
-
-    // Check if user has any of the mod role IDs
-    return userRoles.some((roleId) => Object.keys(ROLES).includes(roleId));
+  // Check permissions using server response
+  const hasModAccess = (): boolean => {
+    return userPermissions?.isModerator || userPermissions?.isAdmin || false;
   };
 
-  // Add new functions to check for specific role types
-  const hasAdminAccess = () => {
-    // Developer always has admin access
-    if (session?.user?.id === DEVELOPER_ID) return true;
-
-    // Check for admin or founder roles
-    return userRoles.some(
-      (roleId) =>
-        roleId === "932585751332421642" || // Admin
-        roleId === "1095126043918082109" // Founder
-    );
+  const hasAdminAccess = (): boolean => {
+    return userPermissions?.isAdmin || false;
   };
 
-  const hasModeratorAccess = () => {
-    // Admin access includes moderator access
-    if (hasAdminAccess()) return true;
+  const hasModeratorAccess = (): boolean => {
+    return userPermissions?.isModerator || false;
+  };
 
-    // Check for moderator role
-    return userRoles.includes("1042168064805965864");
+  const isDeveloper = (): boolean => {
+    return userPermissions?.isDeveloper || false;
   };
 
   // Handle sign out
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" });
   };
-
-  // Check if the user is the developer
-  const isDeveloper = session?.user?.id === DEVELOPER_ID;
 
   // Check if player stats is enabled
   const playerStatsEnabled = isFeatureEnabled("playerStats");
@@ -201,22 +180,11 @@ export default function AccountDropdown() {
               {guildNickname || session?.user?.nickname}
             </p>
             <div className="flex flex-wrap gap-1">
-              {userRoles.map(
-                (roleId) =>
-                  ROLES[roleId] && (
-                    <Badge
-                      key={roleId}
-                      className={`text-white ${ROLES[roleId].color}`}
-                    >
-                      {ROLES[roleId].name}
-                    </Badge>
-                  )
-              )}
-              {session?.user?.id === DEVELOPER_ID && (
-                <Badge variant="success" className="text-white">
-                  Developer
+              {userRoleDisplay.map((role) => (
+                <Badge key={role.id} className={`text-white ${role.color}`}>
+                  {role.name}
                 </Badge>
-              )}
+              ))}
             </div>
           </div>
 

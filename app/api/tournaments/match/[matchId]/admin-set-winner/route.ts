@@ -3,6 +3,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function POST(
   request: NextRequest,
@@ -16,7 +17,10 @@ export async function POST(
     }
 
     // Check if user is an admin
-    if (!session.user.isAdmin && session.user.id !== "238329746671271936") {
+    if (
+      !session.user.isAdmin &&
+      session.user.id !== SECURITY_CONFIG.DEVELOPER_ID
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

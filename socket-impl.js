@@ -4,12 +4,20 @@ const { Server } = require("socket.io");
 function initSocketIO(server) {
   console.log("Initializing Socket.IO server from separate implementation...");
 
+  // Secure CORS configuration
+  const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(",") || [
+    "http://localhost:3000",
+    "https://shadowrunfps.com",
+    process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  ];
+
   const io = new Server(server, {
     path: "/api/socketio",
     addTrailingSlash: false,
     cors: {
-      origin: "*",
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
     transports: ["websocket", "polling"],
   });

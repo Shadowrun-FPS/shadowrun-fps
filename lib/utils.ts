@@ -16,15 +16,21 @@ export function formatDate(date: Date | string): string {
 }
 
 // Add a helper function to check if a user is an admin
+// Note: This function is client-side safe and only checks for developer ID
+// For full role checking, use server-side functions from security-config.ts
 export function isAdmin(userId: string | undefined): boolean {
   if (!userId) return false;
-  return userId === "238329746671271936"; // Your Discord ID
+  // This is a client-side fallback - server-side should use SECURITY_CONFIG
+  return userId === process.env.NEXT_PUBLIC_DEVELOPER_ID || false;
 }
 
 // Add a helper function to check if a user is a moderator
+// Note: This function is client-side safe and only checks for developer ID
+// For full role checking, use server-side functions from security-config.ts
 export function isModerator(userId: string | undefined): boolean {
   if (!userId) return false;
-  return userId === "238329746671271936" || isAdmin(userId); // Your Discord ID
+  // This is a client-side fallback - server-side should use SECURITY_CONFIG
+  return userId === process.env.NEXT_PUBLIC_DEVELOPER_ID || isAdmin(userId);
 }
 
 // Add the missing formatTimeAgo function

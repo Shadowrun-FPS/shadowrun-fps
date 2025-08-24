@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function POST(req: Request) {
   try {
@@ -16,9 +17,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if user is admin (you can expand this check as needed)
     const isAdmin =
-      session.user.id === "238329746671271936" || session.user.isAdmin;
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID || session.user.isAdmin;
 
     if (!isAdmin) {
       return NextResponse.json(

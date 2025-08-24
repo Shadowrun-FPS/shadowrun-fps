@@ -54,6 +54,7 @@ import Image from "next/image";
 import { EditTournamentDialog } from "@/components/tournaments/edit-tournament-dialog";
 import { Progress } from "@/components/ui/progress";
 import { formatDate } from "@/lib/utils";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // Types
 interface Tournament {
@@ -140,7 +141,7 @@ const MemberAvatar = ({
 
   return profilePicture && !imgError ? (
     <div
-      className={`relative w-${size} h-${size} overflow-hidden rounded-full bg-slate-800`}
+      className={`overflow-hidden relative rounded-full w-${size} h-${size} bg-slate-800`}
     >
       <Image
         src={profilePicture}
@@ -154,7 +155,7 @@ const MemberAvatar = ({
     </div>
   ) : (
     <div
-      className={`flex items-center justify-center w-${size} h-${size} rounded-full bg-slate-800`}
+      className={`flex justify-center items-center rounded-full w-${size} h-${size} bg-slate-800`}
     >
       <UserCircle className="w-full h-full text-slate-400" />
     </div>
@@ -183,17 +184,17 @@ const TournamentWinnerBanner = ({
   completedAt?: string;
 }) => {
   return (
-    <div className="mt-8 overflow-hidden rounded-lg shadow-lg">
+    <div className="overflow-hidden mt-8 rounded-lg shadow-lg">
       {/* Gradient background with more sophisticated colors */}
-      <div className="relative p-4 sm:p-6 md:p-8 bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+      <div className="relative p-4 bg-gradient-to-br via-blue-900 sm:p-6 md:p-8 from-slate-900 to-slate-800">
         {/* Trophy icon with glow effect - hidden on small screens */}
-        <div className="absolute top-0 right-0 hidden w-32 h-32 md:block lg:w-48 lg:h-48 opacity-10">
+        <div className="hidden absolute top-0 right-0 w-32 h-32 opacity-10 md:block lg:w-48 lg:h-48">
           <Trophy className="w-full h-full text-yellow-300" />
         </div>
 
         {/* Header content */}
         <div className="relative">
-          <div className="flex items-center justify-center">
+          <div className="flex justify-center items-center">
             <div className="p-3 md:p-4 mb-2 md:mb-4 bg-gradient-to-br from-yellow-300 to-amber-600 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.5)]">
               <Trophy className="w-10 h-10 text-white sm:w-12 sm:h-12 md:w-16 md:h-16" />
             </div>
@@ -204,11 +205,11 @@ const TournamentWinnerBanner = ({
           </h2>
 
           <div className="relative py-2 mb-4 text-center md:py-3 md:mb-6">
-            <div className="absolute inset-0 flex items-center">
+            <div className="flex absolute inset-0 items-center">
               <div className="w-full border-t border-gray-600/40"></div>
             </div>
-            <div className="relative flex justify-center">
-              <span className="px-2 text-2xl font-bold tracking-wider text-white md:px-4 sm:text-3xl md:text-4xl bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
+            <div className="flex relative justify-center">
+              <span className="px-2 text-2xl font-bold tracking-wider text-white bg-gradient-to-br via-blue-900 md:px-4 sm:text-3xl md:text-4xl from-slate-900 to-slate-800">
                 {winner.name}
               </span>
             </div>
@@ -234,7 +235,7 @@ const TournamentWinnerBanner = ({
                   <Link
                     key={member.discordId}
                     href={`/player/stats?playerName=${member.discordUsername?.toLowerCase()}`}
-                    className="flex flex-col items-center p-1 transition-colors rounded-lg hover:bg-blue-900/20"
+                    className="flex flex-col items-center p-1 rounded-lg transition-colors hover:bg-blue-900/20"
                   >
                     <div className="w-12 h-12 md:w-14 md:h-14">
                       <MemberAvatar
@@ -243,7 +244,7 @@ const TournamentWinnerBanner = ({
                         size={14}
                       />
                     </div>
-                    <span className="w-full mt-3 text-sm font-medium text-center text-white break-words hyphens-auto">
+                    <span className="mt-3 w-full text-sm font-medium text-center text-white break-words hyphens-auto">
                       {member.discordNickname || member.discordUsername}
                     </span>
                   </Link>
@@ -406,14 +407,15 @@ export default function TournamentDetailsPage() {
 
             // Set developer status separately for additional permissions
             setIsDeveloper(
-              data.isDeveloper || session.user.id === "238329746671271936"
+              data.isDeveloper ||
+                session.user.id === SECURITY_CONFIG.DEVELOPER_ID
             );
           }
         } catch (error) {
           console.error("Error checking permissions:", error);
 
           // Fallback: grant admin to developer ID
-          if (session.user.id === "238329746671271936") {
+          if (session.user.id === SECURITY_CONFIG.DEVELOPER_ID) {
             setIsAdmin(true);
             setIsDeveloper(true);
           }
@@ -784,7 +786,7 @@ export default function TournamentDetailsPage() {
   if (loading) {
     return (
       <div className="container py-8 mx-auto">
-        <div className="w-full h-64 rounded-lg bg-gray-800/50 animate-pulse"></div>
+        <div className="w-full h-64 rounded-lg animate-pulse bg-gray-800/50"></div>
       </div>
     );
   }
@@ -793,8 +795,8 @@ export default function TournamentDetailsPage() {
     return (
       <div className="container py-8 mx-auto">
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <HelpCircle className="w-12 h-12 mb-4 text-muted-foreground" />
+          <CardContent className="flex flex-col justify-center items-center py-12">
+            <HelpCircle className="mb-4 w-12 h-12 text-muted-foreground" />
             <h2 className="text-xl font-semibold">Tournament Not Found</h2>
             <p className="mt-2 text-muted-foreground">
               The tournament you&apos;re looking for doesn&apos;t exist or has
@@ -845,10 +847,10 @@ export default function TournamentDetailsPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0"
+                  className="p-0 h-auto"
                   onClick={() => router.push("/tournaments/overview")}
                 >
-                  <ChevronLeft className="w-5 h-5 mr-1" />
+                  <ChevronLeft className="mr-1 w-5 h-5" />
                   <span className="text-sm">Back</span>
                 </Button>
 
@@ -869,21 +871,21 @@ export default function TournamentDetailsPage() {
               </h1>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 mt-2 sm:mt-0">
+            <div className="flex flex-wrap gap-2 items-center mt-2 sm:mt-0">
               <div className="flex items-center text-sm">
-                <Calendar className="w-4 h-4 mr-1" />
+                <Calendar className="mr-1 w-4 h-4" />
                 {format(new Date(tournament.startDate), "MMMM d, yyyy")}
               </div>
 
               <div className="flex items-center text-sm">
-                <Trophy className="w-4 h-4 mr-1" />
+                <Trophy className="mr-1 w-4 h-4" />
                 {tournament.format === "single_elimination"
                   ? "Single Elimination"
                   : "Double Elimination"}
               </div>
 
               <div className="flex items-center text-sm">
-                <Users className="w-4 h-4 mr-1" />
+                <Users className="mr-1 w-4 h-4" />
                 {tournament.teamSize} vs {tournament.teamSize}
               </div>
 
@@ -914,14 +916,14 @@ export default function TournamentDetailsPage() {
 
           {/* Registration Progress */}
           <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-muted-foreground">
                 Registration: {tournament.registeredTeams.length}/
                 {tournament.maxTeams || 8} teams
               </span>
               {tournament.registrationDeadline && (
                 <span className="text-sm text-muted-foreground">
-                  <Clock className="inline w-4 h-4 mr-1" />
+                  <Clock className="inline mr-1 w-4 h-4" />
                   Deadline:{" "}
                   {format(
                     new Date(tournament.registrationDeadline),
@@ -956,7 +958,7 @@ export default function TournamentDetailsPage() {
           onValueChange={setActiveTab}
           className="mb-6"
         >
-          <TabsList className="w-full mb-6 bg-transparent border-b rounded-none h-14">
+          <TabsList className="mb-6 w-full h-14 bg-transparent rounded-none border-b">
             <TabsTrigger
               value="bracket"
               className="flex-1 h-14 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
@@ -1024,7 +1026,7 @@ export default function TournamentDetailsPage() {
 
             {/* Add a debug section at the bottom of the bracket tab for admins */}
             {isAdmin && (
-              <div className="p-4 mt-8 border rounded bg-muted/10">
+              <div className="p-4 mt-8 rounded border bg-muted/10">
                 <h3 className="mb-2 text-lg font-semibold">
                   Tournament Seeding (Admin View)
                 </h3>
@@ -1032,7 +1034,7 @@ export default function TournamentDetailsPage() {
                   {tournament.registeredTeams.map((team, index) => (
                     <div
                       key={team._id}
-                      className="flex items-center gap-2 p-2 border rounded"
+                      className="flex gap-2 items-center p-2 rounded border"
                     >
                       <Badge variant="outline">{index + 1}</Badge>
                       <span className="truncate">{team.name}</span>
@@ -1128,11 +1130,11 @@ export default function TournamentDetailsPage() {
                 {tournament.registeredTeams.map((team) => (
                   <Card key={team._id} className="overflow-hidden">
                     <div className="p-4">
-                      <div className="flex items-start justify-between">
+                      <div className="flex justify-between items-start">
                         <div className="flex items-center space-x-2">
                           <Badge
                             variant="outline"
-                            className="h-6 px-2 font-mono"
+                            className="px-2 h-6 font-mono"
                           >
                             #
                             {tournament.registeredTeams.findIndex(
@@ -1245,7 +1247,7 @@ export default function TournamentDetailsPage() {
                       className="bg-transparent border border-dashed"
                     >
                       <div className="flex flex-col items-center justify-center p-6 h-full min-h-[150px] text-muted-foreground">
-                        <Users className="w-8 h-8 mb-2 opacity-40" />
+                        <Users className="mb-2 w-8 h-8 opacity-40" />
                         <p className="text-center">Waiting for team...</p>
                       </div>
                     </Card>
@@ -1257,9 +1259,9 @@ export default function TournamentDetailsPage() {
 
         {/* Admin Controls Section */}
         {isAdmin && tournament && (
-          <div className="p-4 mt-8 border rounded-lg bg-slate-900">
+          <div className="p-4 mt-8 rounded-lg border bg-slate-900">
             <h3 className="mb-4 text-lg font-semibold">Admin Controls</h3>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap gap-3 items-center">
               {tournament.status === "upcoming" && (
                 <TooltipProvider>
                   <Tooltip>
@@ -1273,7 +1275,7 @@ export default function TournamentDetailsPage() {
                             tournament.registeredTeams.length !==
                               (tournament.maxTeams || 8))
                         }
-                        className="flex items-center gap-1"
+                        className="flex gap-1 items-center"
                       >
                         {isSeeded ? (
                           unseeding ? (
@@ -1324,7 +1326,7 @@ export default function TournamentDetailsPage() {
                       <TooltipTrigger asChild>
                         <Button
                           variant="outline"
-                          className="flex items-center gap-2"
+                          className="flex gap-2 items-center"
                           onClick={() => handleFillTournament()}
                         >
                           <Users className="w-4 h-4" />
@@ -1342,7 +1344,7 @@ export default function TournamentDetailsPage() {
                       <TooltipTrigger asChild>
                         <Button
                           variant="outline"
-                          className="flex items-center gap-2 text-red-500 hover:text-red-600"
+                          className="flex gap-2 items-center text-red-500 hover:text-red-600"
                           onClick={() => handleClearTournament()}
                         >
                           <X className="w-4 h-4" />
@@ -1368,12 +1370,12 @@ export default function TournamentDetailsPage() {
                   >
                     {launching ? (
                       <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                         Launching...
                       </>
                     ) : (
                       <>
-                        <Play className="w-4 h-4 mr-2" />
+                        <Play className="mr-2 w-4 h-4" />
                         Launch Tournament
                       </>
                     )}
@@ -1383,7 +1385,7 @@ export default function TournamentDetailsPage() {
               {tournament.status === "active" && isAdmin && (
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 text-yellow-500 hover:text-yellow-600"
+                  className="flex gap-2 items-center text-yellow-500 hover:text-yellow-600"
                   onClick={handleResetTournament}
                   disabled={resetting}
                 >

@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { PostDialog } from "@/components/posts/post-dialog";
 import { PostManager } from "@/components/posts/post-manager";
+import { UserPermissions } from "@/lib/client-config";
 import dynamic from "next/dynamic";
 
 // Import FeaturedPosts with client-side only rendering
@@ -23,21 +24,35 @@ export default function EventsClient() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [userPermissions, setUserPermissions] =
+    useState<UserPermissions | null>(null);
 
   // Add useEffect to handle client-side mounting
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Check if user is admin or developer
-  const isAdmin =
-    session?.user?.id === process.env.MY_DISCORD_USER_ID ||
-    session?.user?.id === "238329746671271936" || // Your Discord ID
-    session?.user?.roles?.some(
-      (role) =>
-        role === "932585751332421642" || // Admin
-        role === "1095126043918082109" // Founder
-    );
+  // Fetch user permissions
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch("/api/user/permissions");
+          if (response.ok) {
+            const permissions = await response.json();
+            setUserPermissions(permissions);
+          }
+        } catch (error) {
+          console.error("Error fetching permissions:", error);
+        }
+      }
+    };
+
+    fetchPermissions();
+  }, [session]);
+
+  // Check if user is admin
+  const isAdmin = userPermissions?.isAdmin || false;
 
   // Don't render anything until client-side hydration is complete
   if (!mounted) {

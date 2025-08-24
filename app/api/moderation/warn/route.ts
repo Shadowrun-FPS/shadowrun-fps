@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     // Check if user has admin or moderator role
     const isAdmin = session.user.roles?.includes("admin");
     const isModerator = session.user.roles?.includes("moderator");
-    const isSpecificUser = session.user.id === "238329746671271936";
+    const isSpecificUser = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 
     if (!isAdmin && !isModerator && !isSpecificUser) {
       return NextResponse.json(

@@ -22,6 +22,13 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DirectModerationDialogs } from "@/components/direct-moderation-dialogs";
 import { AdminSidebar } from "@/components/admin-sidebar";
+import {
+  ADMIN_ROLE_IDS,
+  MODERATOR_ROLE_IDS,
+  SECURITY_CONFIG,
+  hasAdminRole,
+  hasModeratorRole,
+} from "@/lib/security-config";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -45,14 +52,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
     // Check if user has admin rights - more permissive check
     if (status === "authenticated" && session?.user) {
-      const isAdmin =
-        session.user.id === "238329746671271936" || // Hardcoded admin ID
-        (session.user.roles &&
-          (session.user.roles.includes("admin") ||
-            session.user.roles.includes("moderator") ||
-            session.user.roles.includes("founder")));
+      const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+      const userRoles = session.user.roles || [];
+      const userHasAdminRole = hasAdminRole(userRoles);
+      const userHasModeratorRole = hasModeratorRole(userRoles);
+      const isAdminUser = session.user.isAdmin;
 
-      if (!isAdmin) {
+      const isAuthorized =
+        isDeveloper || isAdminUser || userHasAdminRole || userHasModeratorRole;
+
+      if (!isAuthorized) {
         router.push("/");
         return;
       }
@@ -64,7 +73,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // Don't render anything until authentication check is complete
   if (!isMounted || status === "loading") {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex justify-center items-center min-h-screen">
         <div className="animate-pulse">Loading admin panel...</div>
       </div>
     );
@@ -79,7 +88,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
       <div className="min-h-screen bg-background">
         {/* Mobile sidebar toggle */}
-        <div className="flex items-center justify-between p-4 md:hidden">
+        <div className="flex justify-between items-center p-4 md:hidden">
           <Button
             variant="ghost"
             size="icon"
@@ -93,9 +102,9 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Mobile sidebar */}
         {sidebarOpen && (
-          <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden">
+          <div className="fixed inset-0 z-50 backdrop-blur-sm bg-background/80 md:hidden">
             <div className="fixed inset-y-0 left-0 w-64 shadow-lg bg-background">
-              <div className="flex items-center justify-between p-4">
+              <div className="flex justify-between items-center p-4">
                 <h1 className="text-xl font-bold">Admin Panel</h1>
                 <Button
                   variant="ghost"
@@ -112,7 +121,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         <div className="flex">
           {/* Desktop sidebar */}
-          <div className="hidden w-64 p-4 border-r md:block border-slate-800">
+          <div className="hidden p-4 w-64 border-r md:block border-slate-800">
             <AdminSidebar />
           </div>
 

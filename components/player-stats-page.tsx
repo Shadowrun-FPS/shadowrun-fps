@@ -26,6 +26,7 @@ import { PlayerContextMenu } from "@/components/player-context-menu";
 import { useSession } from "next-auth/react";
 import { getRankByElo, getRankProgress } from "@/lib/rank-utils";
 import { useRouter } from "next/navigation";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // Format date to Month DD, YYYY
 const formatDate = (dateString: string | number | Date) => {
@@ -147,7 +148,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
   // Check if user has mod access
   const hasModAccess =
-    session?.user?.id === "238329746671271936" || // Admin ID
+    session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
     (session?.user?.roles &&
       (session?.user?.roles.includes("admin") ||
         session?.user?.roles.includes("moderator") ||
@@ -159,12 +160,12 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
   };
 
   return (
-    <div className="min-h-screen p-3 text-gray-100 sm:p-4 md:p-6 lg:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="p-3 min-h-screen text-gray-100 sm:p-4 md:p-6 lg:p-8">
+      <div className="mx-auto max-w-6xl">
         <div className="mb-6">
           <Button
             variant="ghost"
-            className="flex items-center gap-2 text-sm"
+            className="flex gap-2 items-center text-sm"
             onClick={handleBack}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -174,15 +175,15 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
         {/* Header with player info */}
         <PlayerContextMenu player={player} disabled={!hasModAccess}>
-          <div className="relative mb-6 overflow-hidden border border-gray-700 sm:mb-8 rounded-xl bg-gradient-to-r from-gray-800/90 to-gray-900/90 backdrop-blur-sm cursor-context-menu">
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-transparent to-cyan-500/10" />
+          <div className="overflow-hidden relative mb-6 bg-gradient-to-r rounded-xl border border-gray-700 backdrop-blur-sm sm:mb-8 from-gray-800/90 to-gray-900/90 cursor-context-menu">
+            <div className="absolute inset-0 bg-gradient-to-r via-transparent from-indigo-500/10 to-cyan-500/10" />
 
-            <div className="relative z-10 flex flex-col items-center gap-4 p-4 sm:p-6 md:p-8 sm:gap-6">
+            <div className="flex relative z-10 flex-col gap-4 items-center p-4 sm:p-6 md:p-8 sm:gap-6">
               {/* Top section with avatar and name */}
-              <div className="flex flex-col items-center w-full gap-4 sm:flex-row sm:items-start sm:gap-6">
+              <div className="flex flex-col gap-4 items-center w-full sm:flex-row sm:items-start sm:gap-6">
                 <div className="relative">
-                  <div className="absolute rounded-full -inset-1 bg-gradient-to-br from-indigo-500 to-cyan-500 blur-sm opacity-70" />
-                  <div className="relative w-24 h-24 overflow-hidden border-2 border-gray-700 rounded-full shadow-lg sm:h-28 sm:w-28 md:h-32 md:w-32">
+                  <div className="absolute -inset-1 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-full opacity-70 blur-sm" />
+                  <div className="overflow-hidden relative w-24 h-24 rounded-full border-2 border-gray-700 shadow-lg sm:h-28 sm:w-28 md:h-32 md:w-32">
                     <Image
                       src={player.discordProfilePicture || "/placeholder.svg"}
                       alt={
@@ -198,13 +199,13 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
                 <div className="flex-1 text-center sm:text-left">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-                    <h1 className="text-2xl font-bold text-transparent sm:text-3xl md:text-4xl bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300">
+                    <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300 sm:text-3xl md:text-4xl">
                       {player.discordNickname ||
                         player.discordUsername ||
                         "Unknown Player"}
                     </h1>
 
-                    <div className="flex flex-wrap justify-center gap-2 mt-2 sm:justify-start sm:mt-0">
+                    <div className="flex flex-wrap gap-2 justify-center mt-2 sm:justify-start sm:mt-0">
                       {player.roles?.map((role) => (
                         <Badge
                           key={role.id}
@@ -244,7 +245,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
               </div>
 
               {/* Bottom section with badges and stats */}
-              <div className="flex flex-col items-stretch justify-between w-full gap-4 sm:flex-row">
+              <div className="flex flex-col gap-4 justify-between items-stretch w-full sm:flex-row">
                 {/* Last Match section */}
                 <div className="flex items-center flex-1 gap-2 px-3 py-1.5  rounded-lg">
                   <Clock className="w-4 h-4 text-cyan-300" />
@@ -261,7 +262,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                       {totalMatches}
                     </div>
                   </div>
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-cyan-500/20">
+                  <div className="flex justify-center items-center w-10 h-10 rounded-full bg-cyan-500/20">
                     <Zap className="w-5 h-5 text-cyan-300" />
                   </div>
                 </div>
@@ -287,12 +288,12 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
             return (
               <Card
                 key={mode}
-                className="overflow-hidden transition-all duration-300 border-gray-700 bg-gray-800/80 backdrop-blur-sm group hover:border-gray-600 hover:shadow-lg hover:shadow-indigo-500/5"
+                className="overflow-hidden border-gray-700 backdrop-blur-sm transition-all duration-300 bg-gray-800/80 group hover:border-gray-600 hover:shadow-lg hover:shadow-indigo-500/5"
               >
-                <div className="absolute inset-0 transition-all duration-300 pointer-events-none bg-gradient-to-br from-gray-700/30 to-gray-800/30 group-hover:from-gray-700/40 group-hover:to-gray-800/40" />
+                <div className="absolute inset-0 bg-gradient-to-br transition-all duration-300 pointer-events-none from-gray-700/30 to-gray-800/30 group-hover:from-gray-700/40 group-hover:to-gray-800/40" />
                 <CardHeader className="relative z-10 p-4 pb-2 sm:p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex justify-between items-center">
+                    <div className="flex gap-2 items-center">
                       {mode === "1v1" && (
                         <User className="w-5 h-5 text-indigo-300" />
                       )}
@@ -320,8 +321,8 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                   </div>
                 </CardHeader>
                 <CardContent className="relative z-10 p-4 pt-0 sm:p-6">
-                  <div className="flex items-end gap-2 mb-4">
-                    <div className="text-4xl font-bold text-transparent sm:text-5xl bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300">
+                  <div className="flex gap-2 items-end mb-4">
+                    <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300 sm:text-5xl">
                       {stats.elo}
                     </div>
                     <div className="flex items-center mb-1">
@@ -392,7 +393,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                   </div>
 
                   <div className="px-3 py-2 mt-4 rounded-lg bg-gray-700/50">
-                    <div className="flex items-center justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-xs text-gray-300 sm:text-sm">
                         Win Rate
                       </span>
@@ -417,7 +418,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
         {/* If no stats were found */}
         {Object.values(statsByTeamSize).every((stat) => stat === null) && (
-          <div className="p-8 text-center border border-gray-700 bg-gray-800/60 rounded-xl">
+          <div className="p-8 text-center rounded-xl border border-gray-700 bg-gray-800/60">
             <h2 className="text-xl font-semibold text-gray-100">
               No Active Ratings
             </h2>

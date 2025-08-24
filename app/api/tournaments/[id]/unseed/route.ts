@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // POST endpoint to remove seeding from a tournament bracket
 export async function POST(
@@ -60,7 +61,7 @@ export async function POST(
     const isAdmin =
       user?.roles?.includes("admin") ||
       tournament.createdBy?.discordId === session.user.id ||
-      session.user.id === "238329746671271936" || // Add your specific ID for testing
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       false;
 
     if (!isAdmin) {

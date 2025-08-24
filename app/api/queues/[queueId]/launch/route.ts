@@ -5,6 +5,7 @@ import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
 import { isAdmin } from "@/lib/admin";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // Add the QueuePlayer interface at the top of the file
 interface QueuePlayer {
@@ -124,7 +125,7 @@ export async function POST(
 
     // Check if user has the required roles
     const hasRequiredRole =
-      session.user.id === "238329746671271936" || // Your ID
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session.user.roles &&
         (session.user.roles.includes("admin") ||
           session.user.roles.includes("moderator") ||

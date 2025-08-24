@@ -4,6 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { createModerationLog } from "@/lib/moderation";
+import {
+  ADMIN_ROLE_IDS,
+  MODERATOR_ROLE_IDS,
+  SECURITY_CONFIG,
+} from "@/lib/security-config";
 
 // Define types for your ban object
 interface BanRecord {
@@ -37,7 +42,7 @@ export async function POST(
 
     // Check if user has required roles
     const isAuthorized =
-      session?.user?.id === "238329746671271936" || // Your ID
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session?.user?.roles &&
         (session?.user?.roles.includes("admin") ||
           session?.user?.roles.includes("moderator") ||

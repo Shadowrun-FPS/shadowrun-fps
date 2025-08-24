@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
+import { SECURITY_CONFIG } from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export async function POST(
 
     // Check if user is admin or moderator
     const isAdminOrMod =
-      session.user.id === "238329746671271936" ||
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
       (session.user.roles &&
         (session.user.roles.includes("admin") ||
           session.user.roles.includes("moderator")));
