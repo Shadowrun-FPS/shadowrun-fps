@@ -103,10 +103,21 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       syncUnreadCount(data);
     } catch (error: any) {
-      console.error("Error fetching notifications:", error);
+      // Only log errors in development or for non-auth related issues
+      if (
+        process.env.NODE_ENV === "development" ||
+        (error.message && !error.message.includes("Unauthorized"))
+      ) {
+        console.error("Error fetching notifications:", error);
+      }
 
       if (error.name === "AbortError") {
         setError("Request timed out. Please try again later.");
+      } else if (error.message && error.message.includes("Unauthorized")) {
+        // Silently handle auth errors - user just isn't logged in
+        setNotifications([]);
+        setUnreadCount(0);
+        localStorage.setItem("notificationCount", "0");
       } else {
         if (process.env.NODE_ENV === "development") {
           setNotifications([]);
@@ -138,7 +149,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to mark notification as read");
       }
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      // Only log errors in development or for non-auth related issues
+      if (
+        process.env.NODE_ENV === "development" ||
+        (error instanceof Error && !error.message.includes("Unauthorized"))
+      ) {
+        console.error("Error marking notification as read:", error);
+      }
     }
   };
 
@@ -160,7 +177,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to mark all notifications as read");
       }
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
+      // Only log errors in development or for non-auth related issues
+      if (
+        process.env.NODE_ENV === "development" ||
+        (error instanceof Error && !error.message.includes("Unauthorized"))
+      ) {
+        console.error("Error marking all notifications as read:", error);
+      }
     }
   };
 
@@ -183,17 +206,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to delete notification");
       }
     } catch (error) {
-      console.error("Error deleting notification:", error);
+      // Only log errors in development or for non-auth related issues
+      if (
+        process.env.NODE_ENV === "development" ||
+        (error instanceof Error && !error.message.includes("Unauthorized"))
+      ) {
+        console.error("Error deleting notification:", error);
+      }
       fetchNotifications();
     }
   };
 
   const resetUnreadCount = () => {
-    console.log("Manually resetting unread count to 0");
     setUnreadCount(0);
     localStorage.setItem("notificationCount", "0");
-
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
   };
 
   useEffect(() => {
