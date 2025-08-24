@@ -12,14 +12,6 @@ import VirusTotalWidget from "@/components/VirusTotalWidget";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 // Feature flag check
 const ENABLE_DOWNLOAD_PAGE =
@@ -29,7 +21,6 @@ export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -47,11 +38,6 @@ export default function DownloadPage() {
   }, [router]);
 
   const handleDownload = () => {
-    setShowDisclaimer(true);
-  };
-
-  const confirmDownload = () => {
-    setShowDisclaimer(false);
     setDownloading(true);
     window.location.href =
       "http://157.245.214.234/releases/ShadowrunLauncher.zip";
@@ -208,44 +194,6 @@ export default function DownloadPage() {
           </div>
         </div>
       </div>
-
-      {/* Disclaimer Dialog */}
-      <Dialog open={showDisclaimer} onOpenChange={setShowDisclaimer}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex gap-2 items-center">
-              <AlertCircle className="w-5 h-5 text-yellow-500" />
-              Testing Phase Disclaimer
-            </DialogTitle>
-            <DialogDescription className="pt-2">
-              This launcher is currently in testing. You may encounter issues or
-              bugs during use.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <div className="flex items-start p-3 rounded-lg border bg-yellow-500/10 border-yellow-500/30">
-              <AlertCircle className="flex-shrink-0 mt-1 mr-3 text-yellow-500" />
-              <div>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  <strong>Important:</strong> If you encounter any problems or
-                  issues with the launcher, please report them to the staff in
-                  our Discord server. Your feedback helps us improve the
-                  launcher for everyone.
-                </p>
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowDisclaimer(false)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmDownload} disabled={downloading}>
-              <Download className="mr-2 w-4 h-4" />
-              {downloading ? "Downloading..." : "Download Anyway"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
