@@ -130,6 +130,19 @@ export default function DownloadPage() {
             <div className="p-4 mb-4 rounded-lg border bg-background/50 border-border/50">
               <ol className="space-y-2 list-decimal list-inside text-muted-foreground">
                 <li className="transition-all duration-200 hover:text-foreground">
+                  First, install the{" "}
+                  <a
+                    href="https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-desktop-9.0.8-windows-x86-installer"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline"
+                  >
+                    .NET Desktop Runtime 9.0
+                  </a>{" "}
+                  (required for the launcher to run) from Microsoft&apos;s
+                  offical website.
+                </li>
+                <li className="transition-all duration-200 hover:text-foreground">
                   Once downloaded, unzip the folder. Run ShadowrunLauncher.exe
                   and click Download
                 </li>
