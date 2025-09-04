@@ -4,6 +4,7 @@ import PlayerStatsContent from "@/components/player-stats-content";
 import { Metadata, ResolvingMetadata } from "next";
 import clientPromise from "@/lib/mongodb";
 import { FeatureGate } from "@/components/feature-gate";
+import { getPlayerAvatarUrl } from "@/lib/discord-helpers";
 
 // Define types for our OpenGraph and Twitter objects
 interface OpenGraphMetadata {
@@ -57,17 +58,30 @@ export async function generateMetadata(
     playerName || "this player"
   } in Shadowrun FPS`;
 
+  // Create base fallback image URL (absolute URL required for social cards)
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://shadowrunfps.com";
+  const fallbackImage = `${baseUrl}/hero.png`;
+
   // Create base metadata objects
   const openGraph: OpenGraphMetadata = {
     title,
     description,
     type: "profile",
+    images: [
+      {
+        url: fallbackImage,
+        width: 1200,
+        height: 630,
+        alt: "Shadowrun FPS Player Stats",
+      },
+    ],
   };
 
   const twitter: TwitterMetadata = {
-    card: "summary",
+    card: "summary_large_image",
     title,
     description,
+    images: [fallbackImage],
   };
 
   // If we have a discordId, try to fetch the player's data for a better card
@@ -97,19 +111,19 @@ export async function generateMetadata(
         twitter.description = description;
 
         // Use player's profile picture if available
-        if (
-          player.discordProfilePicture &&
-          typeof player.discordProfilePicture === "string"
-        ) {
+        const profileImageUrl = getPlayerAvatarUrl(player, baseUrl);
+
+        // Only use a custom image if it's not the fallback
+        if (profileImageUrl !== fallbackImage) {
           const image = {
-            url: player.discordProfilePicture,
+            url: profileImageUrl,
             width: 800,
             height: 800,
             alt: `${displayName} - Shadowrun FPS Stats`,
           };
 
           openGraph.images = [image];
-          twitter.images = [player.discordProfilePicture];
+          twitter.images = [profileImageUrl];
         }
       } else {
         console.log(`Player not found for discordId: ${discordId}`);
@@ -144,19 +158,19 @@ export async function generateMetadata(
         twitter.description = description;
 
         // Use player's profile picture if available
-        if (
-          player.discordProfilePicture &&
-          typeof player.discordProfilePicture === "string"
-        ) {
+        const profileImageUrl = getPlayerAvatarUrl(player, baseUrl);
+
+        // Only use a custom image if it's not the fallback
+        if (profileImageUrl !== fallbackImage) {
           const image = {
-            url: player.discordProfilePicture,
+            url: profileImageUrl,
             width: 800,
             height: 800,
             alt: `${displayName} - Shadowrun FPS Stats`,
           };
 
           openGraph.images = [image];
-          twitter.images = [player.discordProfilePicture];
+          twitter.images = [profileImageUrl];
         }
       }
     } catch (error) {

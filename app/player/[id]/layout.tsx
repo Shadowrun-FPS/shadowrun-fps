@@ -1,5 +1,6 @@
 import { Metadata, ResolvingMetadata } from "next";
 import clientPromise from "@/lib/mongodb";
+import { getPlayerAvatarUrl } from "@/lib/discord-helpers";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -49,10 +50,34 @@ export async function generateMetadata(
       ],
     });
 
+    // Create base fallback image URL (absolute URL required for social cards)
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://shadowrunfps.com";
+    const fallbackImage = `${baseUrl}/hero.png`;
+
     if (!player) {
       return {
         title: "Player Not Found | Shadowrun FPS",
         description: "The player you're looking for doesn't exist",
+        openGraph: {
+          title: "Player Not Found | Shadowrun FPS",
+          description: "The player you're looking for doesn't exist",
+          type: "website",
+          images: [
+            {
+              url: fallbackImage,
+              width: 1200,
+              height: 630,
+              alt: "Shadowrun FPS",
+            },
+          ],
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Player Not Found | Shadowrun FPS",
+          description: "The player you're looking for doesn't exist",
+          images: [fallbackImage],
+        },
       };
     }
 
@@ -69,25 +94,37 @@ export async function generateMetadata(
       title,
       description,
       type: "profile",
+      images: [
+        {
+          url: fallbackImage,
+          width: 1200,
+          height: 630,
+          alt: `${displayName} - Shadowrun FPS Player`,
+        },
+      ],
     };
 
     const twitter: TwitterMetadata = {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
+      images: [fallbackImage],
     };
 
     // Add player profile image if available
-    if (player.discordProfilePicture) {
+    const profileImageUrl = getPlayerAvatarUrl(player, baseUrl);
+
+    // Only use a custom image if it's not the fallback
+    if (profileImageUrl !== fallbackImage) {
       const image = {
-        url: player.discordProfilePicture,
+        url: profileImageUrl,
         width: 800,
         height: 800,
         alt: `${displayName} - Shadowrun FPS Player`,
       };
 
       openGraph.images = [image];
-      twitter.images = [player.discordProfilePicture];
+      twitter.images = [profileImageUrl];
     }
 
     return {
@@ -98,9 +135,32 @@ export async function generateMetadata(
     };
   } catch (error) {
     console.error("Error generating player metadata:", error);
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL || "https://shadowrunfps.com";
+    const fallbackImage = `${baseUrl}/hero.png`;
+
     return {
       title: "Player Stats | Shadowrun FPS",
       description: "View player statistics and match history",
+      openGraph: {
+        title: "Player Stats | Shadowrun FPS",
+        description: "View player statistics and match history",
+        type: "website",
+        images: [
+          {
+            url: fallbackImage,
+            width: 1200,
+            height: 630,
+            alt: "Shadowrun FPS",
+          },
+        ],
+      },
+      twitter: {
+        card: "summary_large_image",
+        title: "Player Stats | Shadowrun FPS",
+        description: "View player statistics and match history",
+        images: [fallbackImage],
+      },
     };
   }
 }

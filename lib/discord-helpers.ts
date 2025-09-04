@@ -239,3 +239,54 @@ export async function updatePlayerGuildNickname(
     throw error;
   }
 }
+
+/**
+ * Formats a Discord avatar URL properly for social cards
+ * @param userId Discord user ID
+ * @param avatar Avatar hash or full URL
+ * @returns Properly formatted Discord avatar URL or null if invalid
+ */
+export function formatDiscordAvatarUrl(
+  userId: string,
+  avatar: string | null
+): string | null {
+  if (!avatar || !userId) return null;
+
+  // If it's already a full URL, return it
+  if (avatar.startsWith("http")) {
+    return avatar;
+  }
+
+  // Handle animated avatars (GIF) vs static ones (PNG)
+  const format = avatar.startsWith("a_") ? "gif" : "png";
+  return `https://cdn.discordapp.com/avatars/${userId}/${avatar}.${format}`;
+}
+
+/**
+ * Gets the best available avatar URL for a player, with fallbacks
+ * @param player Player object from database
+ * @param baseUrl Base URL for fallback images
+ * @returns URL for player avatar or fallback
+ */
+export function getPlayerAvatarUrl(player: any, baseUrl: string): string {
+  // Try Discord profile picture first
+  if (player.discordProfilePicture) {
+    const formattedUrl = formatDiscordAvatarUrl(
+      player.discordId,
+      player.discordProfilePicture
+    );
+    if (formattedUrl) return formattedUrl;
+  }
+
+  // Try discord avatar field as backup
+  if (player.discordAvatar && player.discordId) {
+    const formattedUrl = formatDiscordAvatarUrl(
+      player.discordId,
+      player.discordAvatar
+    );
+    if (formattedUrl) return formattedUrl;
+  }
+
+  // Fallback to default image
+  return `${baseUrl}/hero.png`;
+}
