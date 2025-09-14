@@ -4,6 +4,7 @@ import { Download } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { FloatingPlayer } from "@/components/floating-player";
+import DownloadButton from "@/components/download-button";
 
 export const dynamic = "force-dynamic";
 
@@ -130,17 +131,7 @@ export default function Home() {
 
               {/* Buttons - made visible on all screen sizes */}
               <div className="flex flex-wrap gap-4 justify-center">
-                <Link
-                  href="/download"
-                  className="inline-flex overflow-hidden relative items-center px-6 py-3 text-lg font-medium rounded-lg transition-all group bg-primary hover:bg-primary/90"
-                >
-                  <span className="flex relative z-10 items-center text-primary-foreground">
-                    <Download className="mr-2 w-5 h-5" />
-                    Download Launcher
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-primary to-primary/90 group-hover:scale-110" />
-                  <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-                </Link>
+                <DownloadButton />
 
                 <Link
                   href="/docs/troubleshoot"
