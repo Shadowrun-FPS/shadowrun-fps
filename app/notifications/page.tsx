@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import type { Notification } from "@/contexts/NotificationsContext";
 import { Button } from "@/components/ui/button";
@@ -19,8 +20,10 @@ import {
   Calendar,
   Clock,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 interface NotificationsContentProps {
   notifications: Notification[];
@@ -28,6 +31,15 @@ interface NotificationsContentProps {
   onMarkAsRead: (id: string) => void;
   onDelete: (id: string) => void;
   onActionComplete: () => void;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  } | null;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
 export default function NotificationsPage() {
@@ -45,20 +57,72 @@ export default function NotificationsPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("all");
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [paginatedNotifications, setPaginatedNotifications] = useState<
+    Notification[]
+  >([]);
+  const [pagination, setPagination] = useState<{
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  } | null>(null);
+  const [pageLoading, setPageLoading] = useState(false);
+
+  // Fetch notifications with pagination
+  const fetchNotificationsWithPagination = useCallback(
+    async (page: number = 1) => {
+      if (!session?.user) return;
+
+      try {
+        setPageLoading(true);
+        const response = await fetch(
+          `/api/notifications?page=${page}&limit=50`
+        );
+        if (!response.ok) throw new Error("Failed to fetch notifications");
+        const data = await response.json();
+
+        if (data.pagination) {
+          setPagination(data.pagination);
+          setPaginatedNotifications(data.notifications || []);
+        } else if (Array.isArray(data)) {
+          // Fallback for old format
+          setPaginatedNotifications(data);
+        }
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load notifications",
+          variant: "destructive",
+        });
+      } finally {
+        setPageLoading(false);
+      }
+    },
+    [session?.user, toast]
+  );
+
+  useEffect(() => {
+    fetchNotificationsWithPagination(currentPage);
+  }, [currentPage, fetchNotificationsWithPagination]);
 
   const handleRefresh = () => {
     fetchNotifications(true);
+    fetchNotificationsWithPagination(currentPage);
     toast({
       title: "Refreshed",
       description: "Notifications refreshed",
     });
   };
 
+  // Use paginated notifications for display, but keep context notifications for counts
   const userNotifications = session?.user
-    ? notifications.filter(
+    ? paginatedNotifications.filter(
         (notification) => notification.userId === session.user?.id
       )
-    : notifications;
+    : paginatedNotifications;
 
   // Group notifications by type for tabs
   const categorizedNotifications = useMemo(() => {
@@ -89,10 +153,12 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container max-w-4xl px-3 sm:px-4 md:px-6 py-6 sm:py-8 mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+      <div className="container px-3 py-6 mx-auto max-w-4xl sm:px-4 md:px-6 sm:py-8">
+        <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between sm:mb-8">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Notifications</h1>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Notifications
+            </h1>
             <p className="mt-1 text-sm sm:text-base text-muted-foreground">
               Stay updated with all your team activities and announcements
             </p>
@@ -136,8 +202,11 @@ export default function NotificationsPage() {
         )}
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-full sm:max-w-md grid-cols-4 mb-4 sm:mb-6 h-auto p-1">
-            <TabsTrigger value="all" className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation">
+          <TabsList className="grid grid-cols-4 p-1 mb-4 w-full max-w-full h-auto sm:max-w-md sm:mb-6">
+            <TabsTrigger
+              value="all"
+              className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation"
+            >
               <span className="flex items-center gap-1 sm:gap-1.5">
                 <Bell className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden min-[375px]:inline">All</span>
@@ -148,7 +217,10 @@ export default function NotificationsPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="unread" className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation">
+            <TabsTrigger
+              value="unread"
+              className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation"
+            >
               <span className="flex items-center gap-1 sm:gap-1.5">
                 <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden min-[375px]:inline">Unread</span>
@@ -159,7 +231,10 @@ export default function NotificationsPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="team" className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation">
+            <TabsTrigger
+              value="team"
+              className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation"
+            >
               <span className="flex items-center gap-1 sm:gap-1.5">
                 <Users className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden min-[375px]:inline">Team</span>
@@ -170,7 +245,10 @@ export default function NotificationsPage() {
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="system" className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation">
+            <TabsTrigger
+              value="system"
+              className="relative py-2 sm:py-2.5 text-xs sm:text-sm touch-manipulation"
+            >
               <span className="flex items-center gap-1 sm:gap-1.5">
                 <Shield className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 <span className="hidden min-[375px]:inline">System</span>
@@ -186,40 +264,64 @@ export default function NotificationsPage() {
           <TabsContent value="all" className="mt-0">
             <NotificationsContent
               notifications={categorizedNotifications.all}
-              loading={loading}
+              loading={loading || pageLoading}
               onMarkAsRead={markAsRead}
               onDelete={deleteNotification}
-              onActionComplete={fetchNotifications}
+              onActionComplete={() => {
+                fetchNotifications();
+                fetchNotificationsWithPagination(currentPage);
+              }}
+              pagination={pagination}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
             />
           </TabsContent>
 
           <TabsContent value="unread" className="mt-0">
             <NotificationsContent
               notifications={categorizedNotifications.unread}
-              loading={loading}
+              loading={loading || pageLoading}
               onMarkAsRead={markAsRead}
               onDelete={deleteNotification}
-              onActionComplete={fetchNotifications}
+              onActionComplete={() => {
+                fetchNotifications();
+                fetchNotificationsWithPagination(currentPage);
+              }}
+              pagination={pagination}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
             />
           </TabsContent>
 
           <TabsContent value="team" className="mt-0">
             <NotificationsContent
               notifications={categorizedNotifications.team}
-              loading={loading}
+              loading={loading || pageLoading}
               onMarkAsRead={markAsRead}
               onDelete={deleteNotification}
-              onActionComplete={fetchNotifications}
+              onActionComplete={() => {
+                fetchNotifications();
+                fetchNotificationsWithPagination(currentPage);
+              }}
+              pagination={pagination}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
             />
           </TabsContent>
 
           <TabsContent value="system" className="mt-0">
             <NotificationsContent
               notifications={categorizedNotifications.system}
-              loading={loading}
+              loading={loading || pageLoading}
               onMarkAsRead={markAsRead}
               onDelete={deleteNotification}
-              onActionComplete={fetchNotifications}
+              onActionComplete={() => {
+                fetchNotifications();
+                fetchNotificationsWithPagination(currentPage);
+              }}
+              pagination={pagination}
+              currentPage={currentPage}
+              onPageChange={setCurrentPage}
             />
           </TabsContent>
         </Tabs>
@@ -234,6 +336,9 @@ function NotificationsContent({
   onMarkAsRead,
   onDelete,
   onActionComplete,
+  pagination,
+  currentPage = 1,
+  onPageChange,
 }: NotificationsContentProps) {
   if (loading) {
     return (
@@ -241,14 +346,14 @@ function NotificationsContent({
         <CardContent className="p-3 sm:p-4">
           <div className="space-y-3 sm:space-y-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="flex items-start gap-3 sm:gap-4">
-                <Skeleton className="flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full" />
+              <div key={i} className="flex gap-3 items-start sm:gap-4">
+                <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full sm:w-10 sm:h-10" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="w-3/4 h-3 sm:h-4" />
                   <Skeleton className="w-1/2 h-3 sm:h-4" />
-                  <div className="flex justify-end gap-2 mt-2">
-                    <Skeleton className="w-16 sm:w-20 h-7 sm:h-8" />
-                    <Skeleton className="w-16 sm:w-20 h-7 sm:h-8" />
+                  <div className="flex gap-2 justify-end mt-2">
+                    <Skeleton className="w-16 h-7 sm:w-20 sm:h-8" />
+                    <Skeleton className="w-16 h-7 sm:w-20 sm:h-8" />
                   </div>
                 </div>
               </div>
@@ -262,12 +367,14 @@ function NotificationsContent({
   if (notifications.length === 0) {
     return (
       <Card className="border border-dashed">
-        <CardContent className="flex flex-col items-center justify-center p-8 sm:p-12">
-          <div className="p-3 sm:p-4 mb-3 sm:mb-4 rounded-full bg-primary/10">
+        <CardContent className="flex flex-col justify-center items-center p-8 sm:p-12">
+          <div className="p-3 mb-3 rounded-full sm:p-4 sm:mb-4 bg-primary/10">
             <Bell className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
           </div>
-          <h3 className="mb-2 text-base sm:text-lg font-medium">No notifications</h3>
-          <p className="max-w-sm text-center text-sm sm:text-base text-muted-foreground px-4">
+          <h3 className="mb-2 text-base font-medium sm:text-lg">
+            No notifications
+          </h3>
+          <p className="px-4 max-w-sm text-sm text-center sm:text-base text-muted-foreground">
             You don&apos;t have any notifications in this category. They&apos;ll
             appear here when you receive them.
           </p>
@@ -313,9 +420,9 @@ function NotificationsContent({
     <div className="space-y-4 sm:space-y-6">
       {Object.entries(groupedNotifications).map(([date, items]) => (
         <div key={date} className="transition duration-300">
-          <div className="flex items-center gap-2 mb-2 sm:mb-3 px-1">
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground flex-shrink-0" />
-            <h3 className="text-xs sm:text-sm font-medium text-muted-foreground">
+          <div className="flex gap-1.5 items-center px-1 mb-1.5">
+            <Clock className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+            <h3 className="text-xs font-medium text-muted-foreground">
               {date}
             </h3>
           </div>
@@ -336,6 +443,73 @@ function NotificationsContent({
           </Card>
         </div>
       ))}
+
+      {/* Pagination Controls */}
+      {pagination && pagination.totalPages > 1 && onPageChange && (
+        <div className="flex flex-col gap-4 items-center mt-6">
+          <div className="flex gap-2 justify-center items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1 || loading}
+              className="touch-manipulation min-h-[44px] sm:min-h-0"
+            >
+              <ChevronLeft className="mr-1 w-4 h-4" />
+              Previous
+            </Button>
+
+            <div className="flex gap-1 items-center">
+              {Array.from(
+                { length: Math.min(5, pagination.totalPages) },
+                (_, i) => {
+                  let pageNum: number;
+                  if (pagination.totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= pagination.totalPages - 2) {
+                    pageNum = pagination.totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => onPageChange(pageNum)}
+                      disabled={loading}
+                      className="min-w-[40px] touch-manipulation min-h-[44px] sm:min-h-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                }
+              )}
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                onPageChange(Math.min(pagination.totalPages, currentPage + 1))
+              }
+              disabled={currentPage === pagination.totalPages || loading}
+              className="touch-manipulation min-h-[44px] sm:min-h-0"
+            >
+              Next
+              <ChevronRight className="ml-1 w-4 h-4" />
+            </Button>
+          </div>
+
+          <div className="text-sm text-center text-muted-foreground">
+            Page {pagination.page} of {pagination.totalPages} •{" "}
+            {pagination.total} total notifications
+          </div>
+        </div>
+      )}
     </div>
   );
 }

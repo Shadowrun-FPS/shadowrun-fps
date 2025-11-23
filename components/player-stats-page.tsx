@@ -89,7 +89,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
   const router = useRouter();
   
   // New state for additional data
-  const [teamInfo, setTeamInfo] = useState<any>(null);
+  const [teamsInfo, setTeamsInfo] = useState<any[]>([]);
   const [leaderboardPositions, setLeaderboardPositions] = useState<Record<string, any>>({});
   const [matchHistory, setMatchHistory] = useState<any[]>([]);
   const [loadingAdditionalData, setLoadingAdditionalData] = useState(true);
@@ -287,11 +287,12 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
     const fetchAdditionalData = async () => {
       setLoadingAdditionalData(true);
       try {
-        // Fetch team info
+        // Fetch all teams for this player
         const teamRes = await fetch(`/api/players/${player.discordId}/team`);
         if (teamRes.ok) {
           const teamData = await teamRes.json();
-          setTeamInfo(teamData.team);
+          // API now returns teams array, sorted with 4v4 first, then by size
+          setTeamsInfo(teamData.teams || []);
         }
 
         // Fetch leaderboard positions for each active team size
@@ -694,7 +695,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
         )}
 
         {/* Team Information Section */}
-        {teamInfo && (
+        {teamsInfo.length > 0 && (
           <Card className="mt-6 border-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -703,46 +704,63 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <Link
-                    href={`/tournaments/teams/${teamInfo._id}`}
-                    className="text-2xl font-bold hover:text-primary transition-colors flex items-center gap-2"
-                  >
-                    {teamInfo.name}
-                    {teamInfo.tag && (
-                      <span className="text-lg text-muted-foreground">
-                        [{teamInfo.tag}]
-                      </span>
-                    )}
-                    <ExternalLink className="w-4 h-4" />
-                  </Link>
-                  {teamInfo.description && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {teamInfo.description}
-                    </p>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{teamInfo.teamElo || 0}</div>
-                    <div className="text-xs text-muted-foreground">Team ELO</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">
-                      {teamInfo.wins || 0} - {teamInfo.losses || 0}
+              <div className="space-y-6">
+                {teamsInfo.map((teamInfo) => {
+                  const teamSizeLabel = teamInfo.teamSize === 2 ? "Duos" : teamInfo.teamSize === 3 ? "Trios" : teamInfo.teamSize === 4 ? "Squads" : teamInfo.teamSize === 5 ? "Full Team" : `${teamInfo.teamSize}v${teamInfo.teamSize}`;
+                  return (
+                    <div key={teamInfo._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border last:border-b-0 last:pb-0">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link
+                            href={`/tournaments/teams/${teamInfo._id}`}
+                            className="text-xl sm:text-2xl font-bold hover:text-primary transition-colors flex items-center gap-2"
+                          >
+                            {teamInfo.name}
+                            {teamInfo.tag && (
+                              <span className="text-base sm:text-lg text-muted-foreground">
+                                [{teamInfo.tag}]
+                              </span>
+                            )}
+                            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          </Link>
+                          <Badge variant="secondary" className="text-xs">
+                            {teamSizeLabel}
+                          </Badge>
+                          {teamInfo.isCaptain && (
+                            <Badge variant="outline" className="text-xs">
+                              Captain
+                            </Badge>
+                          )}
+                        </div>
+                        {teamInfo.description && (
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {teamInfo.description}
+                          </p>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+                        <div className="text-center">
+                          <div className="text-xl sm:text-2xl font-bold">{teamInfo.teamElo || 0}</div>
+                          <div className="text-xs text-muted-foreground">Team ELO</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xl sm:text-2xl font-bold">
+                            {teamInfo.wins || 0} - {teamInfo.losses || 0}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Record</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xl sm:text-2xl font-bold">{teamInfo.tournamentWins || 0}</div>
+                          <div className="text-xs text-muted-foreground">Tournament Wins</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-xl sm:text-2xl font-bold">{teamInfo.memberCount || 0}/{teamInfo.teamSize || 4}</div>
+                          <div className="text-xs text-muted-foreground">Members</div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">Record</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{teamInfo.tournamentWins || 0}</div>
-                    <div className="text-xs text-muted-foreground">Tournament Wins</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{teamInfo.memberCount || 0}</div>
-                    <div className="text-xs text-muted-foreground">Members</div>
-                  </div>
-                </div>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>

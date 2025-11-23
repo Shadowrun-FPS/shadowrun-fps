@@ -134,15 +134,22 @@ export function TeamCard({
 
       <CardFooter className="grid grid-cols-2 gap-2 pt-2">
         {isUserTeam ? (
-          // For user's own team, show a full-width View Details button instead of two buttons
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 col-span-2"
-            asChild
-          >
-            <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
-          </Button>
+          // For user's own team, show "Manage Team" if captain, otherwise "View Details"
+          (() => {
+            const isCaptain = userTeam?.captain?.discordId === session?.user?.id;
+            return (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 col-span-2"
+                asChild
+              >
+                <Link href={`/tournaments/teams/${_id}`}>
+                  {isCaptain ? "Manage Team" : "View Details"}
+                </Link>
+              </Button>
+            );
+          })()
         ) : (
           // For other teams, show Challenge and View Details buttons
           <>

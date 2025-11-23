@@ -35,56 +35,47 @@ export async function POST(
       );
     }
 
-    // Add debug logging
-    console.log("Current user ID:", session.user.id);
-    console.log("Team captain ID:", team.captain.discordId);
-    console.log(
-      "Is captain match:",
-      team.captain.discordId === session.user.id
-    );
-
     const { playerId, playerName } = await req.json();
 
+    // Get team size (default to 4 if not specified)
+    const teamSize = team.teamSize || 4;
+    
     // Simply count the members array length
     const memberCount = team.members.length;
 
-    // Get pending invites for debugging only
-    const pendingInvites = await db
-      .collection("TeamInvites")
-      .find({
-        teamId: new ObjectId(teamId),
-        status: "pending",
-      })
-      .toArray();
 
-    // Add detailed debugging logs
-    console.log("Members array length:", memberCount);
-    console.log("Pending invites count:", pendingInvites.length);
-    console.log(
-      "Pending invites details:",
-      pendingInvites.map((invite) => ({
-        inviteeId: invite.inviteeId,
-        inviteeName: invite.inviteeName,
-        createdAt: invite.createdAt,
-      }))
-    );
-
-    // Check if the team has reached maximum size (4 members)
+    // Check if the team has reached maximum size
     // Without counting pending invites
-    if (memberCount >= 4) {
+    if (memberCount >= teamSize) {
       return NextResponse.json(
-        { error: "Team has reached maximum size (4 players)" },
+        { error: `Team has reached maximum size (${teamSize} players)` },
         { status: 400 }
       );
     }
 
-    // Check if player is already in team
+    // Check if player is already in this team
     const isMember = team.members.some(
       (member: any) => member.discordId === playerId
     );
     if (isMember) {
       return NextResponse.json(
         { error: "Player is already a team member" },
+        { status: 400 }
+      );
+    }
+
+    // Check if player is already in another team of the SAME size
+    const existingTeamOfSameSize = await db.collection("Teams").findOne({
+      "members.discordId": playerId,
+      teamSize: teamSize,
+      _id: { $ne: new ObjectId(teamId) }, // Exclude the current team
+    });
+
+    if (existingTeamOfSameSize) {
+      return NextResponse.json(
+        { 
+          error: `Player is already in a ${teamSize}-person team (${existingTeamOfSameSize.name}). Players can only be in one team per team size.` 
+        },
         { status: 400 }
       );
     }
@@ -105,12 +96,19 @@ export async function POST(
 
     // Allow re-inviting if previous invite was cancelled, rejected or expired
 
+    // Get inviter's nickname from Players collection
+    const inviterPlayer = await db.collection("Players").findOne({
+      discordId: session.user.id,
+    });
+    const inviterNickname = inviterPlayer?.discordNickname || session.user.nickname || session.user.name;
+
     // Create the invitation document
     const invitation = {
       teamId: new ObjectId(teamId),
       teamName: team.name,
       inviterId: session.user.id,
       inviterName: session.user.name,
+      inviterNickname: inviterNickname,
       inviteeId: playerId,
       inviteeName: playerName,
       status: "pending",
@@ -132,6 +130,7 @@ export async function POST(
       metadata: {
         teamId: teamId,
         teamName: team.name,
+        teamTag: team.tag,
         inviteId: result.insertedId.toString(),
       },
     });

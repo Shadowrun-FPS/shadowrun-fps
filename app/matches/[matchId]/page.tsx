@@ -901,7 +901,7 @@ export default function MatchDetailPage() {
 
           {/* Score Submission Dialog */}
           <Dialog open={scoreDialog} onOpenChange={setScoreDialog}>
-            <DialogContent className=" border-[#3b82f6] text-white">
+            <DialogContent className="p-6 border-[#3b82f6] text-white">
               <DialogHeader>
                 <DialogTitle>Submit Score</DialogTitle>
                 <DialogDescription className="text-gray-400">
@@ -910,7 +910,7 @@ export default function MatchDetailPage() {
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-4">
                 <div className="grid items-center grid-cols-3 gap-4">
                   <Label htmlFor="team1Score" className="text-right">
                     {getTeamName(1)} Score

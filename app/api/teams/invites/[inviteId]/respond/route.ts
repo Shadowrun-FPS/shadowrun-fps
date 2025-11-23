@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 export async function POST(
   req: NextRequest,
@@ -54,7 +55,7 @@ export async function POST(
         type: "invite_rejected",
         title: "Team Invite Rejected",
         message: `${
-          session.user.name || session.user.nickname
+          session.user.nickname || session.user.name
         } has rejected your invitation to join team "${invite.teamName}"`,
         read: false,
         createdAt: new Date(),
@@ -79,8 +80,10 @@ export async function POST(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Check if team is full (max 4 members)
-    if (team.members.length >= 4) {
+    const teamSize = team.teamSize || 4;
+
+    // Check if team is full
+    if (team.members.length >= teamSize) {
       // Update invite status to show it's invalid now
       await db
         .collection("TeamInvites")
@@ -90,7 +93,7 @@ export async function POST(
         );
 
       return NextResponse.json(
-        { error: "Team is already full (4 players maximum)" },
+        { error: `Team is already full (${teamSize} players maximum)` },
         { status: 400 }
       );
     }
@@ -102,6 +105,22 @@ export async function POST(
     if (alreadyMember) {
       return NextResponse.json(
         { error: "You are already a member of this team" },
+        { status: 400 }
+      );
+    }
+
+    // Check if user is already in another team of the SAME size
+    const existingTeamOfSameSize = await db.collection("Teams").findOne({
+      "members.discordId": session.user.id,
+      teamSize: teamSize,
+      _id: { $ne: invite.teamId }, // Exclude the team being joined
+    });
+
+    if (existingTeamOfSameSize) {
+      return NextResponse.json(
+        { 
+          error: `You are already in a ${teamSize}-person team (${existingTeamOfSameSize.name}). Players can only be in one team per team size.` 
+        },
         { status: 400 }
       );
     }
@@ -135,6 +154,7 @@ export async function POST(
     const typedUpdateDoc = updateDoc as unknown as UpdateFilter<Document>;
 
     // Use the typed update document in the MongoDB operation
+    // (team is already fetched above for the full check)
     await db
       .collection("Teams")
       .updateOne({ _id: invite.teamId }, typedUpdateDoc);
@@ -145,13 +165,14 @@ export async function POST(
       type: "invite_accepted",
       title: "Team Invite Accepted",
       message: `${
-        session.user.name || session.user.nickname
+        session.user.nickname || session.user.name
       } has accepted your invitation to join team "${invite.teamName}"`,
       read: false,
       createdAt: new Date(),
       metadata: {
         teamId: invite.teamId.toString(),
         teamName: invite.teamName,
+        teamTag: team?.tag,
       },
     });
 
@@ -165,9 +186,18 @@ export async function POST(
       { $set: { status: "cancelled" } }
     );
 
+    // Recalculate team ELO with the new member
+    try {
+      await recalculateTeamElo(invite.teamId.toString());
+    } catch (eloError) {
+      // Log error but don't fail the invite acceptance
+      console.error("Error recalculating team ELO after invite acceptance:", eloError);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Successfully joined the team",
+      teamTag: team?.tag || null,
     });
   } catch (error) {
     console.error("Error responding to team invite:", error);

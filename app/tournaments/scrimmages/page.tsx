@@ -87,6 +87,7 @@ interface Scrimmage {
   createdAt: string;
   scrimmageId?: string;
   winner?: string;
+  teamSize?: number;
 }
 
 export default function ScrimmagesPage() {
@@ -366,40 +367,101 @@ export default function ScrimmagesPage() {
             }
           }
 
+          const isChallengerWinner = winnerTeam?._id === scrimmage.challengerTeam?._id;
+
           return (
             <ContextMenu key={scrimmage._id}>
               <ContextMenuTrigger>
-                <Card className="overflow-hidden border-2 hover:shadow-lg transition-shadow">
-                  <CardHeader className="p-4 pb-2 bg-gradient-to-br from-green-500/10 to-green-500/5">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-lg">
-                        {scrimmage.challengerTeam?.name} vs{" "}
-                        {scrimmage.challengedTeam?.name}
-                      </CardTitle>
-                      <Badge variant="secondary" className="bg-green-500/20 text-green-700 dark:text-green-400">Completed</Badge>
+                <Card className="overflow-hidden border-2 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 transition-all">
+                  <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3 bg-gradient-to-br from-green-500/10 to-green-500/5 border-b">
+                    <div className="flex flex-col gap-2">
+                      {/* Status badge - top right on small screens, normal position on larger screens */}
+                      <div className="flex justify-end sm:hidden">
+                        <Badge className="bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/50 shrink-0">
+                          Completed
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <CardTitle className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 break-words">
+                            <span className="block sm:inline">{scrimmage.challengerTeam?.name || "Team A"}</span>
+                            <span className="mx-1.5 sm:mx-2 text-muted-foreground">vs</span>
+                            <span className="block sm:inline">{scrimmage.challengedTeam?.name || "Team B"}</span>
+                          </CardTitle>
+                          <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center mt-1.5">
+                            {scrimmage.teamSize && (
+                              <Badge variant="secondary" className="text-xs">
+                                {scrimmage.teamSize === 2
+                                  ? "Duos"
+                                  : scrimmage.teamSize === 3
+                                  ? "Trios"
+                                  : scrimmage.teamSize === 4
+                                  ? "Squads"
+                                  : scrimmage.teamSize === 5
+                                  ? "Full Team"
+                                  : `${scrimmage.teamSize}v${scrimmage.teamSize}`}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        <Badge className="hidden sm:flex bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/50 shrink-0">
+                          Completed
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="p-4 pt-2 pb-0">
-                    <div className="space-y-2">
-                      <div className="flex gap-2 items-center text-sm">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>
+                  <CardContent className="p-3 sm:p-4 pt-2 sm:pt-3 pb-2 sm:pb-3">
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
+                        <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
+                        <span className="text-muted-foreground break-words">
                           {format(
                             new Date(scrimmage.proposedDate),
                             "MMMM d, yyyy"
                           )}
                         </span>
                       </div>
-                      <div className="flex gap-2 items-center text-sm">
-                        <Trophy className="w-4 h-4 text-yellow-500" />
-                        <span className="font-medium">
-                          {winnerTeam?.name || "Unknown team"} won
-                        </span>
+                      <div className="flex items-center gap-2 text-xs sm:text-sm">
+                        <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-500 shrink-0" />
+                        <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5">
+                          <span className="font-medium text-foreground break-words">
+                            {winnerTeam?.name || "Unknown team"} won
+                          </span>
+                          {winnerTeam?.tag && (
+                            <Badge variant="outline" className="text-xs">
+                              [{winnerTeam.tag}]
+                            </Badge>
+                          )}
+                        </div>
                       </div>
+                      {scrimmage.selectedMaps && scrimmage.selectedMaps.length > 0 && (
+                        <div className="flex items-start gap-2 text-xs sm:text-sm pt-1">
+                          <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium mb-1 sm:mb-1.5 text-foreground">Maps</p>
+                            <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                              {scrimmage.selectedMaps.slice(0, 3).map((map: any, idx: number) => (
+                                <Badge
+                                  key={map.id || idx}
+                                  variant="secondary"
+                                  className="text-xs font-normal break-words max-w-full"
+                                >
+                                  <span className="line-clamp-1">{map.name}</span>
+                                </Badge>
+                              ))}
+                              {scrimmage.selectedMaps.length > 3 && (
+                                <Badge variant="secondary" className="text-xs font-normal">
+                                  +{scrimmage.selectedMaps.length - 3} more
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
-                  <CardFooter className="flex justify-end p-4">
-                    <Button variant="outline" size="sm" asChild>
+                  <CardFooter className="flex justify-end p-3 sm:p-4 pt-2 sm:pt-3">
+                    <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
                       <Link
                         href={`/tournaments/scrimmages/${
                           scrimmage.scrimmageId || scrimmage._id
@@ -676,40 +738,92 @@ export default function ScrimmagesPage() {
                       {filteredUpcomingScrimmages.map((scrimmage) => (
                         <ContextMenu key={scrimmage._id}>
                           <ContextMenuTrigger>
-                            <Card className="overflow-hidden border-2 hover:shadow-lg transition-shadow">
-                              <CardHeader className="p-4 pb-2 bg-gradient-to-br from-blue-500/10 to-blue-500/5">
-                                <div className="flex justify-between items-center">
-                                  <CardTitle className="text-lg">
-                                    {scrimmage.challengerTeam?.name} vs{" "}
-                                    {scrimmage.challengedTeam?.name}
-                                  </CardTitle>
-                                  <Badge variant="default" className="bg-blue-500">Upcoming</Badge>
+                            <Card className="overflow-hidden border-2 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 transition-all">
+                              <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3 bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-b">
+                                <div className="flex flex-col gap-2">
+                                  {/* Status badge - top right on small screens, normal position on larger screens */}
+                                  <div className="flex justify-end sm:hidden">
+                                    <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/50 shrink-0">
+                                      Upcoming
+                                    </Badge>
+                                  </div>
+                                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <CardTitle className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 break-words">
+                                        <span className="block sm:inline">{scrimmage.challengerTeam?.name || "Team A"}</span>
+                                        <span className="mx-1.5 sm:mx-2 text-muted-foreground">vs</span>
+                                        <span className="block sm:inline">{scrimmage.challengedTeam?.name || "Team B"}</span>
+                                      </CardTitle>
+                                      <div className="flex flex-wrap gap-1.5 sm:gap-2 items-center mt-1.5">
+                                        {scrimmage.teamSize && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            {scrimmage.teamSize === 2
+                                              ? "Duos"
+                                              : scrimmage.teamSize === 3
+                                              ? "Trios"
+                                              : scrimmage.teamSize === 4
+                                              ? "Squads"
+                                              : scrimmage.teamSize === 5
+                                              ? "Full Team"
+                                              : `${scrimmage.teamSize}v${scrimmage.teamSize}`}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <Badge className="hidden sm:flex bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/50 shrink-0">
+                                      Upcoming
+                                    </Badge>
+                                  </div>
                                 </div>
                               </CardHeader>
-                              <CardContent className="p-4 pt-2 pb-0">
-                                <div className="space-y-2">
-                                  <div className="flex gap-2 items-center text-sm">
-                                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                                    <span>
+                              <CardContent className="p-3 sm:p-4 pt-2 sm:pt-3 pb-2 sm:pb-3">
+                                <div className="space-y-2 sm:space-y-3">
+                                  <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                    <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground break-words">
                                       {format(
                                         new Date(scrimmage.proposedDate),
                                         "MMMM d, yyyy"
                                       )}
                                     </span>
                                   </div>
-                                  <div className="flex gap-2 items-center text-sm">
-                                    <Clock className="w-4 h-4 text-muted-foreground" />
-                                    <span>
+                                  <div className="flex items-center gap-2 text-xs sm:text-sm">
+                                    <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0" />
+                                    <span className="text-muted-foreground">
                                       {format(
                                         new Date(scrimmage.proposedDate),
                                         "h:mm a"
                                       )}
                                     </span>
                                   </div>
+                                  {scrimmage.selectedMaps && scrimmage.selectedMaps.length > 0 && (
+                                    <div className="flex items-start gap-2 text-xs sm:text-sm pt-1">
+                                      <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground shrink-0 mt-0.5" />
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium mb-1 sm:mb-1.5 text-foreground">Maps</p>
+                                        <div className="flex flex-wrap gap-1 sm:gap-1.5">
+                                          {scrimmage.selectedMaps.slice(0, 3).map((map: any, idx: number) => (
+                                            <Badge
+                                              key={map.id || idx}
+                                              variant="secondary"
+                                              className="text-xs font-normal break-words max-w-full"
+                                            >
+                                              <span className="line-clamp-1">{map.name}</span>
+                                            </Badge>
+                                          ))}
+                                          {scrimmage.selectedMaps.length > 3 && (
+                                            <Badge variant="secondary" className="text-xs font-normal">
+                                              +{scrimmage.selectedMaps.length - 3} more
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </CardContent>
-                              <CardFooter className="flex justify-end p-4">
-                                <Button variant="outline" size="sm" asChild>
+                              <CardFooter className="flex justify-end p-3 sm:p-4 pt-2 sm:pt-3">
+                                <Button variant="outline" size="sm" className="w-full sm:w-auto" asChild>
                                   <Link
                                     href={`/tournaments/scrimmages/${
                                       scrimmage.scrimmageId || scrimmage._id

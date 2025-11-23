@@ -58,6 +58,7 @@ export function TeamInvitesList({
   const [clearingAll, setClearingAll] = useState(false);
   const [cancellingPending, setCancellingPending] = useState(false);
   const [clearingCompleted, setClearingCompleted] = useState(false);
+  const [showCancelPendingDialog, setShowCancelPendingDialog] = useState(false);
   const { toast } = useToast();
 
   const fetchInvites = useCallback(async () => {
@@ -170,10 +171,6 @@ export function TeamInvitesList({
   };
 
   const handleCancelPendingInvites = async () => {
-    if (!confirm("Are you sure you want to cancel all pending invites?")) {
-      return;
-    }
-
     setCancellingPending(true);
     try {
       const response = await fetch(`/api/teams/${teamId}/invites/clear`, {
@@ -271,6 +268,21 @@ export function TeamInvitesList({
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    // Check if date is today
+    if (date.toDateString() === today.toDateString()) {
+      return "Today";
+    }
+    
+    // Check if date is yesterday
+    if (date.toDateString() === yesterday.toDateString()) {
+      return "Yesterday";
+    }
+    
+    // Otherwise return formatted date
     return date.toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
@@ -284,7 +296,7 @@ export function TeamInvitesList({
         return (
           <Badge
             variant="outline"
-            className="text-yellow-500 bg-yellow-500/10 border-yellow-500/20"
+            className="text-yellow-600 dark:text-yellow-400 bg-yellow-500/20 border-yellow-500/30 font-medium px-2.5 py-1"
           >
             Pending
           </Badge>
@@ -293,7 +305,7 @@ export function TeamInvitesList({
         return (
           <Badge
             variant="outline"
-            className="text-green-500 bg-green-500/10 border-green-500/20"
+            className="text-green-600 dark:text-green-400 bg-green-500/20 border-green-500/30 font-medium px-2.5 py-1"
           >
             Accepted
           </Badge>
@@ -302,7 +314,7 @@ export function TeamInvitesList({
         return (
           <Badge
             variant="outline"
-            className="text-red-500 bg-red-500/10 border-red-500/20"
+            className="text-red-600 dark:text-red-400 bg-red-500/20 border-red-500/30 font-medium px-2.5 py-1"
           >
             Rejected
           </Badge>
@@ -311,13 +323,17 @@ export function TeamInvitesList({
         return (
           <Badge
             variant="outline"
-            className="text-gray-500 bg-gray-500/10 border-gray-500/20"
+            className="text-gray-600 dark:text-gray-400 bg-gray-500/20 border-gray-500/30 font-medium px-2.5 py-1"
           >
             Cancelled
           </Badge>
         );
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return (
+          <Badge variant="outline" className="font-medium px-2.5 py-1">
+            {status.charAt(0).toUpperCase() + status.slice(1)}
+          </Badge>
+        );
     }
   };
 
@@ -370,24 +386,48 @@ export function TeamInvitesList({
         {showCaptainControls && (
           <div className="flex gap-2">
             {invites.some((invite) => invite.status === "pending") && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleCancelPendingInvites}
-                disabled={cancellingPending}
-              >
-                {cancellingPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Cancelling...
-                  </>
-                ) : (
-                  <>
-                    <X className="w-4 h-4 mr-2" />
-                    Cancel Pending
-                  </>
-                )}
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCancelPendingDialog(true)}
+                  disabled={cancellingPending}
+                >
+                  {cancellingPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Cancelling...
+                    </>
+                  ) : (
+                    <>
+                      <X className="w-4 h-4 mr-2" />
+                      Cancel Pending
+                    </>
+                  )}
+                </Button>
+                <AlertDialog open={showCancelPendingDialog} onOpenChange={setShowCancelPendingDialog}>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Cancel All Pending Invites?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to cancel all pending invites? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setShowCancelPendingDialog(false);
+                          handleCancelPendingInvites();
+                        }}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Cancel All Invites
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
             )}
 
             {invites.some((invite) =>
@@ -421,39 +461,62 @@ export function TeamInvitesList({
             No invites have been sent yet
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {sortedInvites.map((invite) => (
               <div
                 key={invite.id}
-                className="flex items-center justify-between p-3 border rounded-md bg-card"
+                className="flex items-center justify-between p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
               >
-                <div>
-                  <div className="font-medium">{invite.inviteeName}</div>
-                  <div className="space-y-1 text-xs text-muted-foreground">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-base mb-1.5">
+                    {invite.inviteeName}
+                  </div>
+                  <div className="space-y-0.5 text-sm text-muted-foreground">
                     <p>
-                      Invited by: {invite.inviterNickname || invite.inviterName}
+                      Invited by: <span className="font-medium">{invite.inviterNickname || invite.inviterName}</span>
                     </p>
                     <p>Date: {formatDate(invite.createdAt)}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3 shrink-0">
                   {getStatusBadge(invite.status)}
 
                   {showCaptainControls && invite.status === "pending" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="w-8 h-8"
-                      onClick={() => handleCancelInvite(invite.id)}
-                      disabled={cancelling[invite.id]}
-                    >
-                      {cancelling[invite.id] ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <X className="w-4 h-4" />
-                      )}
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
+                          disabled={cancelling[invite.id]}
+                        >
+                          {cancelling[invite.id] ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Cancel Invite?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to cancel the invite for <strong>{invite.inviteeName}</strong>? 
+                            This will prevent them from joining your team. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Keep Invite</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleCancelInvite(invite.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Cancel Invite
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
               </div>

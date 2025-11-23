@@ -21,7 +21,9 @@ interface SearchResult {
   elo: number;
   isInvited: boolean;
   inTeam: boolean;
+  inTeamOfSameSize: boolean;
   teamName?: string;
+  teamSize?: number;
   profilePicture?: string;
 }
 
@@ -32,6 +34,7 @@ export function InvitePlayerModal() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [inviting, setInviting] = useState<Record<string, boolean>>({});
+  const [currentTeamSize, setCurrentTeamSize] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +45,22 @@ export function InvitePlayerModal() {
     setSearchTerm("");
     setSearchResults([]);
   }, []);
+
+  // Fetch current team size when modal opens
+  useEffect(() => {
+    if (isOpen && teamId) {
+      fetch(`/api/teams/${teamId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.teamSize) {
+            setCurrentTeamSize(data.teamSize);
+          } else {
+            setCurrentTeamSize(4); // Default to 4
+          }
+        })
+        .catch(() => setCurrentTeamSize(4));
+    }
+  }, [isOpen, teamId]);
 
   // Listen for the custom event to open the modal
   useEffect(() => {
@@ -119,14 +138,23 @@ export function InvitePlayerModal() {
       const data = await response.json();
       const players = data.players || [];
 
-      // Add team status to each player
-      const playersWithInviteStatus = players.map((player: any) => ({
-        ...player,
-        isInvited: false, // Will check this separately if needed
-        inTeam: player.team != null,
-        teamName: player.team?.name,
-        profilePicture: player.profilePicture || player.discordProfilePicture,
-      }));
+      // Add team status to each player - only block if same team size
+      const playersWithInviteStatus = players.map((player: any) => {
+        const playerTeamSize = player.team?.teamSize || 4;
+        const inTeamOfSameSize = player.team != null && 
+          currentTeamSize != null && 
+          playerTeamSize === currentTeamSize;
+        
+        return {
+          ...player,
+          isInvited: false, // Will check this separately if needed
+          inTeam: false, // Don't use this for blocking - only use inTeamOfSameSize
+          inTeamOfSameSize: inTeamOfSameSize,
+          teamName: player.team?.name,
+          teamSize: playerTeamSize,
+          profilePicture: player.profilePicture || player.discordProfilePicture,
+        };
+      });
 
       setSearchResults(playersWithInviteStatus);
     } catch (error) {
@@ -261,7 +289,7 @@ export function InvitePlayerModal() {
                     <Button variant="secondary" disabled>
                       Invited
                     </Button>
-                  ) : player.inTeam ? (
+                  ) : player.inTeamOfSameSize ? (
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -282,7 +310,7 @@ export function InvitePlayerModal() {
                           className="p-2 text-sm bg-secondary text-secondary-foreground"
                         >
                           <p>
-                            This player is already in team &quot;
+                            This player is already in a {player.teamSize}-person team &quot;
                             {player.teamName}&quot;
                           </p>
                         </TooltipContent>

@@ -11,23 +11,23 @@ export async function GET(
     const { db } = await connectToDatabase();
     const playerId = params.id;
 
-    // Find team where player is a member
-    const team = await db.collection("Teams").findOne({
+    // Find all teams where player is a member
+    const teams = await db.collection("Teams").find({
       "members.discordId": playerId,
-    });
+    }).toArray();
 
-    if (!team) {
-      return NextResponse.json({ team: null });
+    if (!teams || teams.length === 0) {
+      return NextResponse.json({ teams: [] });
     }
 
-    // Get player's role in the team
-    const member = team.members.find(
-      (m: any) => m.discordId === playerId
-    );
-    const isCaptain = team.captain?.discordId === playerId;
+    // Map teams with player's role information
+    const teamsWithRole = teams.map((team) => {
+      const member = team.members.find(
+        (m: any) => m.discordId === playerId
+      );
+      const isCaptain = team.captain?.discordId === playerId;
 
-    return NextResponse.json({
-      team: {
+      return {
         _id: team._id.toString(),
         name: team.name,
         tag: team.tag,
@@ -37,10 +37,22 @@ export async function GET(
         losses: team.losses || 0,
         tournamentWins: team.tournamentWins || 0,
         memberCount: team.members?.length || 0,
-      },
-      role: isCaptain ? "captain" : member?.role || "member",
-      isCaptain,
+        teamSize: team.teamSize || 4,
+        role: isCaptain ? "captain" : member?.role || "member",
+        isCaptain,
+      };
     });
+
+    // Sort teams: 4v4 first, then by team size (2, 3, 5)
+    teamsWithRole.sort((a, b) => {
+      // 4v4 teams first
+      if (a.teamSize === 4 && b.teamSize !== 4) return -1;
+      if (b.teamSize === 4 && a.teamSize !== 4) return 1;
+      // Then sort by team size (2, 3, 5)
+      return a.teamSize - b.teamSize;
+    });
+
+    return NextResponse.json({ teams: teamsWithRole });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch team information" },

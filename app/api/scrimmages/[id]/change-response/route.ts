@@ -92,6 +92,19 @@ export async function POST(
         updateData.proposedDate = scrimmage.changeRequest.newDate;
       }
 
+      // If there's a new time and no new date, combine with existing date
+      if (scrimmage.changeRequest?.newTime && !scrimmage.changeRequest?.newDate) {
+        const existingDate = new Date(scrimmage.proposedDate);
+        const [hours, minutes] = scrimmage.changeRequest.newTime.split(":").map(Number);
+        existingDate.setHours(hours, minutes, 0, 0);
+        updateData.proposedDate = existingDate;
+      }
+
+      // If there are new maps, update selectedMaps
+      if (scrimmage.changeRequest?.newMaps && Array.isArray(scrimmage.changeRequest.newMaps)) {
+        updateData.selectedMaps = scrimmage.changeRequest.newMaps;
+      }
+
       await db
         .collection("Scrimmages")
         .updateOne({ _id: scrimmage._id }, { $set: updateData });

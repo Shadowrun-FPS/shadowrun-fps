@@ -95,6 +95,7 @@ interface ChallengeTeamDialogProps {
     tag: string;
     captain: any;
     members: any[];
+    teamSize?: number;
   };
   userTeam: any;
   disabled?: boolean;
@@ -126,8 +127,17 @@ export function ChallengeTeamDialog({
   const tomorrow = addDays(new Date(), 1);
   const weekend = nextSaturday(new Date());
 
-  // Add check for team size
-  const canChallenge = team.members.length >= 4;
+  // Add check for team size - teams must have matching team sizes and be full
+  const teamSize = team.teamSize || 4;
+  const userTeamSize = userTeam?.teamSize || 4;
+  const teamMemberCount = team.members.length;
+  const userTeamMemberCount = userTeam?.members?.length || 0;
+  
+  // Teams must have matching sizes and both must be full
+  const canChallenge = 
+    teamSize === userTeamSize && 
+    teamMemberCount >= teamSize && 
+    userTeamMemberCount >= userTeamSize;
 
   // Reset form when dialog is closed
   useEffect(() => {
@@ -453,7 +463,15 @@ export function ChallengeTeamDialog({
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p>Team needs at least 4 members to be challenged</p>
+              <p>
+                {teamSize !== userTeamSize
+                  ? `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but ${team.name} is ${teamSize}v${teamSize}.`
+                  : teamMemberCount < teamSize
+                  ? `${team.name} needs ${teamSize} members to be challenged (currently has ${teamMemberCount}).`
+                  : userTeamMemberCount < userTeamSize
+                  ? `Your team needs ${userTeamSize} members to challenge others (currently has ${userTeamMemberCount}).`
+                  : "Team cannot be challenged"}
+              </p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

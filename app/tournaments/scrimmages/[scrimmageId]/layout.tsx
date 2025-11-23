@@ -21,13 +21,23 @@ export async function generateMetadata(
     const client = await clientPromise;
     const db = client.db();
 
+    // Check if scrimmageId is a valid MongoDB ObjectId (24 hex characters)
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(params.scrimmageId);
+    
     // Fetch scrimmage data
-    const scrimmage = await db.collection("Scrimmages").findOne({
-      $or: [
-        { _id: new ObjectId(params.scrimmageId) },
-        { scrimmageId: params.scrimmageId },
-      ],
-    });
+    let scrimmage = null;
+    if (isObjectId) {
+      scrimmage = await db.collection("Scrimmages").findOne({
+        _id: new ObjectId(params.scrimmageId),
+      });
+    }
+    
+    // If not found by _id or not an ObjectId, try scrimmageId field
+    if (!scrimmage) {
+      scrimmage = await db.collection("Scrimmages").findOne({
+        scrimmageId: params.scrimmageId,
+      });
+    }
 
     // If scrimmage exists, use team names in metadata
     if (scrimmage) {

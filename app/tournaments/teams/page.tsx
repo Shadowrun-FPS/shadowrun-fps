@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -60,6 +60,13 @@ import {
 import { TeamCard } from "@/components/teams/team-card";
 import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface Team {
   _id: string;
@@ -81,6 +88,7 @@ interface Team {
     role: string;
   }[];
   teamElo: number;
+  teamSize?: number;
   tournaments?: string[];
   wins?: number;
   losses?: number;
@@ -102,15 +110,100 @@ interface Tournament {
   maxTeams?: number;
 }
 
+// Separate component for My Teams carousel to avoid hooks in conditional render
+function MyTeamsCarousel({ userTeams }: { userTeams: Team[] }) {
+  // Sort teams by teamSize (2, 3, 4, 5)
+  const sortedUserTeams = useMemo(() => {
+    return [...userTeams].sort((a, b) => {
+      const sizeA = a.teamSize || 4;
+      const sizeB = b.teamSize || 4;
+      return sizeA - sizeB;
+    });
+  }, [userTeams]);
+
+  // Find default index for mobile (4v4 first, or smallest if no 4v4)
+  const defaultIndex = useMemo(() => {
+    const fourVFourIndex = sortedUserTeams.findIndex((team) => (team.teamSize || 4) === 4);
+    if (fourVFourIndex !== -1) return fourVFourIndex;
+    return 0; // Smallest team size (first after sorting)
+  }, [sortedUserTeams]);
+
+  const [carouselApi, setCarouselApi] = useState<any>(null);
+
+  // Set default slide on mobile screens
+  useEffect(() => {
+    if (carouselApi && typeof window !== "undefined") {
+      const isMobile = window.innerWidth < 640; // sm breakpoint
+      if (isMobile) {
+        carouselApi.scrollTo(defaultIndex);
+      }
+    }
+  }, [carouselApi, defaultIndex]);
+
+  return (
+    <>
+      <div className="mb-8 sm:mb-10 mt-8 sm:mt-12">
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <div className="relative p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 shadow-sm">
+            <Star className="w-5 h-5 text-primary" />
+          </div>
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+            My Teams
+          </h2>
+        </div>
+        
+        {/* Carousel for all teams */}
+        <Carousel className="w-full" setApi={setCarouselApi}>
+          <CarouselContent className="-ml-2 md:-ml-4">
+            {sortedUserTeams.map((team) => {
+              const teamSize = team.teamSize || 4;
+              return (
+                <CarouselItem key={team._id} className="pl-2 md:pl-4 basis-full sm:basis-1/2 lg:basis-1/3">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="secondary" className="text-xs font-semibold">
+                        {teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : "Full Team"} ({teamSize} players)
+                      </Badge>
+                    </div>
+                    <TeamCard
+                      _id={team._id}
+                      name={team.name}
+                      description={team.description}
+                      tag={team.tag}
+                      members={team.members}
+                      wins={team.wins || 0}
+                      losses={team.losses || 0}
+                      tournamentWins={team.tournamentWins || 0}
+                      userTeam={team}
+                      isUserTeam={true}
+                      teamElo={team.teamElo}
+                    />
+                  </div>
+                </CarouselItem>
+              );
+            })}
+          </CarouselContent>
+          <div className="flex justify-center gap-2 mt-4">
+            <CarouselPrevious className="static translate-y-0" />
+            <CarouselNext className="static translate-y-0" />
+          </div>
+        </Carousel>
+      </div>
+      <Separator className="my-8" />
+    </>
+  );
+}
+
 export default function TeamsPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [userTeam, setUserTeam] = useState<Team | null>(null);
+  const [userTeams, setUserTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
+  const [selectedTeamSize, setSelectedTeamSize] = useState<string>("4");
   const [view, setView] = useState<string>("grid");
   const [teamStatus, setTeamStatus] = useState<"all" | "full" | "open">("all");
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -137,16 +230,16 @@ export default function TeamsPage() {
       // Set teams directly if it's already an array
       setTeams(teamsArray);
 
-      // Find user's team if logged in
+      // Find user's teams if logged in (can have multiple teams of different sizes)
       if (session?.user?.id) {
-        const userTeam = teamsArray.find(
+        const userTeamsList = teamsArray.filter(
           (team) =>
             team.members?.some(
               (member: { discordId: string }) =>
                 member.discordId === session.user.id
             ) || team.captain?.discordId === session.user.id
         );
-        setUserTeam(userTeam || null);
+        setUserTeams(userTeamsList);
       }
 
       // Fetch tournaments
@@ -194,7 +287,7 @@ export default function TeamsPage() {
       console.error("Error fetching teams:", error);
       // Set empty arrays as fallback
       setTeams([]);
-      setUserTeam(null);
+      setUserTeams([]);
     } finally {
       setLoading(false);
     }
@@ -205,7 +298,7 @@ export default function TeamsPage() {
   }, [session?.user?.id, fetchTeams]);
 
   const filteredTeams = teams
-    .filter((team) => !userTeam || team._id !== userTeam._id)
+    .filter((team) => !userTeams.some((ut) => ut._id === team._id))
     .filter((team) => {
       // Filter by tournament if selected
       if (selectedTournament !== "all") {
@@ -230,10 +323,17 @@ export default function TeamsPage() {
         if (!isRegistered) return false;
       }
 
+      // Filter by team size if selected
+      if (selectedTeamSize !== "all") {
+        const teamSize = team.teamSize || 4;
+        if (teamSize !== parseInt(selectedTeamSize)) return false;
+      }
+
       // Filter by team status (full or open)
       if (teamStatus !== "all") {
-        // Most teams need at least 4 players to be considered full
-        const isFull = (team.members?.length || 0) >= 4;
+        // Check if team is full based on its teamSize (default to 4 if not specified)
+        const teamSize = team.teamSize || 4;
+        const isFull = (team.members?.length || 0) >= teamSize;
 
         if (teamStatus === "full" && !isFull) return false;
         if (teamStatus === "open" && isFull) return false;
@@ -432,60 +532,8 @@ export default function TeamsPage() {
               </div>
             )}
 
-            {/* My Team Section */}
-            {userTeam && (
-              <>
-                <div className="mb-8 sm:mb-10 mt-8 sm:mt-12">
-                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                    <div className="relative p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 shadow-sm">
-                      <Star className="w-5 h-5 text-primary" />
-                    </div>
-                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
-                      My Team
-                    </h2>
-                  </div>
-                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    <TeamCard
-                      key={userTeam._id}
-                      _id={userTeam._id}
-                      name={userTeam.name}
-                      description={userTeam.description}
-                      tag={userTeam.tag}
-                      members={userTeam.members}
-                      wins={userTeam.wins || 0}
-                      losses={userTeam.losses || 0}
-                      tournamentWins={userTeam.tournamentWins || 0}
-                      userTeam={userTeam}
-                      isUserTeam={true}
-                      teamElo={userTeam.teamElo}
-                    />
-
-                    <Card className="border-2 border-dashed bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/30 hover:border-primary/50 hover:shadow-lg transition-all">
-                      <CardContent className="flex flex-col justify-center items-center py-6 sm:py-8 h-full">
-                        <div className="relative p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-sm mb-4">
-                          <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
-                        </div>
-                        <h3 className="mb-2 text-base sm:text-lg font-semibold">
-                          Team Management
-                        </h3>
-                        <p className="mb-4 text-xs sm:text-sm text-center text-muted-foreground px-4">
-                          Manage your team roster and invites
-                        </p>
-                        <Button asChild className="w-full sm:w-auto">
-                          <Link
-                            href={`/tournaments/teams/${userTeam._id.toString()}`}
-                          >
-                            <Shield className="mr-2 w-4 h-4" />
-                            Manage Team
-                          </Link>
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </div>
-                <Separator className="my-8" />
-              </>
-            )}
+            {/* My Teams Section */}
+            {userTeams.length > 0 && <MyTeamsCarousel userTeams={userTeams} />}
 
             {/* All Teams Section */}
             <div className="mt-8 sm:mt-12">
@@ -520,13 +568,14 @@ export default function TeamsPage() {
                         </CardDescription>
                       </div>
                     </div>
-                    {(selectedTournament !== "all" || teamStatus !== "all") && (
+                    {(selectedTournament !== "all" || teamStatus !== "all" || selectedTeamSize !== "4") && (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
                           setSelectedTournament("all");
                           setTeamStatus("all");
+                          setSelectedTeamSize("4");
                         }}
                         className="h-9 gap-2 text-xs sm:text-sm"
                       >
@@ -537,7 +586,7 @@ export default function TeamsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
-                  <div className="grid gap-6 sm:grid-cols-2">
+                  <div className="grid gap-6 sm:grid-cols-3">
                     <div className="space-y-3">
                       <label className="text-sm font-semibold flex items-center gap-2">
                         <div className="relative p-1.5 rounded-md bg-primary/10 border border-primary/20">
@@ -576,6 +625,35 @@ export default function TeamsPage() {
                               No tournaments available
                             </SelectItem>
                           )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-sm font-semibold flex items-center gap-2">
+                        <div className="relative p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                          <Users className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        Team Size
+                        {selectedTeamSize !== "4" && (
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            Active
+                          </Badge>
+                        )}
+                      </label>
+                      <Select
+                        value={selectedTeamSize}
+                        onValueChange={setSelectedTeamSize}
+                      >
+                        <SelectTrigger className="h-11 border-2 focus:border-primary/50 transition-colors">
+                          <SelectValue placeholder="All Team Sizes" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Team Sizes</SelectItem>
+                          <SelectItem value="2">Duos (2 players)</SelectItem>
+                          <SelectItem value="3">Trios (3 players)</SelectItem>
+                          <SelectItem value="4">Squads (4 players)</SelectItem>
+                          <SelectItem value="5">Full Team (5 players)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -695,8 +773,8 @@ export default function TeamsPage() {
                             wins={team.wins || 0}
                             losses={team.losses || 0}
                             tournamentWins={team.tournamentWins || 0}
-                            userTeam={userTeam}
-                            isUserTeam={userTeam?._id === team._id}
+                            userTeam={userTeams.find((ut) => ut._id === team._id) || null}
+                            isUserTeam={userTeams.some((ut) => ut._id === team._id)}
                             teamElo={team.teamElo}
                           />
                         ))}
@@ -716,85 +794,124 @@ export default function TeamsPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {currentTeams.map((team) => (
-                              <tr
-                                key={team._id}
-                                className="border-b border-border/50 hover:bg-muted/30 transition-colors"
-                              >
-                                <td className="p-3 sm:p-4">
-                                  <div className="font-semibold text-sm sm:text-base">{team.name}</div>
-                                  <div className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-                                    [{team.tag}]
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-1 sm:hidden">
-                                    {team.members.find(
-                                      (m) =>
-                                        m.role === "captain" ||
-                                        m.discordId === team.captain?.discordId
-                                    )?.discordNickname ||
-                                      team.captain?.discordNickname ||
-                                      "Stock Captain"}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-0.5 md:hidden">
-                                    ELO: {team.teamElo?.toLocaleString() || "N/A"}
-                                  </div>
-                                </td>
-                                <td className="p-3 sm:p-4 hidden sm:table-cell">
-                                  <div className="text-sm">
-                                    {team.members.find(
-                                      (m) =>
-                                        m.role === "captain" ||
-                                        m.discordId === team.captain?.discordId
-                                    )?.discordNickname ||
-                                      team.captain?.discordNickname ||
-                                      "Stock Captain"}
-                                  </div>
-                                </td>
-                                <td className="p-3 sm:p-4">
-                                  <div className="flex items-center gap-1.5">
-                                    <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                                    <span className="text-sm sm:text-base font-medium">
-                                      {team.members?.length || 0}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="p-3 sm:p-4 hidden md:table-cell">
-                                  <div className="flex items-center gap-1.5">
-                                    <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
-                                    <span className="text-sm sm:text-base font-medium">
-                                      {team.teamElo?.toLocaleString() || "N/A"}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="p-3 sm:p-4">
-                                  <div className="flex flex-col sm:flex-row gap-2 justify-end items-stretch sm:items-center">
-                                    <Button variant="outline" size="sm" asChild className="h-9 sm:h-10 text-xs sm:text-sm">
-                                      <Link
-                                        href={`/tournaments/teams/${team.tag}`}
-                                      >
-                                        View
-                                      </Link>
-                                    </Button>
-                                    {userTeam &&
-                                      team._id !== userTeam._id &&
-                                      session?.user?.id ===
-                                        userTeam?.captain?.discordId && (
-                                        <ChallengeTeamDialog
-                                          team={{
-                                            _id: team._id,
-                                            name: team.name,
-                                            tag: team.tag,
-                                            captain: team.captain,
-                                            members: team.members,
-                                          }}
-                                          userTeam={userTeam}
-                                          disabled={team.members.length < 4}
-                                        />
-                                      )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
+                            {(() => {
+                              // Group teams by team size
+                              const teamsBySize = currentTeams.reduce((acc, team) => {
+                                const teamSize = team.teamSize || 4;
+                                if (!acc[teamSize]) {
+                                  acc[teamSize] = [];
+                                }
+                                acc[teamSize].push(team);
+                                return acc;
+                              }, {} as Record<number, typeof currentTeams>);
+
+                              // Sort team sizes (2, 3, 4, 5)
+                              const sortedSizes = Object.keys(teamsBySize)
+                                .map(Number)
+                                .sort((a, b) => a - b);
+
+                              // Render teams grouped by size
+                              return sortedSizes.map((teamSize) => (
+                                <React.Fragment key={teamSize}>
+                                  {/* Team size header row */}
+                                  <tr className="bg-muted/40 border-b-2 border-border">
+                                    <td colSpan={5} className="p-3 sm:p-4">
+                                      <div className="flex items-center gap-2">
+                                        <Badge variant="secondary" className="text-xs font-semibold">
+                                          {teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`} ({teamSize} players)
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {teamsBySize[teamSize].length} {teamsBySize[teamSize].length === 1 ? 'team' : 'teams'}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                  {/* Teams for this size */}
+                                  {teamsBySize[teamSize].map((team) => (
+                                    <tr
+                                      key={team._id}
+                                      className="border-b border-border/50 hover:bg-muted/30 transition-colors"
+                                    >
+                                      <td className="p-3 sm:p-4">
+                                        <div className="font-semibold text-sm sm:text-base whitespace-nowrap">{team.name}</div>
+                                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                                          [{team.tag}]
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1 sm:hidden">
+                                          {team.members.find(
+                                            (m) =>
+                                              m.role === "captain" ||
+                                              m.discordId === team.captain?.discordId
+                                          )?.discordNickname ||
+                                            team.captain?.discordNickname ||
+                                            "Stock Captain"}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-0.5 md:hidden">
+                                          ELO: {team.teamElo?.toLocaleString() || "N/A"}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 sm:p-4 hidden sm:table-cell">
+                                        <div className="text-sm">
+                                          {team.members.find(
+                                            (m) =>
+                                              m.role === "captain" ||
+                                              m.discordId === team.captain?.discordId
+                                          )?.discordNickname ||
+                                            team.captain?.discordNickname ||
+                                            "Stock Captain"}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 sm:p-4">
+                                        <div className="flex items-center gap-1.5">
+                                          <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                                          <span className="text-sm sm:text-base font-medium">
+                                            {team.members?.length || 0}/{teamSize}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="p-3 sm:p-4 hidden md:table-cell">
+                                        <div className="flex items-center gap-1.5">
+                                          <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                                          <span className="text-sm sm:text-base font-medium">
+                                            {team.teamElo?.toLocaleString() || "N/A"}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="p-3 sm:p-4">
+                                        <div className="flex flex-col sm:flex-row gap-2 justify-end items-stretch sm:items-center">
+                                          <Button variant="outline" size="sm" asChild className="h-9 sm:h-10 text-xs sm:text-sm">
+                                            <Link
+                                              href={`/tournaments/teams/${team.tag}`}
+                                            >
+                                              View
+                                            </Link>
+                                          </Button>
+                                          {(() => {
+                                            const userTeamAsCaptain = userTeams.find((ut) => 
+                                              ut._id !== team._id && session?.user?.id === ut?.captain?.discordId
+                                            );
+                                            return userTeamAsCaptain ? (
+                                              <ChallengeTeamDialog
+                                                team={{
+                                                  _id: team._id,
+                                                  name: team.name,
+                                                  tag: team.tag,
+                                                  captain: team.captain,
+                                                  members: team.members,
+                                                  teamSize: team.teamSize,
+                                                }}
+                                                userTeam={userTeamAsCaptain}
+                                                disabled={(team.members.length < (team.teamSize || 4))}
+                                              />
+                                            ) : null;
+                                          })()}
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </React.Fragment>
+                              ));
+                            })()}
                           </tbody>
                         </table>
                       </div>

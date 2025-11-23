@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
   Dialog,
@@ -28,7 +28,9 @@ interface SearchResult {
   elo: number;
   isInvited: boolean;
   inTeam: boolean;
+  inTeamOfSameSize: boolean;
   teamName?: string;
+  teamSize?: number;
 }
 
 export function InvitePlayerDialog({ teamId }: { teamId: string }) {
@@ -38,6 +40,23 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentTeamSize, setCurrentTeamSize] = useState<number | null>(null);
+
+  // Fetch current team size when dialog opens
+  useEffect(() => {
+    if (isOpen && teamId) {
+      fetch(`/api/teams/${teamId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.teamSize) {
+            setCurrentTeamSize(data.teamSize);
+          } else {
+            setCurrentTeamSize(4); // Default to 4
+          }
+        })
+        .catch(() => setCurrentTeamSize(4));
+    }
+  }, [isOpen, teamId]);
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -59,11 +78,21 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
           `/api/teams/${teamId}/invites/check/${player.id}`
         );
         const inviteData = await inviteResponse.json();
+        
+        // Check if player is in a team of the same size
+        // Only block invites if the player is in a team of the SAME size
+        const playerTeamSize = player.team?.teamSize || 4;
+        const inTeamOfSameSize = player.team != null && 
+          currentTeamSize != null && 
+          playerTeamSize === currentTeamSize;
+        
         return {
           ...player,
           isInvited: inviteData.isInvited,
-          inTeam: player.team != null,
+          inTeam: false, // Don't use this for blocking - only use inTeamOfSameSize
+          inTeamOfSameSize: inTeamOfSameSize,
           teamName: player.team?.name,
+          teamSize: playerTeamSize,
         };
       });
 
@@ -199,9 +228,9 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
                       <p className="font-semibold text-sm sm:text-base truncate">{player.name}</p>
                       <p className="text-xs sm:text-sm text-muted-foreground truncate">
                         @{player.username} • ELO: {player.elo.toLocaleString()}
-                        {player.inTeam && (
+                        {player.inTeamOfSameSize && (
                           <span className="ml-1 text-amber-500 font-medium">
-                            • In {player.teamName}
+                            • In {player.teamName} ({player.teamSize}-person)
                           </span>
                         )}
                       </p>
@@ -214,7 +243,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
                         <Check className="h-4 w-4 mr-1.5" />
                         <span className="hidden sm:inline">Invited</span>
                       </Button>
-                    ) : player.inTeam ? (
+                    ) : player.inTeamOfSameSize ? (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -230,7 +259,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
                           </TooltipTrigger>
                           <TooltipContent side="left">
                             <p>
-                              This player is already in team &quot;
+                              This player is already in a {player.teamSize}-person team &quot;
                               {player.teamName}&quot;
                             </p>
                           </TooltipContent>

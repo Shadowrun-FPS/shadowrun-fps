@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, description, tag, captain, captainProfilePicture } =
+    const { name, description, tag, captain, captainProfilePicture, teamSize } =
       await req.json();
 
     // Check for profanity in team name, tag, and description
@@ -107,6 +107,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate teamSize
+    const validTeamSize = teamSize ? parseInt(teamSize) : 4;
+    if (![2, 3, 4, 5].includes(validTeamSize)) {
+      return NextResponse.json(
+        { error: "Team size must be 2, 3, 4, or 5" },
+        { status: 400 }
+      );
+    }
+
     const { db } = await connectToDatabase();
 
     // Check if name or tag already exists
@@ -124,14 +133,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check if the user is already in a team
-    const userInTeam = await db.collection("Teams").findOne({
+    // Check if the user already has a team of this specific size
+    const userTeamOfSize = await db.collection("Teams").findOne({
       "members.discordId": session.user.id,
+      teamSize: validTeamSize,
     });
 
-    if (userInTeam) {
+    if (userTeamOfSize) {
       return NextResponse.json(
-        { error: "You are already a member of a team" },
+        { error: `You already have a ${validTeamSize}-person team. You can only have one team per team size.` },
         { status: 400 }
       );
     }
@@ -166,6 +176,7 @@ export async function POST(req: NextRequest) {
       name,
       description,
       tag: tag.toUpperCase(),
+      teamSize: validTeamSize,
       createdAt: new Date(),
       updatedAt: new Date(),
       captain: captainObject,

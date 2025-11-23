@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
         .project({
           _id: 1,
           name: 1,
+          teamSize: 1,
           "members.discordId": 1,
         })
         .toArray();
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
           playerTeamMap.set(member.discordId, {
             id: team._id,
             name: team.name,
+            teamSize: team.teamSize || 4,
           });
         });
       });

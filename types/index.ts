@@ -29,6 +29,7 @@ export interface Team {
   tag: string;
   description?: string;
   teamElo?: number;
+  teamSize?: number;
   members: TeamMember[];
   captain: TeamMember;
 }

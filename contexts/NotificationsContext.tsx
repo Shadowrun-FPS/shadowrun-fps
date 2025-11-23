@@ -102,6 +102,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limited - skip this call gracefully
+          console.warn("Rate limited on notifications fetch");
+          setNotifications([]);
+          setUnreadCount(0);
+          return;
+        }
         throw new Error(
           `Failed to fetch notifications: ${response.statusText}`
         );
@@ -109,9 +116,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
       const data = await response.json();
 
-      setNotifications(data);
-
-      syncUnreadCount(data);
+      // Handle both old format (array) and new format (object with pagination)
+      if (Array.isArray(data)) {
+        setNotifications(data);
+        syncUnreadCount(data);
+      } else {
+        setNotifications(data.notifications || []);
+        syncUnreadCount(data.notifications || []);
+      }
     } catch (error: any) {
       // Only log errors in development or for non-auth related issues
       if (

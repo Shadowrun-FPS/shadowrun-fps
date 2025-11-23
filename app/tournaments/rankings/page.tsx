@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Trophy,
@@ -40,6 +40,7 @@ interface TeamWithStats extends MongoTeam {
   winRatio: number;
   teamElo?: number;
   tournamentWins?: number;
+  teamSize?: number;
 }
 
 async function getTeamRankings(): Promise<TeamWithStats[]> {
@@ -71,6 +72,7 @@ export default function RankingsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTeamSize, setSelectedTeamSize] = useState<string>("4");
   const teamsPerPage = 10;
   
   // Check if player stats feature is enabled
@@ -96,11 +98,17 @@ export default function RankingsPage() {
   const sortedTeams = useMemo(() => {
     if (teams.length === 0) return [];
 
+    // Filter teams by team size (always filter, no "all" option)
+    const teamSize = parseInt(selectedTeamSize);
+    let filtered = teams.filter((team) => {
+      const teamSizeValue = team.teamSize || 4;
+      return teamSizeValue === teamSize;
+    });
+
     // Filter teams by search query
-    let filtered = teams;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      filtered = teams.filter((team) => {
+      filtered = filtered.filter((team) => {
         return (
           team.name?.toLowerCase().includes(query) ||
           team.tag?.toLowerCase().includes(query) ||
@@ -143,7 +151,7 @@ export default function RankingsPage() {
       
       return sortDirection === "asc" ? -comparison : comparison;
     });
-  }, [teams, sortBy, sortDirection, searchQuery]);
+  }, [teams, sortBy, sortDirection, searchQuery, selectedTeamSize]);
 
   // Calculate pagination
   const totalPages = Math.ceil(sortedTeams.length / teamsPerPage);
@@ -166,10 +174,10 @@ export default function RankingsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Reset to page 1 when search or sort changes
+  // Reset to page 1 when search, sort, or team size filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, sortBy, sortDirection]);
+  }, [searchQuery, sortBy, sortDirection, selectedTeamSize]);
 
   // Handle column header sort
   const handleSort = (column: SortOption) => {
@@ -214,19 +222,29 @@ export default function RankingsPage() {
     return winRate.toFixed(1) + "%";
   };
 
-  // Calculate default ELO-based ranking (always based on ELO, regardless of current sort)
-  const eloRankedTeams = useMemo(() => {
+  // Calculate default win rate-based ranking (always based on win rate, regardless of current sort)
+  const winRateRankedTeams = useMemo(() => {
     if (teams.length === 0) return [];
     return [...teams].sort((a, b) => {
-      const aElo = a.teamElo || a.calculatedElo || 0;
-      const bElo = b.teamElo || b.calculatedElo || 0;
-      return bElo - aElo;
+      // Calculate win ratio for sorting
+      const aWins = Number(a.wins || 0);
+      const aLosses = Number(a.losses || 0);
+      const aTotal = aWins + aLosses;
+      const aWinRatio = aTotal > 0 ? aWins / aTotal : 0;
+      
+      const bWins = Number(b.wins || 0);
+      const bLosses = Number(b.losses || 0);
+      const bTotal = bWins + bLosses;
+      const bWinRatio = bTotal > 0 ? bWins / bTotal : 0;
+      
+      // Sort by win rate descending
+      return bWinRatio - aWinRatio;
     });
   }, [teams]);
 
-  // Get the ELO-based rank for a team (always shows rank based on ELO, not current sort)
-  const getEloRank = (teamId: string) => {
-    const index = eloRankedTeams.findIndex((t) => t._id.toString() === teamId);
+  // Get the win rate-based rank for a team (always shows rank based on win rate, not current sort)
+  const getWinRateRank = (teamId: string) => {
+    const index = winRateRankedTeams.findIndex((t) => t._id.toString() === teamId);
     return index >= 0 ? index + 1 : null;
   };
 
@@ -335,6 +353,23 @@ export default function RankingsPage() {
                     className="pl-9 h-10 border-2"
                   />
                 </div>
+                {/* Team Size Filter */}
+                <div className="sm:w-[200px]">
+                  <Select
+                    value={selectedTeamSize}
+                    onValueChange={setSelectedTeamSize}
+                  >
+                    <SelectTrigger className="h-10 border-2 w-full">
+                      <SelectValue placeholder="All Team Sizes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="2">Duos (2 players)</SelectItem>
+                      <SelectItem value="3">Trios (3 players)</SelectItem>
+                      <SelectItem value="4">Squads (4 players)</SelectItem>
+                      <SelectItem value="5">Full Team (5 players)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 {/* Sort Dropdown for small/medium screens */}
                 <div className="lg:hidden">
                   <Select
@@ -431,57 +466,77 @@ export default function RankingsPage() {
                      </div>
                    </div>
 
-                  {/* Team rows */}
-                  {currentTeams.map((team, index) => {
-                    const eloRank = getEloRank(team._id.toString());
-                    // Ensure wins and losses are numbers to prevent string concatenation
-                    const wins = Number(team.wins || 0);
-                    const losses = Number(team.losses || 0);
-                    const totalGames = wins + losses;
-                    const memberCount = team.members?.length || 0;
-                    const captainName = team.captain?.discordNickname || team.captain?.discordUsername || "Unknown";
-                    // Use discordUsername for profile link (lowercase, no spaces), fallback to formatted nickname
-                    const captainUsername = team.captain?.discordUsername 
-                      ? team.captain.discordUsername.toLowerCase().replace(/\s+/g, "")
-                      : team.captain?.discordNickname 
-                        ? team.captain.discordNickname.toLowerCase().replace(/\s+/g, "")
-                        : null;
-                    const captainProfileUrl = captainUsername && playerStatsEnabled 
-                      ? `/player/stats?playerName=${encodeURIComponent(captainUsername)}` 
-                      : null;
+                  {/* Team rows - grouped by team size */}
+                  {(() => {
+                    // Group teams by team size
+                    const teamsBySize = currentTeams.reduce((acc, team) => {
+                      const teamSize = team.teamSize || 4;
+                      if (!acc[teamSize]) {
+                        acc[teamSize] = [];
+                      }
+                      acc[teamSize].push(team);
+                      return acc;
+                    }, {} as Record<number, typeof currentTeams>);
 
-                    return (
-                      <div
-                        key={team._id.toString()}
-                        className="relative px-4 py-4 transition-all sm:px-6 group hover:bg-gradient-to-r hover:from-primary/5 hover:to-transparent border-b border-border/50 last:border-b-0"
-                      >
+                    // Sort team sizes (2, 3, 4, 5)
+                    const sortedSizes = Object.keys(teamsBySize)
+                      .map(Number)
+                      .sort((a, b) => a - b);
+
+                    // Render teams grouped by size
+                    return sortedSizes.map((teamSize) => (
+                      <React.Fragment key={teamSize}>
+                        {/* Teams for this size */}
+                        {teamsBySize[teamSize].map((team, index) => {
+                          const winRateRank = getWinRateRank(team._id.toString());
+                          // Ensure wins and losses are numbers to prevent string concatenation
+                          const wins = Number(team.wins || 0);
+                          const losses = Number(team.losses || 0);
+                          const totalGames = wins + losses;
+                          const memberCount = team.members?.length || 0;
+                          const captainName = team.captain?.discordNickname || team.captain?.discordUsername || "Unknown";
+                          // Use discordUsername for profile link (lowercase, no spaces), fallback to formatted nickname
+                          const captainUsername = team.captain?.discordUsername 
+                            ? team.captain.discordUsername.toLowerCase().replace(/\s+/g, "")
+                            : team.captain?.discordNickname 
+                              ? team.captain.discordNickname.toLowerCase().replace(/\s+/g, "")
+                              : null;
+                          const captainProfileUrl = captainUsername && playerStatsEnabled 
+                            ? `/player/stats?playerName=${encodeURIComponent(captainUsername)}` 
+                            : null;
+
+                          return (
+                            <div
+                              key={team._id.toString()}
+                              className="relative px-4 py-4 transition-all sm:px-6 group hover:bg-gradient-to-r hover:from-primary/5 hover:to-transparent border-b border-border/50 last:border-b-0"
+                            >
                         <div className="absolute inset-y-0 left-0 w-1 bg-primary/0 group-hover:bg-primary/30 transition-colors" />
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                           {/* Rank and Team Info */}
                           <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0 max-w-[300px] shrink-0">
                             <div className="flex items-center justify-center w-10 lg:w-12 shrink-0">
-                              {eloRank !== null && eloRank <= 3 ? (
+                              {winRateRank !== null && winRateRank <= 3 ? (
                                 <div className="relative">
                                   <div className={`relative flex items-center justify-center p-1.5 lg:p-2 rounded-full ${
-                                    eloRank === 1 
+                                    winRateRank === 1 
                                       ? "bg-gradient-to-br from-yellow-500/20 via-yellow-400/10 to-yellow-500/20 border-2 border-yellow-400/50 shadow-lg shadow-yellow-400/30 ring-2 ring-yellow-400/20" 
-                                      : eloRank === 2
+                                      : winRateRank === 2
                                       ? "bg-gradient-to-br from-gray-300/20 via-gray-200/10 to-gray-300/20 border-2 border-gray-300/50 shadow-lg shadow-gray-300/30 ring-2 ring-gray-300/20"
                                       : "bg-gradient-to-br from-amber-600/20 via-amber-500/10 to-amber-600/20 border-2 border-amber-600/50 shadow-lg shadow-amber-600/30 ring-2 ring-amber-600/20"
                                   }`}>
                                     <Medal
                                       className={`w-6 h-6 lg:w-7 lg:h-7 ${getMedalColor(
-                                        eloRank - 1
+                                        winRateRank - 1
                                       )} drop-shadow-lg`}
                                     />
-                                    {eloRank === 1 && (
+                                    {winRateRank === 1 && (
                                       <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-400 drop-shadow-md z-10" />
                                     )}
                                   </div>
                                 </div>
                               ) : (
                                 <span className="text-lg lg:text-xl font-bold text-muted-foreground">
-                                  #{eloRank || "?"}
+                                  #{winRateRank || "?"}
                                 </span>
                               )}
                             </div>
@@ -489,7 +544,7 @@ export default function RankingsPage() {
                               <div className="flex items-center gap-2 mb-1">
                                 <Link
                                   href={`/tournaments/teams/${team._id}`}
-                                  className="font-bold text-base lg:text-lg hover:text-primary transition-colors hover:underline break-words"
+                                  className="font-bold text-base lg:text-lg hover:text-primary transition-colors hover:underline whitespace-nowrap"
                                 >
                                   {team.name}
                                 </Link>
@@ -589,14 +644,17 @@ export default function RankingsPage() {
                                  </span>
                                </div>
                                <span className="text-base lg:text-lg font-bold text-blue-600 dark:text-blue-400 text-right w-full lg:text-right">
-                                 {memberCount}/4
+                                 {memberCount}/{team.teamSize || 4}
                                </span>
                              </div>
                            </div>
                         </div>
                       </div>
-                    );
-                  })}
+                          );
+                        })}
+                      </React.Fragment>
+                    ));
+                  })()}
                 </div>
               )}
 

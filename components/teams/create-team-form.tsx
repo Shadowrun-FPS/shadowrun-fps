@@ -18,6 +18,13 @@ import { z } from "zod";
 import { Plus, Shield, Users, Trophy, Loader2, X } from "lucide-react";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CreateTeamFormProps {
   onSuccess?: () => void;
@@ -34,6 +41,7 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
     name: "",
     description: "",
     tag: "",
+    teamSize: 4,
   });
   const [validationErrors, setValidationErrors] = useState({
     name: false,
@@ -99,6 +107,7 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
           name: formData.name,
           description: formData.description,
           tag: formData.tag,
+          teamSize: formData.teamSize,
           captain: session.user.id,
           captainProfilePicture: session.user.image,
         }),
@@ -116,7 +125,7 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
         duration: 2000,
       });
       setIsOpen(false);
-      setFormData({ name: "", description: "", tag: "" });
+      setFormData({ name: "", description: "", tag: "", teamSize: 4 });
       setValidationErrors({ name: false, tag: false, description: false });
 
       // Call onClose if provided (for Sheet context)
@@ -198,6 +207,32 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teamSize" className="text-sm font-semibold flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                Team Size
+              </Label>
+              <Select
+                value={formData.teamSize.toString()}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, teamSize: parseInt(value) })
+                }
+              >
+                <SelectTrigger className="h-11 border-2 focus:border-primary/50 transition-colors">
+                  <SelectValue placeholder="Select team size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">Duos (2 players)</SelectItem>
+                  <SelectItem value="3">Trios (3 players)</SelectItem>
+                  <SelectItem value="4">Squads (4 players)</SelectItem>
+                  <SelectItem value="5">Full Team (5 players)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                You can only have one team per team size
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -362,6 +397,32 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                   </p>
                 )}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="teamSize" className="text-sm font-semibold flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                Team Size
+              </Label>
+              <Select
+                value={formData.teamSize.toString()}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, teamSize: parseInt(value) })
+                }
+              >
+                <SelectTrigger className="h-11 border-2 focus:border-primary/50 transition-colors">
+                  <SelectValue placeholder="Select team size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2">Duos (2 players)</SelectItem>
+                  <SelectItem value="3">Trios (3 players)</SelectItem>
+                  <SelectItem value="4">Squads (4 players)</SelectItem>
+                  <SelectItem value="5">Full Team (5 players)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                You can only have one team per team size
+              </p>
             </div>
 
             <div className="space-y-2">

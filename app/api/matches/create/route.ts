@@ -39,6 +39,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate team sizes
+    const team1Size = data.team1.length;
+    const team2Size = data.team2.length;
+    const specifiedTeamSize = data.teamSize;
+    
+    // If teamSize is specified, validate it matches both teams
+    if (specifiedTeamSize) {
+      if (team1Size !== specifiedTeamSize || team2Size !== specifiedTeamSize) {
+        return NextResponse.json(
+          { 
+            error: `Team size mismatch. Specified team size is ${specifiedTeamSize}, but team1 has ${team1Size} players and team2 has ${team2Size} players.` 
+          },
+          { status: 400 }
+        );
+      }
+    } else {
+      // If not specified, ensure both teams have the same number of players
+      if (team1Size !== team2Size) {
+        return NextResponse.json(
+          { 
+            error: `Team size mismatch. Team1 has ${team1Size} players but team2 has ${team2Size} players.` 
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Validate team size is between 2 and 5
+    const finalTeamSize = specifiedTeamSize || team1Size;
+    if (finalTeamSize < 2 || finalTeamSize > 5) {
+      return NextResponse.json(
+        { error: "Team size must be between 2 and 5 players" },
+        { status: 400 }
+      );
+    }
+
     // Connect to MongoDB
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -50,7 +86,7 @@ export async function POST(req: NextRequest) {
     const match = {
       matchId,
       status: "in_progress",
-      teamSize: data.teamSize || data.team1.length,
+      teamSize: finalTeamSize,
       eloTier: data.eloTier || "Open",
       type: data.type || "Custom",
       firstPick: data.firstPick || Math.floor(Math.random() * 2) + 1,

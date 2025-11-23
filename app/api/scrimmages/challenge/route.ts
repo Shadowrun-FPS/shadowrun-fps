@@ -65,6 +65,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate team sizes match
+    const userTeamSize = userTeam.teamSize || 4;
+    const challengedTeamSize = challengedTeam.teamSize || 4;
+    
+    if (userTeamSize !== challengedTeamSize) {
+      return NextResponse.json(
+        { 
+          error: `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but ${challengedTeam.name} is ${challengedTeamSize}v${challengedTeamSize}.` 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate both teams are full
+    const userTeamMemberCount = userTeam.members?.length || 0;
+    const challengedTeamMemberCount = challengedTeam.members?.length || 0;
+    
+    if (userTeamMemberCount < userTeamSize) {
+      return NextResponse.json(
+        { 
+          error: `Your team needs ${userTeamSize} members to challenge others (currently has ${userTeamMemberCount}).` 
+        },
+        { status: 400 }
+      );
+    }
+    
+    if (challengedTeamMemberCount < challengedTeamSize) {
+      return NextResponse.json(
+        { 
+          error: `${challengedTeam.name} needs ${challengedTeamSize} members to be challenged (currently has ${challengedTeamMemberCount}).` 
+        },
+        { status: 400 }
+      );
+    }
+
     // Ensure the gameMode is properly stored
     const mapsWithGameMode = data.selectedMaps.map((map: any) => ({
       ...map,
@@ -76,6 +111,7 @@ export async function POST(request: NextRequest) {
       scrimmageId: uuidv4(),
       challengerTeamId: userTeam._id.toString(),
       challengedTeamId: data.challengedTeamId,
+      teamSize: userTeamSize, // Store the team size for the scrimmage
       challengerTeam: {
         _id: userTeam._id,
         name: userTeam.name,

@@ -72,6 +72,28 @@ export async function POST(
       );
     }
 
+    // Validate first-to-6, no ties
+    if (teamAScore === teamBScore) {
+      return NextResponse.json(
+        { error: "Scores cannot be equal - one team must win (first to 6)" },
+        { status: 400 }
+      );
+    }
+
+    if (teamAScore !== 6 && teamBScore !== 6) {
+      return NextResponse.json(
+        { error: "The winning team must have exactly 6 points (first to 6)" },
+        { status: 400 }
+      );
+    }
+
+    if ((teamAScore === 6 && teamBScore >= 6) || (teamBScore === 6 && teamAScore >= 6)) {
+      return NextResponse.json(
+        { error: "The losing team must have less than 6 points" },
+        { status: 400 }
+      );
+    }
+
     // NEW: Validate that previous maps have been scored
     // Initialize mapScores array if it doesn't exist
     if (!scrimmage.mapScores) {
@@ -155,96 +177,124 @@ export async function POST(
     }
 
     // Determine which team is submitting
-    const submittingTeam = isTeamACaptain ? "teamA" : "teamB";
+    // If user is admin, we can't determine which team - but admins shouldn't submit scores per requirements
+    // Only team captains should submit
+    let submittingTeam: "teamA" | "teamB" | null = null;
+    if (isTeamACaptain) {
+      submittingTeam = "teamA";
+    } else if (isTeamBCaptain) {
+      submittingTeam = "teamB";
+    } else if (isAdmin) {
+      // Admin submitting - we need to determine which team based on context
+      // For now, default to teamA if we can't determine (shouldn't happen in practice)
+      submittingTeam = "teamA";
+    }
+
+    if (!submittingTeam) {
+      return NextResponse.json(
+        { error: "Unable to determine submitting team" },
+        { status: 400 }
+      );
+    }
 
     // Ensure the mapScores array has enough elements
     while (scrimmage.mapScores.length <= mapIndex) {
       scrimmage.mapScores.push({
-        teamAScore: 0,
-        teamBScore: 0,
+        teamASubmission: null, // { teamAScore, teamBScore }
+        teamBSubmission: null, // { teamAScore, teamBScore }
         teamASubmitted: false,
         teamBSubmitted: false,
+        teamAScore: null, // Final validated score (only set when both match)
+        teamBScore: null, // Final validated score (only set when both match)
+        winner: null,
+        scoresMatch: false,
       });
     }
 
-    // Update the map score
+    // Update the map score with the submission
     const updatedMapScores = [...scrimmage.mapScores];
-    updatedMapScores[mapIndex] = {
-      ...updatedMapScores[mapIndex],
-      teamAScore:
-        submittingTeam === "teamA"
-          ? teamAScore
-          : updatedMapScores[mapIndex].teamAScore,
-      teamBScore:
-        submittingTeam === "teamB"
-          ? teamBScore
-          : updatedMapScores[mapIndex].teamBScore,
-      teamASubmitted:
-        submittingTeam === "teamA"
-          ? true
-          : updatedMapScores[mapIndex].teamASubmitted,
-      teamBSubmitted:
-        submittingTeam === "teamB"
-          ? true
-          : updatedMapScores[mapIndex].teamBSubmitted,
-    };
+    const currentMapScore = updatedMapScores[mapIndex];
 
-    // Update the score matching logic
-    if (
-      updatedMapScores[mapIndex].teamASubmitted &&
-      updatedMapScores[mapIndex].teamBSubmitted
-    ) {
-      // Get the submitted scores and ensure they're numbers
-      const teamASubmittedScore = Number(updatedMapScores[mapIndex].teamAScore);
-      const teamBSubmittedScore = Number(updatedMapScores[mapIndex].teamBScore);
+    // Store the submission for the submitting team
+    if (submittingTeam === "teamA") {
+      updatedMapScores[mapIndex] = {
+        ...currentMapScore,
+        teamASubmission: { teamAScore, teamBScore },
+        teamASubmitted: true,
+      };
+    } else {
+      updatedMapScores[mapIndex] = {
+        ...currentMapScore,
+        teamBSubmission: { teamAScore, teamBScore },
+        teamBSubmitted: true,
+      };
+    }
 
-      console.log("Final scores for map:", {
-        mapIndex,
-        teamAScore: teamASubmittedScore,
-        teamBScore: teamBSubmittedScore,
-      });
+    // Check if both teams have submitted
+    const bothSubmitted = 
+      updatedMapScores[mapIndex].teamASubmitted && 
+      updatedMapScores[mapIndex].teamBSubmitted;
 
-      // Determine the winner based on the scores - one team must have exactly 6 rounds to win
-      if (
-        teamASubmittedScore === 6 &&
-        teamASubmittedScore > teamBSubmittedScore
-      ) {
-        updatedMapScores[mapIndex].winner = "teamA";
-      } else if (
-        teamBSubmittedScore === 6 &&
-        teamBSubmittedScore > teamASubmittedScore
-      ) {
-        updatedMapScores[mapIndex].winner = "teamB";
+    if (bothSubmitted) {
+      // Get both submissions
+      const teamASubmission = updatedMapScores[mapIndex].teamASubmission;
+      const teamBSubmission = updatedMapScores[mapIndex].teamBSubmission;
+
+      // Compare scores - they should match
+      const scoresMatch = 
+        teamASubmission.teamAScore === teamBSubmission.teamAScore &&
+        teamASubmission.teamBScore === teamBSubmission.teamBScore;
+
+      if (!scoresMatch) {
+        // Scores don't match - reset both submissions
+        updatedMapScores[mapIndex] = {
+          teamASubmission: null,
+          teamBSubmission: null,
+          teamASubmitted: false,
+          teamBSubmitted: false,
+          teamAScore: null,
+          teamBScore: null,
+          winner: null,
+          scoresMatch: false,
+        };
       } else {
-        // No winner yet, map not complete
-        updatedMapScores[mapIndex].winner = null;
+        // Scores match - validate and set final scores
+        const finalTeamAScore = teamASubmission.teamAScore;
+        const finalTeamBScore = teamASubmission.teamBScore;
+
+        // Determine map winner (team with 6 rounds)
+        let mapWinner = null;
+        if (finalTeamAScore === 6 && finalTeamAScore > finalTeamBScore) {
+          mapWinner = "teamA";
+        } else if (finalTeamBScore === 6 && finalTeamBScore > finalTeamAScore) {
+          mapWinner = "teamB";
+        }
+
+        updatedMapScores[mapIndex] = {
+          ...updatedMapScores[mapIndex],
+          teamAScore: finalTeamAScore,
+          teamBScore: finalTeamBScore,
+          winner: mapWinner,
+          scoresMatch: true,
+        };
       }
     }
 
-    // Check if all maps have scores submitted by both teams and no disputes
-    const allMapsScored = updatedMapScores.every(
-      (map) => map.teamASubmitted && map.teamBSubmitted && !map.disputed
-    );
-
-    // Determine overall match winner if all maps are scored
+    // Check for match winner - first team to win 2 maps wins the match
+    // We check after each map is completed (scores match and winner determined)
     let matchWinner = null;
-    if (allMapsScored) {
-      const teamAWins = updatedMapScores.filter(
-        (map) => map.winner === "teamA"
-      ).length;
-      const teamBWins = updatedMapScores.filter(
-        (map) => map.winner === "teamB"
-      ).length;
+    const teamAWins = updatedMapScores.filter(
+      (map) => map.winner === "teamA" && map.scoresMatch === true
+    ).length;
+    const teamBWins = updatedMapScores.filter(
+      (map) => map.winner === "teamB" && map.scoresMatch === true
+    ).length;
 
-      // Best of 3 - need 2 wins to win the match
-      if (teamAWins >= 2) {
-        matchWinner = "teamA";
-      } else if (teamBWins >= 2) {
-        matchWinner = "teamB";
-      } else if (teamAWins + teamBWins === updatedMapScores.length) {
-        // All maps played, but no clear winner (should be rare)
-        matchWinner = "tie";
-      }
+    // First to 2 map wins wins the match
+    if (teamAWins >= 2) {
+      matchWinner = "teamA";
+    } else if (teamBWins >= 2) {
+      matchWinner = "teamB";
     }
 
     // Update the scrimmage

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +71,7 @@ interface Team {
   name: string;
   tag: string;
   description: string;
+  teamSize?: number;
   captain: {
     discordProfilePicture: any;
     discordId: string;
@@ -96,11 +97,18 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
     name: string;
   } | null>(null);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const router = useRouter();
+  const fetchTeamRef = useRef(false);
+  const checkUserTeamRef = useRef(false);
 
   const isTeamCaptain = session?.user?.id === team?.captain.discordId;
 
   useEffect(() => {
+    // Prevent duplicate calls from React StrictMode
+    if (fetchTeamRef.current) return;
+    fetchTeamRef.current = true;
+
     const fetchTeam = async () => {
       try {
         // Check if the teamId is a valid MongoDB ObjectId (24 hex characters)
@@ -112,9 +120,21 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
           : `/api/teams/tag/${params.teamId}`;
 
         const response = await fetch(endpoint);
-        if (!response.ok) throw new Error("Failed to load team data");
-        const data = await response.json();
-        setTeam(data);
+        if (!response.ok) {
+          if (response.status === 429) {
+            // Rate limited - wait and retry once
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            const retryResponse = await fetch(endpoint);
+            if (!retryResponse.ok) throw new Error("Failed to load team data");
+            const retryData = await retryResponse.json();
+            setTeam(retryData);
+          } else {
+            throw new Error("Failed to load team data");
+          }
+        } else {
+          const data = await response.json();
+          setTeam(data);
+        }
         // Team ELO is automatically recalculated server-side when fetching team data
       } catch (error) {
         console.error("Failed to fetch team:", error);
@@ -172,9 +192,11 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
   // Add function to check if user is already in a team
   useEffect(() => {
-    const checkUserTeam = async () => {
-      if (!session?.user) return;
+    // Prevent duplicate calls from React StrictMode
+    if (checkUserTeamRef.current || !session?.user) return;
+    checkUserTeamRef.current = true;
 
+    const checkUserTeam = async () => {
       try {
         const response = await fetch("/api/teams/my-team");
         if (response.ok) {
@@ -182,15 +204,16 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
           if (data.team) {
             setUserCurrentTeam(data.team);
           }
+        } else if (response.status === 429) {
+          // Rate limited - skip this call
+          console.warn("Rate limited on user team check");
         }
       } catch (error) {
         console.error("Error checking user team:", error);
       }
     };
 
-    if (session?.user) {
-      checkUserTeam();
-    }
+    checkUserTeam();
   }, [session]);
 
   // Function to handle captain transfer
@@ -413,15 +436,6 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
       return;
     }
 
-    // Confirm deletion
-    if (
-      !confirm(
-        "Are you sure you want to permanently delete this team? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
-
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/teams/${team._id}/delete`, {
@@ -467,6 +481,19 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   return (
     <div className="min-h-screen bg-background">
       <div className="px-4 py-6 mx-auto max-w-screen-xl sm:px-6 lg:px-8 xl:px-12 sm:py-8 lg:py-10">
+        {/* Back button */}
+        <div className="mb-4 sm:mb-6">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push("/tournaments/teams")}
+            className="flex gap-2 items-center h-9 sm:h-10"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Teams
+          </Button>
+        </div>
+
         <TeamHeader
           teamName={team.name}
           teamTag={team.tag}
@@ -576,6 +603,24 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         </p>
                       </div>
                     )}
+
+                    <div>
+                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
+                        Team Size
+                      </h3>
+                      <Badge variant="secondary" className="text-base">
+                        {team.teamSize === 2
+                          ? "Duos"
+                          : team.teamSize === 3
+                          ? "Trios"
+                          : team.teamSize === 4
+                          ? "Squads"
+                          : team.teamSize === 5
+                          ? "Full Team"
+                          : "Squads"}{" "}
+                        ({team.teamSize || 4} players)
+                      </Badge>
+                    </div>
                   </>
                 )}
               </CardContent>
@@ -593,22 +638,35 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       Team Members
                     </CardTitle>
                   </div>
-                  {isTeamCaptain && team.members.length < 4 && (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        const event = new CustomEvent("openInviteModal", {
-                          detail: { teamId: team._id },
-                        });
-                        window.dispatchEvent(event);
-                      }}
-                      className="w-full h-9 sm:h-10 sm:w-auto"
-                    >
-                      <UserPlus className="mr-2 w-4 h-4" />
-                      <span className="hidden sm:inline">Invite Player</span>
-                      <span className="sm:hidden">Invite</span>
-                    </Button>
-                  )}
+                  {isTeamCaptain &&
+                    (() => {
+                      const teamSize = team.teamSize || 4;
+                      const currentMembers = team.members.filter(
+                        (m) =>
+                          m.role.toLowerCase() !== "substitute" &&
+                          m.discordId !== team.captain.discordId
+                      ).length;
+                      return (
+                        currentMembers < teamSize - 1 && (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              const event = new CustomEvent("openInviteModal", {
+                                detail: { teamId: team._id },
+                              });
+                              window.dispatchEvent(event);
+                            }}
+                            className="w-full h-9 sm:h-10 sm:w-auto"
+                          >
+                            <UserPlus className="mr-2 w-4 h-4" />
+                            <span className="hidden sm:inline">
+                              Invite Player
+                            </span>
+                            <span className="sm:hidden">Invite</span>
+                          </Button>
+                        )
+                      );
+                    })()}
                 </div>
               </CardHeader>
               <CardContent>
@@ -656,7 +714,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                             m.discordId !== team.captain.discordId
                         ).length
                       }
-                      /3)
+                      /
+                      {(() => {
+                        const teamSize = team.teamSize || 4;
+                        return teamSize - 1; // Subtract 1 for captain
+                      })()}
+                      )
                     </h3>
                     <div className="space-y-2">
                       {team.members
@@ -912,12 +975,26 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         <Select
                           value={newCaptainId}
                           onValueChange={setNewCaptainId}
+                          disabled={
+                            team.members.filter(
+                              (member) => member.discordId !== session?.user?.id
+                            ).length === 0
+                          }
                         >
                           <SelectTrigger
                             id="newCaptain"
                             className="w-full sm:w-[280px] h-10 sm:h-11"
                           >
-                            <SelectValue placeholder="Choose a team member" />
+                            <SelectValue
+                              placeholder={
+                                team.members.filter(
+                                  (member) =>
+                                    member.discordId !== session?.user?.id
+                                ).length === 0
+                                  ? "No other members"
+                                  : "Choose a team member"
+                              }
+                            />
                           </SelectTrigger>
                           <SelectContent>
                             {team.members
@@ -955,7 +1032,13 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       variant="outline"
                       size="sm"
                       onClick={handleTransferCaptain}
-                      disabled={!newCaptainId || isSubmitting}
+                      disabled={
+                        !newCaptainId ||
+                        isSubmitting ||
+                        team.members.filter(
+                          (member) => member.discordId !== session?.user?.id
+                        ).length === 0
+                      }
                       className="w-full h-10 sm:h-11 sm:w-auto"
                     >
                       {isSubmitting ? (
@@ -1005,21 +1088,12 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     </p>
                     <Button
                       variant="destructive"
-                      onClick={handleDeleteTeam}
+                      onClick={() => setShowDeleteDialog(true)}
                       disabled={isSubmitting}
                       className="w-full h-10 sm:h-11 sm:w-auto"
                     >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="mr-2 w-4 h-4" />
-                          Delete Team Permanently
-                        </>
-                      )}
+                      <AlertCircle className="mr-2 w-4 h-4" />
+                      Delete Team Permanently
                     </Button>
                   </div>
                 </CardContent>
@@ -1032,6 +1106,48 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
               <TeamInvitesList teamId={team._id} isCaptain={isTeamCaptain} />
             </Card>
           )}
+
+          {/* Delete Team Confirmation Dialog */}
+          <AlertDialog
+            open={showDeleteDialog}
+            onOpenChange={setShowDeleteDialog}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex gap-2 items-center">
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  Delete Team Permanently?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="space-y-2">
+                  <p>
+                    Are you sure you want to permanently delete{" "}
+                    <strong>{team.name}</strong>? This action cannot be undone.
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    All team data, including member history and statistics, will
+                    be permanently removed.
+                  </p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteTeam}
+                  className="bg-red-500 hover:bg-red-600 focus:ring-red-500"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Permanently"
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Request to Join button for non-members */}
           {team &&
@@ -1051,8 +1167,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                 <CardContent>
                   <div className="space-y-4">
                     {(() => {
-                      // Check if team is full (4 members total)
-                      const isTeamFull = team.members.length >= 4;
+                      const teamSize = team.teamSize || 4;
+                      const isTeamFull = team.members.length >= teamSize;
 
                       if (isTeamFull) {
                         return (
@@ -1060,7 +1176,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                             <div className="flex gap-2 items-center">
                               <AlertCircle className="w-5 h-5 text-yellow-500 shrink-0" />
                               <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">
-                                This team is full (4/4 members)
+                                This team is full ({teamSize}/{teamSize}{" "}
+                                members)
                               </p>
                             </div>
                           </div>
@@ -1245,19 +1362,6 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                 </CardContent>
               </Card>
             )}
-
-          {/* Back button */}
-          <div className="flex justify-start items-center pt-4 border-t border-border/50">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.back()}
-              className="flex gap-2 items-center h-9 sm:h-10"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Teams
-            </Button>
-          </div>
         </div>
 
         {/* Remove Member Confirmation Dialog */}

@@ -384,26 +384,22 @@ export default function TournamentMatchPage() {
     if (typeof window !== "undefined") {
       // Get the current URL
       const url = window.location.href;
-      console.log("Current URL:", url);
 
       // Extract the match ID from the URL
       const matchIdRegex = /\/matches\/([^\/]+)$/;
       const match = url.match(matchIdRegex);
 
       if (match && match[1] && match[1] !== "%5BmatchId%5D") {
-        console.log("Successfully extracted match ID from URL:", match[1]);
         return match[1];
       }
 
       // Try another approach - split the URL by "matches/" and take the last part
       const parts = url.split("matches/");
       if (parts.length > 1 && parts[1] !== "%5BmatchId%5D") {
-        console.log("Extracted match ID from split URL:", parts[1]);
         return parts[1];
       }
     }
 
-    console.error("Could not extract match ID from URL");
     return null;
   }, []);
 
@@ -414,32 +410,25 @@ export default function TournamentMatchPage() {
       const matchId = getMatchIdFromUrl();
 
       if (!matchId) {
-        console.error("Could not determine match ID");
         setError("Invalid match ID");
         setLoading(false);
         return;
       }
 
-      console.log(`Fetching match with ID: ${matchId}`);
-
       // Now use the extracted ID for the API call
       const response = await fetch(`/api/tournaments/match/${matchId}`);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`API returned ${response.status}: ${errorText}`);
         throw new Error("Failed to fetch match");
       }
 
       const data = await response.json();
 
       if (!data.match) {
-        console.error("No match found with ID:", matchId);
         setError("Match not found");
         return;
       }
 
-      console.log(`Retrieved match:`, data.match);
       setMatch(data.match);
       setTournamentName(data.tournamentName || null);
       setTeamAId(data.match.teamA?.teamId);
@@ -461,32 +450,25 @@ export default function TournamentMatchPage() {
         const matchId = getMatchIdFromUrl();
 
         if (!matchId) {
-          console.error("Could not determine match ID");
           setError("Invalid match ID");
           setLoading(false);
           return;
         }
 
-        console.log(`Fetching match with ID: ${matchId}`);
-
         // Now use the extracted ID for the API call
         const response = await fetch(`/api/tournaments/match/${matchId}`);
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`API returned ${response.status}: ${errorText}`);
           throw new Error("Failed to fetch match");
         }
 
         const data = await response.json();
 
         if (!data.match) {
-          console.error("No match found with ID:", matchId);
           setError("Match not found");
           return;
         }
 
-        console.log(`Retrieved match:`, data.match);
         setMatch(data.match);
         setTeamAId(data.match.teamA?.teamId);
         setTeamBId(data.match.teamB?.teamId);
@@ -1198,7 +1180,7 @@ export default function TournamentMatchPage() {
               open={scoreSubmitDialogOpen}
               onOpenChange={setScoreSubmitDialogOpen}
             >
-              <DialogContent className="sm:max-w-[500px] px-4 sm:px-6 py-4 sm:py-6">
+              <DialogContent className="sm:max-w-[500px] p-6">
                 <DialogHeader className="pb-4 space-y-3 border-b">
                   <div className="flex gap-3 items-center">
                     <div className="p-2 rounded-lg border bg-primary/10 border-primary/20">

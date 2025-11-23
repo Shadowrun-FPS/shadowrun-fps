@@ -1,7 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { Bell, Check, X, Users, Trash2, Loader2 } from "lucide-react";
+import { 
+  Bell, 
+  Check, 
+  X, 
+  Users, 
+  Trash2, 
+  Loader2, 
+  Shield, 
+  UserPlus, 
+  UserMinus,
+  Crown,
+  Mail,
+  AlertCircle
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { TeamJoinRequest } from "./team-join-request";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
@@ -24,8 +38,60 @@ export function NotificationItem({
   const [actionResult, setActionResult] = useState<
     "accepted" | "rejected" | null
   >(null);
+  const [teamSize, setTeamSize] = useState<number | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+
+  // Fetch team size for team invite notifications
+  useEffect(() => {
+    if (notification.type === "team_invite" && notification.metadata?.teamId) {
+      fetch(`/api/teams/${notification.metadata.teamId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.teamSize) {
+            setTeamSize(data.teamSize);
+          }
+        })
+        .catch(() => {
+          // Silently fail - team size is optional
+        });
+    }
+  }, [notification.type, notification.metadata?.teamId]);
+
+  const getNotificationIcon = () => {
+    switch (notification.type) {
+      case "team_invite":
+        return <Users className="h-4 w-4" />;
+      case "team_join_request":
+        return <UserPlus className="h-4 w-4" />;
+      case "team_captain_transfer":
+      case "team_captain":
+        return <Crown className="h-4 w-4" />;
+      case "team_member_joined":
+        return <UserPlus className="h-4 w-4" />;
+      case "team_member_left":
+        return <UserMinus className="h-4 w-4" />;
+      case "moderation":
+        return <Shield className="h-4 w-4" />;
+      default:
+        return <Bell className="h-4 w-4" />;
+    }
+  };
+
+  const getTeamSizeLabel = (size: number) => {
+    switch (size) {
+      case 2:
+        return "Duos";
+      case 3:
+        return "Trios";
+      case 4:
+        return "Squads";
+      case 5:
+        return "Full Team";
+      default:
+        return `${size}-person`;
+    }
+  };
 
   const timeAgo = formatDistanceToNow(new Date(notification.createdAt), {
     addSuffix: true,
@@ -87,9 +153,11 @@ export function NotificationItem({
       });
 
       if (action === "accept") {
-        // Redirect to team page
+        // Redirect to team page using tag (slug) if available, otherwise use teamId
+        // Prefer teamTag from response, then from notification metadata, then fallback to teamId
+        const teamIdentifier = data.teamTag || notification.metadata?.teamTag || notification.metadata?.teamId;
         setTimeout(() => {
-          router.push(`/tournaments/teams/${notification.metadata.teamId}`);
+          router.push(`/tournaments/teams/${teamIdentifier}`);
           router.refresh();
         }, 1500);
       }
@@ -108,24 +176,31 @@ export function NotificationItem({
   };
 
   return (
-    <div className={`relative p-3 sm:p-4 ${notification.read ? "opacity-70" : ""} ${!notification.read ? "bg-accent/30 border-l-2 border-l-primary" : ""} transition-colors`}>
+    <div className={`relative p-3 ${notification.read ? "opacity-75" : ""} ${!notification.read ? "bg-gradient-to-r from-accent/40 via-accent/20 to-card border-l-4 border-l-primary" : "bg-card border-l-4 border-l-transparent"} transition-all duration-200 hover:bg-accent/30 hover:shadow-sm`}>
       {!notification.read && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r-full" />
       )}
-      <div className="flex items-start gap-2 sm:gap-3">
-        <div className={`rounded-full p-1.5 sm:p-2 flex-shrink-0 ${notification.read ? "bg-muted" : "bg-primary/10"}`}>
-          {notification.type === "team_invite" ? (
-            <Users className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${notification.read ? "text-muted-foreground" : "text-primary"}`} />
-          ) : (
-            <Bell className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${notification.read ? "text-muted-foreground" : "text-primary"}`} />
-          )}
+      <div className="flex items-start gap-2.5">
+        <div className={`rounded-full p-1.5 flex-shrink-0 transition-colors ${notification.read ? "bg-muted/50" : notification.type === "team_invite" ? "bg-blue-500/20 ring-2 ring-blue-500/20" : "bg-primary/10 ring-2 ring-primary/10"}`}>
+          <div className={notification.read ? "text-muted-foreground" : notification.type === "team_invite" ? "text-blue-500" : "text-primary"}>
+            {getNotificationIcon()}
+          </div>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 sm:gap-2">
-            <h4 className="text-sm sm:text-base font-semibold break-words">{notification.title}</h4>
-            <span className="text-xs text-muted-foreground flex-shrink-0">{timeAgo}</span>
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h4 className={`text-sm font-semibold break-words ${!notification.read ? "text-foreground" : "text-muted-foreground"}`}>
+                {notification.title}
+              </h4>
+              {notification.type === "team_invite" && teamSize && (
+                <Badge variant="outline" className="text-xs font-medium border-primary/30 bg-primary/5 px-1.5 py-0">
+                  {getTeamSizeLabel(teamSize)}
+                </Badge>
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground flex-shrink-0 font-medium">{timeAgo}</span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground break-words">
+          <p className="text-sm text-muted-foreground break-words leading-snug">
             {notification.message}
           </p>
 
@@ -137,13 +212,13 @@ export function NotificationItem({
           )}
 
           {notification.type === "team_invite" && !processed && (
-            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-3 sm:mt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-2 pt-2 border-t border-border/50">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleTeamInviteResponse("reject")}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0"
+                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors"
               >
                 {isSubmitting && actionResult === null ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -157,7 +232,7 @@ export function NotificationItem({
                 size="sm"
                 onClick={() => handleTeamInviteResponse("accept")}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0"
+                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0 bg-primary hover:bg-primary/90 shadow-sm hover:shadow transition-all"
               >
                 {isSubmitting && actionResult === null ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -170,20 +245,24 @@ export function NotificationItem({
           )}
 
           {notification.type === "team_invite" && processed && (
-            <div className="mt-4 mb-1">
-              <p className="text-sm w-full text-center">
+            <div className="mt-1.5">
+              <p className="text-sm w-full text-center py-1">
                 {actionResult === "accepted" ? (
-                  <span className="text-green-500 font-medium">
+                  <span className="text-green-600 dark:text-green-400 font-medium flex items-center justify-center gap-1.5">
+                    <Check className="h-3.5 w-3.5" />
                     Invite accepted. Joining team...
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">Invite declined</span>
+                  <span className="text-muted-foreground flex items-center justify-center gap-1.5">
+                    <X className="h-3.5 w-3.5" />
+                    Invite declined
+                  </span>
                 )}
               </p>
             </div>
           )}
 
-          <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row justify-end gap-2">
+          <div className="mt-1.5 flex flex-col sm:flex-row justify-end gap-1.5">
             {!notification.read &&
               onMarkAsRead &&
               notification.type !== "team_invite" && (
@@ -193,18 +272,18 @@ export function NotificationItem({
                   onClick={() => onMarkAsRead(notification._id)}
                   className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0"
                 >
-                  <Check className="mr-1 h-3 w-3" />
+                  <Check className="mr-1.5 h-3.5 w-3.5" />
                   Mark as read
                 </Button>
               )}
             {onDelete && (
               <Button
                 size="sm"
-                variant="outline"
-                className="w-full sm:w-auto border-destructive text-destructive hover:bg-destructive/10 touch-manipulation min-h-[44px] sm:min-h-0"
+                variant="ghost"
+                className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive touch-manipulation min-h-[44px] sm:min-h-0"
                 onClick={() => onDelete(notification._id)}
               >
-                <X className="mr-1 h-3 w-3" />
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Delete
               </Button>
             )}

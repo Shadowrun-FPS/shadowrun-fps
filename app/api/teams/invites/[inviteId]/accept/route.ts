@@ -36,30 +36,47 @@ export async function POST(
       );
     }
 
-    // Check if user is already in a team
-    const existingTeam = await db.collection("Teams").findOne(
+    // Get the team being joined to check its size
+    const teamBeingJoined = await db.collection("Teams").findOne({
+      _id: new ObjectId(invite.teamId),
+    });
+
+    if (!teamBeingJoined) {
+      return NextResponse.json(
+        { error: "Team not found" },
+        { status: 404 }
+      );
+    }
+
+    const teamSize = teamBeingJoined.teamSize || 4;
+
+    // Check if user is already in a team of the SAME size
+    const existingTeamOfSameSize = await db.collection("Teams").findOne(
       {
         "members.discordId": session.user.id,
+        teamSize: teamSize,
+        _id: { $ne: new ObjectId(invite.teamId) }, // Exclude the team being joined
       },
       {
         projection: {
           _id: 1,
           name: 1,
+          teamSize: 1,
         },
       }
     );
 
-    // If force parameter is not provided and user is in a team, return error with team info
+    // If force parameter is not provided and user is in a team of the same size, return error with team info
     const { force } = await req.json().catch(() => ({ force: false }));
 
-    if (existingTeam && !force) {
+    if (existingTeamOfSameSize && !force) {
       return NextResponse.json(
         {
-          error: "Already in a team",
-          message: `You are already a member of team "${existingTeam.name}". You must leave your current team before joining another.`,
+          error: "Already in a team of this size",
+          message: `You are already a member of a ${teamSize}-person team "${existingTeamOfSameSize.name}". You must leave your current team before joining another team of the same size.`,
           currentTeam: {
-            id: existingTeam._id.toString(),
-            name: existingTeam.name,
+            id: existingTeamOfSameSize._id.toString(),
+            name: existingTeamOfSameSize.name,
           },
           requiresConfirmation: true,
         },
@@ -67,8 +84,8 @@ export async function POST(
       );
     }
 
-    // If force is true and user is in a team, remove them from that team first
-    if (existingTeam && force) {
+    // If force is true and user is in a team of the same size, remove them from that team first
+    if (existingTeamOfSameSize && force) {
       const pullUpdate = {
         $pull: {
           members: {
@@ -80,14 +97,14 @@ export async function POST(
       await db
         .collection("Teams")
         .updateOne(
-          { _id: existingTeam._id },
+          { _id: existingTeamOfSameSize._id },
           pullUpdate as unknown as UpdateFilter<Document>
         );
 
       // Add notification to the team's captain
       const oldTeam = await db
         .collection("Teams")
-        .findOne({ _id: existingTeam._id });
+        .findOne({ _id: existingTeamOfSameSize._id });
 
       if (oldTeam && oldTeam.captain) {
         await db.collection("Notifications").insertOne({

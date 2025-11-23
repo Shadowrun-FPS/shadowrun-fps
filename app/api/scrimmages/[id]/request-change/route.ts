@@ -53,7 +53,7 @@ export async function POST(
 
     // Get request data
     const data = await request.json();
-    const { newDate, newTime, message } = data;
+    const { newDate, newTime, newMaps, message } = data;
 
     // Check if there's already a pending change request
     if (
@@ -191,6 +191,7 @@ export async function POST(
             requestedAt: new Date(),
             newDate: newDate || null,
             newTime: newTime || null,
+            newMaps: newMaps || null,
             message: message || "",
             status: "pending",
             notifiedOtherTeam: false,

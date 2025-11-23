@@ -36,8 +36,6 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
       }
     }
 
-    // For debugging
-    console.log("Team members:", memberIds);
 
     // Get players data from ShadowrunWeb
     const webPlayers = await webDb
@@ -80,17 +78,8 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
         const db2Player = db2Players.find((p) => p.discordId === playerId);
         if (db2Player && db2Player.rating !== undefined) {
           playerElo = db2Player.rating;
-          console.log(`Using DB2 rating for player ${playerId}: ${playerElo}`);
         }
       }
-
-      // Log for debugging
-      console.log(
-        `Player ${
-          webPlayers.find((p) => p.discordId === playerId)?.discordUsername ||
-          playerId
-        } (size ${configuredTeamSize}v${configuredTeamSize}): ${playerElo}`
-      );
 
       memberElos.push(playerElo);
     }
@@ -101,10 +90,6 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
 
     // Calculate total team ELO
     const totalElo = topElos.reduce((sum, elo) => sum + elo, 0);
-    console.log(
-      `Team size ${configuredTeamSize}v${configuredTeamSize} - Total ELO:`,
-      totalElo
-    );
 
     teamElos[`size${configuredTeamSize}`] = totalElo;
 
