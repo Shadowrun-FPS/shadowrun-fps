@@ -872,13 +872,9 @@ export default function QueuesPage() {
 
   // Effect to sync with URL hash on load and hash changes
   useEffect(() => {
-    console.log("URL search:", window.location.search);
-    console.log("URL hash:", window.location.hash);
-
     // First check for query parameter
     const params = new URLSearchParams(window.location.search);
     const teamSizeParam = params.get("teamSize");
-    console.log("Team size param:", teamSizeParam);
 
     if (teamSizeParam) {
       console.log(
@@ -891,9 +887,8 @@ export default function QueuesPage() {
 
     // Then check for hash
     const hashTab = window.location.hash.replace("#", "");
-    console.log("Hash tab:", hashTab);
+
     if (hashTab && ["1v1", "2v2", "4v4", "5v5"].includes(hashTab)) {
-      console.log("Setting active tab from hash to:", hashTab);
       setActiveTab(hashTab);
     }
   }, []);

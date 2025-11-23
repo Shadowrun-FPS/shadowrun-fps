@@ -51,12 +51,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TeamCard } from "@/components/teams/team-card";
 import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -203,10 +213,10 @@ export default function TeamsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
+  const [tournamentSearchQuery, setTournamentSearchQuery] = useState("");
   const [selectedTeamSize, setSelectedTeamSize] = useState<string>("4");
   const [view, setView] = useState<string>("grid");
   const [teamStatus, setTeamStatus] = useState<"all" | "full" | "open">("all");
-  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -599,34 +609,89 @@ export default function TeamsPage() {
                           </Badge>
                         )}
                       </label>
-                      <Select
-                        value={selectedTournament}
-                        onValueChange={setSelectedTournament}
-                      >
-                        <SelectTrigger className="h-11 border-2 focus:border-primary/50 transition-colors">
-                          <SelectValue placeholder="All Tournaments" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">
-                            All Tournaments
-                          </SelectItem>
-                          {Array.isArray(tournaments) &&
-                          tournaments.length > 0 ? (
-                            tournaments.map((tournament) => (
-                              <SelectItem
-                                key={tournament._id}
-                                value={tournament._id}
-                              >
-                                {tournament.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="none" disabled>
-                              No tournaments available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            className="h-11 w-full justify-between border-2 focus:border-primary/50 transition-colors"
+                          >
+                            <span className="truncate">
+                              {selectedTournament === "all"
+                                ? "All Tournaments"
+                                : tournaments.find(
+                                    (t) => t._id === selectedTournament
+                                  )?.name || "Select tournament..."}
+                            </span>
+                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[300px] p-0" align="start">
+                          <Command>
+                            <CommandInput
+                              placeholder="Search tournaments..."
+                              value={tournamentSearchQuery}
+                              onValueChange={setTournamentSearchQuery}
+                            />
+                            <CommandList className="max-h-[300px]">
+                              <CommandEmpty>No tournaments found.</CommandEmpty>
+                              <CommandGroup>
+                                <CommandItem
+                                  value="all"
+                                  onSelect={() => {
+                                    setSelectedTournament("all");
+                                    setTournamentSearchQuery("");
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      selectedTournament === "all"
+                                        ? "opacity-100"
+                                        : "opacity-0"
+                                    )}
+                                  />
+                                  All Tournaments
+                                </CommandItem>
+                                {Array.isArray(tournaments) &&
+                                tournaments.length > 0
+                                  ? tournaments
+                                      .filter((tournament) =>
+                                        tournament.name
+                                          .toLowerCase()
+                                          .includes(
+                                            tournamentSearchQuery.toLowerCase()
+                                          )
+                                      )
+                                      .map((tournament) => (
+                                        <CommandItem
+                                          key={tournament._id}
+                                          value={tournament._id}
+                                          onSelect={() => {
+                                            setSelectedTournament(
+                                              tournament._id
+                                            );
+                                            setTournamentSearchQuery("");
+                                          }}
+                                        >
+                                          <Check
+                                            className={cn(
+                                              "mr-2 h-4 w-4",
+                                              selectedTournament ===
+                                                tournament._id
+                                                ? "opacity-100"
+                                                : "opacity-0"
+                                            )}
+                                          />
+                                          {tournament.name}
+                                        </CommandItem>
+                                      ))
+                                  : null}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                     </div>
 
                     <div className="space-y-3">
@@ -992,27 +1057,8 @@ export default function TeamsPage() {
                             ? "No teams found for this tournament"
                             : "Create the first team to get started!"}
                         </p>
-                        {!searchQuery && selectedTournament === "all" && (
-                          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-                            <SheetTrigger asChild>
-                              <Button className="h-10 sm:h-11 px-4 sm:px-6">
-                                <Plus className="mr-2 w-4 h-4" />
-                                Create a Team
-                              </Button>
-                            </SheetTrigger>
-                            <SheetContent className="w-full sm:max-w-lg overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
-                              <CreateTeamForm
-                                isSheet={true}
-                                onSuccess={() => {
-                                  fetchTeams();
-                                  setSheetOpen(false);
-                                }}
-                                onClose={() => {
-                                  setSheetOpen(false);
-                                }}
-                              />
-                            </SheetContent>
-                          </Sheet>
+                        {!searchQuery && (
+                          <CreateTeamForm onSuccess={fetchTeams} />
                         )}
                       </div>
                     </CardContent>

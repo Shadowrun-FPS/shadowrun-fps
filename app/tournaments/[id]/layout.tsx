@@ -28,12 +28,12 @@ export async function generateMetadata(
     }
 
     // Create dynamic metadata based on tournament data
-    const title = `${tournament.name} | Shadowrun FPS Tournaments`;
+    const teamSize = tournament.teamSize || 4;
+    const teamSizeLabel = teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`;
+    const title = `${tournament.name} (${teamSizeLabel}) | Shadowrun FPS Tournaments`;
     let description =
       tournament.description ||
-      `${tournament.teamSize}v${
-        tournament.teamSize
-      } ${tournament.format.replace("_", " ")} tournament`;
+      `${teamSize}v${teamSize} ${tournament.format.replace("_", " ")} tournament`;
 
     // Add registration info if available
     if (tournament.registrationDeadline) {

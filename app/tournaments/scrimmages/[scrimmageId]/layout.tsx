@@ -43,19 +43,21 @@ export async function generateMetadata(
     if (scrimmage) {
       const teamA = scrimmage.challengerTeam?.name || "Team A";
       const teamB = scrimmage.challengedTeam?.name || "Team B";
+      const teamSize = scrimmage.teamSize || 4;
+      const teamSizeLabel = teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`;
 
-      // Create title with both team names
-      title = `${teamA} vs ${teamB} - Scrimmage Match`;
+      // Create title with both team names and team size
+      title = `${teamA} vs ${teamB} - ${teamSizeLabel} Scrimmage Match`;
 
       // Create a more detailed description
       const matchStatus =
         scrimmage.status.charAt(0).toUpperCase() + scrimmage.status.slice(1);
-      description = `${matchStatus} scrimmage match between ${teamA} and ${teamB}`;
+      description = `${matchStatus} ${teamSize}v${teamSize} scrimmage match between ${teamA} and ${teamB}`;
 
       // If match is completed and has a winner
       if (scrimmage.status === "completed" && scrimmage.winner) {
         const winnerTeam = scrimmage.winner === "teamA" ? teamA : teamB;
-        description = `${winnerTeam} won the scrimmage match between ${teamA} and ${teamB}`;
+        description = `${winnerTeam} won the ${teamSize}v${teamSize} scrimmage match between ${teamA} and ${teamB}`;
       }
     }
   } catch (error) {

@@ -89,6 +89,7 @@ interface Team {
   tag: string;
   teamElo?: number;
   createdAt?: string;
+  teamSize?: number;
   members?: {
     discordId: string;
     discordUsername: string;
@@ -385,27 +386,34 @@ export default function TournamentDetailsPage() {
   }, [params?.id]);
 
   useEffect(() => {
-    const fetchUserTeams = async () => {
+    const fetchTeams = async () => {
       if (!session?.user?.id) return;
 
       try {
-        const response = await fetch(`/api/users/teams`);
-        if (response.ok) {
-          const data = await response.json();
-          setUserTeams(data.teams || []);
-          if (data.teams?.length > 0) {
-            setSelectedTeamId(data.teams[0]._id);
+        // For admins/founders/developers, fetch all teams
+        // For regular users, fetch only their teams
+        if (isAdmin || isDeveloper) {
+          const response = await fetch(`/api/teams`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserTeams(data || []);
+          }
+        } else {
+          const response = await fetch(`/api/users/teams`);
+          if (response.ok) {
+            const data = await response.json();
+            setUserTeams(data.teams || []);
           }
         }
       } catch (error) {
-        console.error("Error fetching user teams:", error);
+        console.error("Error fetching teams:", error);
       }
     };
 
     if (session) {
-      fetchUserTeams();
+      fetchTeams();
     }
-  }, [session]);
+  }, [session, isAdmin, isDeveloper]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -563,8 +571,30 @@ export default function TournamentDetailsPage() {
     }
   };
 
+  // Filter eligible teams: must match tournament teamSize and be full
+  const eligibleTeams = useMemo(() => {
+    if (!tournament || !userTeams.length) return [];
+    
+    const tournamentTeamSize = tournament.teamSize || 4;
+    
+    return userTeams.filter((team) => {
+      // Team size must match tournament team size
+      const teamTeamSize = team.teamSize || 4;
+      if (teamTeamSize !== tournamentTeamSize) return false;
+      
+      // Team must be full (have exactly the required number of members)
+      const memberCount = team.members?.length || 0;
+      const captainInMembers = team.members?.some(
+        (m: any) => m.discordId === team.captain?.discordId
+      );
+      const totalMembers = captainInMembers ? memberCount : memberCount + 1;
+      
+      return totalMembers === tournamentTeamSize;
+    });
+  }, [userTeams, tournament]);
+
   const canRegister =
-    userTeams.length > 0 &&
+    eligibleTeams.length > 0 &&
     tournament?.status === "upcoming" &&
     tournament?.registeredTeams.length < (tournament?.maxTeams || 8);
 
@@ -1295,8 +1325,8 @@ export default function TournamentDetailsPage() {
                     disabled={
                       tournament.registeredTeams.length >=
                         (tournament.maxTeams || 8) ||
-                      userTeams.length === 0 ||
-                      userTeams.every((team) => isTeamRegistered(team._id))
+                      eligibleTeams.length === 0 ||
+                      eligibleTeams.every((team) => isTeamRegistered(team._id))
                     }
                     className="mt-4 sm:mt-0"
                   >
@@ -1405,34 +1435,58 @@ export default function TournamentDetailsPage() {
                           <div className="mb-4 flex-1">
                             {otherMembers.length > 0 ? (
                               <>
-                                <p className="text-xs text-muted-foreground mb-2 font-medium">
-                                  Members ({otherMembers.length})
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {otherMembers.map((member) => (
-                                    <TooltipProvider key={member.discordId}>
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className="cursor-default">
-                                            <MemberAvatar
-                                              profilePicture={
-                                                member.discordProfilePicture
-                                              }
-                                              username={member.discordUsername}
-                                              size={10}
-                                            />
-                                          </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>
-                                            {member.discordNickname ||
-                                              member.discordUsername}
-                                          </p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    </TooltipProvider>
-                                  ))}
-                                </div>
+                                {tournament.teamSize === 2 ? (
+                                  // For duos, show the other player with their nickname
+                                  <div className="flex items-center gap-2">
+                                    {otherMembers[0] && (
+                                      <>
+                                        <MemberAvatar
+                                          profilePicture={
+                                            otherMembers[0].discordProfilePicture
+                                          }
+                                          username={otherMembers[0].discordUsername}
+                                          size={10}
+                                        />
+                                        <span className="text-sm font-medium text-foreground">
+                                          {otherMembers[0].discordNickname ||
+                                            otherMembers[0].discordUsername}
+                                        </span>
+                                      </>
+                                    )}
+                                  </div>
+                                ) : (
+                                  // For other team sizes, show members list
+                                  <>
+                                    <p className="text-xs text-muted-foreground mb-2 font-medium">
+                                      Members ({otherMembers.length})
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {otherMembers.map((member) => (
+                                        <TooltipProvider key={member.discordId}>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className="cursor-default">
+                                                <MemberAvatar
+                                                  profilePicture={
+                                                    member.discordProfilePicture
+                                                  }
+                                                  username={member.discordUsername}
+                                                  size={10}
+                                                />
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p>
+                                                {member.discordNickname ||
+                                                  member.discordUsername}
+                                              </p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      ))}
+                                    </div>
+                                  </>
+                                )}
                               </>
                             ) : (
                               <div className="min-h-[2.5rem]" />
@@ -1686,7 +1740,7 @@ export default function TournamentDetailsPage() {
               </div>
             </DialogHeader>
 
-            {userTeams.length > 0 ? (
+            {eligibleTeams.length > 0 ? (
               <>
                 <div className="py-4 space-y-4">
                   <div className="space-y-2">
@@ -1701,7 +1755,7 @@ export default function TournamentDetailsPage() {
                         <SelectValue placeholder="Choose a team to register" />
                       </SelectTrigger>
                       <SelectContent>
-                        {userTeams.map((team) => (
+                        {eligibleTeams.map((team) => (
                           <SelectItem
                             key={team._id}
                             value={team._id}
@@ -1769,7 +1823,9 @@ export default function TournamentDetailsPage() {
                 <div className="p-4 rounded-lg bg-muted/50">
                   <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
                   <p className="text-muted-foreground mb-4">
-                    You don&apos;t have any teams that you captain.
+                    {tournament?.teamSize
+                      ? `You don't have any ${tournament.teamSize}v${tournament.teamSize} teams that are full and ready to register.`
+                      : "You don't have any eligible teams to register for this tournament."}
                   </p>
                   <Button asChild>
                     <Link href="/tournaments/teams/create">

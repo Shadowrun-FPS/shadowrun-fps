@@ -190,16 +190,16 @@ function TournamentsOverviewContent() {
     return true;
   });
 
-  // Group tournaments by status for tabs
-  const upcomingTournaments = filteredTournaments.filter(
-    (t) => t.status === "upcoming"
-  );
-  const activeTournaments = filteredTournaments.filter(
-    (t) => t.status === "active"
-  );
-  const completedTournaments = filteredTournaments.filter(
-    (t) => t.status === "completed"
-  );
+  // Group tournaments by status for tabs and sort by start date (soonest first)
+  const upcomingTournaments = filteredTournaments
+    .filter((t) => t.status === "upcoming")
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  const activeTournaments = filteredTournaments
+    .filter((t) => t.status === "active")
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+  const completedTournaments = filteredTournaments
+    .filter((t) => t.status === "completed")
+    .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
 
   // Update URL when tab changes
   const handleTabChange = (value: string) => {

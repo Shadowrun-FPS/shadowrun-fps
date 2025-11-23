@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 
 // POST endpoint to register a team for a tournament
 export async function POST(
@@ -68,15 +69,21 @@ export async function POST(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // Check if user is the team captain
-    if (
-      team.captain?.discordId !== session.user.id &&
-      !(await isAdmin(db, session.user.id))
-    ) {
+    // Check if user is authorized (captain, admin, founder, or developer)
+    const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+    const userRoles = session.user.roles || [];
+    const isAdminOrFounder = hasAdminRole(userRoles);
+    const isAuthorized = 
+      team.captain?.discordId === session.user.id ||
+      isDeveloper ||
+      isAdminOrFounder ||
+      (await isAdmin(db, session.user.id));
+
+    if (!isAuthorized) {
       return NextResponse.json(
         {
           error:
-            "You must be team captain or admin to register for tournaments",
+            "You must be team captain, admin, founder, or developer to register for tournaments",
         },
         { status: 403 }
       );
@@ -113,10 +120,21 @@ export async function POST(
       .find({ discordId: { $in: memberIds } })
       .toArray();
 
-    // Calculate team Elo based on tournament team size
-    const teamSize = tournament.teamSize || 5;
+    // Get tournament team size
+    const tournamentTeamSize = tournament.teamSize || 4;
 
-    // IMPROVED VALIDATION: Check if team has enough members for the tournament
+    // Validate that team's teamSize matches tournament's teamSize
+    const teamTeamSize = team.teamSize || 4;
+    if (teamTeamSize !== tournamentTeamSize) {
+      return NextResponse.json(
+        {
+          error: `This tournament is for ${tournamentTeamSize}v${tournamentTeamSize} teams. Your team "${team.name}" is a ${teamTeamSize}v${teamTeamSize} team.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // IMPROVED VALIDATION: Check if team has exactly the required number of members
     // Count members properly, ensuring we don't double-count the captain
     let memberCount = team.members.length;
 
@@ -128,20 +146,11 @@ export async function POST(
       memberCount += 1;
     }
 
-    // Debug logs (will appear in server logs)
-    console.log("Required team size:", teamSize);
-    console.log("Current team members:", memberCount);
-    console.log(
-      "Team members array:",
-      team.members.map((m: any) => m.discordId)
-    );
-    console.log("Captain ID:", team.captain?.discordId);
-
-    // Strictly enforce team size requirement
-    if (memberCount < teamSize) {
+    // Strictly enforce team size requirement - team must be FULL
+    if (memberCount !== tournamentTeamSize) {
       return NextResponse.json(
         {
-          error: `Your team needs exactly ${teamSize} members to register for this tournament. Current team size: ${memberCount}`,
+          error: `Your team needs exactly ${tournamentTeamSize} members to register for this tournament. Current team size: ${memberCount}`,
         },
         { status: 400 }
       );
@@ -162,14 +171,14 @@ export async function POST(
         // Find the correct ELO for this team size
         let playerElo = 0;
         if (player && player.stats && Array.isArray(player.stats)) {
-          const statForSize = player.stats.find((s) => s.teamSize === teamSize);
+          const statForSize = player.stats.find((s) => s.teamSize === tournamentTeamSize);
           if (statForSize && typeof statForSize.elo === "number") {
             playerElo = statForSize.elo;
           }
         }
 
         // For teamSize 4, prioritize DB2 data
-        if (teamSize === 4) {
+        if (tournamentTeamSize === 4) {
           const db2Player = db2Players.find(
             (p) => p.discordId === member.discordId
           );
@@ -207,7 +216,7 @@ export async function POST(
       Array.isArray(captainPlayer.stats)
     ) {
       const statForSize = captainPlayer.stats.find(
-        (s) => s.teamSize === teamSize
+        (s) => s.teamSize === tournamentTeamSize
       );
       if (statForSize && typeof statForSize.elo === "number") {
         captainElo = statForSize.elo;
@@ -231,7 +240,7 @@ export async function POST(
 
     // Calculate team ELO based on top players for the team size
     const sortedByElo = [...enhancedMembers].sort((a, b) => b.elo - a.elo);
-    const topMembers = sortedByElo.slice(0, teamSize);
+    const topMembers = sortedByElo.slice(0, tournamentTeamSize);
     const teamElo = topMembers.reduce((sum, member) => sum + member.elo, 0);
 
     // Create enhanced team data with all the correct information

@@ -92,7 +92,7 @@ const formSchema = z.object({
   }),
   description: z.string().optional(),
   format: z.enum(["single_elimination", "double_elimination"]),
-  teamSize: z.number().min(1).max(6),
+  teamSize: z.number().min(1).max(5),
   maxTeams: z.number().min(4).max(64),
   startDate: z.date({
     required_error: "Start date is required.",
@@ -255,7 +255,7 @@ export function CreateTournamentDialog({
   ];
 
   // Options for team size and max teams
-  const teamSizeOptions = [1, 2, 3, 4, 5, 6];
+  const teamSizeOptions = [1, 2, 3, 4, 5];
   const maxTeamsOptions = [4, 8, 16, 32, 64];
 
   return (

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "next lint",
     "create-test-teams": "tsx scripts/create-test-teams.ts",
-    "delete-test-teams": "tsx scripts/delete-test-teams.ts"
+    "delete-test-teams": "tsx scripts/delete-test-teams.ts",
+    "create-test-teams-5v5": "tsx scripts/create-test-teams-5v5.ts",
+    "delete-test-teams-5v5": "tsx scripts/delete-test-teams-5v5.ts"
   },
   "dependencies": {
     "@discordjs/rest": "^2.6.0",

@@ -40,9 +40,9 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
 
   return (
     <Card className="group overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5 border hover:border-primary/20">
-      <CardHeader className="pb-3 space-y-3">
+      <CardHeader className="pb-3 space-y-3 h-[8.75rem]">
         {/* Badges */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap h-[1.75rem]">
           <Badge
             variant="secondary"
             className={cn(
@@ -56,6 +56,12 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
           </Badge>
           <Badge
             variant="outline"
+            className="rounded-full px-3 py-1 text-xs font-medium border-primary/30 bg-primary/10 text-primary"
+          >
+            {tournament.teamSize}v{tournament.teamSize}
+          </Badge>
+          <Badge
+            variant="outline"
             className="rounded-full px-3 py-1 text-xs font-normal border-muted-foreground/30 bg-muted/30"
           >
             {tournament.format === "single_elimination"
@@ -65,7 +71,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
         </div>
 
         {/* Title */}
-        <CardTitle className="text-xl sm:text-2xl font-bold leading-tight group-hover:text-primary transition-colors">
+        <CardTitle className="text-xl sm:text-2xl font-bold leading-tight group-hover:text-primary transition-colors line-clamp-2 min-h-[3.5rem]">
           {tournament.name}
         </CardTitle>
       </CardHeader>
@@ -93,11 +99,13 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
         </div>
 
         {/* Description */}
-        {tournament.description && (
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
-            {tournament.description}
-          </p>
-        )}
+        <div className="min-h-[2.5rem]">
+          {tournament.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2">
+              {tournament.description}
+            </p>
+          )}
+        </div>
 
         {/* Progress Bar */}
         <div className="space-y-1.5">
@@ -116,7 +124,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
         </div>
       </CardContent>
 
-      <CardFooter className="pt-4 border-t">
+      <CardFooter className="pt-4 border-t min-h-[4.5rem] flex items-center">
         <Button
           asChild
           className="w-full group/button"
