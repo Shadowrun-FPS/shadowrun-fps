@@ -47,11 +47,10 @@ export async function generateMetadata(
       const teamA = match.teamA?.name || "Team A";
       const teamB = match.teamB?.name || "Team B";
       const teamSize = tournament?.teamSize || match.teamSize || 4;
-      const teamSizeLabel = teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`;
       const tournamentName = tournament?.name || "Tournament";
 
       // Create title with both team names, team size, and tournament name
-      title = `${teamA} vs ${teamB} - ${teamSizeLabel} Match | ${tournamentName}`;
+      title = `${teamA} vs ${teamB} - ${teamSize}v${teamSize} Match | ${tournamentName}`;
 
       // Create a more detailed description
       const matchStatus =

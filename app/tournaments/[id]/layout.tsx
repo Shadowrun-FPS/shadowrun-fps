@@ -29,8 +29,7 @@ export async function generateMetadata(
 
     // Create dynamic metadata based on tournament data
     const teamSize = tournament.teamSize || 4;
-    const teamSizeLabel = teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`;
-    const title = `${tournament.name} (${teamSizeLabel}) | Shadowrun FPS Tournaments`;
+    const title = `${tournament.name} (${teamSize}v${teamSize}) | Shadowrun FPS Tournaments`;
     let description =
       tournament.description ||
       `${teamSize}v${teamSize} ${tournament.format.replace("_", " ")} tournament`;

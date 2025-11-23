@@ -44,10 +44,9 @@ export async function generateMetadata(
       const teamA = scrimmage.challengerTeam?.name || "Team A";
       const teamB = scrimmage.challengedTeam?.name || "Team B";
       const teamSize = scrimmage.teamSize || 4;
-      const teamSizeLabel = teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`;
 
       // Create title with both team names and team size
-      title = `${teamA} vs ${teamB} - ${teamSizeLabel} Scrimmage Match`;
+      title = `${teamA} vs ${teamB} - ${teamSize}v${teamSize} Scrimmage Match`;
 
       // Create a more detailed description
       const matchStatus =
