@@ -57,12 +57,12 @@ export const metadata: Metadata = {
 export default function InstallPage() {
   return (
     <DocLayout>
-      <article className="space-y-8">
-        <section className="space-y-4">
-          <h1 className="text-4xl font-bold tracking-tight">
+      <article className="space-y-6 sm:space-y-8">
+        <section className="space-y-3 sm:space-y-4">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">
             Install Shadowrun FPS (2007)
           </h1>
-          <p className="text-xl text-muted-foreground">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground">
             Complete installation guide for setting up Shadowrun FPS on your PC.
             Follow these steps carefully to ensure a smooth installation
             process.
@@ -71,25 +71,29 @@ export default function InstallPage() {
           {/* Launcher Recommendation Alert */}
           <LauncherRecommendation />
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3 sm:gap-4">
             <Link
               href="/docs/troubleshoot"
-              className="inline-flex gap-2 items-center text-primary hover:underline"
+              className="inline-flex gap-2 items-center text-sm sm:text-base text-primary hover:underline touch-manipulation min-h-[44px] sm:min-h-0"
             >
               Troubleshooting Guide
             </Link>
           </div>
         </section>
 
-        <section id="getting-started" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">Required Tools</h2>
+        <section id="getting-started" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Required Tools
+          </h2>
           <div className="grid gap-3 sm:gap-4">
             <Card>
-              <CardHeader className="px-3 sm:px-6">
-                <CardTitle>Essential Downloads</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">
+                  Essential Downloads
+                </CardTitle>
               </CardHeader>
-              <CardContent className="px-3 pt-2 sm:px-6">
-                <div className="grid gap-6 sm:grid-cols-3">
+              <CardContent className="px-4 pt-3 sm:px-6 sm:pt-4">
+                <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                   <div>
                     <h3 className="mb-2 underline text-medium">
                       File Archiver
@@ -137,13 +141,13 @@ export default function InstallPage() {
           </div>
         </section>
 
-        <section id="installation-steps" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="installation-steps" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             Installation Steps
           </h2>
           <Card>
-            <CardContent className="pt-6">
-              <ol className="space-y-6">
+            <CardContent className="px-4 pt-4 sm:pt-6 sm:px-6">
+              <ol className="space-y-5 sm:space-y-6">
                 <li>
                   <h3 className="mb-2 text-lg font-medium">
                     1. Install{" "}
@@ -221,13 +225,13 @@ export default function InstallPage() {
           </Card>
         </section>
 
-        <section id="post-install" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="post-install" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             Post-Installation Tips
           </h2>
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4 text-lg font-medium text-muted-foreground">
+            <CardContent className="px-4 pt-4 sm:pt-6 sm:px-6">
+              <div className="space-y-4 text-base font-medium sm:text-lg text-muted-foreground">
                 <ul className="space-y-2">
                   <li>
                     Configure graphics settings for your system. The game&apos;s
@@ -268,15 +272,15 @@ export default function InstallPage() {
           </Card>
         </section>
 
-        <section id="game-key" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="game-key" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             Obtaining a Game Key
           </h2>
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+            <CardContent className="px-4 pt-4 sm:pt-6 sm:px-6">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
                     <a
                       href="https://store.steampowered.com/app/15620/Warhammer_40000_Dawn_of_War_II/"
                       className="block transition-opacity hover:opacity-90"
@@ -286,9 +290,9 @@ export default function InstallPage() {
                         alt="Dawn of War II"
                         width={400}
                         height={300}
-                        className="object-cover rounded-lg"
+                        className="object-cover w-full h-auto rounded-lg"
                       />
-                      <p className="mt-2 font-lg text-bold">
+                      <p className="mt-2 text-base font-bold sm:text-lg">
                         Warhammer 40,000: Dawn of War II
                       </p>
                     </a>
@@ -301,7 +305,7 @@ export default function InstallPage() {
                         alt="The Club"
                         width={400}
                         height={300}
-                        className="object-cover rounded-lg"
+                        className="object-cover w-full h-auto rounded-lg"
                       />
 
                       <p className="mt-2 font-lg text-bold">The Club</p>
@@ -340,13 +344,13 @@ export default function InstallPage() {
           </Card>
         </section>
 
-        <section id="matchmaking" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="matchmaking" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             Matchmaking Preferences
           </h2>
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4 text-medium text-muted-foreground">
+            <CardContent className="px-4 pt-4 sm:pt-6 sm:px-6">
+              <div className="space-y-4 text-sm sm:text-base text-muted-foreground">
                 <p>Please update your in-game matchmaking preferences:</p>
                 <ul className="ml-4 space-y-2 list-disc">
                   <li>
@@ -366,17 +370,19 @@ export default function InstallPage() {
           </Card>
         </section>
 
-        <section id="requirements" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="requirements" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             System Requirements
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle>Minimum Requirements</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">
+                  Minimum Requirements
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-medium text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <ul className="space-y-2 text-sm sm:text-base text-muted-foreground">
                   <li>Windows 7 or later</li>
                   <li>2GB RAM</li>
                   <li>DirectX 9.0c</li>
@@ -387,11 +393,13 @@ export default function InstallPage() {
               </CardContent>
             </Card>
             <Card>
-              <CardHeader>
-                <CardTitle>Recommended</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">
+                  Recommended
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-medium text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <ul className="space-y-2 text-sm sm:text-base text-muted-foreground">
                   <li>Windows 10/11</li>
                   <li>4GB RAM</li>
                   <li>DirectX 11</li>

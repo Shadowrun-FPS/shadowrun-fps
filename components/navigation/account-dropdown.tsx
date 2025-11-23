@@ -50,7 +50,8 @@ export default function AccountDropdown() {
 
           if (roleDisplayResponse.ok) {
             const roleDisplayData = await roleDisplayResponse.json();
-            setUserRoleDisplay(roleDisplayData.roles || []);
+            const roles = roleDisplayData.roles || [];
+            setUserRoleDisplay(roles);
 
             // Set the guild nickname from the API response
             const nickname =
@@ -61,7 +62,6 @@ export default function AccountDropdown() {
             setGuildNickname(nickname);
           } else {
             // Fallback: Just use session data if role display fails
-            console.warn("Role display endpoint failed, using session data");
             const fallbackName =
               session.user.nickname || session.user.name || null;
             setGuildNickname(fallbackName);
@@ -81,7 +81,6 @@ export default function AccountDropdown() {
             setUserTeam(teamsData.team || null);
           }
         } catch (error) {
-          console.error("Error fetching user data:", error);
           // If API fails, use nickname from session
           const fallbackName =
             session.user.nickname || session.user.name || null;
@@ -93,7 +92,7 @@ export default function AccountDropdown() {
     };
 
     fetchUserData();
-  }, [session]);
+  }, [session?.user?.id, session?.user]); // Only refetch when user ID changes, not on every session object change
 
   // Check permissions using server response
   const hasModAccess = (): boolean => {
@@ -179,13 +178,18 @@ export default function AccountDropdown() {
               {/* Use guild nickname instead of global username */}
               {guildNickname || session?.user?.nickname}
             </p>
-            <div className="flex flex-wrap gap-1">
-              {userRoleDisplay.map((role) => (
-                <Badge key={role.id} className={`text-white ${role.color}`}>
-                  {role.name}
-                </Badge>
-              ))}
-            </div>
+            {userRoleDisplay.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {userRoleDisplay.map((role) => (
+                  <Badge 
+                    key={role.id} 
+                    className={`text-white ${role.color} text-xs font-semibold px-2 py-0.5`}
+                  >
+                    {role.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           <DropdownMenuSeparator />
@@ -228,14 +232,15 @@ export default function AccountDropdown() {
             )}
           </DropdownMenuItem>
 
-          {hasModAccess() && (
+          {/* Admin link - show if user has admin, moderator, founder roles or is developer */}
+          {(hasModAccess() || isDeveloper()) && (
             <DropdownMenuItem asChild>
               <Link
-                href="/admin/moderation"
+                href="/admin"
                 className="flex items-center cursor-pointer"
               >
                 <Shield className="w-4 h-4 mr-2" />
-                Mod Panel
+                Admin
               </Link>
             </DropdownMenuItem>
           )}

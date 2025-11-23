@@ -1,14 +1,8 @@
 import { Metadata } from "next";
 import { DocLayout } from "@/components/layouts/doc-layout";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
+import { FAQsSection } from "./faqs-section";
 
 export const metadata: Metadata = {
   title: "Troubleshooting",
@@ -47,66 +41,26 @@ export const metadata: Metadata = {
 export default function TroubleshootPage() {
   return (
     <DocLayout>
-      <article className="space-y-8">
-        <section id="errors" className="space-y-4">
-          <h2 className="text-3xl font-bold tracking-tight">Common Errors</h2>
-          <p className="text-lg leading-relaxed text-muted-foreground">
-            Find solutions to common issues and error messages below. Click on
-            an error to see its solution.
+      <article className="space-y-6 sm:space-y-8">
+        <div className="rounded-lg border-2 border-primary/20 bg-primary/5 p-4 sm:p-6">
+          <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+            <span className="font-semibold text-foreground">Having a specific error?</span> Check the{" "}
+            <a href="#errors" className="text-primary hover:underline font-medium">
+              Common Errors
+            </a>{" "}
+            section below for quick solutions. Need general setup help? See the sections below for activation, performance, controller setup, and connection troubleshooting.
           </p>
-          <Accordion type="single" collapsible className="w-full space-y-4">
-            {errorAccordions.map((error, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className={cn(
-                  "group border border-border/40 rounded-lg mb-3 shadow-sm",
-                  "transition-all duration-200 hover:shadow-md hover:border-border/80",
-                  "data-[state=open]:shadow-md data-[state=open]:border-primary/20 data-[state=open]:bg-accent/5"
-                )}
-              >
-                <AccordionTrigger className="px-3 py-4 text-lg text-left sm:px-6 hover:no-underline">
-                  {error.title}
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="px-3 pt-2 pb-4 sm:px-6">
-                    {error.content && (
-                      <p className="leading-relaxed">{error.content}</p>
-                    )}
-                    {error.list && (
-                      <ul className="pl-6 space-y-2 list-disc">
-                        {error.list.map((item, i) => (
-                          <li key={i} className="leading-relaxed">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    {error.href && (
-                      <a
-                        href={error.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 mt-2 text-primary hover:underline"
-                      >
-                        {error.link || "Download fix"}
-                        <span className="sr-only">Opens in new tab</span>
-                      </a>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
-        </section>
+        </div>
 
-        <section id="activation" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <FAQsSection />
+
+        <section id="activation" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Activation Issues
           </h2>
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4 text-sm text-muted-foreground">
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+              <div className="space-y-4 text-sm sm:text-base text-muted-foreground">
                 <div className="p-3 rounded-lg bg-muted">
                   <p className="font-medium text-foreground">Important Note:</p>
                   <p>
@@ -137,17 +91,17 @@ export default function TroubleshootPage() {
           </Card>
         </section>
 
-        <section id="performance" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="performance" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Performance Settings
           </h2>
           <div className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>FPS Limitations</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">FPS Limitations</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="space-y-4 text-sm sm:text-base text-muted-foreground">
                   <div className="p-3 rounded-lg bg-muted">
                     <p className="font-medium text-foreground">Important:</p>
                     <p>
@@ -177,11 +131,11 @@ export default function TroubleshootPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>NVIDIA Settings</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">NVIDIA Settings</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="space-y-4 text-sm sm:text-base text-muted-foreground">
                   <p>Required Settings:</p>
                   <ul className="space-y-2">
                     <li>Background Max Frame Rate - same as Max Frame Rate</li>
@@ -200,16 +154,16 @@ export default function TroubleshootPage() {
             </Card>
           </div>
         </section>
-        <section id="controller" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="controller" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Controller Setup
           </h2>
           <Card>
-            <CardHeader>
-              <CardTitle>Controller Configuration</CardTitle>
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl">Controller Configuration</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4 text-sm text-muted-foreground">
+            <CardContent className="px-4 sm:px-6">
+              <div className="space-y-4 text-sm sm:text-base text-muted-foreground">
                 <div>
                   <p className="font-medium">Xbox Controllers:</p>
                   <ul className="pl-4 mt-2 space-y-2 list-disc">
@@ -239,17 +193,17 @@ export default function TroubleshootPage() {
           </Card>
         </section>
 
-        <section id="getting-game" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="getting-game" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Getting the Game
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Card>
-              <CardHeader>
-                <CardTitle>PC Version</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">PC Version</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="space-y-2 text-sm sm:text-base text-muted-foreground">
                   <p>
                     Follow our{" "}
                     <Link
@@ -267,11 +221,11 @@ export default function TroubleshootPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Xbox Version</CardTitle>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-lg sm:text-xl">Xbox Version</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm text-muted-foreground">
+              <CardContent className="px-4 sm:px-6">
+                <div className="space-y-2 text-sm sm:text-base text-muted-foreground">
                   <a
                     href="https://www.xbox.com/en-US/games/store/shadowrun/bsnjbk3gbdt3"
                     className="block mb-2 text-primary hover:underline"
@@ -289,13 +243,13 @@ export default function TroubleshootPage() {
           </div>
         </section>
 
-        <section id="connection" className="space-y-4">
-          <h2 className="text-2xl font-bold tracking-tight">
+        <section id="connection" className="space-y-3 sm:space-y-4">
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
             Connection Issues
           </h2>
           <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-4 text-sm text-muted-foreground">
+            <CardContent className="pt-4 sm:pt-6 px-4 sm:px-6">
+              <div className="space-y-4 text-sm sm:text-base text-muted-foreground">
                 <div>
                   <p className="font-medium">Basic Troubleshooting:</p>
                   <ul className="pl-4 mt-2 space-y-2 list-disc">
@@ -331,135 +285,3 @@ export default function TroubleshootPage() {
   );
 }
 
-const commonIssues = [
-  {
-    title: "Game Won't Launch",
-    description: "If the game fails to start or crashes on launch",
-    steps: [
-      "Verify game files integrity",
-      "Update graphics drivers",
-      "Run as administrator",
-      "Check DirectX installation",
-      "Verify Windows compatibility settings",
-    ],
-  },
-  {
-    title: "Performance Issues",
-    description: "If you're experiencing lag or low FPS",
-    steps: [
-      "Update graphics drivers",
-      "Close background applications",
-      "Check system requirements",
-      "Verify game settings",
-      "Run in compatibility mode",
-    ],
-  },
-  // ... keep other common issues
-];
-
-const errorAccordions = [
-  {
-    title: "Game Won't Launch",
-    content: "If the game fails to start or crashes on launch",
-    list: [
-      "Verify game files integrity",
-      "Update graphics drivers",
-      "Run as administrator",
-      "Check DirectX installation",
-      "Verify Windows compatibility settings",
-    ],
-  },
-  {
-    title: "Performance Issues",
-    content: "If you're experiencing lag or low FPS",
-    list: [
-      "Update graphics drivers",
-      "Close background applications",
-      "Check system requirements",
-      "Verify game settings",
-      "Run in compatibility mode",
-    ],
-  },
-  {
-    title: "Error: d3dx9 error - install this",
-    content: "Install the DirectX installer to resolve d3dx9 errors.",
-    href: "https://www.microsoft.com/en-us/download/details.aspx?id=35",
-    link: "DirectX installer",
-  },
-  {
-    title: "Error 1603 or 1722",
-    content:
-      'Verify you have all drivers installed and up to date via optional Windows updates. Open CMD as an administrator and run the command "sfc/scannow" to check for repairable Windows system errors.',
-  },
-  {
-    title: 'Error "xlive.dll not found"',
-    content:
-      'Verify that the Games for Windows Live installer was extracted before installing. Open "services msc" from the start menu search bar. Right-click and start "Xbox Live Networking Service" or restart the game.',
-  },
-  {
-    title: "Error 0x80072746",
-    content:
-      'Open "services msc" from the start menu search bar. Right-click and start "Windows License Manager Service" or restart the game (potentially conflicts with VPN to activate, though, unconfirmed).',
-  },
-  {
-    title: "Error Ordinal 43",
-    content: "GFWL wasn't extracted properly.",
-    list: ["Re-extract and reinstall GFWL."],
-  },
-  {
-    title: "Error Unable to create Direct3D Device",
-    list: [
-      "Install DirectX or update missing or outdated drivers.",
-      "Test with the compatibility tool provided.",
-    ],
-  },
-
-  {
-    title: "Error 0x8007065b",
-    content: "Microsoft server account issue.",
-    list: [
-      "Create a new free account at Xbox.com and login with it.",
-      "Try signing into the original account after a day or so.",
-    ],
-  },
-
-  {
-    title: "Xbox Login Issues",
-    content: "Various fixes you can try.",
-    list: [
-      "Disable 2FA",
-      "Turn off VPN",
-      "Add GFWL & Shadowrun to firewall exceptions",
-      "Uninstall GFWL and try reinstalling it in Windows 7 compatibility mode",
-      "Verify open NAT status",
-      "Password could be too long (max pass length 11-16 characters)",
-      "Xbox account changes can be delayed 10ish minutes to update",
-      "Sign out of Xbox Game Bar/Xbox app, sign back in, and retry on Shadowrun",
-      "Open services.msc and restart 'Windows License Manager' and 'Xbox Live Networking Service'",
-      "Update Windows & optional Windows updates for driver/security updates",
-      "Restart PC",
-      "Create a new gamertag on Xbox.com (doesn't even require email verification) & add other profile after activation",
-    ],
-  },
-  {
-    title: "Error Need Multiplayer Enabled",
-    content:
-      "Xbox settings - system - storage devices - clear local Xbox 360 storage",
-  },
-  {
-    title: "Controller doesn't work in-game",
-    content:
-      "Return to the game's main menu screen. Go to Settings > Gamepad and set the input as 'Gamepad'. This MUST be changed in the main menu settings and cannot be changed mid-game.",
-  },
-  {
-    title: "Controller Support",
-    content:
-      "Xbox controllers are supported natively. For ALL controllers (including Xbox):",
-    list: [
-      "Must be configured in the main menu's Gamepad settings",
-      "Cannot switch between Gamepad and Mouse & Keyboard during a match",
-      "Settings changes must be done from the main menu",
-      "For PlayStation controllers, use Steam's controller configuration",
-    ],
-  },
-];

@@ -10,7 +10,6 @@ export async function GET(
 ) {
   try {
     const { matchId } = params;
-    console.log(`API: Looking for match with ID: ${matchId}`);
 
     const { db } = await connectToDatabase();
 
@@ -36,8 +35,6 @@ export async function GET(
       console.log(`Match ${matchId} not found in tournament`);
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
-
-    console.log(`Found match: ${match.tournamentMatchId}`);
 
     return NextResponse.json({
       match,

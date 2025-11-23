@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { useToast } from "@/components/ui/use-toast"; // keep this import
-import { cn } from "@/lib/utils";
-import { FeatureGate } from "@/components/feature-gate"; // This might be an unused import
+import { FeatureGate } from "@/components/feature-gate";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Card,
@@ -371,14 +369,14 @@ export default function ScrimmagesPage() {
           return (
             <ContextMenu key={scrimmage._id}>
               <ContextMenuTrigger>
-                <Card className="overflow-hidden">
-                  <CardHeader className="p-4 pb-2">
+                <Card className="overflow-hidden border-2 hover:shadow-lg transition-shadow">
+                  <CardHeader className="p-4 pb-2 bg-gradient-to-br from-green-500/10 to-green-500/5">
                     <div className="flex justify-between items-center">
                       <CardTitle className="text-lg">
                         {scrimmage.challengerTeam?.name} vs{" "}
                         {scrimmage.challengedTeam?.name}
                       </CardTitle>
-                      <Badge variant="secondary">Completed</Badge>
+                      <Badge variant="secondary" className="bg-green-500/20 text-green-700 dark:text-green-400">Completed</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="p-4 pt-2 pb-0">
@@ -500,252 +498,299 @@ export default function ScrimmagesPage() {
 
   return (
     <FeatureGate feature="scrimmage">
-      <div className="min-h-screen">
-        <main className="container py-8 mx-auto">
-          <h1 className="mb-6 text-2xl font-bold">Scrimmages</h1>
-
-          <div className="space-y-6">
-            <div className="flex gap-4 items-center mb-6">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Filter by team name or tag..."
-                  className="pl-9"
-                  value={teamFilter}
-                  onChange={(e) => setTeamFilter(e.target.value)}
-                />
+      <div className="min-h-screen bg-background">
+        <main className="px-4 py-6 mx-auto max-w-screen-xl sm:px-6 lg:px-8 xl:px-12 sm:py-8 lg:py-10">
+          {/* Header Section */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-lg shadow-primary/10 shrink-0">
+                <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/40 to-transparent opacity-50" />
+                <Trophy className="relative w-6 h-6 sm:w-7 sm:h-7 text-primary drop-shadow-sm" />
+              </div>
+              <div>
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                  Scrimmages
+                </h1>
+                <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                  Manage and view competitive team scrimmages
+                </p>
               </div>
             </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab("pending")}
-                className={cn(
-                  "px-4 py-2 rounded-md transition-colors",
-                  activeTab === "pending"
-                    ? "bg-muted/50 font-medium"
-                    : "text-muted-foreground hover:bg-muted/30"
-                )}
-              >
-                Pending
-              </button>
-              <button
-                onClick={() => setActiveTab("upcoming")}
-                className={cn(
-                  "px-4 py-2 rounded-md transition-colors",
-                  activeTab === "upcoming"
-                    ? "bg-muted/50 font-medium"
-                    : "text-muted-foreground hover:bg-muted/30"
-                )}
-              >
-                Upcoming
-              </button>
-              <button
-                onClick={() => setActiveTab("completed")}
-                className={cn(
-                  "px-4 py-2 rounded-md transition-colors",
-                  activeTab === "completed"
-                    ? "bg-muted/50 font-medium"
-                    : "text-muted-foreground hover:bg-muted/30"
-                )}
-              >
-                Completed
-              </button>
-            </div>
-
-            {/* Content based on active tab */}
-            {activeTab === "pending" && (
-              <div>
-                {loading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-                ) : !session?.user ? (
-                  <div className="p-12 text-center rounded-lg border">
-                    <h3 className="text-lg font-medium">
-                      Sign in to view pending scrimmages
-                    </h3>
-                    <p className="mt-2 text-muted-foreground">
-                      You need to be signed in to view and manage pending
-                      scrimmages.
-                    </p>
-                    <Button className="mt-4" asChild>
-                      <Link href="/api/auth/signin">Sign In</Link>
-                    </Button>
-                  </div>
-                ) : pendingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center rounded-lg border">
-                    <h3 className="text-lg font-medium">
-                      No pending challenges
-                    </h3>
-                    <p className="mt-2 text-muted-foreground">
-                      Challenge a team to start a scrimmage.
-                    </p>
-                  </div>
-                ) : filteredPendingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center rounded-lg border">
-                    <h3 className="text-lg font-medium">No matches found</h3>
-                    <p className="mt-2 text-muted-foreground">
-                      Try adjusting your team filter.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredPendingScrimmages.map((scrimmage) => (
-                      <PendingScrimmageCard
-                        key={scrimmage._id}
-                        scrimmage={scrimmage}
-                        isTeamCaptain={isTeamCaptain}
-                        userTeam={userTeam}
-                        onAccept={handleAcceptChallenge}
-                        onReject={handleRejectChallenge}
-                        onCancel={handleCancelChallenge}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "upcoming" && (
-              <div>
-                {/* Upcoming scrimmages content */}
-                {loading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-                ) : upcomingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center rounded-lg border">
-                    <h3 className="text-lg font-medium">
-                      No upcoming scrimmages
-                    </h3>
-                    <p className="mt-2 text-muted-foreground">
-                      There are no upcoming scrimmages scheduled.
-                    </p>
-                  </div>
-                ) : filteredUpcomingScrimmages.length === 0 ? (
-                  <div className="p-12 text-center rounded-lg border">
-                    <h3 className="text-lg font-medium">No matches found</h3>
-                    <p className="mt-2 text-muted-foreground">
-                      Try adjusting your team filter.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredUpcomingScrimmages.map((scrimmage) => (
-                      <ContextMenu key={scrimmage._id}>
-                        <ContextMenuTrigger>
-                          <Card className="overflow-hidden">
-                            <CardHeader className="p-4 pb-2">
-                              <div className="flex justify-between items-center">
-                                <CardTitle className="text-lg">
-                                  {scrimmage.challengerTeam?.name} vs{" "}
-                                  {scrimmage.challengedTeam?.name}
-                                </CardTitle>
-                                <Badge variant="default">Upcoming</Badge>
-                              </div>
-                            </CardHeader>
-                            <CardContent className="p-4 pt-2 pb-0">
-                              <div className="space-y-2">
-                                <div className="flex gap-2 items-center text-sm">
-                                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                                  <span>
-                                    {format(
-                                      new Date(scrimmage.proposedDate),
-                                      "MMMM d, yyyy"
-                                    )}
-                                  </span>
-                                </div>
-                                <div className="flex gap-2 items-center text-sm">
-                                  <Clock className="w-4 h-4 text-muted-foreground" />
-                                  <span>
-                                    {format(
-                                      new Date(scrimmage.proposedDate),
-                                      "h:mm a"
-                                    )}
-                                  </span>
-                                </div>
-                              </div>
-                            </CardContent>
-                            <CardFooter className="flex justify-end p-4">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link
-                                  href={`/tournaments/scrimmages/${
-                                    scrimmage.scrimmageId || scrimmage._id
-                                  }`}
-                                >
-                                  View Match
-                                </Link>
-                              </Button>
-                            </CardFooter>
-                          </Card>
-                        </ContextMenuTrigger>
-                        {canManageScrimmages() && (
-                          <ContextMenuContent className="w-64">
-                            <ContextMenuItem
-                              onClick={() =>
-                                copyToClipboard(
-                                  scrimmage._id,
-                                  "Scrimmage ID copied to clipboard"
-                                )
-                              }
-                            >
-                              <Copy className="mr-2 w-4 h-4" />
-                              Copy Scrimmage ID
-                            </ContextMenuItem>
-                            <ContextMenuItem
-                              onClick={() =>
-                                copyToClipboard(
-                                  `${window.location.origin}/tournaments/scrimmages/${scrimmage._id}`,
-                                  "Scrimmage URL copied to clipboard"
-                                )
-                              }
-                            >
-                              <ExternalLink className="mr-2 w-4 h-4" />
-                              Copy Scrimmage URL
-                            </ContextMenuItem>
-                            <ContextMenuItem
-                              className="text-red-600"
-                              onClick={() =>
-                                setScrimmageToDelete(scrimmage._id)
-                              }
-                            >
-                              <Trash2 className="mr-2 w-4 h-4" />
-                              Delete Scrimmage
-                            </ContextMenuItem>
-                          </ContextMenuContent>
-                        )}
-                      </ContextMenu>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === "completed" && (
-              <div>
-                {/* Completed scrimmages content */}
-                {loading ? (
-                  <div className="flex justify-center items-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                  </div>
-                ) : completedScrimmages.length === 0 ? (
-                  <div className="p-12 text-center rounded-lg border">
-                    <h3 className="text-lg font-medium">
-                      No completed scrimmages
-                    </h3>
-                    <p className="mt-2 text-muted-foreground">
-                      There are no completed scrimmages yet.
-                    </p>
-                  </div>
-                ) : (
-                  <CompletedScrimmages
-                    scrimmages={filteredCompletedScrimmages}
-                  />
-                )}
-              </div>
-            )}
           </div>
+
+          <Card className="border-2">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Filter by team name or tag..."
+                    className="pl-9 h-10 border-2"
+                    value={teamFilter}
+                    onChange={(e) => setTeamFilter(e.target.value)}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-0">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="px-4 sm:px-6">
+                  <TabsList className="grid w-full grid-cols-3 bg-muted/50">
+                    <TabsTrigger
+                      value="pending"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    >
+                      Pending
+                      {filteredPendingScrimmages.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {filteredPendingScrimmages.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="upcoming"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    >
+                      Upcoming
+                      {filteredUpcomingScrimmages.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {filteredUpcomingScrimmages.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="completed"
+                      className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                    >
+                      Completed
+                      {filteredCompletedScrimmages.length > 0 && (
+                        <Badge variant="secondary" className="ml-2">
+                          {filteredCompletedScrimmages.length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+
+                <TabsContent value="pending" className="mt-6 px-4 sm:px-6 pb-6">
+                  {loading ? (
+                    <div className="flex flex-col justify-center items-center py-16">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading scrimmages...</p>
+                    </div>
+                  ) : !session?.user ? (
+                    <Card className="border-2">
+                      <CardContent className="p-12 text-center">
+                        <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+                          <Trophy className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">
+                          Sign in to view pending scrimmages
+                        </h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          You need to be signed in to view and manage pending scrimmages.
+                        </p>
+                        <Button asChild>
+                          <Link href="/api/auth/signin">Sign In</Link>
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ) : pendingScrimmages.length === 0 ? (
+                    <Card className="border-2">
+                      <CardContent className="p-12 text-center">
+                        <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+                          <Trophy className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">
+                          No pending challenges
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Challenge a team to start a scrimmage.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : filteredPendingScrimmages.length === 0 ? (
+                    <Card className="border-2">
+                      <CardContent className="p-12 text-center">
+                        <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+                          <Search className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">No matches found</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Try adjusting your team filter.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {filteredPendingScrimmages.map((scrimmage) => (
+                        <PendingScrimmageCard
+                          key={scrimmage._id}
+                          scrimmage={scrimmage}
+                          isTeamCaptain={isTeamCaptain}
+                          userTeam={userTeam}
+                          onAccept={handleAcceptChallenge}
+                          onReject={handleRejectChallenge}
+                          onCancel={handleCancelChallenge}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="upcoming" className="mt-6 px-4 sm:px-6 pb-6">
+                  {loading ? (
+                    <div className="flex flex-col justify-center items-center py-16">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading scrimmages...</p>
+                    </div>
+                  ) : upcomingScrimmages.length === 0 ? (
+                    <Card className="border-2">
+                      <CardContent className="p-12 text-center">
+                        <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+                          <Calendar className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">
+                          No upcoming scrimmages
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          There are no upcoming scrimmages scheduled.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : filteredUpcomingScrimmages.length === 0 ? (
+                    <Card className="border-2">
+                      <CardContent className="p-12 text-center">
+                        <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+                          <Search className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">No matches found</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Try adjusting your team filter.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {filteredUpcomingScrimmages.map((scrimmage) => (
+                        <ContextMenu key={scrimmage._id}>
+                          <ContextMenuTrigger>
+                            <Card className="overflow-hidden border-2 hover:shadow-lg transition-shadow">
+                              <CardHeader className="p-4 pb-2 bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+                                <div className="flex justify-between items-center">
+                                  <CardTitle className="text-lg">
+                                    {scrimmage.challengerTeam?.name} vs{" "}
+                                    {scrimmage.challengedTeam?.name}
+                                  </CardTitle>
+                                  <Badge variant="default" className="bg-blue-500">Upcoming</Badge>
+                                </div>
+                              </CardHeader>
+                              <CardContent className="p-4 pt-2 pb-0">
+                                <div className="space-y-2">
+                                  <div className="flex gap-2 items-center text-sm">
+                                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                                    <span>
+                                      {format(
+                                        new Date(scrimmage.proposedDate),
+                                        "MMMM d, yyyy"
+                                      )}
+                                    </span>
+                                  </div>
+                                  <div className="flex gap-2 items-center text-sm">
+                                    <Clock className="w-4 h-4 text-muted-foreground" />
+                                    <span>
+                                      {format(
+                                        new Date(scrimmage.proposedDate),
+                                        "h:mm a"
+                                      )}
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                              <CardFooter className="flex justify-end p-4">
+                                <Button variant="outline" size="sm" asChild>
+                                  <Link
+                                    href={`/tournaments/scrimmages/${
+                                      scrimmage.scrimmageId || scrimmage._id
+                                    }`}
+                                  >
+                                    View Match
+                                  </Link>
+                                </Button>
+                              </CardFooter>
+                            </Card>
+                          </ContextMenuTrigger>
+                          {canManageScrimmages() && (
+                            <ContextMenuContent className="w-64">
+                              <ContextMenuItem
+                                onClick={() =>
+                                  copyToClipboard(
+                                    scrimmage._id,
+                                    "Scrimmage ID copied to clipboard"
+                                  )
+                                }
+                              >
+                                <Copy className="mr-2 w-4 h-4" />
+                                Copy Scrimmage ID
+                              </ContextMenuItem>
+                              <ContextMenuItem
+                                onClick={() =>
+                                  copyToClipboard(
+                                    `${window.location.origin}/tournaments/scrimmages/${scrimmage._id}`,
+                                    "Scrimmage URL copied to clipboard"
+                                  )
+                                }
+                              >
+                                <ExternalLink className="mr-2 w-4 h-4" />
+                                Copy Scrimmage URL
+                              </ContextMenuItem>
+                              <ContextMenuItem
+                                className="text-red-600"
+                                onClick={() =>
+                                  setScrimmageToDelete(scrimmage._id)
+                                }
+                              >
+                                <Trash2 className="mr-2 w-4 h-4" />
+                                Delete Scrimmage
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          )}
+                        </ContextMenu>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="completed" className="mt-6 px-4 sm:px-6 pb-6">
+                  {loading ? (
+                    <div className="flex flex-col justify-center items-center py-16">
+                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                      <p className="text-sm text-muted-foreground">Loading scrimmages...</p>
+                    </div>
+                  ) : completedScrimmages.length === 0 ? (
+                    <Card className="border-2">
+                      <CardContent className="p-12 text-center">
+                        <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+                          <Trophy className="w-8 h-8 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg font-semibold mb-2">
+                          No completed scrimmages
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          There are no completed scrimmages yet.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <CompletedScrimmages
+                      scrimmages={filteredCompletedScrimmages}
+                    />
+                  )}
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
         </main>
 
         {/* Confirmation Dialog */}

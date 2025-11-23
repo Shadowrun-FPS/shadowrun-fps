@@ -35,7 +35,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     .sort({ order: 1, date: -1 })
     .toArray();
 
-  secureLogger.apiRequest("GET", "/api/posts");
   return NextResponse.json(posts);
 });
 

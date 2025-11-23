@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { ChevronLeft, ChevronRight, ArrowUpDown, MoreHorizontal } from "lucide-react"
-import { useMatchStore } from "@/lib/store"
+import { useMatchStore, type Match } from "@/lib/store"
 import { format } from "date-fns"
 
 type SortDirection = "asc" | "desc"
@@ -32,7 +32,7 @@ export default function MatchHistory() {
     }
   }
 
-  const filteredMatches = matches.filter((match) => {
+  const filteredMatches = matches.filter((match: Match) => {
     return (
       (statusFilter === "" || match.status.toLowerCase().includes(statusFilter.toLowerCase())) &&
       (eloTierFilter === "" || match.eloTier === eloTierFilter) &&

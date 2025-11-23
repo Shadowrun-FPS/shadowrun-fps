@@ -7,6 +7,8 @@ import {
   ADMIN_ROLE_IDS,
   MODERATOR_ROLE_IDS,
   SECURITY_CONFIG,
+  hasAdminRole,
+  hasModeratorRole,
 } from "@/lib/security-config";
 
 export const dynamic = "force-dynamic";
@@ -16,15 +18,25 @@ export async function GET(request: NextRequest) {
     // Get user session
     const session = await getServerSession(authOptions);
 
-    // Check if user has required roles
-    const isAuthorized =
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session?.user?.roles &&
-        (session?.user?.roles.includes("admin") ||
-          session?.user?.roles.includes("moderator") ||
-          session?.user?.roles.includes("founder")));
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!session?.user || !isAuthorized) {
+    // Check if user has required roles
+    const DEVELOPER_DISCORD_ID = "238329746671271936";
+    const isDeveloper = 
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID || 
+      session.user.id === DEVELOPER_DISCORD_ID;
+    
+    const userRoles = session.user.roles || [];
+    const userHasAdminRole = hasAdminRole(userRoles);
+    const userHasModeratorRole = hasModeratorRole(userRoles);
+    const isAdminUser = session.user.isAdmin;
+
+    const isAuthorized =
+      isDeveloper || isAdminUser || userHasAdminRole || userHasModeratorRole;
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

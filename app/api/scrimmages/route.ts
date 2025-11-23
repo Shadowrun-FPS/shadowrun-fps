@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
@@ -13,11 +13,7 @@ export async function GET(req: Request) {
     const session = await getServerSession(authOptions);
 
     // Connect to database
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Log to confirm we're connected to database
-    console.log("Connected to database");
+    const { db } = await connectToDatabase();
 
     const scrimmagesCollection = db.collection("Scrimmages");
 
@@ -61,8 +57,6 @@ export async function GET(req: Request) {
       .sort({ proposedDate: -1 })
       .toArray();
 
-    console.log(`Found ${scrimmages.length} scrimmages with query`);
-
     // Convert ObjectIds to strings for JSON serialization
     // Create a new array with transformed objects to avoid type issues
     const serializedScrimmages = scrimmages.map((scrimmage) => {
@@ -78,7 +72,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json(serializedScrimmages);
   } catch (error) {
-    console.error("Error fetching scrimmages:", error);
     return NextResponse.json(
       { error: "Failed to fetch scrimmages" },
       { status: 500 }

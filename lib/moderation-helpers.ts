@@ -8,7 +8,7 @@ export function makeReasonRequired(dialogElement: HTMLElement) {
   // Find the reason label
   const labels = dialogElement.querySelectorAll("label");
 
-  for (const label of labels) {
+  for (const label of Array.from(labels)) {
     const text = label.textContent || "";
     if (text.includes("Reason") && text.includes("optional")) {
       // Replace optional with required indicator

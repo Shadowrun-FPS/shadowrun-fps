@@ -55,7 +55,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import styles from "./page.module.css";
 import { useRouter } from "next/navigation";
 
 interface ModerationLog {
@@ -140,14 +139,10 @@ export default function ModerationPage() {
       const response = await fetch("/api/admin/moderation-logs");
 
       if (!response.ok) {
-        console.error(`API error: ${response.status} ${response.statusText}`);
-        const errorText = await response.text();
-        console.error(`Error details: ${errorText}`);
         throw new Error("Failed to fetch moderation logs");
       }
 
       const data = await response.json();
-      console.log("Fetched moderation logs:", data.length);
       setLogs(data);
 
       // Create a map of player IDs to their latest unban action timestamp
@@ -183,7 +178,6 @@ export default function ModerationPage() {
         return true;
       });
 
-      console.log("Active bans count:", activeBansFiltered.length);
       setActiveActions(activeBansFiltered);
       setRecentActions(data.slice(0, 50));
 
@@ -197,7 +191,6 @@ export default function ModerationPage() {
 
       setLoading(false);
     } catch (error) {
-      console.error("Error fetching moderation data:", error);
       setLoading(false);
     }
   };
@@ -234,7 +227,6 @@ export default function ModerationPage() {
   const handleUnban = async (playerId: string, playerName: string) => {
     try {
       setLoading(true);
-      console.log(`Unbanning player ${playerName}`);
 
       const response = await fetch(`/api/admin/players/${playerId}/unban`, {
         method: "POST",
@@ -270,7 +262,6 @@ export default function ModerationPage() {
       // Refresh data to show updated state
       fetchData();
     } catch (error) {
-      console.error("Error unbanning player:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -355,10 +346,12 @@ export default function ModerationPage() {
   }
 
   return (
-    <div className="container py-6 space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-4 sm:space-y-6 lg:space-y-8">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Moderation Panel</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          Moderation Panel
+        </h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
           Manage player warnings, bans, and disputes
         </p>
       </div>
@@ -366,39 +359,74 @@ export default function ModerationPage() {
       <Tabs
         value={activeTab}
         onValueChange={setActiveTab}
-        className={styles.tabs}
+        className="w-full"
       >
-        {/* Replace TabsList with dropdown */}
-        <div className="flex justify-between items-center mb-6">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-[180px] justify-between">
-                {getTabLabel(activeTab)}
-                <ChevronDown className="ml-2 w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => setActiveTab("overview")}>
+        {/* Improved Tabs with better styling */}
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+          {/* Mobile: Dropdown, Desktop: TabsList */}
+          <div className="hidden md:block">
+            <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 h-auto">
+              <TabsTrigger
+                value="overview"
+                className="data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2 text-sm font-medium"
+              >
                 Overview
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("active")}>
+              </TabsTrigger>
+              <TabsTrigger
+                value="active"
+                className="data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2 text-sm font-medium"
+              >
                 Active Bans
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("recent")}>
+              </TabsTrigger>
+              <TabsTrigger
+                value="recent"
+                className="data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2 text-sm font-medium"
+              >
                 Recent Actions
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setActiveTab("disputes")}>
+              </TabsTrigger>
+              <TabsTrigger
+                value="disputes"
+                className="data-[state=active]:bg-background data-[state=active]:shadow-sm px-4 py-2 text-sm font-medium"
+              >
                 Disputes
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          {/* Add a refresh button */}
+          {/* Mobile: Dropdown Menu */}
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-between min-h-[44px]">
+                  {getTabLabel(activeTab)}
+                  <ChevronDown className="ml-2 w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                <DropdownMenuItem onClick={() => setActiveTab("overview")}>
+                  Overview
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab("active")}>
+                  Active Bans
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab("recent")}>
+                  Recent Actions
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setActiveTab("disputes")}>
+                  Disputes
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Refresh button */}
           <Button
             variant="outline"
             size="icon"
             onClick={() => fetchData()}
             disabled={loading}
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 sm:w-10 sm:h-10 hover:bg-accent transition-colors"
+            title="Refresh data"
           >
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -408,79 +436,97 @@ export default function ModerationPage() {
           </Button>
         </div>
 
-        <TabsContent className={styles.tabsContent} value="overview">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Active Warnings
-                </CardTitle>
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.warnings}</div>
-                <p
-                  className={cn(
-                    "text-xs",
-                    stats.warnings > 0
-                      ? "text-green-500"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {stats.warnings}% from last month
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Active Bans
-                </CardTitle>
-                <Ban className="w-4 h-4 text-red-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.activeBans}</div>
-                <p
-                  className={cn(
-                    "text-xs",
-                    stats.activeBans > 0
-                      ? "text-red-500"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {stats.activeBans}% from last month
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0">
-                <CardTitle className="text-sm font-medium">
-                  Total Actions
-                </CardTitle>
-                <Activity className="w-4 h-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.totalActions}</div>
-                <p
-                  className={cn(
-                    "text-xs",
-                    stats.totalActions > 0
-                      ? "text-green-500"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {stats.totalActions}% from last month
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+        <TabsContent value="overview" className="mt-0">
+          <div className="space-y-6 sm:space-y-8">
+            {/* Stats Cards */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+              <Card className="relative overflow-hidden border-2 hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+                  <CardTitle className="text-sm sm:text-base font-medium">
+                    Active Warnings
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+                    {stats.warnings}
+                  </div>
+                  <p
+                    className={cn(
+                      "text-xs sm:text-sm mt-1",
+                      stats.warnings > 0
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {stats.warnings} total warnings
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="relative overflow-hidden border-2 hover:border-red-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+                  <CardTitle className="text-sm sm:text-base font-medium">
+                    Active Bans
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-red-500/10">
+                    <Ban className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
+                    {stats.activeBans}
+                  </div>
+                  <p
+                    className={cn(
+                      "text-xs sm:text-sm mt-1",
+                      stats.activeBans > 0
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {stats.activeBans} active bans
+                  </p>
+                </CardContent>
+              </Card>
+              <Card className="relative overflow-hidden border-2 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
+                  <CardTitle className="text-sm sm:text-base font-medium">
+                    Total Actions
+                  </CardTitle>
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+                  </div>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                    {stats.totalActions}
+                  </div>
+                  <p
+                    className={cn(
+                      "text-xs sm:text-sm mt-1",
+                      stats.totalActions > 0
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {stats.totalActions} total actions
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="md:col-span-4">
-              <CardHeader>
-                <CardTitle>Recent Actions</CardTitle>
+            {/* Recent Actions and Pending Disputes */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-7">
+            <Card className="lg:col-span-4 border-2 bg-gradient-to-br from-background to-muted/20">
+              <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6">
+                <CardTitle className="text-base sm:text-lg font-semibold">Recent Actions</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
                 {loading ? (
                   <div className="flex justify-center items-center h-48">
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -531,22 +577,22 @@ export default function ModerationPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full min-h-[44px] sm:min-h-0"
                   onClick={() => setActiveTab("recent")}
                 >
                   View All
                 </Button>
               </CardFooter>
             </Card>
-            <Card className="md:col-span-3">
-              <CardHeader>
-                <CardTitle>Pending Disputes</CardTitle>
+            <Card className="lg:col-span-3 border-2 bg-gradient-to-br from-background to-muted/20">
+              <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6">
+                <CardTitle className="text-base sm:text-lg font-semibold">Pending Disputes</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
                 {loading ? (
                   <div className="flex justify-center items-center h-48">
                     <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -586,11 +632,11 @@ export default function ModerationPage() {
                   </div>
                 )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="px-4 sm:px-6 pb-4 sm:pb-6">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full"
+                  className="w-full min-h-[44px] sm:min-h-0"
                   onClick={() => setActiveTab("disputes")}
                 >
                   View All
@@ -598,23 +644,24 @@ export default function ModerationPage() {
               </CardFooter>
             </Card>
           </div>
+          </div>
         </TabsContent>
 
-        <TabsContent className={styles.tabsContent} value="active">
+        <TabsContent value="active" className="mt-0">
           {loading ? (
             <div className="flex justify-center items-center h-48">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-xl font-semibold">Active Bans</h2>
-                <div className="relative w-full max-w-sm">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
+                <h2 className="text-lg sm:text-xl font-semibold">Active Bans</h2>
+                <div className="relative w-full sm:max-w-sm">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search active bans..."
-                    className="pl-8"
+                    className="pl-8 min-h-[44px] sm:min-h-0"
                   />
                 </div>
               </div>
@@ -658,6 +705,7 @@ export default function ModerationPage() {
                                 action.playerId,
                                 action
                               )}
+                              className="min-h-[44px] sm:min-h-0"
                             >
                               <Check className="mr-1 w-4 h-4" />
                               Unban
@@ -680,8 +728,8 @@ export default function ModerationPage() {
               <div className="space-y-4 md:hidden">
                 {activeActions.length > 0 ? (
                   activeActions.map((action) => (
-                    <Card key={action._id}>
-                      <CardContent className="p-4">
+                    <Card key={action._id} className="border-2 hover:border-primary/50 transition-all duration-300 bg-gradient-to-br from-background to-muted/20">
+                      <CardContent className="p-4 sm:p-6">
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <h3 className="font-medium">{action.playerName}</h3>
@@ -737,6 +785,7 @@ export default function ModerationPage() {
                               handleUnban(action.playerId, action.playerName)
                             }
                             disabled={isPlayerUnbanned(action.playerId, action)}
+                            className="min-h-[44px] sm:min-h-0"
                           >
                             <Check className="mr-1 w-4 h-4" />
                             Unban
@@ -757,20 +806,20 @@ export default function ModerationPage() {
           )}
         </TabsContent>
 
-        <TabsContent className={styles.tabsContent} value="recent">
+        <TabsContent value="recent" className="mt-0">
           {loading ? (
             <div className="flex justify-center items-center h-48">
               <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="relative grow">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative flex-1">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     type="search"
                     placeholder="Search actions..."
-                    className="pl-8"
+                    className="pl-8 min-h-[44px] sm:min-h-0"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -779,7 +828,7 @@ export default function ModerationPage() {
                   value={filter}
                   onValueChange={(value) => setFilter(value as FilterType)}
                 >
-                  <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0">
                     <div className="flex items-center">
                       <Filter className="mr-2 w-4 h-4" />
                       <SelectValue placeholder="Filter" />
@@ -887,8 +936,8 @@ export default function ModerationPage() {
               {/* Mobile view for recent actions */}
               <div className="space-y-4 md:hidden">
                 {getFilteredActions(recentActions).map((action) => (
-                  <Card key={action._id}>
-                    <CardContent className="p-4">
+                  <Card key={action._id} className="border-2 hover:border-primary/50 transition-all duration-300 bg-gradient-to-br from-background to-muted/20">
+                    <CardContent className="p-4 sm:p-6">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <p className="font-medium">{action.playerName}</p>
@@ -921,7 +970,8 @@ export default function ModerationPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="p-0 w-8 h-8"
+                            className="p-0 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-8 sm:h-8 flex items-center justify-center"
+                            onClick={() => handleViewHistory(action)}
                           >
                             <History className="w-4 h-4" />
                           </Button>
@@ -929,7 +979,7 @@ export default function ModerationPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="p-0 w-8 h-8"
+                              className="p-0 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0 sm:w-8 sm:h-8 flex items-center justify-center"
                               onClick={() =>
                                 handleUnban(action.playerId, action.playerName)
                               }
@@ -956,7 +1006,7 @@ export default function ModerationPage() {
           )}
         </TabsContent>
 
-        <TabsContent className={styles.tabsContent} value="disputes">
+        <TabsContent value="disputes" className="mt-0">
           <div className="grid gap-4">
             {loading ? (
               <div className="flex justify-center items-center h-48">
@@ -964,12 +1014,12 @@ export default function ModerationPage() {
               </div>
             ) : disputes.length > 0 ? (
               disputes.map((dispute) => (
-                <Card key={dispute._id}>
-                  <CardContent className="pt-6">
+                <Card key={dispute._id} className="border-2 hover:border-primary/50 transition-all duration-300 bg-gradient-to-br from-background to-muted/20">
+                  <CardContent className="pt-6 px-4 sm:px-6 pb-4 sm:pb-6">
                     <div className="flex flex-col gap-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <p className="font-medium">{dispute.playerName}</p>
+                          <p className="font-medium text-base sm:text-lg">{dispute.playerName}</p>
                           <div className="text-sm text-muted-foreground">
                             Submitted{" "}
                             {formatTimeAgo(new Date(dispute.createdAt))}
@@ -979,6 +1029,7 @@ export default function ModerationPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleViewDispute(dispute)}
+                          className="min-h-[44px] sm:min-h-0"
                         >
                           Review
                         </Button>

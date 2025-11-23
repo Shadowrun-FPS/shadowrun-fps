@@ -20,12 +20,6 @@ export async function POST(
       );
     }
 
-    // Add debug logging
-    console.log("Session data in clear route:", {
-      user: session.user,
-      userId: session.user.id,
-    });
-
     // Check if user is admin
     if (!isAdmin(session.user.id)) {
       console.log("Admin check failed in clear route:", {

@@ -53,7 +53,7 @@ import { toast } from "@/components/ui/use-toast";
 import Image from "next/image";
 import { EditTournamentDialog } from "@/components/tournaments/edit-tournament-dialog";
 import { Progress } from "@/components/ui/progress";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 
 // Types
@@ -139,9 +139,19 @@ const MemberAvatar = ({
 }: MemberAvatarProps) => {
   const [imgError, setImgError] = useState(false);
 
+  // Map size numbers to Tailwind classes
+  const sizeClasses: Record<number, string> = {
+    8: "w-8 h-8",
+    10: "w-10 h-10",
+    12: "w-12 h-12",
+    14: "w-14 h-14",
+    16: "w-16 h-16",
+  };
+  const sizeClass = sizeClasses[size] || "w-10 h-10";
+
   return profilePicture && !imgError ? (
     <div
-      className={`overflow-hidden relative rounded-full w-${size} h-${size} bg-slate-800`}
+      className={`overflow-hidden relative rounded-full ${sizeClass} bg-slate-800`}
     >
       <Image
         src={profilePicture}
@@ -155,7 +165,7 @@ const MemberAvatar = ({
     </div>
   ) : (
     <div
-      className={`flex justify-center items-center rounded-full w-${size} h-${size} bg-slate-800`}
+      className={`flex justify-center items-center rounded-full ${sizeClass} bg-slate-800`}
     >
       <UserCircle className="w-full h-full text-slate-400" />
     </div>
@@ -270,7 +280,7 @@ export default function TournamentDetailsPage() {
   const router = useRouter();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("bracket");
+  const [activeTab, setActiveTab] = useState("teams");
   const [currentRound, setCurrentRound] = useState(0);
   const [currentBracket, setCurrentBracket] = useState<"winners" | "losers">(
     "winners"
@@ -293,6 +303,8 @@ export default function TournamentDetailsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isFillDialogOpen, setIsFillDialogOpen] = useState(false);
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
   const fetchTournament = async () => {
     try {
@@ -403,7 +415,8 @@ export default function TournamentDetailsPage() {
           const response = await fetch("/api/user/permissions");
           if (response.ok) {
             const data = await response.json();
-            setIsAdmin(data.isAdmin);
+            // Admin includes admin role, founder role, and developer
+            setIsAdmin(data.isAdmin || data.isModerator);
 
             // Set developer status separately for additional permissions
             setIsDeveloper(
@@ -433,6 +446,14 @@ export default function TournamentDetailsPage() {
         (match: any) => match.teamA || match.teamB
       );
       setIsSeeded(!!hasSeededTeams);
+
+      // Set default tab: "bracket" if seeded or launched, otherwise "teams"
+      const isLaunched = tournament.status === "active" || tournament.status === "completed";
+      if (hasSeededTeams || isLaunched) {
+        setActiveTab("bracket");
+      } else {
+        setActiveTab("teams");
+      }
     }
   }, [tournament]);
 
@@ -528,7 +549,9 @@ export default function TournamentDetailsPage() {
       // Show success toast
       toast({
         title: "Team unregistered",
-        description: "Your team has been unregistered from the tournament.",
+        description: data.unseeded
+          ? "Your team has been unregistered. Tournament seeding has been automatically removed."
+          : "Your team has been unregistered from the tournament.",
       });
     } catch (error) {
       console.error("Error unregistering team:", error);
@@ -579,6 +602,8 @@ export default function TournamentDetailsPage() {
   const handleFillTournament = async () => {
     if (!tournament?._id) return;
 
+    setIsFillDialogOpen(false);
+
     try {
       const response = await fetch(`/api/tournaments/${tournament._id}/fill`, {
         method: "POST",
@@ -590,12 +615,25 @@ export default function TournamentDetailsPage() {
 
       // Refresh tournament data
       await fetchTournament();
+
+      toast({
+        title: "Success",
+        description: "Tournament filled with random teams",
+      });
     } catch (error) {
       console.error("Error filling tournament:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to fill tournament",
+        variant: "destructive",
+      });
     }
   };
 
   const handleClearTournament = async () => {
+    setIsClearDialogOpen(false);
+
     try {
       const response = await fetch(
         `/api/tournaments/${params?.id || ""}/clear`,
@@ -837,20 +875,20 @@ export default function TournamentDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen">
-      <div className="container px-4 py-6 mx-auto">
+    <div className="min-h-screen bg-background">
+      <div className="container px-4 py-6 mx-auto sm:px-6 lg:px-8">
         {/* Tournament Header */}
-        <div className="mb-6">
-          <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center space-x-2">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex-1 space-y-3">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="p-0 h-auto"
+                  className="h-9 -ml-2"
                   onClick={() => router.push("/tournaments/overview")}
                 >
-                  <ChevronLeft className="mr-1 w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4 mr-1" />
                   <span className="text-sm">Back</span>
                 </Button>
 
@@ -858,7 +896,7 @@ export default function TournamentDetailsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="ml-auto sm:ml-0"
+                    className="h-9"
                     onClick={() => setIsEditDialogOpen(true)}
                   >
                     Edit Tournament
@@ -866,44 +904,59 @@ export default function TournamentDetailsPage() {
                 )}
               </div>
 
-              <h1 className="text-2xl font-bold sm:text-3xl">
-                {tournament.name}
-              </h1>
+              <div className="space-y-2">
+                <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
+                  {tournament.name}
+                </h1>
+                {tournament.description && (
+                  <p className="text-sm sm:text-base text-muted-foreground max-w-3xl">
+                    {tournament.description}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center mt-2 sm:mt-0">
-              <div className="flex items-center text-sm">
-                <Calendar className="mr-1 w-4 h-4" />
-                {format(new Date(tournament.startDate), "MMMM d, yyyy")}
+            <div className="flex flex-wrap gap-2 sm:gap-3 items-center sm:justify-end">
+              <div className="flex items-center gap-1.5 text-sm">
+                <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="text-foreground">
+                  {format(new Date(tournament.startDate), "MMM d, yyyy")}
+                </span>
               </div>
 
-              <div className="flex items-center text-sm">
-                <Trophy className="mr-1 w-4 h-4" />
-                {tournament.format === "single_elimination"
-                  ? "Single Elimination"
-                  : "Double Elimination"}
+              <div className="flex items-center gap-1.5 text-sm">
+                <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                  <Trophy className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="text-foreground">
+                  {tournament.format === "single_elimination"
+                    ? "Single Elimination"
+                    : "Double Elimination"}
+                </span>
               </div>
 
-              <div className="flex items-center text-sm">
-                <Users className="mr-1 w-4 h-4" />
-                {tournament.teamSize} vs {tournament.teamSize}
+              <div className="flex items-center gap-1.5 text-sm">
+                <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                  <Users className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span className="text-foreground">
+                  {tournament.teamSize}v{tournament.teamSize}
+                </span>
               </div>
 
               <Badge
-                variant={
-                  tournament.status === "upcoming"
-                    ? "outline"
-                    : tournament.status === "active"
-                    ? "default"
-                    : "secondary"
-                }
-                className={
-                  tournament.status === "upcoming"
-                    ? "bg-blue-900/20 text-blue-400 hover:bg-blue-900/20"
-                    : tournament.status === "active"
-                    ? "bg-green-900/20 text-green-400 hover:bg-green-900/20"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-800"
-                }
+                variant="secondary"
+                className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium",
+                  tournament.status === "upcoming" &&
+                    "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                  tournament.status === "active" &&
+                    "bg-green-500/20 text-green-400 border-green-500/30",
+                  tournament.status === "completed" &&
+                    "bg-muted text-muted-foreground"
+                )}
               >
                 {tournament.status === "upcoming"
                   ? "Upcoming"
@@ -915,22 +968,31 @@ export default function TournamentDetailsPage() {
           </div>
 
           {/* Registration Progress */}
-          <div className="mt-4">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm text-muted-foreground">
-                Registration: {tournament.registeredTeams.length}/
-                {tournament.maxTeams || 8} teams
-              </span>
-              {tournament.registrationDeadline && (
-                <span className="text-sm text-muted-foreground">
-                  <Clock className="inline mr-1 w-4 h-4" />
-                  Deadline:{" "}
-                  {format(
-                    new Date(tournament.registrationDeadline),
-                    "MMM d, yyyy"
-                  )}
+          <div className="mt-6 p-4 rounded-lg border bg-muted/30">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  Registration Progress
                 </span>
-              )}
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-muted-foreground">
+                  {tournament.registeredTeams.length}/{tournament.maxTeams || 8} teams
+                </span>
+                {tournament.registrationDeadline && (
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>
+                      Deadline:{" "}
+                      {format(
+                        new Date(tournament.registrationDeadline),
+                        "MMM d, yyyy"
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             <Progress
               value={
@@ -938,7 +1000,7 @@ export default function TournamentDetailsPage() {
                   (tournament.maxTeams || 8)) *
                 100
               }
-              className="h-2"
+              className="h-2.5"
             />
           </div>
         </div>
@@ -953,28 +1015,31 @@ export default function TournamentDetailsPage() {
 
         {/* Tabs Navigation */}
         <Tabs
-          defaultValue="bracket"
+          defaultValue="teams"
           value={activeTab}
           onValueChange={setActiveTab}
           className="mb-6"
         >
-          <TabsList className="mb-6 w-full h-14 bg-transparent rounded-none border-b">
+          <TabsList className="mb-6 w-full h-auto bg-transparent rounded-lg border p-1">
             <TabsTrigger
               value="bracket"
-              className="flex-1 h-14 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="flex-1 h-11 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground touch-manipulation"
             >
+              <Trophy className="w-4 h-4 mr-2" />
               Bracket
             </TabsTrigger>
             <TabsTrigger
               value="standings"
-              className="flex-1 h-14 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="flex-1 h-11 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground touch-manipulation"
             >
+              <Users className="w-4 h-4 mr-2" />
               Standings
             </TabsTrigger>
             <TabsTrigger
               value="teams"
-              className="flex-1 h-14 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-primary"
+              className="flex-1 h-11 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground touch-manipulation"
             >
+              <Users className="w-4 h-4 mr-2" />
               Teams
             </TabsTrigger>
           </TabsList>
@@ -998,9 +1063,46 @@ export default function TournamentDetailsPage() {
               </div>
             ) : (
               <div className="mt-4">
-                {tournament?.brackets?.rounds?.length > 0 ? (
+                {/* Bracket Type Selector for Double Elimination */}
+                {tournament.format === "double_elimination" &&
+                  tournament.brackets?.losersRounds &&
+                  tournament.brackets.losersRounds.length > 0 && (
+                    <div className="mb-6 space-y-3">
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          variant={currentBracket === "winners" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setCurrentBracket("winners");
+                            setCurrentRound(0);
+                          }}
+                          className="h-9"
+                        >
+                          Winners Bracket
+                        </Button>
+                        <Button
+                          variant={currentBracket === "losers" ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => {
+                            setCurrentBracket("losers");
+                            setCurrentRound(0);
+                          }}
+                          className="h-9"
+                        >
+                          Losers Bracket
+                        </Button>
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground">
+                        Use the buttons above to switch between the Winners and Losers brackets
+                      </p>
+                    </div>
+                  )}
+
+                {tournament?.brackets?.rounds?.length > 0 ||
+                (tournament.format === "double_elimination" &&
+                  (tournament.brackets?.losersRounds?.length ?? 0) > 0) ? (
                   <TournamentBracket
-                    rounds={tournament.brackets.rounds}
+                    rounds={rounds}
                     currentRound={currentRound}
                     onPreviousRound={() =>
                       setCurrentRound(Math.max(0, currentRound - 1))
@@ -1008,7 +1110,7 @@ export default function TournamentDetailsPage() {
                     onNextRound={() =>
                       setCurrentRound(
                         Math.min(
-                          (tournament?.brackets?.rounds?.length || 1) - 1,
+                          (rounds?.length || 1) - 1,
                           currentRound + 1
                         )
                       )
@@ -1024,71 +1126,149 @@ export default function TournamentDetailsPage() {
               </div>
             )}
 
-            {/* Add a debug section at the bottom of the bracket tab for admins */}
-            {isAdmin && (
-              <div className="p-4 mt-8 rounded border bg-muted/10">
-                <h3 className="mb-2 text-lg font-semibold">
+            {/* Seeding Information (Admin View) */}
+            {isAdmin && tournament.registeredTeams.length > 0 && (
+              <div className="p-4 mt-8 rounded-lg border bg-muted/30">
+                <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-primary" />
                   Tournament Seeding (Admin View)
                 </h3>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-4">
-                  {tournament.registeredTeams.map((team, index) => (
-                    <div
-                      key={team._id}
-                      className="flex gap-2 items-center p-2 rounded border"
-                    >
-                      <Badge variant="outline">{index + 1}</Badge>
-                      <span className="truncate">{team.name}</span>
-                      <span className="ml-auto text-xs whitespace-nowrap text-muted-foreground">
-                        ELO: {team.teamElo || "N/A"}
-                      </span>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                  {[...tournament.registeredTeams]
+                    .sort((a, b) => (b.teamElo || 0) - (a.teamElo || 0))
+                    .map((team, index) => {
+                      const seed = index + 1;
+                      return (
+                        <div
+                          key={team._id}
+                          className="flex gap-3 items-center p-3 rounded-lg border bg-background/50 hover:bg-muted/50 transition-colors"
+                        >
+                          <Badge
+                            variant={seed <= 4 ? "default" : "outline"}
+                            className={cn(
+                              "font-mono font-bold min-w-[2.5rem] justify-center",
+                              seed === 1 && "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+                              seed === 2 && "bg-gray-400/20 text-gray-300 border-gray-400/50",
+                              seed === 3 && "bg-amber-600/20 text-amber-500 border-amber-600/50"
+                            )}
+                          >
+                            #{seed}
+                          </Badge>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{team.name}</p>
+                            {team.tag && (
+                              <p className="text-xs text-muted-foreground">[{team.tag}]</p>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {team.teamElo ? team.teamElo.toLocaleString() : "N/A"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">ELO</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Teams are seeded by ELO (highest to lowest). Seed #1 = highest ELO.
+                </p>
               </div>
             )}
           </TabsContent>
 
           {/* Standings Content */}
           <TabsContent value="standings" className="mt-0">
-            {tournament.teamStandings ? (
+            {tournament.teamStandings && tournament.teamStandings.length > 0 ? (
               <div className="mt-4">
-                <table className="w-full">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Team</th>
-                      <th className="px-4 py-2 text-center">W</th>
-                      <th className="px-4 py-2 text-center">L</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tournament.teamStandings
-                      .sort((a, b) => b.wins - a.wins)
-                      .map((team, index) => (
-                        <tr
-                          key={team.team._id.toString()}
-                          className={index % 2 ? "bg-muted/10" : ""}
-                        >
-                          <td className="px-4 py-3 font-medium">
-                            {team.team.name}
-                            {team.team.tag && (
-                              <span className="ml-2 text-sm text-muted-foreground">
-                                [{team.team.tag}]
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-center">{team.wins}</td>
-                          <td className="px-4 py-3 text-center">
-                            {team.losses}
-                          </td>
+                <div className="rounded-lg border overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted/50 border-b">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-semibold">Rank</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold">Team</th>
+                          <th className="px-4 py-3 text-center text-sm font-semibold">Wins</th>
+                          <th className="px-4 py-3 text-center text-sm font-semibold">Losses</th>
+                          <th className="px-4 py-3 text-center text-sm font-semibold">Win Rate</th>
                         </tr>
-                      ))}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {tournament.teamStandings
+                          .sort((a, b) => {
+                            // Sort by wins first, then by win rate
+                            if (b.wins !== a.wins) return b.wins - a.wins;
+                            const aTotal = a.wins + a.losses;
+                            const bTotal = b.wins + b.losses;
+                            if (aTotal === 0 && bTotal === 0) return 0;
+                            if (aTotal === 0) return 1;
+                            if (bTotal === 0) return -1;
+                            return b.wins / bTotal - a.wins / aTotal;
+                          })
+                          .map((team, index) => {
+                            const totalGames = team.wins + team.losses;
+                            const winRate = totalGames > 0 ? (team.wins / totalGames) * 100 : 0;
+                            return (
+                              <tr
+                                key={team.team._id.toString()}
+                                className={cn(
+                                  "border-b transition-colors hover:bg-muted/30",
+                                  index % 2 === 0 ? "bg-background" : "bg-muted/10"
+                                )}
+                              >
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    {index < 3 && (
+                                      <Trophy
+                                        className={cn(
+                                          "w-4 h-4",
+                                          index === 0 && "text-yellow-400",
+                                          index === 1 && "text-gray-300",
+                                          index === 2 && "text-amber-600"
+                                        )}
+                                      />
+                                    )}
+                                    <span className="font-semibold text-muted-foreground">
+                                      #{index + 1}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{team.team.name}</span>
+                                    {team.team.tag && (
+                                      <span className="text-xs text-muted-foreground">
+                                        [{team.team.tag}]
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center font-medium text-green-400">
+                                  {team.wins}
+                                </td>
+                                <td className="px-4 py-3 text-center font-medium text-red-400">
+                                  {team.losses}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="font-medium">
+                                    {winRate.toFixed(1)}%
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             ) : (
-              <p className="mt-4 text-muted-foreground">
-                No standings available yet.
-              </p>
+              <div className="mt-4 p-8 text-center rounded-lg border bg-muted/30">
+                <Trophy className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">
+                  No standings available yet. Standings will appear once the tournament begins.
+                </p>
+              </div>
             )}
           </TabsContent>
 
@@ -1126,114 +1306,154 @@ export default function TournamentDetailsPage() {
               </div>
 
               {/* Teams Grid - Responsive for mobile */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {tournament.registeredTeams.map((team) => (
-                  <Card key={team._id} className="overflow-hidden">
-                    <div className="p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center space-x-2">
-                          <Badge
-                            variant="outline"
-                            className="px-2 h-6 font-mono"
-                          >
-                            #
-                            {tournament.registeredTeams.findIndex(
-                              (t) => t._id === team._id
-                            ) + 1}
-                          </Badge>
-                          <div>
-                            <h3 className="font-semibold">
-                              {team.name}{" "}
-                              <span className="text-sm text-muted-foreground">
-                                [{team.tag}]
-                              </span>
-                            </h3>
-                            {team.teamElo && (
-                              <div className="text-xs text-muted-foreground">
-                                ELO: {team.teamElo.toLocaleString()}
+              <div className="grid grid-cols-1 gap-4 sm:gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {[...tournament.registeredTeams]
+                  .sort((a, b) => (b.teamElo || 0) - (a.teamElo || 0))
+                  .map((team, index) => {
+                    const teamIndex = index + 1; // Seed based on sorted ELO order
+                  const otherMembers = team.members?.filter(
+                    (member) =>
+                      member.discordId !== team.captain?.discordId
+                  ) || [];
+
+                  return (
+                    <Card
+                      key={team._id}
+                      className="group overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 border flex flex-col"
+                    >
+                        <div className="p-4 sm:p-5 flex flex-col flex-1">
+                          {/* Header with rank badge and team name */}
+                          <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "shrink-0 px-2.5 py-1 h-7 font-mono text-sm font-bold",
+                                  teamIndex === 1 &&
+                                    "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
+                                  teamIndex === 2 &&
+                                    "bg-gray-400/20 text-gray-300 border-gray-400/50",
+                                  teamIndex === 3 &&
+                                    "bg-amber-600/20 text-amber-500 border-amber-600/50"
+                                )}
+                              >
+                                #{teamIndex}
+                              </Badge>
+                              <div className="flex-1 min-w-0 min-h-[3.5rem] flex flex-col justify-start">
+                                <h3 className="font-semibold text-base sm:text-lg leading-tight mb-1 line-clamp-2 break-words min-h-[2.5rem]">
+                                  {team.name}
+                                </h3>
+                                <div className="flex items-center gap-2 flex-wrap mt-auto">
+                                  <span className="text-xs sm:text-sm text-muted-foreground font-medium">
+                                    [{team.tag}]
+                                  </span>
+                                  {team.teamElo && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs font-medium px-2 py-0.5"
+                                    >
+                                      {team.teamElo.toLocaleString()} ELO
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            {(isAdmin ||
+                              (session?.user?.id === team.captain?.discordId &&
+                                tournament.status === "upcoming")) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+                                onClick={() => {
+                                  setSelectedTeamId(team._id);
+                                  setIsUnregisterDialogOpen(true);
+                                }}
+                                disabled={unregistering}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
                             )}
                           </div>
-                        </div>
 
-                        {/* Action buttons - aligned to the right */}
-                        <div className="flex space-x-2">
+                          {/* Captain section */}
+                          <div className="mb-4 pb-4 border-b">
+                            <div className="flex items-center gap-3">
+                              <MemberAvatar
+                                profilePicture={
+                                  team.captain?.discordProfilePicture
+                                }
+                                username={team.captain?.discordUsername}
+                                size={10}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {team.captain?.discordNickname ||
+                                    team.captain?.discordUsername ||
+                                    "Unknown"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Captain
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Team members avatars */}
+                          <div className="mb-4 flex-1">
+                            {otherMembers.length > 0 ? (
+                              <>
+                                <p className="text-xs text-muted-foreground mb-2 font-medium">
+                                  Members ({otherMembers.length})
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {otherMembers.map((member) => (
+                                    <TooltipProvider key={member.discordId}>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="cursor-default">
+                                            <MemberAvatar
+                                              profilePicture={
+                                                member.discordProfilePicture
+                                              }
+                                              username={member.discordUsername}
+                                              size={10}
+                                            />
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent>
+                                          <p>
+                                            {member.discordNickname ||
+                                              member.discordUsername}
+                                          </p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  ))}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="min-h-[2.5rem]" />
+                            )}
+                          </div>
+
+                          {/* View Team button */}
                           <Button
                             variant="outline"
                             size="sm"
+                            className="w-full h-9 text-sm font-medium mt-auto"
                             onClick={() =>
                               router.push(`/tournaments/teams/${team._id}`)
                             }
                           >
                             View Team
                           </Button>
-                          {(isAdmin ||
-                            (session?.user?.id === team.captain?.discordId &&
-                              tournament.status === "upcoming")) && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-500 hover:text-red-600 hover:bg-red-100/10"
-                              onClick={() => unregisterTeam(team._id)}
-                              disabled={unregistering}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          )}
                         </div>
-                      </div>
-
-                      {/* Team members section - more compact on mobile */}
-                      <div className="mt-4">
-                        <div className="flex flex-col space-y-3">
-                          <div className="flex items-center space-x-2">
-                            <MemberAvatar
-                              profilePicture={
-                                team.captain?.discordProfilePicture
-                              }
-                              username={team.captain?.discordUsername}
-                              size={8}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
-                                {team.captain?.discordNickname ||
-                                  team.captain?.discordUsername}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Team Captain
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            {team.members
-                              ?.filter(
-                                (member) =>
-                                  member.discordId !== team.captain?.discordId
-                              )
-                              .map((member) => (
-                                <div
-                                  key={member.discordId}
-                                  title={
-                                    member.discordNickname ||
-                                    member.discordUsername
-                                  }
-                                >
-                                  <MemberAvatar
-                                    profilePicture={
-                                      member.discordProfilePicture
-                                    }
-                                    username={member.discordUsername}
-                                    size={8}
-                                  />
-                                </div>
-                              ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                      </Card>
+                  );
+                })}
 
                 {/* Placeholder cards for remaining slots */}
                 {tournament.status === "upcoming" &&
@@ -1259,8 +1479,13 @@ export default function TournamentDetailsPage() {
 
         {/* Admin Controls Section */}
         {isAdmin && tournament && (
-          <div className="p-4 mt-8 rounded-lg border bg-slate-900">
-            <h3 className="mb-4 text-lg font-semibold">Admin Controls</h3>
+          <div className="p-6 mt-8 rounded-lg border bg-muted/30">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-md bg-primary/10 border border-primary/20">
+                <Shuffle className="w-4 h-4 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold">Admin Controls</h3>
+            </div>
             <div className="flex flex-wrap gap-3 items-center">
               {tournament.status === "upcoming" && (
                 <TooltipProvider>
@@ -1319,41 +1544,61 @@ export default function TournamentDetailsPage() {
               )}
 
               {/* Testing buttons - only visible to developer */}
-              {isDeveloper && (
+              {isDeveloper && tournament.status === "upcoming" && (
                 <>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="flex gap-2 items-center"
-                          onClick={() => handleFillTournament()}
-                        >
-                          <Users className="w-4 h-4" />
-                          Fill Tournament
-                        </Button>
+                        <div>
+                          <Button
+                            variant="outline"
+                            className="flex gap-2 items-center"
+                            onClick={() => setIsFillDialogOpen(true)}
+                            disabled={tournament.status !== "upcoming"}
+                          >
+                            <Users className="w-4 h-4" />
+                            Fill Tournament
+                          </Button>
+                        </div>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Fill tournament with random teams (testing)</p>
-                      </TooltipContent>
+                      {tournament.status !== "upcoming" && (
+                        <TooltipContent>
+                          <p>Tournament must be reset before filling teams</p>
+                        </TooltipContent>
+                      )}
+                      {tournament.status === "upcoming" && (
+                        <TooltipContent>
+                          <p>Fill tournament with random teams (testing)</p>
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   </TooltipProvider>
 
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="flex gap-2 items-center text-red-500 hover:text-red-600"
-                          onClick={() => handleClearTournament()}
-                        >
-                          <X className="w-4 h-4" />
-                          Clear Teams
-                        </Button>
+                        <div>
+                          <Button
+                            variant="outline"
+                            className="flex gap-2 items-center text-red-500 hover:text-red-600"
+                            onClick={() => setIsClearDialogOpen(true)}
+                            disabled={tournament.status !== "upcoming"}
+                          >
+                            <X className="w-4 h-4" />
+                            Clear Teams
+                          </Button>
+                        </div>
                       </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Remove all teams from tournament (testing)</p>
-                      </TooltipContent>
+                      {tournament.status !== "upcoming" && (
+                        <TooltipContent>
+                          <p>Tournament must be reset before clearing teams</p>
+                        </TooltipContent>
+                      )}
+                      {tournament.status === "upcoming" && (
+                        <TooltipContent>
+                          <p>Remove all teams from tournament (testing)</p>
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   </TooltipProvider>
                 </>
@@ -1362,24 +1607,37 @@ export default function TournamentDetailsPage() {
               {/* Launch tournament button - visible to all admins */}
               {tournament.status === "upcoming" &&
                 tournament.registeredTeams.length === tournament.maxTeams && (
-                  <Button
-                    variant="default"
-                    className="text-white bg-green-600 hover:bg-green-700"
-                    onClick={handleLaunchTournament}
-                    disabled={launching}
-                  >
-                    {launching ? (
-                      <>
-                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                        Launching...
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-2 w-4 h-4" />
-                        Launch Tournament
-                      </>
-                    )}
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Button
+                            variant="default"
+                            className="text-white bg-green-600 hover:bg-green-700"
+                            onClick={handleLaunchTournament}
+                            disabled={launching || !isSeeded}
+                          >
+                            {launching ? (
+                              <>
+                                <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                Launching...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="mr-2 w-4 h-4" />
+                                Launch Tournament
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </TooltipTrigger>
+                      {!isSeeded && (
+                        <TooltipContent>
+                          <p>Teams must be pre-seeded before launching</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
                 )}
 
               {tournament.status === "active" && isAdmin && (
@@ -1411,49 +1669,78 @@ export default function TournamentDetailsPage() {
           open={isRegisterDialogOpen}
           onOpenChange={setIsRegisterDialogOpen}
         >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Register Team</DialogTitle>
-              <DialogDescription>
-                Select a team to register for this tournament.
-              </DialogDescription>
+          <DialogContent className="sm:max-w-[500px] px-4 sm:px-6 py-4 sm:py-6">
+            <DialogHeader className="space-y-3 pb-4 border-b">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl font-bold">
+                    Register Team
+                  </DialogTitle>
+                  <DialogDescription className="mt-1">
+                    Select a team to register for this tournament.
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
             {userTeams.length > 0 ? (
               <>
                 <div className="py-4 space-y-4">
-                  <Select
-                    value={selectedTeamId}
-                    onValueChange={setSelectedTeamId}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a team" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {userTeams.map((team) => (
-                        <SelectItem
-                          key={team._id}
-                          value={team._id}
-                          disabled={isTeamRegistered(team._id)}
-                        >
-                          {team.name}{" "}
-                          {isTeamRegistered(team._id) && "(Already registered)"}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold">
+                      Select Team
+                    </label>
+                    <Select
+                      value={selectedTeamId}
+                      onValueChange={setSelectedTeamId}
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Choose a team to register" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userTeams.map((team) => (
+                          <SelectItem
+                            key={team._id}
+                            value={team._id}
+                            disabled={isTeamRegistered(team._id)}
+                            className={isTeamRegistered(team._id) ? "opacity-50" : ""}
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-medium">{team.name}</span>
+                              {team.tag && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  [{team.tag}]
+                                </span>
+                              )}
+                              {isTeamRegistered(team._id) && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  (Already registered)
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
                   {registerError && (
-                    <div className="text-sm font-medium text-red-500">
-                      {registerError}
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                      <p className="text-sm font-medium text-red-500">
+                        {registerError}
+                      </p>
                     </div>
                   )}
                 </div>
 
-                <DialogFooter>
+                <DialogFooter className="gap-2 pt-4 border-t">
                   <Button
                     variant="outline"
                     onClick={() => setIsRegisterDialogOpen(false)}
+                    className="w-full sm:w-auto"
                   >
                     Cancel
                   </Button>
@@ -1464,19 +1751,32 @@ export default function TournamentDetailsPage() {
                       !selectedTeamId ||
                       isTeamRegistered(selectedTeamId)
                     }
+                    className="w-full sm:w-auto"
                   >
-                    {registering ? "Registering..." : "Register Team"}
+                    {registering ? (
+                      <>
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        Registering...
+                      </>
+                    ) : (
+                      "Register Team"
+                    )}
                   </Button>
                 </DialogFooter>
               </>
             ) : (
-              <div className="py-6 text-center">
-                <p className="text-muted-foreground">
-                  You don&apos;t have any teams that you captain.
-                </p>
-                <Button asChild className="mt-4">
-                  <Link href="/teams/create">Create a Team</Link>
-                </Button>
+              <div className="py-6 text-center space-y-4">
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground mb-4">
+                    You don&apos;t have any teams that you captain.
+                  </p>
+                  <Button asChild>
+                    <Link href="/tournaments/teams/create">
+                      Create a Team
+                    </Link>
+                  </Button>
+                </div>
               </div>
             )}
           </DialogContent>
@@ -1487,7 +1787,7 @@ export default function TournamentDetailsPage() {
           open={isUnregisterDialogOpen}
           onOpenChange={setIsUnregisterDialogOpen}
         >
-          <DialogContent>
+          <DialogContent className="px-4 sm:px-6 py-4 sm:py-6">
             <DialogHeader>
               <DialogTitle>Unregister Team</DialogTitle>
               <DialogDescription>
@@ -1517,6 +1817,61 @@ export default function TournamentDetailsPage() {
                 disabled={unregistering}
               >
                 {unregistering ? "Unregistering..." : "Unregister Team"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Fill Tournament Confirmation Dialog */}
+        <Dialog open={isFillDialogOpen} onOpenChange={setIsFillDialogOpen}>
+          <DialogContent className="sm:max-w-[450px] px-4 sm:px-6 py-4 sm:py-6">
+            <DialogHeader>
+              <DialogTitle>Fill Tournament</DialogTitle>
+              <DialogDescription>
+                This will fill the tournament with random teams. This action cannot be undone.
+                Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsFillDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleFillTournament}
+                className="bg-primary"
+              >
+                Fill Tournament
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Clear Teams Confirmation Dialog */}
+        <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+          <DialogContent className="sm:max-w-[450px] px-4 sm:px-6 py-4 sm:py-6">
+            <DialogHeader>
+              <DialogTitle>Clear All Teams</DialogTitle>
+              <DialogDescription>
+                This will remove all teams from the tournament. This action cannot be undone.
+                Are you sure you want to continue?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsClearDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleClearTournament}
+              >
+                Clear Teams
               </Button>
             </DialogFooter>
           </DialogContent>

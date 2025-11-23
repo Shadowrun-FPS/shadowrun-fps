@@ -152,21 +152,6 @@ export const secureLogger = {
     outputLog(createLogEntry("error", message, data));
   },
 
-  // Special function for API request logging
-  apiRequest: (
-    method: string,
-    path: string,
-    userId?: string,
-    statusCode?: number
-  ) => {
-    secureLogger.info("API Request", {
-      method,
-      path: path.replace(/\/[0-9a-f]{24}/g, "/[ID]"), // Replace MongoDB IDs
-      userId: userId ? `[${userId.slice(0, 4)}...]` : undefined, // Partial user ID
-      statusCode,
-    });
-  },
-
   // Special function for authentication events
   authEvent: (event: string, userId?: string, success?: boolean) => {
     secureLogger.info("Auth Event", {
@@ -181,6 +166,15 @@ export const secureLogger = {
     secureLogger.info("Discord Event", {
       event,
       ...redactSensitiveData(data),
+    });
+  },
+
+  // Special function for API requests
+  apiRequest: (method: string, path: string, userId?: string) => {
+    secureLogger.info("API Request", {
+      method,
+      path,
+      userId: userId ? `[${userId.slice(0, 4)}...]` : undefined,
     });
   },
 };

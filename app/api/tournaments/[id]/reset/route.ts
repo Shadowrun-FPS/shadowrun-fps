@@ -38,6 +38,7 @@ export async function POST(
     // Update all bracket matches to "upcoming" status
     const updateOperations: Record<string, any> = {};
 
+    // Reset winners bracket
     if (tournament.brackets && tournament.brackets.rounds) {
       tournament.brackets.rounds.forEach((round: any, roundIndex: number) => {
         if (round.matches) {
@@ -68,6 +69,12 @@ export async function POST(
           });
         }
       });
+    }
+
+    // Reset losers bracket for double elimination tournaments
+    // Completely clear the losersRounds structure so it can be recreated correctly on re-seed
+    if (tournament.format === "double_elimination") {
+      updateOperations["brackets.losersRounds"] = [];
     }
 
     // Clear all tournament matches and reset tournament status

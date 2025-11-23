@@ -347,12 +347,35 @@ export function ChallengeTeamDialog({
         gameMode: map.gameMode,
       }));
 
-      console.log("Sending challenge with data:", {
-        challengedTeamId: team._id,
-        proposedDate: date.toISOString(),
-        selectedMaps: formattedMaps,
-        message,
-      });
+      // Combine date and time based on timeOption
+      let hours = 19; // Default to 7pm (evening)
+      let minutes = 0;
+
+      if (timeOption === "morning") {
+        hours = 10;
+      } else if (timeOption === "afternoon") {
+        hours = 14;
+      } else if (timeOption === "evening") {
+        hours = 19;
+      } else if (timeOption === "custom") {
+        const [h, m] = customTime.split(":").map(Number);
+        hours = h;
+        minutes = m;
+      }
+
+      // Create a date object with the selected date at midnight in user's local timezone
+      // We need to create a new date to avoid mutating the original
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const day = date.getDate();
+
+      // Create a new Date object with the selected date and time in user's local timezone
+      // This ensures the time is set correctly in the local timezone before UTC conversion
+      const localDateTime = new Date(year, month, day, hours, minutes, 0, 0);
+
+      // Convert to UTC ISO string for storage
+      // toISOString() automatically converts from local timezone to UTC
+      const utcISOString = localDateTime.toISOString();
 
       const response = await fetch("/api/scrimmages/challenge", {
         method: "POST",
@@ -361,7 +384,7 @@ export function ChallengeTeamDialog({
         },
         body: JSON.stringify({
           challengedTeamId: team._id,
-          proposedDate: date.toISOString(),
+          proposedDate: utcISOString,
           selectedMaps: formattedMaps,
           message,
         }),
@@ -404,7 +427,7 @@ export function ChallengeTeamDialog({
       onClick={handleOpenDialog}
       disabled={!canChallenge}
     >
-      <Swords className="w-5 h-5 mr-2" />
+      <Swords className="mr-2 w-5 h-5" />
       Challenge
     </Button>
   );
@@ -424,7 +447,7 @@ export function ChallengeTeamDialog({
                   className="h-8 transition duration-200 ease-in-out transform hover:bg-gray-200 hover:scale-105 active:scale-95"
                   disabled={true}
                 >
-                  <Swords className="w-5 h-5 mr-2" />
+                  <Swords className="mr-2 w-5 h-5" />
                   Challenge
                 </Button>
               </span>
@@ -443,72 +466,97 @@ export function ChallengeTeamDialog({
           className="h-8 transition duration-200 ease-in-out transform hover:bg-gray-200 hover:scale-105 active:scale-95"
           onClick={() => setOpen(true)}
         >
-          <Swords className="w-5 h-5 mr-2" />
+          <Swords className="mr-2 w-5 h-5" />
           Challenge
         </Button>
       )}
 
       {/* Dialog without trigger (manually controlled) */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5" />
-              Challenge {team.name}
-            </DialogTitle>
-            <DialogDescription>
-              Set up a scrimmage match with {team.name}.
-            </DialogDescription>
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+          <DialogHeader className="pb-4 border-b border-border/50">
+            <div className="flex gap-3 items-center">
+              <div className="relative p-2 bg-gradient-to-br rounded-lg border from-primary/20 to-primary/10 border-primary/30">
+                <Shield className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <DialogTitle className="text-lg sm:text-xl">
+                  Challenge {team.name}
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-xs sm:text-sm">
+                  Set up a scrimmage match with {team.name}.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details">Match Details</TabsTrigger>
-              <TabsTrigger value="maps">Map Selection</TabsTrigger>
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="mt-4 sm:mt-6"
+          >
+            <TabsList className="grid grid-cols-2 w-full h-10">
+              <TabsTrigger value="details" className="text-xs sm:text-sm">
+                Match Details
+              </TabsTrigger>
+              <TabsTrigger value="maps" className="text-xs sm:text-sm">
+                Map Selection
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="details" className="pt-4 space-y-4">
-              <div className="space-y-4">
+            <TabsContent
+              value="details"
+              className="pt-4 space-y-5 sm:pt-6 sm:space-y-6"
+            >
+              <div className="space-y-5 sm:space-y-6">
                 <div>
-                  <h3 className="mb-2 font-medium">Suggested Times</h3>
-                  <div className="grid grid-cols-2 gap-2">
+                  <h3 className="flex gap-2 items-center mb-3 text-sm font-semibold">
+                    <Clock className="w-4 h-4 text-primary" />
+                    Suggested Times
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
                     <Button
                       variant="outline"
                       type="button"
-                      className="justify-start"
+                      className="justify-start h-11 border-2 transition-colors hover:border-primary/50"
                       onClick={() => handleSuggestedTimeSelection("tomorrow")}
                     >
-                      <Clock className="w-4 h-4 mr-2" />
-                      Tomorrow Evening
+                      <Clock className="mr-2 w-4 h-4" />
+                      <span className="text-xs sm:text-sm">
+                        Tomorrow Evening
+                      </span>
                     </Button>
                     <Button
                       variant="outline"
                       type="button"
-                      className="justify-start"
+                      className="justify-start h-11 border-2 transition-colors hover:border-primary/50"
                       onClick={() => handleSuggestedTimeSelection("weekend")}
                     >
-                      This Weekend
+                      <span className="text-xs sm:text-sm">This Weekend</span>
                     </Button>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="mb-2 font-medium">Custom Date & Time</h3>
-                  <div className="grid gap-2">
+                  <h3 className="flex gap-2 items-center mb-3 text-sm font-semibold">
+                    <CalendarIcon className="w-4 h-4 text-primary" />
+                    Custom Date & Time
+                  </h3>
+                  <div className="grid gap-3">
                     <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
                           className={cn(
-                            "justify-start text-left font-normal",
+                            "justify-start text-left font-normal h-11 border-2",
                             !date && "text-muted-foreground"
                           )}
                         >
-                          <CalendarIcon className="w-4 h-4 mr-2" />
+                          <CalendarIcon className="mr-2 w-4 h-4" />
                           {date ? format(date, "PPP") : "Pick a date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="p-0 w-auto">
                         <Calendar
                           mode="single"
                           selected={date}
@@ -529,13 +577,13 @@ export function ChallengeTeamDialog({
                       </PopoverContent>
                     </Popover>
 
-                    <div className="grid gap-2">
+                    <div className="grid gap-3">
                       <Select
                         value={timeOption}
                         onValueChange={setTimeOption}
                         disabled={!date}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 border-2">
                           <SelectValue placeholder="Select time" />
                         </SelectTrigger>
                         <SelectContent>
@@ -562,39 +610,56 @@ export function ChallengeTeamDialog({
                             id="custom-time"
                             value={customTime}
                             onChange={(e) => setCustomTime(e.target.value)}
-                            className="flex w-full h-10 px-3 py-2 text-sm border rounded-md border-input bg-background ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex px-3 py-2 w-full h-11 text-sm rounded-md border-2 border-input bg-background ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         </div>
                       )}
 
                       <p className="text-xs text-muted-foreground">
                         Your local timezone:{" "}
-                        {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                        <span className="font-medium">
+                          {Intl.DateTimeFormat().resolvedOptions().timeZone}
+                        </span>
                       </p>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="mb-2 font-medium">Match Format</h3>
+                  <h3 className="flex gap-2 items-center mb-3 text-sm font-semibold">
+                    <Trophy className="w-4 h-4 text-primary" />
+                    Match Format
+                  </h3>
                   <div className="grid grid-cols-3 gap-3">
-                    <div className="flex flex-col items-center justify-center p-3 border rounded-md bg-muted/50">
-                      <Trophy className="w-5 h-5 mb-1 text-primary" />
-                      <span className="text-sm">Best of 3</span>
+                    <div className="flex flex-col justify-center items-center p-3 bg-gradient-to-br rounded-lg border-2 transition-all sm:p-4 from-muted/50 to-muted/30 hover:border-primary/30">
+                      <div className="relative p-2 mb-2 rounded-lg bg-primary/10">
+                        <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      </div>
+                      <span className="text-xs font-semibold sm:text-sm">
+                        Best of 3
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         Maps
                       </span>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-3 border rounded-md bg-muted/50">
-                      <Timer className="w-5 h-5 mb-1 text-primary" />
-                      <span className="text-sm">First to 6</span>
+                    <div className="flex flex-col justify-center items-center p-3 bg-gradient-to-br rounded-lg border-2 transition-all sm:p-4 from-muted/50 to-muted/30 hover:border-primary/30">
+                      <div className="relative p-2 mb-2 rounded-lg bg-primary/10">
+                        <Timer className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      </div>
+                      <span className="text-xs font-semibold sm:text-sm">
+                        First to 6
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         Rounds
                       </span>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-3 border rounded-md bg-muted/50">
-                      <Map className="w-5 h-5 mb-1 text-primary" />
-                      <span className="text-sm">3 maps</span>
+                    <div className="flex flex-col justify-center items-center p-3 bg-gradient-to-br rounded-lg border-2 sm:p-4 from-primary/10 to-primary/5 border-primary/30">
+                      <div className="relative p-2 mb-2 rounded-lg bg-primary/20">
+                        <Map className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+                      </div>
+                      <span className="text-xs font-semibold sm:text-sm">
+                        {selectedMaps.length} maps
+                      </span>
                       <span className="text-xs text-muted-foreground">
                         Selected
                       </span>
@@ -603,34 +668,47 @@ export function ChallengeTeamDialog({
                 </div>
 
                 <div>
-                  <h3 className="mb-2 font-medium">
-                    Message to Team (Optional)
+                  <h3 className="mb-3 text-sm font-semibold">
+                    Message to Team{" "}
+                    <span className="font-normal text-muted-foreground">
+                      (Optional)
+                    </span>
                   </h3>
                   <Textarea
                     placeholder="Add a message to the team you're challenging..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="min-h-[80px]"
+                    className="min-h-[100px] border-2 resize-none focus:border-primary/50 transition-colors"
+                    maxLength={500}
                   />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {message.length}/500 characters
+                  </p>
                 </div>
               </div>
 
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+              <DialogFooter className="flex flex-col gap-2 pt-4 border-t sm:flex-row border-border/50">
                 <Button
                   onClick={() => setActiveTab("maps")}
                   disabled={!date}
-                  className="flex-1"
+                  className="flex-1 w-full h-11 sm:w-auto"
                 >
                   Next: Select Maps
                 </Button>
               </DialogFooter>
             </TabsContent>
 
-            <TabsContent value="maps" className="pt-4 space-y-4">
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2">
-                  <h3 className="font-medium">Map Selection</h3>
-                  <div className="flex flex-wrap gap-2 mb-4">
+            <TabsContent
+              value="maps"
+              className="pt-4 space-y-5 sm:pt-6 sm:space-y-6"
+            >
+              <div className="space-y-5 sm:space-y-6">
+                <div className="flex flex-col gap-3">
+                  <h3 className="flex gap-2 items-center text-sm font-semibold">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    Map Selection
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       variant={
                         mapSelectionMethod === "standard"
@@ -656,13 +734,20 @@ export function ChallengeTeamDialog({
                   </div>
                 </div>
 
-                <div className="mb-2 text-sm">
-                  <span className="font-medium">Selected:</span>{" "}
-                  {selectedMaps.length}/3 maps
+                <div className="flex justify-between items-center p-3 rounded-lg border bg-muted/50 border-border/50">
+                  <span className="text-sm font-medium">Selected Maps:</span>
+                  <Badge
+                    variant={
+                      selectedMaps.length === 3 ? "default" : "secondary"
+                    }
+                    className="text-xs"
+                  >
+                    {selectedMaps.length}/3
+                  </Badge>
                 </div>
 
                 {loading ? (
-                  <div className="flex items-center justify-center py-8">
+                  <div className="flex justify-center items-center py-8">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
                   </div>
                 ) : (
@@ -692,7 +777,7 @@ export function ChallengeTeamDialog({
                               height={100}
                             />
                           ) : (
-                            <div className="flex items-center justify-center w-full h-full bg-muted">
+                            <div className="flex justify-center items-center w-full h-full bg-muted">
                               <MapPin className="w-8 h-8 text-muted-foreground" />
                             </div>
                           )}
@@ -701,12 +786,12 @@ export function ChallengeTeamDialog({
                               m.id === map._id &&
                               m.isSmallVariant === map.isSmallVariant
                           ) && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-primary/20">
+                            <div className="flex absolute inset-0 justify-center items-center bg-primary/20">
                               <Check className="w-8 h-8 text-primary" />
                             </div>
                           )}
                         </div>
-                        <div className="w-full p-2 text-center">
+                        <div className="p-2 w-full text-center">
                           <p className="h-10 text-sm font-medium line-clamp-2">
                             {map.name}
                           </p>
@@ -726,7 +811,7 @@ export function ChallengeTeamDialog({
                   disabled={loading}
                 >
                   <svg
-                    className="w-4 h-4 mr-2"
+                    className="mr-2 w-4 h-4"
                     viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
@@ -743,11 +828,11 @@ export function ChallengeTeamDialog({
                 </Button>
               </div>
 
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+              <DialogFooter className="flex flex-col gap-2 pt-4 border-t sm:flex-row border-border/50">
                 <Button
                   variant="outline"
                   onClick={() => setActiveTab("details")}
-                  className="flex-1"
+                  className="flex-1 w-full h-11 sm:w-auto"
                 >
                   Back
                 </Button>
@@ -759,11 +844,11 @@ export function ChallengeTeamDialog({
                     !isTeamCaptain ||
                     isSubmitting
                   }
-                  className="flex-1"
+                  className="flex-1 w-full h-11 sm:w-auto"
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                       Sending...
                     </>
                   ) : (
@@ -775,7 +860,7 @@ export function ChallengeTeamDialog({
           </Tabs>
 
           {!isTeamCaptain && (
-            <div className="p-2 mt-2 text-sm rounded-md bg-destructive/10 text-destructive">
+            <div className="p-3 mt-4 text-sm rounded-lg border bg-destructive/10 border-destructive/20 text-destructive">
               Only team captains can send challenges.
             </div>
           )}

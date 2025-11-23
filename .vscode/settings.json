@@ -1,0 +1,18 @@
+﻿{
+  "search.exclude": {
+    "**/.next": true,
+    "**/.next/**": true,
+    "**/*.hot-update.js": true,
+    "**/node_modules": true,
+    "**/.git": true
+  },
+  "files.exclude": {
+    "**/.next": true,
+    "**/.next/**": true,
+    "**/*.hot-update.js": true
+  },
+  "files.watcherExclude": {
+    "**/.next/**": true,
+    "**/*.hot-update.js": true
+  }
+}

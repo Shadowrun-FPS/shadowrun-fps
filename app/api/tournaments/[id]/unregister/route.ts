@@ -90,6 +90,11 @@ export async function POST(
       }
     }
 
+    // Check if tournament is seeded (has teams in bracket matches)
+    const isSeeded = tournament.brackets?.rounds?.[0]?.matches?.some(
+      (match: any) => match.teamA || match.teamB
+    );
+
     // Update the tournament document to remove the team
     const result = await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(tournamentId) },
@@ -107,9 +112,30 @@ export async function POST(
       );
     }
 
+    // If tournament was seeded, automatically unseed it since the bracket is now invalid
+    if (isSeeded) {
+      const emptyRounds = [
+        {
+          name: "Round 1",
+          matches: [],
+        },
+      ];
+
+      await db.collection("Tournaments").updateOne(
+        { _id: new ObjectId(tournamentId) },
+        {
+          $set: {
+            "brackets.rounds": emptyRounds,
+            updatedAt: new Date(),
+          },
+        }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Team unregistered successfully",
+      message: "Team unregistered successfully" + (isSeeded ? ". Tournament seeding has been automatically removed." : ""),
+      unseeded: isSeeded,
     });
   } catch (error) {
     console.error("Error unregistering team:", error);

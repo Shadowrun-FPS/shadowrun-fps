@@ -75,12 +75,30 @@ export const metadata: Metadata = {
   },
 };
 
-// This will help reduce React warnings in development mode
-if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
-  // Suppress console warnings in production
+// Suppress console warnings and errors from browser extensions (ad blockers, etc.)
+if (typeof window !== "undefined") {
   const originalConsoleError = console.error;
   console.error = (...args) => {
+    const errorMessage = args[0]?.toString() || "";
+    const fullMessage = args.join(" ");
+    
+    // Suppress YouTube and Google Play errors blocked by browser extensions
     if (
+      errorMessage.includes("ERR_BLOCKED_BY_CLIENT") ||
+      errorMessage.includes("youtubei/v1/log_event") ||
+      errorMessage.includes("www-embed-player.js") ||
+      errorMessage.includes("www.youtube.com/generate_204") ||
+      errorMessage.includes("play.google.com/log") ||
+      fullMessage.includes("youtube.com/generate_204") ||
+      fullMessage.includes("play.google.com/log") ||
+      fullMessage.includes("youtubei/v1/log_event")
+    ) {
+      return;
+    }
+    
+    // Suppress React warnings in production
+    if (
+      process.env.NODE_ENV === "production" &&
       typeof args[0] === "string" &&
       (args[0].includes("Warning:") ||
         args[0].includes("Error:") ||
@@ -88,6 +106,7 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "production") {
     ) {
       return;
     }
+    
     originalConsoleError(...args);
   };
 }
@@ -139,13 +158,13 @@ export default function RootLayout({
       <body
         className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className}`}
       >
-        <NotificationsProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <NotificationsProvider>
             <OnlineStatus />
             <PlayerUpdater />
             <ClientLayout>{children}</ClientLayout>
-          </AuthProvider>
-        </NotificationsProvider>
+          </NotificationsProvider>
+        </AuthProvider>
 
         <Analytics />
         <SpeedInsights />

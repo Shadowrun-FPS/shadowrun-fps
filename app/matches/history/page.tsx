@@ -155,11 +155,11 @@ export default function MatchHistoryPage() {
 
       const DEBUG_LOGS = false; // Set to true only when you need debugging
 
-      function conditionalLog(...args: any[]) {
+      const conditionalLog = (...args: any[]) => {
         if (DEBUG_LOGS && process.env.NODE_ENV === "development") {
           console.log(...args);
         }
-      }
+      };
 
       conditionalLog("Fetching from URL:", url);
 

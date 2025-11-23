@@ -7,6 +7,7 @@ import {
   TrendingUp,
   TrendingDown,
   Minus,
+  Shield,
 } from "lucide-react";
 import {
   Tooltip,
@@ -63,35 +64,43 @@ export default function TeamHeader({
   const { icon: RecordIcon, color: recordColor } = getRecordStatus();
 
   return (
-    <div className="mb-8">
+    <div className="mb-6 sm:mb-8">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">{teamName}</h1>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="secondary" className="text-sm font-semibold">
-              {teamTag}
-            </Badge>
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Users className="w-4 h-4" />
-              <span className="text-sm">Team</span>
+        <div className="flex items-center gap-3">
+          <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-lg shadow-primary/10 shrink-0">
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/40 to-transparent opacity-50" />
+            <Shield className="relative w-6 h-6 sm:w-7 sm:h-7 text-primary drop-shadow-sm" />
+          </div>
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+              {teamName}
+            </h1>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant="secondary" className="text-xs sm:text-sm font-semibold border-2">
+                [{teamTag}]
+              </Badge>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">Team</span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex flex-row justify-end w-full gap-3 sm:w-auto">
+        <div className="flex flex-row justify-end w-full gap-2 sm:gap-3 sm:w-auto">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Card className="p-3 transition-colors border shadow-sm bg-card hover:bg-accent/50 cursor-help">
-                  <div className="flex items-center gap-3">
-                    <Activity className="w-4 h-4 text-primary" />
+                <Card className="p-3 sm:p-4 transition-all border-2 shadow-sm bg-gradient-to-br from-card via-card to-primary/5 hover:bg-accent/50 hover:shadow-md cursor-help">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">Record</p>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <p className="font-bold text-sm sm:text-base">
                           {winsNum}-{lossesNum}
                         </p>
-                        <RecordIcon className={`w-3.5 h-3.5 ${recordColor}`} />
+                        <RecordIcon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${recordColor} shrink-0`} />
                       </div>
                     </div>
                   </div>
@@ -108,12 +117,12 @@ export default function TeamHeader({
           </TooltipProvider>
 
           {teamElo !== undefined && (
-            <Card className="p-3 border shadow-sm bg-card">
-              <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary" />
+            <Card className="p-3 sm:p-4 border-2 shadow-sm bg-gradient-to-br from-card via-card to-primary/5">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                 <div>
                   <p className="text-xs text-muted-foreground">Team ELO</p>
-                  <p className="font-semibold">
+                  <p className="font-bold text-sm sm:text-base">
                     {typeof teamElo === "number"
                       ? teamElo.toLocaleString()
                       : parseInt((teamElo as string) || "0").toLocaleString()}

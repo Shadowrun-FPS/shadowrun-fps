@@ -11,7 +11,7 @@ let lastCleanup = Date.now();
 function cleanup() {
   const now = Date.now();
   if (now - lastCleanup > CLEANUP_INTERVAL) {
-    for (const [key, data] of requestCounts.entries()) {
+    for (const [key, data] of Array.from(requestCounts.entries())) {
       if (now > data.resetTime) {
         requestCounts.delete(key);
       }

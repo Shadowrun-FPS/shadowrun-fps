@@ -10,6 +10,15 @@
 
 # next.js
 /.next/
+.next/
+.next/**
+**/.next/
+**/.next/**
+.next/server/
+.next/static/
+.next/cache/
+*.hot-update.js
+**/*.hot-update.js
 /out/
 
 # production

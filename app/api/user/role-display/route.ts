@@ -8,12 +8,27 @@ import { secureLogger } from "@/lib/secure-logger";
 export const dynamic = "force-dynamic";
 
 // Safe role mapping - converts internal role IDs to display information
-const ROLE_DISPLAY_MAP = {
-  [SECURITY_CONFIG.ROLES.ADMIN]: { name: "Admin", color: "bg-red-500" },
-  [SECURITY_CONFIG.ROLES.FOUNDER]: { name: "Founder", color: "bg-purple-500" },
-  [SECURITY_CONFIG.ROLES.MODERATOR]: { name: "Mod", color: "bg-blue-500" },
+// Use hardcoded role IDs as fallback to ensure they always work
+const ADMIN_ROLE_ID = process.env.ADMIN_ROLE_ID || "932585751332421642";
+const FOUNDER_ROLE_ID = process.env.FOUNDER_ROLE_ID || "1095126043918082109";
+const MODERATOR_ROLE_ID =
+  process.env.MODERATOR_ROLE_ID || "1042168064805965864";
+const GM_ROLE_ID = process.env.GM_ROLE_ID || "1080979865345458256";
+
+const ROLE_DISPLAY_MAP: Record<string, { name: string; color: string }> = {
+  [ADMIN_ROLE_ID]: { name: "Admin", color: "bg-red-600" },
+  [FOUNDER_ROLE_ID]: { name: "Founder", color: "bg-purple-600" },
+  [MODERATOR_ROLE_ID]: { name: "Moderator", color: "bg-blue-600" },
+  [GM_ROLE_ID]: { name: "GM", color: "bg-green-500" },
+  // Also include the ones from SECURITY_CONFIG as fallback
+  [SECURITY_CONFIG.ROLES.ADMIN]: { name: "Admin", color: "bg-red-600" },
+  [SECURITY_CONFIG.ROLES.FOUNDER]: { name: "Founder", color: "bg-purple-600" },
+  [SECURITY_CONFIG.ROLES.MODERATOR]: {
+    name: "Moderator",
+    color: "bg-blue-600",
+  },
   [SECURITY_CONFIG.ROLES.GM]: { name: "GM", color: "bg-green-500" },
-} as const;
+};
 
 export const GET = withErrorHandling(async (req: NextRequest) => {
   const session = await getServerSession(authOptions);
@@ -23,7 +38,6 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
   }
 
   try {
-    // Get user roles from Discord API
     const baseUrl =
       process.env.NEXTAUTH_URL ||
       (process.env.NODE_ENV === "development" ? "http://localhost:3000" : "");
@@ -41,9 +55,22 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
         statusText: response.statusText,
       });
 
+      const DEVELOPER_DISCORD_ID = "238329746671271936";
+      const isDeveloper =
+        session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+        session.user.id === DEVELOPER_DISCORD_ID;
+
       return NextResponse.json({
-        roles: [],
-        isDeveloper: session.user.id === SECURITY_CONFIG.DEVELOPER_ID,
+        roles: isDeveloper
+          ? [
+              {
+                id: "developer",
+                name: "Developer",
+                color: "bg-gradient-to-r from-green-600 to-emerald-500",
+              },
+            ]
+          : [],
+        isDeveloper,
         guildNickname: null,
       });
     }
@@ -52,34 +79,42 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     const userRoles = data.roles || [];
 
     // Map role IDs to safe display information
+    // Ensure role IDs are compared as strings
     const roleDisplay = userRoles
-      .map((roleId: string) => {
-        const display =
-          ROLE_DISPLAY_MAP[roleId as keyof typeof ROLE_DISPLAY_MAP];
-        return display
-          ? {
-              id: roleId, // This is safe to return as it's already known to the user
-              name: display.name,
-              color: display.color,
-            }
-          : null;
+      .map((roleId: string | number) => {
+        // Convert to string to ensure proper comparison
+        const roleIdStr = String(roleId);
+        const display = ROLE_DISPLAY_MAP[roleIdStr];
+
+        if (display) {
+          return {
+            id: roleIdStr,
+            name: display.name,
+            color: display.color,
+          };
+        }
+
+        secureLogger.debug("Unmapped role ID", {
+          roleId: roleIdStr,
+          userId: session.user.id,
+        });
+
+        return null;
       })
       .filter(Boolean);
 
-    // Add developer badge if applicable
-    const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+    const DEVELOPER_DISCORD_ID = "238329746671271936";
+    const isDeveloper =
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      session.user.id === DEVELOPER_DISCORD_ID;
+
     if (isDeveloper) {
       roleDisplay.push({
         id: "developer",
         name: "Developer",
-        color: "bg-green-600",
+        color: "bg-gradient-to-r from-green-600 to-emerald-500",
       });
     }
-
-    secureLogger.info("Role display information retrieved", {
-      userId: session.user.id,
-      roleCount: roleDisplay.length,
-    });
 
     return NextResponse.json({
       roles: roleDisplay,
@@ -94,9 +129,22 @@ export const GET = withErrorHandling(async (req: NextRequest) => {
     });
 
     // Return safe fallback
+    const DEVELOPER_DISCORD_ID = "238329746671271936";
+    const isDeveloper =
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      session.user.id === DEVELOPER_DISCORD_ID;
+
     return NextResponse.json({
-      roles: [],
-      isDeveloper: session.user.id === SECURITY_CONFIG.DEVELOPER_ID,
+      roles: isDeveloper
+        ? [
+            {
+              id: "developer",
+              name: "Developer",
+              color: "bg-gradient-to-r from-green-600 to-emerald-500",
+            },
+          ]
+        : [],
+      isDeveloper,
       guildNickname: null,
     });
   }

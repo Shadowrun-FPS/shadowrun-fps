@@ -61,43 +61,47 @@ export function Footer() {
 
   return (
     <footer className="w-full text-white bg-black">
-      <div className="py-4 border-t border-gray-800">
+      <div className="py-6 sm:py-8 border-t border-gray-800">
         <div className="responsive-container">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-8">
-              <p className="text-sm text-gray-400">
-                &copy; {currentYear} Shadowrun FPS Community
-              </p>
-              <div className="flex items-center space-x-4">
-                {socialLinks
-                  .filter((link) => !link.hidden)
-                  .map((link) => (
-                    <Link
-                      key={link.platform}
-                      href={link.url}
-                      className="text-gray-400 transition-all hover:text-white hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={link.label}
-                    >
-                      <span className="sr-only">{link.label}</span>
-                      {link.icon}
-                    </Link>
-                  ))}
-              </div>
-            </div>
-            <nav className="flex flex-wrap justify-center gap-4 sm:gap-6">
+          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row sm:gap-6">
+            <p className="text-xs sm:text-sm text-gray-400 text-center sm:text-left">
+              &copy; {currentYear} Shadowrun FPS Community
+            </p>
+            <nav className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-5">
+              <Link
+                href="https://gfwl-hub.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs sm:text-sm text-gray-400 transition-colors hover:text-white touch-manipulation min-h-[44px] sm:min-h-0 flex items-center"
+              >
+                GFWL Hub
+              </Link>
+              {socialLinks
+                .filter((link) => !link.hidden)
+                .map((link) => (
+                  <Link
+                    key={link.platform}
+                    href={link.url}
+                    className="text-gray-400 transition-all hover:text-white hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={link.label}
+                  >
+                    <span className="sr-only">{link.label}</span>
+                    {link.icon}
+                  </Link>
+                ))}
               <a
                 href="#"
                 onClick={(e) => handleComingSoon(e, "Privacy Policy")}
-                className="text-sm text-gray-400 transition-colors cursor-not-allowed hover:text-white opacity-60"
+                className="text-xs sm:text-sm text-gray-400 transition-colors cursor-not-allowed hover:text-white opacity-60 touch-manipulation min-h-[44px] sm:min-h-0 flex items-center"
               >
                 Privacy Policy
               </a>
               <a
                 href="#"
                 onClick={(e) => handleComingSoon(e, "Terms")}
-                className="text-sm text-gray-400 transition-colors cursor-not-allowed hover:text-white opacity-60"
+                className="text-xs sm:text-sm text-gray-400 transition-colors cursor-not-allowed hover:text-white opacity-60 touch-manipulation min-h-[44px] sm:min-h-0 flex items-center"
               >
                 Terms
               </a>

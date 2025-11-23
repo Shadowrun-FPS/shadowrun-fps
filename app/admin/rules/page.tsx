@@ -107,7 +107,6 @@ export default function RulesPage() {
       const data = await response.json();
       setRules(data);
     } catch (error) {
-      console.error("Error fetching rules:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -150,7 +149,6 @@ export default function RulesPage() {
 
       fetchRules();
     } catch (error) {
-      console.error("Error deleting rule:", error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -174,9 +172,16 @@ export default function RulesPage() {
   }
 
   return (
-    <div className="container py-6 mx-auto space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-4 sm:space-y-6 lg:space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row">
-        <h1 className="text-3xl font-bold">Community Rules</h1>
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Community Rules
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Manage and organize community guidelines
+          </p>
+        </div>
         <AddRuleDialog onRuleAdded={fetchRules} />
       </div>
 
@@ -184,7 +189,7 @@ export default function RulesPage() {
         <Search className="absolute w-4 h-4 -translate-y-1/2 top-1/2 left-3 text-muted-foreground" />
         <Input
           placeholder="Search rules..."
-          className="pl-10"
+          className="pl-10 min-h-[44px] sm:min-h-0"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -193,15 +198,15 @@ export default function RulesPage() {
       <div className="space-y-4">
         {filteredRules.length > 0 ? (
           filteredRules.map((rule, index) => (
-            <Card key={rule._id} className="overflow-hidden">
+            <Card key={rule._id} className="overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
               <div
-                className="flex items-center justify-between p-6 cursor-pointer hover:bg-muted/50"
+                className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-6 cursor-pointer hover:bg-muted/30 touch-manipulation transition-colors"
                 onClick={() => toggleExpand(rule._id)}
               >
-                <h3 className="text-lg font-medium">
+                <h3 className="text-base sm:text-lg font-medium flex-1">
                   Rule {index + 1}: {rule.title}
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 self-end sm:self-auto">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -210,6 +215,7 @@ export default function RulesPage() {
                       setRuleToEdit(rule);
                     }}
                     title="Edit Rule"
+                    className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -221,6 +227,7 @@ export default function RulesPage() {
                       setRuleToDelete(rule);
                     }}
                     title="Delete Rule"
+                    className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                   >
                     <Trash className="w-4 h-4" />
                   </Button>
@@ -232,6 +239,7 @@ export default function RulesPage() {
                       toggleExpand(rule._id);
                     }}
                     title={expandedRule === rule._id ? "Collapse" : "Expand"}
+                    className="min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                   >
                     {expandedRule === rule._id ? (
                       <ChevronUp className="w-4 h-4" />
@@ -242,9 +250,9 @@ export default function RulesPage() {
                 </div>
               </div>
               {expandedRule === rule._id && rule.description && (
-                <CardContent className="px-6 pt-0 pb-6">
+                <CardContent className="px-4 sm:px-6 pt-0 pb-4 sm:pb-6">
                   <div
-                    className="prose-sm prose prose-slate dark:prose-invert max-w-none"
+                    className="prose-sm prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base"
                     dangerouslySetInnerHTML={{ __html: rule.description }}
                   />
                 </CardContent>

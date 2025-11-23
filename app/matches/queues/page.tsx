@@ -46,6 +46,8 @@ import {
   Bell,
   Users,
   AlertCircle,
+  Trophy,
+  Target,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -84,7 +86,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
-import { SECURITY_CONFIG } from "@/lib/security-config";
+import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 
 /*
   TODO SIN: Define a single source of truth for the Queue, QueuePlayer, etc. types
@@ -163,11 +165,37 @@ export default function QueuesPage() {
   });
 
   // Check if user is admin
+  const [userRoles, setUserRoles] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (session?.user?.id) {
+        try {
+          const response = await fetch("/api/discord/user-roles");
+          if (response.ok) {
+            const data = await response.json();
+            setUserRoles(data.roles || []);
+          }
+        } catch (error) {
+          // Silently handle errors
+        }
+      }
+    };
+    fetchRoles();
+  }, [session?.user?.id]);
+
   const isAdmin = () => {
-    return (
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session?.user?.roles && session?.user?.roles.includes("admin"))
-    );
+    if (!session?.user?.id) return false;
+
+    const isDeveloper =
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      session.user.id === "238329746671271936";
+
+    const roles = userRoles.length > 0 ? userRoles : session?.user?.roles || [];
+    const hasAdminRoleCheck = hasAdminRole(roles);
+    const isAdminUser = session.user.isAdmin;
+
+    return isDeveloper || isAdminUser || hasAdminRoleCheck;
   };
 
   // Update the isAdmin function to also check for moderator role
@@ -275,6 +303,7 @@ export default function QueuesPage() {
       toast({
         title: "Success",
         description: "Successfully joined queue",
+        duration: 2000,
       });
     } catch (error) {
       console.error("Error joining queue:", error);
@@ -283,6 +312,7 @@ export default function QueuesPage() {
         description:
           error instanceof Error ? error.message : "Failed to join queue",
         variant: "destructive",
+        duration: 2000,
       });
     } finally {
       // Reset joining state after a short delay to prevent spam clicks
@@ -305,6 +335,7 @@ export default function QueuesPage() {
       toast({
         title: "Success",
         description: "Successfully left queue",
+        duration: 2000,
       });
     } catch (error) {
       console.error("Error leaving queue:", error);
@@ -313,6 +344,7 @@ export default function QueuesPage() {
         description:
           error instanceof Error ? error.message : "Failed to leave queue",
         variant: "destructive",
+        duration: 2000,
       });
     } finally {
       setJoiningQueue(null);
@@ -368,10 +400,6 @@ export default function QueuesPage() {
 
   // Update handleFillQueue to include reshuffle parameter
   const handleFillQueue = async (queueId: string, reshuffle = false) => {
-    console.log("Fill queue attempt:", {
-      sessionData: session,
-      userId: session?.user?.id,
-    });
     if (!session?.user) return;
     setJoiningQueue(queueId);
 
@@ -392,7 +420,7 @@ export default function QueuesPage() {
       toast({
         title: "Queue Filled",
         description: "The queue has been filled with random players",
-        duration: 3000, // 3 seconds
+        duration: 2000,
       });
     } catch (error) {
       toast({
@@ -400,7 +428,7 @@ export default function QueuesPage() {
         description:
           error instanceof Error ? error.message : "Failed to fill queue",
         variant: "destructive",
-        duration: 3000, // 3 seconds
+        duration: 2000,
       });
     } finally {
       setJoiningQueue(null);
@@ -429,7 +457,7 @@ export default function QueuesPage() {
       toast({
         title: "Queue Cleared",
         description: "All players have been removed from the queue",
-        duration: 3000, // 3 seconds
+        duration: 2000,
       });
     } catch (error) {
       toast({
@@ -437,7 +465,7 @@ export default function QueuesPage() {
         description:
           error instanceof Error ? error.message : "Failed to clear queue",
         variant: "destructive",
-        duration: 3000, // 3 seconds
+        duration: 2000,
       });
     } finally {
       setJoiningQueue(null);
@@ -491,21 +519,35 @@ export default function QueuesPage() {
 
   // Update the canLaunchMatch function to check for proper roles
   const canLaunchMatch = (queue: Queue) => {
-    // Check if user has the required roles
-    // TODO SIN: Create a helper function to check if a user has at least one of the required roles
-    // I see you doing this role check in multiple places
-    // ex. hasAnyRole(user, ["admin", "moderator", "founder", "GM"])
+    if (!session?.user?.id) return false;
+
+    // Check if user is developer
+    const isDeveloper =
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      session.user.id === "238329746671271936";
+
+    // Get roles from fetched userRoles or session
+    const roles = userRoles.length > 0 ? userRoles : session?.user?.roles || [];
+
+    // Check for required role IDs (GM, moderator, admin, founder)
+    const hasGMRole = roles.includes(SECURITY_CONFIG.ROLES.GM);
+    const hasModeratorRole = roles.includes(SECURITY_CONFIG.ROLES.MODERATOR);
+    const hasAdminRole = roles.includes(SECURITY_CONFIG.ROLES.ADMIN);
+    const hasFounderRole = roles.includes(SECURITY_CONFIG.ROLES.FOUNDER);
+
+    // Check if user has any of the required roles
     const hasRequiredRole =
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session?.user?.roles &&
-        (session?.user?.roles.includes("admin") ||
-          session?.user?.roles.includes("moderator") ||
-          session?.user?.roles.includes("founder") ||
-          session?.user?.roles.includes("GM")));
+      isDeveloper ||
+      hasGMRole ||
+      hasModeratorRole ||
+      hasAdminRole ||
+      hasFounderRole ||
+      session.user.isAdmin;
 
     // Check if queue has enough players
     const hasEnoughPlayers = queue.players.length >= queue.teamSize * 2;
 
+    // Users with required roles can launch even if not in queue
     return hasRequiredRole && hasEnoughPlayers;
   };
 
@@ -870,40 +912,75 @@ export default function QueuesPage() {
 
   return (
     <FeatureGate feature="queues">
-      <div className="container px-4 py-8 mx-auto">
-        <Card>
-          <CardHeader className="flex flex-row justify-between items-center">
-            <CardTitle>Ranked Matchmaking</CardTitle>
-            {isAdmin() && (
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="flex gap-1 items-center">
-                    <PlusCircle className="w-4 h-4" />
-                    <span>Create Queue</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New Queue</DialogTitle>
+      <div className="container px-4 py-6 mx-auto max-w-screen-2xl sm:px-6 lg:px-8 sm:py-8 lg:py-10">
+        <div className="flex flex-row justify-between items-center pb-4 mb-6 border-b sm:pb-6 sm:mb-8 border-border/40">
+          <div className="flex gap-3 items-center">
+            <div className="p-2 bg-gradient-to-br rounded-lg border from-primary/20 to-primary/10 border-primary/20">
+              <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-2xl from-foreground to-foreground/70">
+                Ranked Matchmaking
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Join queues and compete in ranked matches
+              </p>
+            </div>
+          </div>
+          {isAdmin() && (
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  size="sm"
+                  className="flex gap-2 items-center shadow-md transition-shadow hover:shadow-lg"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Create Queue</span>
+                  <span className="sm:hidden">Create</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[520px] max-h-[90vh] overflow-y-auto p-0 border-2 shadow-2xl">
+                <div className="overflow-hidden relative">
+                  {/* Gradient Header Background */}
+                  <div className="absolute inset-0 bg-gradient-to-br to-transparent opacity-50 pointer-events-none from-primary/20 via-primary/10" />
+
+                  <DialogHeader className="relative p-6 pb-5 space-y-3 bg-gradient-to-r to-transparent border-b border-border/40 from-primary/5 via-primary/5">
+                    <div className="flex gap-3 items-center">
+                      <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-lg shadow-primary/10 shrink-0">
+                        <div className="absolute inset-0 bg-gradient-to-br to-transparent rounded-xl opacity-50 from-primary/40" />
+                        <PlusCircle className="relative w-5 h-5 drop-shadow-sm text-primary" />
+                      </div>
+                      <DialogTitle className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                        Create New Queue
+                      </DialogTitle>
+                    </div>
+                    <p className="pl-11 text-sm text-muted-foreground">
+                      Configure a new ranked matchmaking queue
+                    </p>
                   </DialogHeader>
 
                   <Form {...form}>
                     <form
                       onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-4"
+                      className="p-6 space-y-6"
                     >
                       <FormField
                         control={form.control}
                         name="teamSize"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Team Size</FormLabel>
+                            <FormLabel className="flex items-center gap-2.5 text-sm font-semibold mb-2.5">
+                              <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                                <Users className="w-4 h-4 text-primary" />
+                              </div>
+                              Team Size
+                            </FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               defaultValue={field.value}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="h-11 border-2 shadow-sm transition-colors bg-background hover:border-primary/50">
                                   <SelectValue placeholder="Select team size" />
                                 </SelectTrigger>
                               </FormControl>
@@ -924,13 +1001,18 @@ export default function QueuesPage() {
                         name="eloTier"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>ELO Tier</FormLabel>
+                            <FormLabel className="flex items-center gap-2.5 text-sm font-semibold mb-2.5">
+                              <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                                <Trophy className="w-4 h-4 text-primary" />
+                              </div>
+                              ELO Tier
+                            </FormLabel>
                             <Select
                               onValueChange={field.onChange}
                               defaultValue={field.value}
                             >
                               <FormControl>
-                                <SelectTrigger>
+                                <SelectTrigger className="h-11 border-2 shadow-sm transition-colors bg-background hover:border-primary/50">
                                   <SelectValue placeholder="Select ELO tier" />
                                 </SelectTrigger>
                               </FormControl>
@@ -945,15 +1027,21 @@ export default function QueuesPage() {
                         )}
                       />
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <FormField
                           control={form.control}
                           name="minElo"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Min ELO</FormLabel>
+                              <FormLabel className="text-sm font-semibold mb-2.5">
+                                Min ELO
+                              </FormLabel>
                               <FormControl>
-                                <Input type="number" {...field} />
+                                <Input
+                                  type="number"
+                                  {...field}
+                                  className="h-11 border-2 shadow-sm transition-colors bg-background hover:border-primary/50 focus:border-primary"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -965,9 +1053,15 @@ export default function QueuesPage() {
                           name="maxElo"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Max ELO</FormLabel>
+                              <FormLabel className="text-sm font-semibold mb-2.5">
+                                Max ELO
+                              </FormLabel>
                               <FormControl>
-                                <Input type="number" {...field} />
+                                <Input
+                                  type="number"
+                                  {...field}
+                                  className="h-11 border-2 shadow-sm transition-colors bg-background hover:border-primary/50 focus:border-primary"
+                                />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -975,761 +1069,332 @@ export default function QueuesPage() {
                         />
                       </div>
 
-                      <DialogFooter>
-                        <Button type="submit" disabled={isCreatingQueue}>
-                          {isCreatingQueue ? "Creating..." : "Create Queue"}
+                      <DialogFooter className="flex-col-reverse gap-3 pt-6 border-t border-border/40 sm:flex-row sm:justify-end">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsDialogOpen(false)}
+                          className="w-full h-11 border-2 shadow-sm transition-all sm:w-auto hover:shadow-md"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="submit"
+                          disabled={isCreatingQueue}
+                          className="w-full h-11 font-semibold bg-gradient-to-r shadow-lg transition-all sm:w-auto from-primary to-primary/90 hover:from-primary/90 hover:to-primary hover:shadow-xl"
+                        >
+                          {isCreatingQueue ? (
+                            <>
+                              <span className="mr-2">Creating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <PlusCircle className="mr-2 w-4 h-4" />
+                              Create Queue
+                            </>
+                          )}
                         </Button>
                       </DialogFooter>
                     </form>
                   </Form>
-                </DialogContent>
-              </Dialog>
-            )}
-          </CardHeader>
-          <CardContent>
-            {!isRegistered && !isCheckingRegistration && (
-              <div className="mb-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col gap-4 justify-center items-center text-center">
-                      <h3 className="text-lg font-semibold">
-                        Register for Ranked Matchmaking
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        You need to register before you can join ranked queues.
-                      </p>
-                      <Button
-                        onClick={handleRegisterForRanked}
-                        disabled={isRegistering}
-                        className="w-full max-w-xs"
-                      >
-                        {isRegistering
-                          ? "Registering..."
-                          : "Register for Ranked"}
-                      </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+        <div>
+          {!isRegistered && !isCheckingRegistration && (
+            <div className="mb-6">
+              <Card className="bg-gradient-to-br border-2 shadow-md border-primary/20 from-primary/5 to-primary/10">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col gap-4 justify-center items-center text-center">
+                    <div className="p-3 rounded-full border bg-primary/10 border-primary/20">
+                      <Target className="w-6 h-6 text-primary" />
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-            {isRegistered && missingTeamSizes.length > 0 && has4v4 && (
-              <div className="mb-6">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col gap-4 justify-center items-center text-center">
-                      <h3 className="text-lg font-semibold">
-                        Register for Ranked
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        You&apos;re missing registration for some team sizes.
-                        We&apos;ll copy your 4v4 ELO to these team sizes.
-                      </p>
-                      <Button
-                        onClick={handleRegisterMissingTeamSizes}
-                        disabled={isRegisteringMissing}
-                        className="w-full max-w-xs"
-                      >
-                        {isRegisteringMissing
-                          ? "Registering..."
-                          : missingTeamSizes.length > 1
-                          ? `Register for ${missingTeamSizes
-                              .map((size) => `${size}v${size}`)
-                              .join(", ")}`
-                          : `Register for ${missingTeamSizes[0]}v${missingTeamSizes[0]}`}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-            {isMobile ? (
-              <div className="mb-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                    <h3 className="text-lg font-bold sm:text-xl">
+                      Register for Ranked Matchmaking
+                    </h3>
+                    <p className="max-w-md text-sm sm:text-base text-muted-foreground">
+                      You need to register before you can join ranked queues.
+                    </p>
                     <Button
-                      variant="outline"
-                      className="justify-between w-full"
+                      onClick={handleRegisterForRanked}
+                      disabled={isRegistering}
+                      className="w-full max-w-xs shadow-md transition-shadow hover:shadow-lg"
                     >
-                      {activeTab === "4v4" && "4v4 Queues"}
-                      {activeTab === "5v5" && "5v5 Queues"}
-                      {activeTab === "2v2" && "2v2 Queues"}
-                      {activeTab === "1v1" && "1v1 Queues"}
-                      <ChevronDown className="ml-2 w-4 h-4" />
+                      {isRegistering ? "Registering..." : "Register for Ranked"}
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-full">
-                    <DropdownMenuItem onClick={() => setActiveTab("4v4")}>
-                      4v4 Queues
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setActiveTab("5v5")}>
-                      5v5 Queues
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setActiveTab("2v2")}>
-                      2v2 Queues
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setActiveTab("1v1")}>
-                      1v1 Queues
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {isRegistered && missingTeamSizes.length > 0 && has4v4 && (
+            <div className="mb-6">
+              <Card className="bg-gradient-to-br border-2 shadow-md border-primary/20 from-primary/5 to-primary/10">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col gap-4 justify-center items-center text-center">
+                    <div className="p-3 rounded-full border bg-primary/10 border-primary/20">
+                      <Bell className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold sm:text-xl">
+                      Register for Ranked
+                    </h3>
+                    <p className="max-w-md text-sm sm:text-base text-muted-foreground">
+                      You&apos;re missing registration for some team sizes.
+                      We&apos;ll copy your 4v4 ELO to these team sizes.
+                    </p>
+                    <Button
+                      onClick={handleRegisterMissingTeamSizes}
+                      disabled={isRegisteringMissing}
+                      className="w-full max-w-xs shadow-md transition-shadow hover:shadow-lg"
+                    >
+                      {isRegisteringMissing
+                        ? "Registering..."
+                        : missingTeamSizes.length > 1
+                        ? `Register for ${missingTeamSizes
+                            .map((size) => `${size}v${size}`)
+                            .join(", ")}`
+                        : `Register for ${missingTeamSizes[0]}v${missingTeamSizes[0]}`}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {isMobile ? (
+            <div className="mt-6 mb-4 sm:mt-8">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="justify-between w-full">
+                    {activeTab === "4v4" && "4v4 Queues"}
+                    {activeTab === "5v5" && "5v5 Queues"}
+                    {activeTab === "2v2" && "2v2 Queues"}
+                    {activeTab === "1v1" && "1v1 Queues"}
+                    <ChevronDown className="ml-2 w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-full">
+                  <DropdownMenuItem onClick={() => setActiveTab("4v4")}>
+                    4v4 Queues
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveTab("5v5")}>
+                    5v5 Queues
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveTab("2v2")}>
+                    2v2 Queues
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveTab("1v1")}>
+                    1v1 Queues
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-                <div className="mt-4">
-                  {queues
-                    .filter((queue) => {
-                      if (activeTab === "4v4") return queue.teamSize === 4;
-                      if (activeTab === "5v5") return queue.teamSize === 5;
-                      if (activeTab === "2v2") return queue.teamSize === 2;
-                      if (activeTab === "1v1") return queue.teamSize === 1;
-                      return false;
-                    })
-                    .map((queue) => (
-                      <ContextMenu key={queue._id}>
-                        <ContextMenuTrigger>
-                          <Card className="overflow-hidden min-h-[600px] flex flex-col">
-                            <CardHeader className="bg-muted/50">
-                              <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
-                                <div>
-                                  <CardTitle className="text-lg">
-                                    {queue.eloTier.charAt(0).toUpperCase() +
-                                      queue.eloTier.slice(1)}{" "}
-                                    Queue
-                                  </CardTitle>
-                                  <p className="text-sm text-muted-foreground">
-                                    {queue.minElo} - {queue.maxElo} ELO
-                                  </p>
-                                </div>
-                                {isPlayerInQueue(queue) ? (
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() => handleLeaveQueue(queue._id)}
-                                    disabled={joiningQueue === queue._id}
-                                    size="sm"
-                                  >
-                                    Leave
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    onClick={() => handleJoinQueue(queue._id)}
-                                    disabled={joiningQueue === queue._id}
-                                    size="sm"
-                                  >
-                                    Join Queue
-                                  </Button>
-                                )}
+              <div className="mt-4 space-y-4 sm:space-y-6">
+                {queues
+                  .filter((queue) => {
+                    if (activeTab === "4v4") return queue.teamSize === 4;
+                    if (activeTab === "5v5") return queue.teamSize === 5;
+                    if (activeTab === "2v2") return queue.teamSize === 2;
+                    if (activeTab === "1v1") return queue.teamSize === 1;
+                    return false;
+                  })
+                  .map((queue) => (
+                    <ContextMenu key={queue._id}>
+                      <ContextMenuTrigger className="block mb-6 sm:mb-8">
+                        <Card className="flex overflow-hidden flex-col border-2 shadow-md transition-all duration-200 hover:border-primary/50 hover:shadow-xl">
+                          <CardHeader className="bg-gradient-to-r border-b from-muted/60 via-muted/50 to-muted/40 border-border/40">
+                            <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
+                              <div>
+                                <CardTitle className="text-lg font-bold sm:text-xl">
+                                  {queue.eloTier.charAt(0).toUpperCase() +
+                                    queue.eloTier.slice(1)}{" "}
+                                  Queue
+                                </CardTitle>
+                                <p className="mt-1 text-sm sm:text-base text-muted-foreground">
+                                  {queue.minElo} - {queue.maxElo} ELO
+                                </p>
                               </div>
-                            </CardHeader>
-                            <CardContent className="flex flex-col flex-1 p-4 sm:p-6">
-                              {/* Active Players List */}
-                              <div className="flex-1 mb-4">
-                                <div className="flex gap-2 items-center mb-2">
-                                  <h4 className="text-sm font-medium">
-                                    Players
-                                  </h4>
-                                  <span className="text-sm text-muted-foreground">
-                                    (
-                                    {Math.min(
-                                      queue.players.length,
-                                      queue.teamSize * 2
-                                    )}
-                                    /{queue.teamSize * 2})
-                                  </span>
-                                </div>
-                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                  {getQueueSections(queue).activePlayers
-                                    .length > 0 ? (
-                                    getQueueSections(queue).activePlayers.map(
-                                      (player, index) => (
-                                        <div
-                                          key={player.discordId}
-                                          className="flex items-center justify-between p-2 rounded-lg bg-muted/30 h-[60px]"
-                                        >
-                                          <div className="flex flex-col min-w-0">
-                                            <div className="flex items-center">
-                                              <span className="mr-2 text-xs font-medium text-muted-foreground">
-                                                #{index + 1}
-                                              </span>
-                                              <span className="text-sm truncate">
-                                                {player.discordNickname}
-                                              </span>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">
-                                              {formatJoinTime(player.joinedAt)}
+                              {isPlayerInQueue(queue) ? (
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleLeaveQueue(queue._id)}
+                                  disabled={joiningQueue === queue._id}
+                                  size="sm"
+                                  className="shadow-md transition-shadow hover:shadow-lg"
+                                >
+                                  Leave
+                                </Button>
+                              ) : (
+                                <Button
+                                  onClick={() => handleJoinQueue(queue._id)}
+                                  disabled={joiningQueue === queue._id}
+                                  size="sm"
+                                >
+                                  Join Queue
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent className="flex flex-col flex-1 p-4 sm:p-6">
+                            {/* Active Players List */}
+                            <div
+                              className="mb-4"
+                              style={{
+                                height: `${
+                                  queue.teamSize * 52 +
+                                  (queue.teamSize - 1) * 6 +
+                                  40
+                                }px`,
+                              }}
+                            >
+                              <div className="flex gap-2 items-center mb-2">
+                                <h4 className="text-sm font-medium">Players</h4>
+                                <span className="text-sm text-muted-foreground">
+                                  (
+                                  {Math.min(
+                                    queue.players.length,
+                                    queue.teamSize * 2
+                                  )}
+                                  /{queue.teamSize * 2})
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {getQueueSections(queue).activePlayers.length >
+                                0 ? (
+                                  getQueueSections(queue).activePlayers.map(
+                                    (player, index) => (
+                                      <div
+                                        key={player.discordId}
+                                        className="flex items-center justify-between p-2 rounded-lg bg-gradient-to-r from-muted/40 to-muted/30 border border-border/30 hover:border-primary/30 hover:shadow-sm transition-all duration-200 h-[52px]"
+                                      >
+                                        <div className="flex flex-col flex-1 gap-0.5 min-w-0">
+                                          <div className="flex gap-1.5 items-center min-w-0">
+                                            <span className="text-[10px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded shrink-0">
+                                              #{index + 1}
+                                            </span>
+                                            <span className="text-xs font-medium break-words line-clamp-1">
+                                              {player.discordNickname}
                                             </span>
                                           </div>
-                                          <span className="ml-2 text-sm text-muted-foreground shrink-0">
-                                            {player.elo}
+                                          <span className="text-[10px] text-muted-foreground">
+                                            {formatJoinTime(player.joinedAt)}
                                           </span>
                                         </div>
-                                      )
+                                        <span className="px-1.5 py-0.5 ml-2 text-xs font-semibold rounded text-foreground shrink-0 bg-primary/10">
+                                          {player.elo}
+                                        </span>
+                                      </div>
                                     )
-                                  ) : (
-                                    <p className="col-span-2 py-2 text-sm text-center text-muted-foreground">
+                                  )
+                                ) : (
+                                  <div className="col-span-2 py-8 text-center">
+                                    <Users className="mx-auto mb-2 w-8 h-8 text-muted-foreground/50" />
+                                    <p className="text-sm text-muted-foreground">
                                       No players in queue
                                     </p>
-                                  )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Waitlist Section */}
+                            <div
+                              className="flex flex-col pt-1.5 mb-1.5 border-t"
+                              style={{ height: "100px" }}
+                            >
+                              <div className="flex justify-between items-center mb-0.5">
+                                <div className="flex gap-2 items-center">
+                                  <h4 className="text-xs font-medium">
+                                    Waitlist
+                                  </h4>
+                                  <span className="text-xs text-muted-foreground">
+                                    (
+                                    {
+                                      getQueueSections(queue).waitlistPlayers
+                                        .length
+                                    }
+                                    )
+                                  </span>
                                 </div>
                               </div>
 
-                              {/* Waitlist Section */}
-                              <div className="pt-4 mb-4 border-t">
-                                <div className="flex justify-between items-center mb-2">
-                                  <div className="flex gap-2 items-center">
-                                    <h4 className="text-sm font-medium">
-                                      Waitlist
-                                    </h4>
-                                    <span className="text-sm text-muted-foreground">
-                                      (
-                                      {
-                                        getQueueSections(queue).waitlistPlayers
-                                          .length
-                                      }
-                                      )
-                                    </span>
-                                  </div>
-
-                                  {getQueueSections(queue).waitlistPlayers
-                                    .length > 3 && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="px-2 h-6"
-                                      onClick={() =>
-                                        toggleWaitlistExpansion(queue._id)
-                                      }
-                                    >
-                                      {expandedWaitlists[queue._id] ? (
-                                        <>
-                                          <ChevronUp className="mr-1 w-4 h-4" />
-                                          <span className="text-xs">
-                                            Show Less
-                                          </span>
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ChevronDown className="mr-1 w-4 h-4" />
-                                          <span className="text-xs">
-                                            Show All
-                                          </span>
-                                        </>
-                                      )}
-                                    </Button>
-                                  )}
-                                </div>
-
-                                {/* Desktop View: Scrollable Container */}
-                                {!isMobile && (
-                                  <div
-                                    className={`grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto transition-all duration-300 ease-in-out ${
-                                      expandedWaitlists[queue._id]
-                                        ? "max-h-[300px]"
-                                        : "max-h-[150px]"
-                                    }`}
-                                  >
-                                    {getQueueSections(queue).waitlistPlayers
-                                      .length > 0 ? (
-                                      getQueueSections(
-                                        queue
-                                      ).waitlistPlayers.map((player, index) => (
-                                        <div
-                                          key={player.discordId}
-                                          className="flex items-center justify-between p-2 rounded-lg bg-muted/20 h-[60px]"
-                                        >
-                                          <div className="flex flex-col min-w-0">
-                                            <div className="flex items-center">
-                                              <span className="mr-2 text-xs font-medium text-muted-foreground">
-                                                #
-                                                {getQueueSections(queue)
-                                                  .activePlayers.length +
-                                                  index +
-                                                  1}
-                                              </span>
-                                              <span className="text-sm truncate">
-                                                {player.discordNickname}
-                                              </span>
-                                            </div>
-                                            <span className="text-xs text-muted-foreground">
-                                              {formatJoinTime(player.joinedAt)}
-                                            </span>
-                                          </div>
-                                          <span className="ml-2 text-sm text-muted-foreground shrink-0">
-                                            {player.elo}
-                                          </span>
-                                        </div>
-                                      ))
-                                    ) : (
-                                      <p className="col-span-2 py-2 text-sm text-center text-muted-foreground">
-                                        No players in waitlist
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Mobile View: Limited Display + Sheet */}
-                                {isMobile && (
+                              <div className="flex flex-col">
+                                {getQueueSections(queue).waitlistPlayers
+                                  .length > 0 ? (
                                   <>
-                                    <div className="grid grid-cols-1 gap-2 mb-2">
+                                    <div className="grid grid-cols-2 gap-1.5">
                                       {getQueueSections(queue)
                                         .waitlistPlayers.slice(0, 2)
                                         .map((player, index) => (
                                           <div
                                             key={player.discordId}
-                                            className="flex items-center justify-between p-2 rounded-lg bg-muted/20 h-[60px]"
+                                            className="flex items-center justify-between p-1 rounded-lg bg-gradient-to-r from-muted/30 to-muted/20 border border-border/20 hover:border-border/40 hover:shadow-sm transition-all duration-200 h-[44px]"
                                           >
-                                            <div className="flex flex-col min-w-0">
-                                              <div className="flex items-center">
-                                                <span className="mr-2 text-xs font-medium text-muted-foreground">
+                                            <div className="flex flex-col flex-1 gap-0.5 min-w-0">
+                                              <div className="flex gap-1 items-center min-w-0">
+                                                <span className="text-[10px] font-semibold text-muted-foreground bg-muted/50 px-1 py-0.5 rounded shrink-0">
                                                   #
                                                   {getQueueSections(queue)
                                                     .activePlayers.length +
                                                     index +
                                                     1}
                                                 </span>
-                                                <span className="text-sm truncate">
+                                                <span className="text-xs font-medium break-words line-clamp-1">
                                                   {player.discordNickname}
                                                 </span>
                                               </div>
-                                              <span className="text-xs text-muted-foreground">
+                                              <span className="text-[10px] text-muted-foreground">
                                                 {formatJoinTime(
                                                   player.joinedAt
                                                 )}
                                               </span>
                                             </div>
-                                            <span className="ml-2 text-sm text-muted-foreground shrink-0">
+                                            <span className="px-1.5 py-0.5 ml-2 text-xs font-semibold rounded text-muted-foreground shrink-0 bg-muted/30">
                                               {player.elo}
                                             </span>
                                           </div>
                                         ))}
-
-                                      {getQueueSections(queue).waitlistPlayers
-                                        .length > 2 && (
-                                        <Sheet>
-                                          <SheetTrigger asChild>
-                                            <Button
-                                              variant="outline"
-                                              className="w-full h-[60px] flex items-center justify-center"
-                                            >
-                                              <Plus className="mr-2 w-4 h-4" />
-                                              {getQueueSections(queue)
-                                                .waitlistPlayers.length -
-                                                2}{" "}
-                                              more players
-                                            </Button>
-                                          </SheetTrigger>
-                                          <SheetContent
-                                            side="bottom"
-                                            className="h-[80vh]"
-                                          >
-                                            <SheetHeader>
-                                              <SheetTitle>Waitlist</SheetTitle>
-                                              <SheetDescription>
-                                                Players waiting to join the
-                                                queue
-                                              </SheetDescription>
-                                            </SheetHeader>
-                                            <div className="mt-4 grid gap-2 overflow-y-auto max-h-[calc(80vh-120px)]">
-                                              {getQueueSections(
-                                                queue
-                                              ).waitlistPlayers.map(
-                                                (player, index) => (
-                                                  <div
-                                                    key={player.discordId}
-                                                    className="flex justify-between items-center p-3 rounded-lg bg-muted/20"
-                                                  >
-                                                    <div className="flex flex-col">
-                                                      <div className="flex items-center">
-                                                        <span className="mr-2 text-sm font-medium text-muted-foreground">
-                                                          #
-                                                          {getQueueSections(
-                                                            queue
-                                                          ).activePlayers
-                                                            .length +
-                                                            index +
-                                                            1}
-                                                        </span>
-                                                        <span className="text-base">
-                                                          {
-                                                            player.discordNickname
-                                                          }
-                                                        </span>
-                                                      </div>
-                                                      <span className="text-sm text-muted-foreground">
-                                                        {formatJoinTime(
-                                                          player.joinedAt
-                                                        )}
-                                                      </span>
-                                                    </div>
-                                                    <span className="ml-2 text-base text-muted-foreground">
-                                                      {player.elo}
-                                                    </span>
-                                                  </div>
-                                                )
-                                              )}
-                                            </div>
-                                          </SheetContent>
-                                        </Sheet>
-                                      )}
-
-                                      {getQueueSections(queue).waitlistPlayers
-                                        .length === 0 && (
-                                        <p className="py-2 text-sm text-center text-muted-foreground">
-                                          No players in waitlist
-                                        </p>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </div>
-
-                              {/* Launch and Fill Buttons */}
-                              <div className="pt-4 mt-auto border-t">
-                                <div className="flex flex-col gap-2">
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => handleLaunchMatch(queue._id)}
-                                    disabled={
-                                      !canLaunchMatch(queue) ||
-                                      joiningQueue === queue._id
-                                    }
-                                    className="w-full"
-                                  >
-                                    {!hasRequiredPlayers(queue)
-                                      ? `Waiting for ${
-                                          queue.teamSize * 2 -
-                                          queue.players.length
-                                        } more players`
-                                      : "Launch Match"}
-                                  </Button>
-
-                                  {/* Admin Buttons */}
-                                  {isAdmin() && (
-                                    <div className="flex flex-col gap-2 mt-2">
-                                      <Button
-                                        variant="secondary"
-                                        onClick={() =>
-                                          handleFillQueue(queue._id, true)
-                                        }
-                                        disabled={joiningQueue === queue._id}
-                                        className="w-full"
-                                      >
-                                        Fill Queue
-                                      </Button>
-                                      <Button
-                                        variant="destructive"
-                                        onClick={() =>
-                                          handleClearQueue(queue._id)
-                                        }
-                                        disabled={
-                                          joiningQueue === queue._id ||
-                                          queue.players.length === 0
-                                        }
-                                        className="w-full"
-                                      >
-                                        Clear Queue
-                                      </Button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-64">
-                          <ContextMenuItem
-                            onClick={() => copyToClipboard(queue.queueId)}
-                          >
-                            <Copy className="mr-2 w-4 h-4" />
-                            Copy Queue ID
-                          </ContextMenuItem>
-
-                          {isDeveloperOrAdmin() && (
-                            <>
-                              <ContextMenuSeparator />
-                              <ContextMenuSub>
-                                <ContextMenuSubTrigger>
-                                  <UserMinus className="mr-2 w-4 h-4" />
-                                  Remove Player
-                                </ContextMenuSubTrigger>
-                                <ContextMenuSubContent className="w-48">
-                                  {queue.players.length > 0 ? (
-                                    queue.players.map(
-                                      (player: QueuePlayer, index: number) => (
-                                        <ContextMenuItem
-                                          key={player.discordId}
-                                          onClick={() =>
-                                            handleRemovePlayer(
-                                              queue._id,
-                                              player.discordId,
-                                              player.discordNickname
-                                            )
-                                          }
-                                        >
-                                          <span className="mr-2 text-xs font-medium text-muted-foreground">
-                                            #{index + 1}
-                                          </span>
-                                          {player.discordNickname}
-                                        </ContextMenuItem>
-                                      )
-                                    )
-                                  ) : (
-                                    <ContextMenuItem disabled>
-                                      No players in queue
-                                    </ContextMenuItem>
-                                  )}
-                                </ContextMenuSubContent>
-                              </ContextMenuSub>
-
-                              <ContextMenuSeparator />
-                              {/* Simple Delete Queue option at the bottom with destructive style */}
-                              <ContextMenuItem
-                                onClick={() =>
-                                  handleDeleteQueue(
-                                    queue._id,
-                                    queue.name,
-                                    queue.eloTier || "any", // Add eloTier
-                                    queue.teamSize // Add teamSize
-                                  )
-                                }
-                                className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                              >
-                                <Trash2 className="mr-2 w-4 h-4" />
-                                Delete Queue
-                              </ContextMenuItem>
-                            </>
-                          )}
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    ))}
-                </div>
-              </div>
-            ) : (
-              <Tabs
-                value={activeTab}
-                onValueChange={handleTabChange}
-                className="w-full"
-              >
-                <TabsList className="grid grid-cols-4 mb-6 w-full">
-                  <TabsTrigger
-                    value="1v1"
-                    onClick={() => handleTabChange("1v1")}
-                    className={
-                      activeTab === "1v1"
-                        ? "data-[state=active]:bg-blue-600"
-                        : ""
-                    }
-                  >
-                    1v1
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="2v2"
-                    onClick={() => handleTabChange("2v2")}
-                    className={
-                      activeTab === "2v2"
-                        ? "data-[state=active]:bg-blue-600"
-                        : ""
-                    }
-                  >
-                    2v2
-                  </TabsTrigger>
-
-                  <TabsTrigger
-                    value="4v4"
-                    onClick={() => handleTabChange("4v4")}
-                    className={
-                      activeTab === "4v4"
-                        ? "data-[state=active]:bg-blue-600"
-                        : ""
-                    }
-                  >
-                    4v4
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="5v5"
-                    onClick={() => handleTabChange("5v5")}
-                    className={
-                      activeTab === "5v5"
-                        ? "data-[state=active]:bg-blue-600"
-                        : ""
-                    }
-                  >
-                    5v5
-                  </TabsTrigger>
-                </TabsList>
-
-                {["4v4", "5v5", "2v2", "1v1"].map((size) => (
-                  <TabsContent key={size} value={size}>
-                    <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                      {Array.isArray(queues) ? (
-                        queues
-                          .filter(
-                            (queue) =>
-                              queue?.teamSize === parseInt(size.charAt(0))
-                          )
-                          .map((queue) => (
-                            <ContextMenu key={queue._id}>
-                              <ContextMenuTrigger>
-                                <Card className="overflow-hidden min-h-[600px] flex flex-col">
-                                  <CardHeader className="bg-muted/50">
-                                    <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
-                                      <div>
-                                        <CardTitle className="text-lg">
-                                          {queue.eloTier
-                                            .charAt(0)
-                                            .toUpperCase() +
-                                            queue.eloTier.slice(1)}{" "}
-                                          Queue
-                                        </CardTitle>
-                                        <p className="text-sm text-muted-foreground">
-                                          {queue.minElo} - {queue.maxElo} ELO
-                                        </p>
-                                      </div>
-                                      {isPlayerInQueue(queue) ? (
-                                        <Button
-                                          variant="destructive"
-                                          onClick={() =>
-                                            handleLeaveQueue(queue._id)
-                                          }
-                                          disabled={joiningQueue === queue._id}
-                                          size="sm"
-                                        >
-                                          Leave
-                                        </Button>
-                                      ) : (
-                                        <Button
-                                          onClick={() =>
-                                            handleJoinQueue(queue._id)
-                                          }
-                                          disabled={joiningQueue === queue._id}
-                                          size="sm"
-                                        >
-                                          Join Queue
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </CardHeader>
-                                  <CardContent className="flex flex-col flex-1 p-4 sm:p-6">
-                                    {/* Active Players List */}
-                                    <div className="flex-1 mb-4">
-                                      <div className="flex gap-2 items-center mb-2">
-                                        <h4 className="text-sm font-medium">
-                                          Players
-                                        </h4>
-                                        <span className="text-sm text-muted-foreground">
-                                          (
-                                          {Math.min(
-                                            queue.players.length,
-                                            queue.teamSize * 2
-                                          )}
-                                          /{queue.teamSize * 2})
-                                        </span>
-                                      </div>
-                                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                                        {getQueueSections(queue).activePlayers
-                                          .length > 0 ? (
-                                          getQueueSections(
-                                            queue
-                                          ).activePlayers.map(
-                                            (player, index) => (
-                                              <div
-                                                key={player.discordId}
-                                                className="flex items-center justify-between p-2 rounded-lg bg-muted/30 h-[60px]"
-                                              >
-                                                <div className="flex flex-col min-w-0">
-                                                  <div className="flex items-center">
-                                                    <span className="mr-2 text-xs font-medium text-muted-foreground">
-                                                      #{index + 1}
-                                                    </span>
-                                                    <span className="text-sm truncate">
-                                                      {player.discordNickname}
-                                                    </span>
-                                                  </div>
-                                                  <span className="text-xs text-muted-foreground">
-                                                    {formatJoinTime(
-                                                      player.joinedAt
-                                                    )}
-                                                  </span>
-                                                </div>
-                                                <span className="ml-2 text-sm text-muted-foreground shrink-0">
-                                                  {player.elo}
-                                                </span>
-                                              </div>
-                                            )
-                                          )
-                                        ) : (
-                                          <p className="col-span-2 py-2 text-sm text-center text-muted-foreground">
-                                            No players in queue
-                                          </p>
-                                        )}
-                                      </div>
                                     </div>
 
-                                    {/* Waitlist Section */}
-                                    <div className="pt-4 mb-4 border-t">
-                                      <div className="flex justify-between items-center mb-2">
-                                        <div className="flex gap-2 items-center">
-                                          <h4 className="text-sm font-medium">
-                                            Waitlist
-                                          </h4>
-                                          <span className="text-sm text-muted-foreground">
-                                            (
-                                            {
-                                              getQueueSections(queue)
-                                                .waitlistPlayers.length
-                                            }
-                                            )
-                                          </span>
-                                        </div>
-
-                                        {getQueueSections(queue).waitlistPlayers
-                                          .length > 3 && (
+                                    {getQueueSections(queue).waitlistPlayers
+                                      .length > 2 && (
+                                      <Sheet>
+                                        <SheetTrigger asChild>
                                           <Button
                                             variant="ghost"
                                             size="sm"
-                                            className="px-2 h-6"
-                                            onClick={() =>
-                                              toggleWaitlistExpansion(queue._id)
-                                            }
+                                            className="mt-0.5 w-full h-6 text-xs text-muted-foreground hover:text-foreground"
                                           >
-                                            {expandedWaitlists[queue._id] ? (
-                                              <>
-                                                <ChevronUp className="mr-1 w-4 h-4" />
-                                                <span className="text-xs">
-                                                  Show Less
-                                                </span>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <ChevronDown className="mr-1 w-4 h-4" />
-                                                <span className="text-xs">
-                                                  Show All
-                                                </span>
-                                              </>
-                                            )}
+                                            View{" "}
+                                            {getQueueSections(queue)
+                                              .waitlistPlayers.length - 2}{" "}
+                                            more
+                                            <ChevronDown className="ml-1 w-3 h-3" />
                                           </Button>
-                                        )}
-                                      </div>
-
-                                      {/* Desktop View: Scrollable Container */}
-                                      {!isMobile && (
-                                        <div
-                                          className={`grid grid-cols-1 sm:grid-cols-2 gap-2 overflow-y-auto transition-all duration-300 ease-in-out ${
-                                            expandedWaitlists[queue._id]
-                                              ? "max-h-[300px]"
-                                              : "max-h-[150px]"
-                                          }`}
+                                        </SheetTrigger>
+                                        <SheetContent
+                                          side="bottom"
+                                          className="h-[80vh]"
                                         >
-                                          {getQueueSections(queue)
-                                            .waitlistPlayers.length > 0 ? (
-                                            getQueueSections(
+                                          <SheetHeader>
+                                            <SheetTitle>Waitlist</SheetTitle>
+                                            <SheetDescription>
+                                              Players waiting to join the queue
+                                            </SheetDescription>
+                                          </SheetHeader>
+                                          <div className="mt-4 grid gap-2 overflow-y-auto max-h-[calc(80vh-120px)]">
+                                            {getQueueSections(
                                               queue
                                             ).waitlistPlayers.map(
                                               (player, index) => (
                                                 <div
                                                   key={player.discordId}
-                                                  className="flex items-center justify-between p-2 rounded-lg bg-muted/20 h-[60px]"
+                                                  className="flex justify-between items-center p-3 rounded-lg bg-muted/20"
                                                 >
-                                                  <div className="flex flex-col min-w-0">
+                                                  <div className="flex flex-col">
                                                     <div className="flex items-center">
-                                                      <span className="mr-2 text-xs font-medium text-muted-foreground">
+                                                      <span className="mr-2 text-sm font-medium text-muted-foreground">
                                                         #
                                                         {getQueueSections(queue)
                                                           .activePlayers
@@ -1737,44 +1402,349 @@ export default function QueuesPage() {
                                                           index +
                                                           1}
                                                       </span>
-                                                      <span className="text-sm truncate">
+                                                      <span className="text-base">
                                                         {player.discordNickname}
                                                       </span>
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground">
+                                                    <span className="text-sm text-muted-foreground">
                                                       {formatJoinTime(
                                                         player.joinedAt
                                                       )}
                                                     </span>
                                                   </div>
-                                                  <span className="ml-2 text-sm text-muted-foreground shrink-0">
+                                                  <span className="ml-2 text-base text-muted-foreground">
                                                     {player.elo}
                                                   </span>
                                                 </div>
                                               )
-                                            )
-                                          ) : (
-                                            <p className="col-span-2 py-2 text-sm text-center text-muted-foreground">
-                                              No players in waitlist
-                                            </p>
-                                          )}
+                                            )}
+                                          </div>
+                                        </SheetContent>
+                                      </Sheet>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="py-1 text-center">
+                                    <Users className="mx-auto mb-0.5 w-4 h-4 text-muted-foreground/50" />
+                                    <p className="text-xs text-muted-foreground">
+                                      No players in waitlist
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Launch and Fill Buttons */}
+                            <div className="pt-4 mt-auto border-t">
+                              <div className="flex flex-col gap-2">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => handleLaunchMatch(queue._id)}
+                                  disabled={
+                                    !canLaunchMatch(queue) ||
+                                    joiningQueue === queue._id
+                                  }
+                                  className="w-full"
+                                >
+                                  {!hasRequiredPlayers(queue)
+                                    ? `Waiting for ${
+                                        queue.teamSize * 2 -
+                                        queue.players.length
+                                      } more players`
+                                    : "Launch Match"}
+                                </Button>
+
+                                {/* Admin Buttons */}
+                                {isAdmin() && (
+                                  <div className="flex flex-col gap-2 mt-2">
+                                    <Button
+                                      variant="secondary"
+                                      onClick={() =>
+                                        handleFillQueue(queue._id, true)
+                                      }
+                                      disabled={joiningQueue === queue._id}
+                                      className="w-full"
+                                    >
+                                      Fill Queue
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() =>
+                                        handleClearQueue(queue._id)
+                                      }
+                                      disabled={
+                                        joiningQueue === queue._id ||
+                                        queue.players.length === 0
+                                      }
+                                      className="w-full"
+                                    >
+                                      Clear Queue
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent className="w-64">
+                        <ContextMenuItem
+                          onClick={() => copyToClipboard(queue.queueId)}
+                        >
+                          <Copy className="mr-2 w-4 h-4" />
+                          Copy Queue ID
+                        </ContextMenuItem>
+
+                        {isDeveloperOrAdmin() && (
+                          <>
+                            <ContextMenuSeparator />
+                            <ContextMenuSub>
+                              <ContextMenuSubTrigger>
+                                <UserMinus className="mr-2 w-4 h-4" />
+                                Remove Player
+                              </ContextMenuSubTrigger>
+                              <ContextMenuSubContent className="w-48">
+                                {queue.players.length > 0 ? (
+                                  queue.players.map(
+                                    (player: QueuePlayer, index: number) => (
+                                      <ContextMenuItem
+                                        key={player.discordId}
+                                        onClick={() =>
+                                          handleRemovePlayer(
+                                            queue._id,
+                                            player.discordId,
+                                            player.discordNickname
+                                          )
+                                        }
+                                      >
+                                        <span className="mr-2 text-xs font-medium text-muted-foreground">
+                                          #{index + 1}
+                                        </span>
+                                        {player.discordNickname}
+                                      </ContextMenuItem>
+                                    )
+                                  )
+                                ) : (
+                                  <ContextMenuItem disabled>
+                                    No players in queue
+                                  </ContextMenuItem>
+                                )}
+                              </ContextMenuSubContent>
+                            </ContextMenuSub>
+
+                            <ContextMenuSeparator />
+                            {/* Simple Delete Queue option at the bottom with destructive style */}
+                            <ContextMenuItem
+                              onClick={() =>
+                                handleDeleteQueue(
+                                  queue._id,
+                                  queue.name,
+                                  queue.eloTier || "any", // Add eloTier
+                                  queue.teamSize // Add teamSize
+                                )
+                              }
+                              className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                            >
+                              <Trash2 className="mr-2 w-4 h-4" />
+                              Delete Queue
+                            </ContextMenuItem>
+                          </>
+                        )}
+                      </ContextMenuContent>
+                    </ContextMenu>
+                  ))}
+              </div>
+            </div>
+          ) : (
+            <Tabs
+              value={activeTab}
+              onValueChange={handleTabChange}
+              className="mt-6 w-full sm:mt-8"
+            >
+              <TabsList className="grid grid-cols-4 p-1 mb-6 w-full h-auto border-2 sm:mb-8 bg-muted/50">
+                <TabsTrigger
+                  value="1v1"
+                  onClick={() => handleTabChange("1v1")}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all font-semibold"
+                >
+                  1v1
+                </TabsTrigger>
+                <TabsTrigger
+                  value="2v2"
+                  onClick={() => handleTabChange("2v2")}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all font-semibold"
+                >
+                  2v2
+                </TabsTrigger>
+
+                <TabsTrigger
+                  value="4v4"
+                  onClick={() => handleTabChange("4v4")}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all font-semibold"
+                >
+                  4v4
+                </TabsTrigger>
+                <TabsTrigger
+                  value="5v5"
+                  onClick={() => handleTabChange("5v5")}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all font-semibold"
+                >
+                  5v5
+                </TabsTrigger>
+              </TabsList>
+
+              {["4v4", "5v5", "2v2", "1v1"].map((size) => (
+                <TabsContent key={size} value={size}>
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    {Array.isArray(queues) ? (
+                      queues
+                        .filter(
+                          (queue) =>
+                            queue?.teamSize === parseInt(size.charAt(0))
+                        )
+                        .map((queue) => (
+                          <ContextMenu key={queue._id}>
+                            <ContextMenuTrigger className="block">
+                              <Card className="flex overflow-hidden flex-col border-2 shadow-md transition-all duration-200 hover:border-primary/50 hover:shadow-xl">
+                                <CardHeader className="bg-gradient-to-r border-b from-muted/60 via-muted/50 to-muted/40 border-border/40">
+                                  <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
+                                    <div>
+                                      <CardTitle className="text-lg font-bold sm:text-xl">
+                                        {queue.eloTier.charAt(0).toUpperCase() +
+                                          queue.eloTier.slice(1)}{" "}
+                                        Queue
+                                      </CardTitle>
+                                      <p className="mt-1 text-sm sm:text-base text-muted-foreground">
+                                        {queue.minElo} - {queue.maxElo} ELO
+                                      </p>
+                                    </div>
+                                    {isPlayerInQueue(queue) ? (
+                                      <Button
+                                        variant="destructive"
+                                        onClick={() =>
+                                          handleLeaveQueue(queue._id)
+                                        }
+                                        disabled={joiningQueue === queue._id}
+                                        size="sm"
+                                      >
+                                        Leave
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        onClick={() =>
+                                          handleJoinQueue(queue._id)
+                                        }
+                                        disabled={joiningQueue === queue._id}
+                                        size="sm"
+                                        className="shadow-md transition-shadow hover:shadow-lg"
+                                      >
+                                        Join Queue
+                                      </Button>
+                                    )}
+                                  </div>
+                                </CardHeader>
+                                <CardContent className="flex flex-col flex-1 p-4 sm:p-6">
+                                  {/* Active Players List */}
+                                  <div
+                                    className="mb-4"
+                                    style={{
+                                      height: `${
+                                        queue.teamSize * 52 +
+                                        (queue.teamSize - 1) * 6 +
+                                        40
+                                      }px`,
+                                    }}
+                                  >
+                                    <div className="flex gap-2 items-center mb-2">
+                                      <h4 className="text-sm font-medium">
+                                        Players
+                                      </h4>
+                                      <span className="text-sm text-muted-foreground">
+                                        (
+                                        {Math.min(
+                                          queue.players.length,
+                                          queue.teamSize * 2
+                                        )}
+                                        /{queue.teamSize * 2})
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      {getQueueSections(queue).activePlayers
+                                        .length > 0 ? (
+                                        getQueueSections(
+                                          queue
+                                        ).activePlayers.map((player, index) => (
+                                          <div
+                                            key={player.discordId}
+                                            className="flex items-center justify-between p-2 rounded-lg bg-gradient-to-r from-muted/40 to-muted/30 border border-border/30 hover:border-primary/30 hover:shadow-sm transition-all duration-200 h-[52px]"
+                                          >
+                                            <div className="flex flex-col flex-1 gap-0.5 min-w-0">
+                                              <div className="flex gap-1.5 items-center min-w-0">
+                                                <span className="text-[10px] font-bold text-primary bg-primary/10 px-1 py-0.5 rounded shrink-0">
+                                                  #{index + 1}
+                                                </span>
+                                                <span className="text-xs font-medium break-words line-clamp-1">
+                                                  {player.discordNickname}
+                                                </span>
+                                              </div>
+                                              <span className="text-[10px] text-muted-foreground">
+                                                {formatJoinTime(
+                                                  player.joinedAt
+                                                )}
+                                              </span>
+                                            </div>
+                                            <span className="px-1.5 py-0.5 ml-2 text-xs font-semibold rounded text-foreground shrink-0 bg-primary/10">
+                                              {player.elo}
+                                            </span>
+                                          </div>
+                                        ))
+                                      ) : (
+                                        <div className="col-span-2 py-8 text-center">
+                                          <Users className="mx-auto mb-2 w-8 h-8 text-muted-foreground/50" />
+                                          <p className="text-sm text-muted-foreground">
+                                            No players in queue
+                                          </p>
                                         </div>
                                       )}
+                                    </div>
+                                  </div>
 
-                                      {/* Mobile View: Limited Display + Sheet */}
-                                      {isMobile && (
+                                  {/* Waitlist Section */}
+                                  <div
+                                    className="flex flex-col pt-1.5 mb-1.5 border-t"
+                                    style={{ height: "100px" }}
+                                  >
+                                    <div className="flex justify-between items-center mb-0.5">
+                                      <div className="flex gap-2 items-center">
+                                        <h4 className="text-xs font-medium">
+                                          Waitlist
+                                        </h4>
+                                        <span className="text-xs text-muted-foreground">
+                                          (
+                                          {
+                                            getQueueSections(queue)
+                                              .waitlistPlayers.length
+                                          }
+                                          )
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex flex-col">
+                                      {getQueueSections(queue).waitlistPlayers
+                                        .length > 0 ? (
                                         <>
-                                          <div className="grid grid-cols-1 gap-2 mb-2">
+                                          <div className="grid grid-cols-2 gap-1.5">
                                             {getQueueSections(queue)
                                               .waitlistPlayers.slice(0, 2)
                                               .map((player, index) => (
                                                 <div
                                                   key={player.discordId}
-                                                  className="flex items-center justify-between p-2 rounded-lg bg-muted/20 h-[60px]"
+                                                  className="flex items-center justify-between p-1 rounded-lg bg-gradient-to-r from-muted/30 to-muted/20 border border-border/20 hover:border-border/40 hover:shadow-sm transition-all duration-200 h-[44px]"
                                                 >
-                                                  <div className="flex flex-col min-w-0">
-                                                    <div className="flex items-center">
-                                                      <span className="mr-2 text-xs font-medium text-muted-foreground">
+                                                  <div className="flex flex-col flex-1 gap-0.5 min-w-0">
+                                                    <div className="flex gap-1 items-center min-w-0">
+                                                      <span className="text-[10px] font-semibold text-muted-foreground bg-muted/50 px-1 py-0.5 rounded shrink-0">
                                                         #
                                                         {getQueueSections(queue)
                                                           .activePlayers
@@ -1782,300 +1752,302 @@ export default function QueuesPage() {
                                                           index +
                                                           1}
                                                       </span>
-                                                      <span className="text-sm truncate">
+                                                      <span className="text-xs font-medium break-words line-clamp-1">
                                                         {player.discordNickname}
                                                       </span>
                                                     </div>
-                                                    <span className="text-xs text-muted-foreground">
+                                                    <span className="text-[10px] text-muted-foreground">
                                                       {formatJoinTime(
                                                         player.joinedAt
                                                       )}
                                                     </span>
                                                   </div>
-                                                  <span className="ml-2 text-sm text-muted-foreground shrink-0">
+                                                  <span className="px-1.5 py-0.5 ml-2 text-xs font-semibold rounded text-muted-foreground shrink-0 bg-muted/30">
                                                     {player.elo}
                                                   </span>
                                                 </div>
                                               ))}
+                                          </div>
 
-                                            {getQueueSections(queue)
-                                              .waitlistPlayers.length > 2 && (
-                                              <Sheet>
-                                                <SheetTrigger asChild>
-                                                  <Button
-                                                    variant="outline"
-                                                    className="w-full h-[60px] flex items-center justify-center"
-                                                  >
-                                                    <Plus className="mr-2 w-4 h-4" />
-                                                    {getQueueSections(queue)
-                                                      .waitlistPlayers.length -
-                                                      2}{" "}
-                                                    more players
-                                                  </Button>
-                                                </SheetTrigger>
-                                                <SheetContent
-                                                  side="bottom"
-                                                  className="h-[80vh]"
+                                          {getQueueSections(queue)
+                                            .waitlistPlayers.length > 2 && (
+                                            <Sheet>
+                                              <SheetTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="mt-0.5 w-full h-6 text-xs text-muted-foreground hover:text-foreground"
                                                 >
-                                                  <SheetHeader>
-                                                    <SheetTitle>
-                                                      Waitlist
-                                                    </SheetTitle>
-                                                    <SheetDescription>
-                                                      Players waiting to join
-                                                      the queue
-                                                    </SheetDescription>
-                                                  </SheetHeader>
-                                                  <div className="mt-4 grid gap-2 overflow-y-auto max-h-[calc(80vh-120px)]">
-                                                    {getQueueSections(
-                                                      queue
-                                                    ).waitlistPlayers.map(
-                                                      (player, index) => (
-                                                        <div
-                                                          key={player.discordId}
-                                                          className="flex justify-between items-center p-3 rounded-lg bg-muted/20"
-                                                        >
-                                                          <div className="flex flex-col">
-                                                            <div className="flex items-center">
-                                                              <span className="mr-2 text-sm font-medium text-muted-foreground">
-                                                                #
-                                                                {getQueueSections(
-                                                                  queue
-                                                                ).activePlayers
-                                                                  .length +
-                                                                  index +
-                                                                  1}
-                                                              </span>
-                                                              <span className="text-base">
-                                                                {
-                                                                  player.discordNickname
-                                                                }
-                                                              </span>
-                                                            </div>
-                                                            <span className="text-sm text-muted-foreground">
-                                                              {formatJoinTime(
-                                                                player.joinedAt
-                                                              )}
+                                                  View{" "}
+                                                  {getQueueSections(queue)
+                                                    .waitlistPlayers.length -
+                                                    2}{" "}
+                                                  more
+                                                  <ChevronDown className="ml-1 w-3 h-3" />
+                                                </Button>
+                                              </SheetTrigger>
+                                              <SheetContent
+                                                side="bottom"
+                                                className="h-[80vh]"
+                                              >
+                                                <SheetHeader>
+                                                  <SheetTitle>
+                                                    Waitlist
+                                                  </SheetTitle>
+                                                  <SheetDescription>
+                                                    Players waiting to join the
+                                                    queue
+                                                  </SheetDescription>
+                                                </SheetHeader>
+                                                <div className="mt-4 grid gap-2 overflow-y-auto max-h-[calc(80vh-120px)]">
+                                                  {getQueueSections(
+                                                    queue
+                                                  ).waitlistPlayers.map(
+                                                    (player, index) => (
+                                                      <div
+                                                        key={player.discordId}
+                                                        className="flex justify-between items-center p-3 rounded-lg bg-muted/20"
+                                                      >
+                                                        <div className="flex flex-col">
+                                                          <div className="flex items-center">
+                                                            <span className="mr-2 text-sm font-medium text-muted-foreground">
+                                                              #
+                                                              {getQueueSections(
+                                                                queue
+                                                              ).activePlayers
+                                                                .length +
+                                                                index +
+                                                                1}
+                                                            </span>
+                                                            <span className="text-base">
+                                                              {
+                                                                player.discordNickname
+                                                              }
                                                             </span>
                                                           </div>
-                                                          <span className="ml-2 text-base text-muted-foreground">
-                                                            {player.elo}
+                                                          <span className="text-sm text-muted-foreground">
+                                                            {formatJoinTime(
+                                                              player.joinedAt
+                                                            )}
                                                           </span>
                                                         </div>
-                                                      )
-                                                    )}
-                                                  </div>
-                                                </SheetContent>
-                                              </Sheet>
-                                            )}
-
-                                            {getQueueSections(queue)
-                                              .waitlistPlayers.length === 0 && (
-                                              <p className="py-2 text-sm text-center text-muted-foreground">
-                                                No players in waitlist
-                                              </p>
-                                            )}
-                                          </div>
+                                                        <span className="ml-2 text-base text-muted-foreground">
+                                                          {player.elo}
+                                                        </span>
+                                                      </div>
+                                                    )
+                                                  )}
+                                                </div>
+                                              </SheetContent>
+                                            </Sheet>
+                                          )}
                                         </>
+                                      ) : (
+                                        <div className="py-1 text-center">
+                                          <Users className="mx-auto mb-0.5 w-4 h-4 text-muted-foreground/50" />
+                                          <p className="text-xs text-muted-foreground">
+                                            No players in waitlist
+                                          </p>
+                                        </div>
                                       )}
                                     </div>
+                                  </div>
 
-                                    {/* Launch and Fill Buttons */}
-                                    <div className="pt-4 mt-auto border-t">
-                                      <div className="flex flex-col gap-2">
-                                        <Button
-                                          variant="outline"
-                                          onClick={() =>
-                                            handleLaunchMatch(queue._id)
-                                          }
-                                          disabled={
-                                            !canLaunchMatch(queue) ||
-                                            joiningQueue === queue._id
-                                          }
-                                          className="w-full"
-                                        >
-                                          {!hasRequiredPlayers(queue)
-                                            ? `Waiting for ${
-                                                queue.teamSize * 2 -
-                                                queue.players.length
-                                              } more players`
-                                            : "Launch Match"}
-                                        </Button>
+                                  {/* Launch and Fill Buttons */}
+                                  <div className="pt-4 mt-auto border-t">
+                                    <div className="flex flex-col gap-2">
+                                      <Button
+                                        variant="outline"
+                                        onClick={() =>
+                                          handleLaunchMatch(queue._id)
+                                        }
+                                        disabled={
+                                          !canLaunchMatch(queue) ||
+                                          joiningQueue === queue._id
+                                        }
+                                        className="w-full shadow-md transition-shadow hover:shadow-lg"
+                                      >
+                                        {!hasRequiredPlayers(queue)
+                                          ? `Waiting for ${
+                                              queue.teamSize * 2 -
+                                              queue.players.length
+                                            } more players`
+                                          : "Launch Match"}
+                                      </Button>
 
-                                        {/* Admin Buttons */}
-                                        {isAdmin() && (
-                                          <div className="flex flex-col gap-2 mt-2">
-                                            <Button
-                                              variant="secondary"
-                                              onClick={() =>
-                                                handleFillQueue(queue._id, true)
-                                              }
-                                              disabled={
-                                                joiningQueue === queue._id
-                                              }
-                                              className="w-full"
-                                            >
-                                              Fill Queue
-                                            </Button>
-                                            <Button
-                                              variant="destructive"
-                                              onClick={() =>
-                                                handleClearQueue(queue._id)
-                                              }
-                                              disabled={
-                                                joiningQueue === queue._id ||
-                                                queue.players.length === 0
-                                              }
-                                              className="w-full"
-                                            >
-                                              Clear Queue
-                                            </Button>
-                                          </div>
-                                        )}
-                                      </div>
+                                      {/* Admin Buttons */}
+                                      {isAdmin() && (
+                                        <div className="flex flex-col gap-2 mt-2">
+                                          <Button
+                                            variant="secondary"
+                                            onClick={() =>
+                                              handleFillQueue(queue._id, true)
+                                            }
+                                            disabled={
+                                              joiningQueue === queue._id
+                                            }
+                                            className="w-full"
+                                          >
+                                            Fill Queue
+                                          </Button>
+                                          <Button
+                                            variant="destructive"
+                                            onClick={() =>
+                                              handleClearQueue(queue._id)
+                                            }
+                                            disabled={
+                                              joiningQueue === queue._id ||
+                                              queue.players.length === 0
+                                            }
+                                            className="w-full"
+                                          >
+                                            Clear Queue
+                                          </Button>
+                                        </div>
+                                      )}
                                     </div>
-                                  </CardContent>
-                                </Card>
-                              </ContextMenuTrigger>
-                              <ContextMenuContent className="w-64">
-                                <ContextMenuItem
-                                  onClick={() => copyToClipboard(queue.queueId)}
-                                >
-                                  <Copy className="mr-2 w-4 h-4" />
-                                  Copy Queue ID
-                                </ContextMenuItem>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-64">
+                              <ContextMenuItem
+                                onClick={() => copyToClipboard(queue.queueId)}
+                              >
+                                <Copy className="mr-2 w-4 h-4" />
+                                Copy Queue ID
+                              </ContextMenuItem>
 
-                                {isDeveloperOrAdmin() && (
-                                  <>
-                                    <ContextMenuSeparator />
-                                    <ContextMenuSub>
-                                      <ContextMenuSubTrigger>
-                                        <UserMinus className="mr-2 w-4 h-4" />
-                                        Remove Player
-                                      </ContextMenuSubTrigger>
-                                      <ContextMenuSubContent className="w-48">
-                                        {queue.players.length > 0 ? (
-                                          queue.players.map(
-                                            (
-                                              player: QueuePlayer,
-                                              index: number
-                                            ) => (
-                                              <ContextMenuItem
-                                                key={player.discordId}
-                                                onClick={() =>
-                                                  handleRemovePlayer(
-                                                    queue._id,
-                                                    player.discordId,
-                                                    player.discordNickname
-                                                  )
-                                                }
-                                              >
-                                                <span className="mr-2 text-xs font-medium text-muted-foreground">
-                                                  #{index + 1}
-                                                </span>
-                                                {player.discordNickname}
-                                              </ContextMenuItem>
-                                            )
+                              {isDeveloperOrAdmin() && (
+                                <>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuSub>
+                                    <ContextMenuSubTrigger>
+                                      <UserMinus className="mr-2 w-4 h-4" />
+                                      Remove Player
+                                    </ContextMenuSubTrigger>
+                                    <ContextMenuSubContent className="w-48">
+                                      {queue.players.length > 0 ? (
+                                        queue.players.map(
+                                          (
+                                            player: QueuePlayer,
+                                            index: number
+                                          ) => (
+                                            <ContextMenuItem
+                                              key={player.discordId}
+                                              onClick={() =>
+                                                handleRemovePlayer(
+                                                  queue._id,
+                                                  player.discordId,
+                                                  player.discordNickname
+                                                )
+                                              }
+                                            >
+                                              <span className="mr-2 text-xs font-medium text-muted-foreground">
+                                                #{index + 1}
+                                              </span>
+                                              {player.discordNickname}
+                                            </ContextMenuItem>
                                           )
-                                        ) : (
-                                          <ContextMenuItem disabled>
-                                            No players in queue
-                                          </ContextMenuItem>
-                                        )}
-                                      </ContextMenuSubContent>
-                                    </ContextMenuSub>
-
-                                    <ContextMenuSeparator />
-                                    {/* Simple Delete Queue option at the bottom with destructive style */}
-                                    <ContextMenuItem
-                                      onClick={() =>
-                                        handleDeleteQueue(
-                                          queue._id,
-                                          queue.name,
-                                          queue.eloTier || "any", // Add eloTier
-                                          queue.teamSize // Add teamSize
                                         )
-                                      }
-                                      className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                                    >
-                                      <Trash2 className="mr-2 w-4 h-4" />
-                                      Delete Queue
-                                    </ContextMenuItem>
-                                  </>
-                                )}
-                              </ContextMenuContent>
-                            </ContextMenu>
-                          ))
-                      ) : (
-                        <div>Loading queues...</div>
-                      )}
-                    </div>
-                  </TabsContent>
-                ))}
-              </Tabs>
-            )}
-          </CardContent>
-        </Card>
-        {playerToRemove && (
-          <AlertDialog
-            open={!!playerToRemove}
-            onOpenChange={() => setPlayerToRemove(null)}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Remove Player</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to remove {playerToRemove.playerName}{" "}
-                  from the queue? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmRemovePlayer}>
-                  Remove
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-        {queueToDelete && (
-          <AlertDialog
-            open={!!queueToDelete}
-            onOpenChange={() => setQueueToDelete(null)}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Queue</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete this queue? This action cannot
-                  be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={confirmDeleteQueue}>
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
-        {process.env.NODE_ENV === "development" && (
-          <div className="hidden">
-            <pre>
-              {JSON.stringify(
-                {
-                  session: session,
-                  userId: session?.user?.id,
-                  timestamp: new Date().toISOString(),
-                },
-                null,
-                2
-              )}
-            </pre>
-          </div>
-        )}
+                                      ) : (
+                                        <ContextMenuItem disabled>
+                                          No players in queue
+                                        </ContextMenuItem>
+                                      )}
+                                    </ContextMenuSubContent>
+                                  </ContextMenuSub>
+
+                                  <ContextMenuSeparator />
+                                  {/* Simple Delete Queue option at the bottom with destructive style */}
+                                  <ContextMenuItem
+                                    onClick={() =>
+                                      handleDeleteQueue(
+                                        queue._id,
+                                        queue.name,
+                                        queue.eloTier || "any", // Add eloTier
+                                        queue.teamSize // Add teamSize
+                                      )
+                                    }
+                                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                                  >
+                                    <Trash2 className="mr-2 w-4 h-4" />
+                                    Delete Queue
+                                  </ContextMenuItem>
+                                </>
+                              )}
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        ))
+                    ) : (
+                      <div>Loading queues...</div>
+                    )}
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
+        </div>
       </div>
+      {playerToRemove && (
+        <AlertDialog
+          open={!!playerToRemove}
+          onOpenChange={() => setPlayerToRemove(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Player</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove {playerToRemove.playerName} from
+                the queue? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmRemovePlayer}>
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      {queueToDelete && (
+        <AlertDialog
+          open={!!queueToDelete}
+          onOpenChange={() => setQueueToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Queue</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this queue? This action cannot
+                be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDeleteQueue}>
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+      {process.env.NODE_ENV === "development" && (
+        <div className="hidden">
+          <pre>
+            {JSON.stringify(
+              {
+                session: session,
+                userId: session?.user?.id,
+                timestamp: new Date().toISOString(),
+              },
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      )}
     </FeatureGate>
   );
 }

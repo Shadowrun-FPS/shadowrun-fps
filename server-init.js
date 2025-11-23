@@ -1,4 +1,7 @@
 // This file will only be used in Node.js environments
+// Patch punycode before any other requires
+require("./lib/patch-punycode");
+
 const { createServer } = require("http");
 const { parse } = require("url");
 const next = require("next");

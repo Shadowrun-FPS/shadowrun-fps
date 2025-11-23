@@ -25,8 +25,6 @@ export async function GET(
     // Extract tournament ID and match info from the matchId
     const matchId = params.matchId;
 
-    console.log("Looking for match with ID:", matchId);
-
     // Find the tournament with this match
     const tournament = await db.collection("Tournaments").findOne({
       "tournamentMatches.tournamentMatchId": matchId,

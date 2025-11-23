@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
     }
 
     const userId = session.user.id;
-    console.log("Checking team membership for user:", userId);
     const { db } = await connectToDatabase();
 
     // Find a team where the user is a member
@@ -31,8 +30,6 @@ export async function GET(req: NextRequest) {
         },
       }
     );
-
-    console.log("Found team:", team ? team.name : "None");
 
     return NextResponse.json({
       team: team || null,

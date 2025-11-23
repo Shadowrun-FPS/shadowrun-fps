@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2 } from "lucide-react";
+import {
+  CalendarIcon,
+  Loader2,
+  FileText,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  User,
+  Type,
+  PlusCircle,
+  Edit,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
@@ -62,6 +74,28 @@ export function PostDialog({
       "",
     authorId: initialData?.authorId || session?.user?.id || "",
   });
+
+  // Reset form when dialog opens/closes or initialData changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        title: initialData?.title || "",
+        description: initialData?.description || "",
+        imageUrl: initialData?.imageUrl || "",
+        type: initialData?.type || "EVENT",
+        link: initialData?.link || "",
+        author:
+          initialData?.author ||
+          session?.user?.nickname ||
+          session?.user?.name ||
+          "",
+        authorId: initialData?.authorId || session?.user?.id || "",
+      });
+      setDate(
+        initialData?.date ? new Date(initialData.date) : new Date()
+      );
+    }
+  }, [open, initialData, session]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -132,92 +166,169 @@ export function PostDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>
-            {initialData ? "Edit Post" : "Create New Post"}
-          </DialogTitle>
+      <DialogContent className="sm:max-w-[700px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-4 md:p-6">
+        <DialogHeader className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4 border-b border-border/40 pr-10 sm:pr-0">
+          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
+            {initialData ? (
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+                <Edit className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              </div>
+            ) : (
+              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
+                <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold leading-tight break-words">
+                {initialData ? "Edit Post" : "Create New Post"}
+              </DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm mt-1 text-muted-foreground break-words">
+                {initialData
+                  ? "Update the post details below"
+                  : "Fill in the details to create a new community post"}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="title" className="text-right">
-              Title*
+        <div className="space-y-4 sm:space-y-5 md:space-y-6 py-3 sm:py-4 md:py-6">
+          {/* Title */}
+          <div className="space-y-2 sm:space-y-2.5">
+            <Label htmlFor="title" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              Title <span className="text-destructive">*</span>
             </Label>
             <Input
               id="title"
               name="title"
               value={formData.title}
               onChange={handleChange}
-              className="col-span-3"
-              placeholder="Post title"
+              placeholder="Enter post title"
+              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
             />
           </div>
 
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="description" className="text-right">
-              Description*
+          {/* Description */}
+          <div className="space-y-2 sm:space-y-2.5">
+            <Label htmlFor="description" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              Description <span className="text-destructive">*</span>
             </Label>
             <Textarea
               id="description"
               name="description"
               value={formData.description}
               onChange={handleChange}
-              className="col-span-3"
-              placeholder="Post description"
-              rows={3}
+              placeholder="Enter post description"
+              rows={5}
+              className="resize-none text-base sm:text-sm border-2 focus:border-primary/50 transition-colors min-h-[120px] sm:min-h-[100px] touch-manipulation w-full"
             />
           </div>
 
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="imageUrl" className="text-right">
-              Image URL*
+          {/* Image URL */}
+          <div className="space-y-2 sm:space-y-2.5">
+            <Label htmlFor="imageUrl" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              Image URL <span className="text-destructive">*</span>
             </Label>
             <Input
               id="imageUrl"
               name="imageUrl"
               value={formData.imageUrl}
               onChange={handleChange}
-              className="col-span-3"
               placeholder="https://example.com/image.jpg"
+              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
             />
+            {formData.imageUrl && (
+              <div className="mt-2 sm:mt-3 rounded-lg overflow-hidden border-2 border-border relative w-full h-40 sm:h-48">
+                <Image
+                  src={formData.imageUrl}
+                  alt="Preview"
+                  fill
+                  className="object-cover"
+                  unoptimized
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="type" className="text-right">
-              Type*
-            </Label>
-            <Select
-              value={formData.type}
-              onValueChange={(value) => handleSelectChange("type", value)}
-            >
-              <SelectTrigger className="col-span-3">
-                <SelectValue placeholder="Select post type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="EVENT">Event</SelectItem>
-                <SelectItem value="ARTICLE">Article</SelectItem>
-                <SelectItem value="NEWS">News</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Type and Date Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+            <div className="space-y-2 sm:space-y-2.5">
+              <Label htmlFor="type" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <Type className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Type <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => handleSelectChange("type", value)}
+              >
+                <SelectTrigger className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 touch-manipulation w-full">
+                  <SelectValue placeholder="Select post type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EVENT">Event</SelectItem>
+                  <SelectItem value="ARTICLE">Article</SelectItem>
+                  <SelectItem value="NEWS">News</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 sm:space-y-2.5">
+              <Label htmlFor="date" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 touch-manipulation",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <span className="truncate">
+                      {date ? format(date, "PPP") : "Pick a date"}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="link" className="text-right">
-              Link
+          {/* Link */}
+          <div className="space-y-2 sm:space-y-2.5">
+            <Label htmlFor="link" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+              <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+              Link (Optional)
             </Label>
             <Input
               id="link"
               name="link"
               value={formData.link}
               onChange={handleChange}
-              className="col-span-3"
               placeholder="https://example.com/article"
+              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
             />
           </div>
 
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="author" className="text-right">
+          {/* Author */}
+          <div className="space-y-2 sm:space-y-2.5">
+            <Label htmlFor="author" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+              <User className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               Author
             </Label>
             <Input
@@ -225,44 +336,48 @@ export function PostDialog({
               name="author"
               value={formData.author}
               onChange={handleChange}
-              className="col-span-3"
               placeholder="Author name"
+              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
             />
-          </div>
-
-          <div className="grid items-center grid-cols-4 gap-4">
-            <Label htmlFor="date" className="text-right">
-              Date
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "col-span-3 justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="w-4 h-4 mr-2" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
           </div>
         </div>
 
-        <DialogFooter>
-          <Button type="submit" onClick={handleSubmit} disabled={isLoading}>
-            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {initialData ? "Update Post" : "Create Post"}
+        <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-2 pt-4 border-t border-border/40">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isLoading}
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-base sm:text-sm touch-manipulation order-2 sm:order-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-base sm:text-sm touch-manipulation order-1 sm:order-2"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
+                <span>{initialData ? "Updating..." : "Creating..."}</span>
+              </>
+            ) : (
+              <>
+                {initialData ? (
+                  <>
+                    <Edit className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                    <span>Update Post</span>
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                    <span>Create Post</span>
+                  </>
+                )}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

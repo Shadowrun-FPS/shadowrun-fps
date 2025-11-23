@@ -1,5 +1,3 @@
-declare module "leo-profanity";
-
 import LeoProfanity from "leo-profanity";
 
 // Initialize the filter

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AddPlayerDialog } from "@/components/add-player-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,9 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Users, UserCheck, UserX, Shield } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { PlayerList } from "@/components/player-list";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PlayersPage() {
   const [addPlayerOpen, setAddPlayerOpen] = useState(false);
@@ -33,6 +35,12 @@ export default function PlayersPage() {
   const [rule, setRule] = useState("");
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState("");
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    banned: 0,
+    loading: true,
+  });
 
   const handleActionComplete = () => {
     // Handle action completion
@@ -46,10 +54,99 @@ export default function PlayersPage() {
     // Submit warning
   };
 
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/admin/players");
+        if (response.ok) {
+          const players = await response.json();
+          const active = players.filter((p: any) => !p.isBanned).length;
+          const banned = players.filter((p: any) => p.isBanned).length;
+          setStats({
+            total: players.length,
+            active,
+            banned,
+            loading: false,
+          });
+        }
+      } catch (error) {
+        setStats((prev) => ({ ...prev, loading: false }));
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
-    <div className="container py-6 mx-auto space-y-6">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-4 sm:space-y-6 lg:space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Players</h1>
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+            Players
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Manage player accounts and moderation actions
+          </p>
+        </div>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+        <Card className="relative overflow-hidden border-2 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-4 sm:px-6 pt-4 sm:pt-6">
+            <CardTitle className="text-sm sm:text-base font-medium">Total Players</CardTitle>
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10 px-4 sm:px-6 pb-4 sm:pb-6">
+            {stats.loading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                {stats.total}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-2 hover:border-green-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-4 sm:px-6 pt-4 sm:pt-6">
+            <CardTitle className="text-sm sm:text-base font-medium">Active Players</CardTitle>
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10 px-4 sm:px-6 pb-4 sm:pb-6">
+            {stats.loading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+                {stats.active}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-2 hover:border-red-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-4 sm:px-6 pt-4 sm:pt-6">
+            <CardTitle className="text-sm sm:text-base font-medium">Banned Players</CardTitle>
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <UserX className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative z-10 px-4 sm:px-6 pb-4 sm:pb-6">
+            {stats.loading ? (
+              <Skeleton className="h-8 w-20" />
+            ) : (
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
+                {stats.banned}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <PlayerList />
@@ -79,7 +176,7 @@ export default function PlayersPage() {
             <div>
               <Label htmlFor="rule">Rule Violated</Label>
               <Select value={rule} onValueChange={setRule}>
-                <SelectTrigger id="rule">
+                <SelectTrigger id="rule" className="min-h-[44px] sm:min-h-0">
                   <SelectValue placeholder="Select a rule" />
                 </SelectTrigger>
                 <SelectContent>
@@ -100,7 +197,7 @@ export default function PlayersPage() {
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Explain why this action is being taken..."
-                className="h-24 resize-none"
+                className="min-h-[120px] resize-none"
                 required
               />
               {reasonError && (
@@ -109,15 +206,18 @@ export default function PlayersPage() {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => setWarnDialogOpen(false)}
+              className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
             >
               Cancel
             </Button>
-            <Button onClick={handleSubmit}>Issue Warning</Button>
+            <Button onClick={handleSubmit} className="w-full sm:w-auto min-h-[44px] sm:min-h-0">
+              Issue Warning
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

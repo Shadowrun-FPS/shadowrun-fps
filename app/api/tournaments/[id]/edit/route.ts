@@ -66,6 +66,25 @@ export const PUT = withErrorHandling(
       throw createError.badRequest("Name and start date are required");
     }
 
+    // Get the existing tournament to check if it's launched
+    const existingTournament = await db
+      .collection("Tournaments")
+      .findOne({ _id: new ObjectId(tournamentId) });
+
+    if (!existingTournament) {
+      throw createError.notFound("Tournament not found");
+    }
+
+    // Prevent format changes if tournament is launched (not "upcoming")
+    if (
+      existingTournament.status !== "upcoming" &&
+      existingTournament.format !== tournamentData.format
+    ) {
+      throw createError.badRequest(
+        "Tournament format cannot be changed after the tournament is launched"
+      );
+    }
+
     // Update the tournament
     const result = await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(tournamentId) },

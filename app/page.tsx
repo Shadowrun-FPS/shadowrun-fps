@@ -101,8 +101,8 @@ export default function Home() {
   return (
     <>
       {/* Hero Section - Full width with breakout */}
-      <div className="relative right-1/2 left-1/2 -mx-4 -mt-6 w-screen -translate-x-1/2">
-        <section className="relative flex flex-col items-center justify-center min-h-[60vh] sm:min-h-[70vh] lg:min-h-screen">
+      <div className="relative right-1/2 left-1/2 -mx-0 -mt-6 w-screen -translate-x-1/2 sm:-mx-0 md:-mx-0 lg:-mx-0">
+        <section className="relative flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] lg:min-h-screen py-12 sm:py-16 md:py-20">
           {/* Background with proper full-width positioning */}
           <div className="absolute inset-0 w-full h-full">
             <div className="absolute inset-0 bg-center bg-cover bg-hero-image md:bg-fixed" />
@@ -113,10 +113,10 @@ export default function Home() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-70" />
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_0%,rgba(0,0,0,0.8)_100%)]" />
 
-          <div className="container relative z-10 px-4 mx-auto text-center">
+          <div className="relative z-10 px-3 sm:px-4 md:px-6 lg:px-8 mx-auto text-center max-w-7xl w-full">
             {/* Title with enhanced animation */}
             <div className="duration-1000 animate-in slide-in-from-top">
-              <h1 className="mb-4 text-4xl font-bold tracking-tight text-white sm:text-5xl md:text-6xl lg:text-7xl [text-shadow:_0_4px_24px_rgba(0,0,0,0.5)]">
+              <h1 className="mb-3 sm:mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl [text-shadow:_0_4px_24px_rgba(0,0,0,0.5)]">
                 <span className="inline-block bg-clip-text">Shadowrun</span>{" "}
                 <span className="inline-block text-primary [text-shadow:_0_4px_24px_rgba(var(--primary),0.5)]">
                   FPS
@@ -124,18 +124,20 @@ export default function Home() {
               </h1>
             </div>
 
-            <div className="mx-auto space-y-6 max-w-3xl duration-1000 delay-300 animate-in fade-in">
-              <p className="text-lg text-gray-200 sm:text-xl md:text-2xl [text-shadow:_0_2px_12px_rgba(0,0,0,0.5)]">
+            <div className="mx-auto space-y-4 sm:space-y-6 max-w-3xl duration-1000 delay-300 animate-in fade-in px-2 sm:px-0">
+              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 [text-shadow:_0_2px_12px_rgba(0,0,0,0.5)]">
                 Welcome to the community hub for the Shadowrun FPS
               </p>
 
               {/* Buttons - made visible on all screen sizes */}
-              <div className="flex flex-wrap gap-4 justify-center">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 justify-center items-stretch sm:items-center">
+                <div className="w-full sm:w-auto">
                 <DownloadButton />
+                </div>
 
                 <Link
                   href="/docs/troubleshoot"
-                  className="inline-flex overflow-hidden relative items-center px-6 py-3 text-lg font-medium rounded-lg transition-all group bg-secondary hover:bg-secondary/90"
+                  className="inline-flex overflow-hidden relative items-center justify-center px-5 sm:px-6 py-2.5 sm:py-3 text-base sm:text-lg font-medium rounded-lg transition-all group bg-secondary hover:bg-secondary/90 min-h-[44px] sm:min-h-0"
                 >
                   <span className="relative z-10 text-secondary-foreground">
                     Troubleshooting
@@ -148,35 +150,35 @@ export default function Home() {
           </div>
 
           {/* Enhanced bottom gradient */}
-          <div className="absolute bottom-0 w-full h-32 bg-gradient-to-t to-transparent from-background via-background/90" />
+          <div className="absolute bottom-0 w-full h-24 sm:h-32 bg-gradient-to-t to-transparent from-background via-background/90" />
         </section>
       </div>
 
       {/* Regular page content starts here */}
       <main className="flex flex-col">
         {/* About Section - Enhanced */}
-        <section className="overflow-hidden relative py-16 sm:py-24">
+        <section className="overflow-hidden relative py-12 sm:py-16 md:py-20 lg:py-24">
           <div className="absolute inset-0">
             <div className="absolute inset-0 opacity-20 bg-grid-white/5 animate-grid-flow" />
             <div className="absolute inset-0 bg-gradient-to-b via-transparent from-background to-background" />
           </div>
 
-          <div className="container relative px-4 mx-auto">
+          <div className="relative px-3 sm:px-4 md:px-6 lg:px-8 mx-auto max-w-7xl">
             <div className="mx-auto max-w-5xl">
-              <div className="p-8 rounded-2xl backdrop-blur-sm transition-all duration-500 bg-card/30 hover:bg-card/40 hover:shadow-2xl hover:shadow-primary/5">
-                <h2 className="text-3xl font-bold text-center sm:text-4xl lg:text-5xl">
+              <div className="p-4 sm:p-6 md:p-8 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-500 bg-card/30 hover:bg-card/40 hover:shadow-2xl hover:shadow-primary/5">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-center">
                   <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/90 to-primary animate-gradient">
                     About Shadowrun FPS
                   </span>
                 </h2>
-                <div className="mt-8 space-y-6">
-                  <p className="text-lg text-center sm:text-xl text-muted-foreground">
+                <div className="mt-6 sm:mt-8 space-y-4 sm:space-y-6">
+                  <p className="text-base sm:text-lg md:text-xl text-center text-muted-foreground">
                     Welcome to{" "}
                     <strong className="text-primary">This Is Shadowrun</strong>,
                     the ultimate fan site for FASA Studios&apos; 2007 Shadowrun
                     FPS.
                   </p>
-                  <p className="text-lg text-center sm:text-xl text-muted-foreground">
+                  <p className="text-base sm:text-lg md:text-xl text-center text-muted-foreground">
                     Join our community, explore game guides, and connect with
                     other players keeping the game alive!
                   </p>
@@ -187,25 +189,25 @@ export default function Home() {
         </section>
 
         {/* Featured Videos Section - Fixed width */}
-        <section className="relative py-16 sm:py-24">
-          <div className="container relative px-4 mx-auto">
-            <div className="max-w-[95%] lg:max-w-5xl mx-auto">
-              <div className="relative mb-12 text-center">
-                <h2 className="inline-block text-3xl font-bold sm:text-4xl lg:text-5xl">
+        <section className="relative py-12 sm:py-16 md:py-20 lg:py-24">
+          <div className="relative px-3 sm:px-4 md:px-6 lg:px-8 mx-auto max-w-7xl">
+            <div className="max-w-full sm:max-w-[95%] lg:max-w-5xl mx-auto">
+              <div className="relative mb-8 sm:mb-10 md:mb-12 text-center">
+                <h2 className="inline-block text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold">
                   Featured Videos
-                  <div className="absolute right-0 left-0 -bottom-4 h-px bg-gradient-to-r from-transparent to-transparent animate-pulse via-primary" />
+                  <div className="absolute right-0 left-0 -bottom-2 sm:-bottom-4 h-px bg-gradient-to-r from-transparent to-transparent animate-pulse via-primary" />
                 </h2>
               </div>
               <div className="relative">
-                <div className="absolute -top-32 -left-32 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 bg-primary/5 animate-pulse-slow" />
-                <div className="absolute -right-32 -bottom-32 w-64 h-64 rounded-full blur-3xl transition-all duration-1000 delay-500 bg-primary/5 animate-pulse-slow" />
+                <div className="absolute -top-16 sm:-top-32 -left-16 sm:-left-32 w-32 h-32 sm:w-64 sm:h-64 rounded-full blur-3xl transition-all duration-1000 bg-primary/5 animate-pulse-slow" />
+                <div className="absolute -right-16 sm:-right-32 -bottom-16 sm:-bottom-32 w-32 h-32 sm:w-64 sm:h-64 rounded-full blur-3xl transition-all duration-1000 delay-500 bg-primary/5 animate-pulse-slow" />
 
-                <div className="overflow-hidden relative rounded-xl backdrop-blur-sm bg-card/30">
+                <div className="overflow-hidden relative rounded-lg sm:rounded-xl backdrop-blur-sm bg-card/30">
                   <div className="absolute inset-0">
                     <div className="absolute inset-0 bg-gradient-to-t to-transparent from-background/90 via-background/50" />
                   </div>
 
-                  <div className="relative z-10 p-2 sm:p-6">
+                  <div className="relative z-10 p-2 sm:p-4 md:p-6">
                     <div className="w-full aspect-video">
                       <FeaturedVideos />
                     </div>

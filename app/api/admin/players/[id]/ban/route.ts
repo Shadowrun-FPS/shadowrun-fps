@@ -9,6 +9,7 @@ import {
   MODERATOR_ROLE_IDS,
   SECURITY_CONFIG,
 } from "@/lib/security-config";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
 // Define types for your ban object
 interface BanRecord {
@@ -40,15 +41,12 @@ export async function POST(
     // Get user session
     const session = await getServerSession(authOptions);
 
-    // Check if user has required roles
-    const isAuthorized =
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session?.user?.roles &&
-        (session?.user?.roles.includes("admin") ||
-          session?.user?.roles.includes("moderator") ||
-          session?.user?.roles.includes("founder")));
+    if (!isAuthorizedAdmin(session)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!session?.user || !isAuthorized) {
+    // At this point, session is guaranteed to be non-null due to isAuthorizedAdmin check
+    if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

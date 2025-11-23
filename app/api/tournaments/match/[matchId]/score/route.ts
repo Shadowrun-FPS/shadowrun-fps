@@ -31,6 +31,28 @@ export async function POST(
       );
     }
 
+    // Validate first-to-6, no ties
+    if (team1Score === team2Score) {
+      return NextResponse.json(
+        { error: "Scores cannot be equal - one team must win (first to 6)" },
+        { status: 400 }
+      );
+    }
+
+    if (team1Score !== 6 && team2Score !== 6) {
+      return NextResponse.json(
+        { error: "The winning team must have exactly 6 points (first to 6)" },
+        { status: 400 }
+      );
+    }
+
+    if ((team1Score === 6 && team2Score >= 6) || (team2Score === 6 && team1Score >= 6)) {
+      return NextResponse.json(
+        { error: "The losing team must have less than 6 points" },
+        { status: 400 }
+      );
+    }
+
     const { db } = await connectToDatabase();
 
     // Find the tournament and match
@@ -61,21 +83,26 @@ export async function POST(
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    // Verify the user is on one of the teams
-    const userTeamId =
-      submittedByTeam === "teamA" ? match.teamA.teamId : match.teamB.teamId;
-    const team = tournament.teams.find(
-      (t: any) => t._id.toString() === userTeamId.toString()
-    );
+    // Verify the user is a member of the submitting team
+    const isTeamAMember = match.teamA?.members?.some(
+      (m: any) => m.discordId === session.user.id
+    ) || match.teamA?.captain?.discordId === session.user.id;
+    
+    const isTeamBMember = match.teamB?.members?.some(
+      (m: any) => m.discordId === session.user.id
+    ) || match.teamB?.captain?.discordId === session.user.id;
 
-    if (!team || !team.members.some((m: any) => m.userId === session.user.id)) {
+    if (
+      (submittedByTeam === "teamA" && !isTeamAMember) ||
+      (submittedByTeam === "teamB" && !isTeamBMember)
+    ) {
       return NextResponse.json(
         { error: "You are not authorized to submit scores for this team" },
         { status: 403 }
       );
     }
 
-    // Update map scores
+    // Get current map scores
     let mapScores = [...(match.mapScores || [])];
 
     // Initialize the map scores array if it doesn't exist or doesn't have this map yet
@@ -85,28 +112,94 @@ export async function POST(
         team2Score: 0,
         submittedByTeamA: false,
         submittedByTeamB: false,
+        teamASubmittedScore: null,
+        teamBSubmittedScore: null,
       });
     }
 
-    // Update the score for this map
-    mapScores[mapIndex] = {
-      ...mapScores[mapIndex],
+    const currentMapScore = mapScores[mapIndex];
+
+    // Store the submitted score for this team
+    const submittedScore = {
       team1Score,
       team2Score,
-      [`submittedBy${submittedByTeam === "teamA" ? "TeamA" : "TeamB"}`]: true,
-      winner: team1Score > team2Score ? 1 : team2Score > team1Score ? 2 : null,
     };
 
-    // Check if both teams have submitted for this map
+    // Update the score submission for this team
+    if (submittedByTeam === "teamA") {
+      mapScores[mapIndex] = {
+        ...currentMapScore,
+        submittedByTeamA: true,
+        teamASubmittedScore: submittedScore,
+      };
+    } else {
+      mapScores[mapIndex] = {
+        ...currentMapScore,
+        submittedByTeamB: true,
+        teamBSubmittedScore: submittedScore,
+      };
+    }
+
+    // Check if both teams have submitted
     const bothTeamsSubmitted =
       mapScores[mapIndex].submittedByTeamA &&
       mapScores[mapIndex].submittedByTeamB;
 
-    // If both teams submitted identical scores, accept them as confirmed
-    const scoresMatch =
-      mapScores[mapIndex].team1Score === mapScores[mapIndex].team2Score;
+    let scoresMatch = false;
+    let scoreConfirmed = false;
 
-    const scoreConfirmed = bothTeamsSubmitted || scoresMatch;
+    if (bothTeamsSubmitted) {
+      // Compare the scores submitted by both teams
+      const teamAScore = mapScores[mapIndex].teamASubmittedScore;
+      const teamBScore = mapScores[mapIndex].teamBSubmittedScore;
+
+      // Check if scores match (both teams submitted the same score)
+      scoresMatch =
+        teamAScore?.team1Score === teamBScore?.team1Score &&
+        teamAScore?.team2Score === teamBScore?.team2Score;
+
+      if (scoresMatch) {
+        // Scores match - confirm the result
+        mapScores[mapIndex] = {
+          ...mapScores[mapIndex],
+          team1Score: teamAScore.team1Score,
+          team2Score: teamAScore.team2Score,
+          winner: teamAScore.team1Score === 6 ? 1 : 2,
+        };
+        scoreConfirmed = true;
+      } else {
+        // Scores mismatch - reset both submissions
+        mapScores[mapIndex] = {
+          team1Score: 0,
+          team2Score: 0,
+          submittedByTeamA: false,
+          submittedByTeamB: false,
+          teamASubmittedScore: null,
+          teamBSubmittedScore: null,
+        };
+
+        // Update the database with reset scores
+        await db
+          .collection("Tournaments")
+          .updateOne(
+            { _id: tournament._id, "tournamentMatches.tournamentMatchId": matchId },
+            { $set: { "tournamentMatches.$.mapScores": mapScores } }
+          );
+
+        return NextResponse.json(
+          { error: "score_mismatch", message: "Scores do not match. Both teams must resubmit." },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Only one team has submitted - don't show scores yet, just mark submission
+      // Keep scores at 0 until both teams submit matching scores
+      mapScores[mapIndex] = {
+        ...mapScores[mapIndex],
+        team1Score: 0, // Don't show scores until confirmed
+        team2Score: 0, // Don't show scores until confirmed
+      };
+    }
 
     // Update the match with the new map scores
     await db
@@ -389,6 +482,9 @@ export async function POST(
     return NextResponse.json({
       success: true,
       mapScores,
+      bothTeamsSubmitted,
+      scoresMatch,
+      scoreConfirmed,
       matchComplete,
       matchWinner: matchWinner
         ? matchWinner === 1

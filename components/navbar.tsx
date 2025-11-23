@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { isFeatureEnabled, FeatureFlag } from "@/lib/features";
+import { useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+import { UserPermissions } from "@/lib/client-config";
 import {
   NavigationMenu,
   NavigationMenuContent,
@@ -38,6 +41,9 @@ import {
   PanelLeft,
   Calendar,
   GamepadIcon,
+  LayoutDashboard,
+  Shield,
+  ExternalLink,
 } from "lucide-react";
 
 interface NavLink {
@@ -143,32 +149,45 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center h-14 max-w-screen-2xl">
-        <div className="flex items-center mr-4">
+      <div className="flex items-center h-14 sm:h-16 max-w-screen-2xl">
+        <div className="flex items-center mr-2 sm:mr-4">
           {/* Mobile Navigation - moved to left side */}
           <div className="md:hidden">
             <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
               <SheetTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9">
-                  <Menu className="w-5 h-5" />
+                <Button variant="outline" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 touch-manipulation">
+                  <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
                   <span className="sr-only">Toggle Menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="pl-0">
-                <SheetHeader>
-                  <SheetTitle>Navigation</SheetTitle>
-                  <SheetDescription>
-                    Browse all sections of Shadowrun FPS
-                  </SheetDescription>
+              <SheetContent 
+                side="left" 
+                className="w-[280px] sm:w-[320px] p-0 flex flex-col"
+                onInteractOutside={(e) => {
+                  // Allow closing by tapping outside on mobile
+                  e.preventDefault();
+                }}
+              >
+                <SheetHeader className="px-4 sm:px-6 pt-6 sm:pt-8 pb-4 border-b border-border/40 relative">
+                  <div className="flex items-center justify-between pr-12 sm:pr-14">
+                    <div className="flex-1">
+                      <SheetTitle className="text-lg sm:text-xl font-bold">Navigation</SheetTitle>
+                      <SheetDescription className="text-xs sm:text-sm text-muted-foreground mt-1">
+                        Browse all sections of Shadowrun FPS
+                      </SheetDescription>
+                    </div>
+                  </div>
                 </SheetHeader>
-                <MobileNav onNavigate={() => setMobileNavOpen(false)} />
+                <div className="flex-1 overflow-y-auto">
+                  <MobileNav onNavigate={() => setMobileNavOpen(false)} />
+                </div>
               </SheetContent>
             </Sheet>
           </div>
         </div>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex md:flex-1">
+        <div className="hidden md:flex md:flex-1 md:ml-4">
           <NavigationMenu>
             <NavigationMenuList>
               <NavigationMenuItem>
@@ -290,6 +309,30 @@ ListItem.displayName = "ListItem";
 
 function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const [userPermissions, setUserPermissions] = useState<UserPermissions | null>(null);
+
+  // Fetch user permissions
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      if (session?.user) {
+        try {
+          const response = await fetch("/api/user/permissions");
+          if (response.ok) {
+            const permissions = await response.json();
+            setUserPermissions(permissions);
+          }
+        } catch (error) {
+          // Silently handle errors
+        }
+      }
+    };
+
+    fetchPermissions();
+  }, [session?.user?.id, session?.user]);
+
+  // Check if user has admin/mod access
+  const hasModAccess = userPermissions?.isModerator || userPermissions?.isAdmin || false;
 
   // Filter the links based on feature flags
   const filteredMatchesLinks = MatchesLinks.filter((link) =>
@@ -308,56 +351,86 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
     onNavigate();
   };
 
+  // Admin links
+  const adminLinks = [
+    {
+      title: "Dashboard",
+      href: "/admin",
+      icon: <LayoutDashboard className="w-5 h-5 mr-2 text-primary" />,
+    },
+    {
+      title: "Moderation",
+      href: "/admin/moderation",
+      icon: <Shield className="w-5 h-5 mr-2 text-primary" />,
+    },
+    {
+      title: "Players",
+      href: "/admin/players",
+      icon: <Users className="w-5 h-5 mr-2 text-primary" />,
+    },
+    {
+      title: "Rules",
+      href: "/admin/rules",
+      icon: <Book className="w-5 h-5 mr-2 text-primary" />,
+    },
+  ];
+
   return (
-    <div className="flex flex-col gap-4 py-4 overflow-y-auto max-h-[calc(100vh-120px)] pb-16">
+    <div className="flex flex-col gap-1 py-4 overflow-y-auto">
       <Link
         href="/"
         className={cn(
-          "flex items-center px-4 py-2 text-sm font-medium rounded-lg hover:bg-accent",
-          pathname === "/" ? "bg-accent" : ""
+          "flex items-center px-4 sm:px-6 py-3 text-base font-medium rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+          pathname === "/" 
+            ? "bg-accent text-accent-foreground" 
+            : "hover:bg-accent/50 text-foreground"
         )}
         onClick={handleLinkClick}
       >
-        <Home className="w-5 h-5 mr-2" />
-        Home
+        <Home className="w-5 h-5 mr-3 flex-shrink-0" />
+        <span>Home</span>
       </Link>
 
-      <div className="px-3 py-2">
-        <h4 className="mb-2 text-sm font-semibold">Documentation</h4>
-        <div className="flex flex-col gap-1 pl-2">
+      <div className="px-4 sm:px-6 py-3 mt-2">
+        <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Documentation</h4>
+        <div className="flex flex-col gap-0.5">
           {DocLinks.map((link) => (
             <Link
               key={link.title}
               href={link.href}
               className={cn(
-                "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
-                pathname === link.href ? "bg-accent" : ""
+                "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+                pathname === link.href 
+                  ? "bg-accent text-accent-foreground" 
+                  : "hover:bg-accent/50 text-foreground"
               )}
               onClick={handleLinkClick}
             >
-              {link.icon}
-              {link.title}
+              <span className="flex-shrink-0">{link.icon}</span>
+              <span className="ml-3">{link.title}</span>
             </Link>
           ))}
         </div>
       </div>
 
       {showMatchesSection && (
-        <div className="px-3 py-2">
-          <h4 className="mb-2 text-sm font-semibold">Matches</h4>
-          <div className="flex flex-col gap-1 pl-2">
+        <div className="px-4 sm:px-6 py-3">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Matches</h4>
+          <div className="flex flex-col gap-0.5">
             {filteredMatchesLinks.map((link) => (
               <Link
                 key={link.title}
                 href={link.href}
                 className={cn(
-                  "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
-                  pathname === link.href ? "bg-accent" : ""
+                  "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+                  pathname === link.href 
+                    ? "bg-accent text-accent-foreground" 
+                    : "hover:bg-accent/50 text-foreground"
                 )}
                 onClick={handleLinkClick}
               >
-                {link.icon}
-                {link.title}
+                <span className="flex-shrink-0">{link.icon}</span>
+                <span className="ml-3">{link.title}</span>
               </Link>
             ))}
           </div>
@@ -365,29 +438,70 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       )}
 
       {showTournamentsSection && (
-        <div className="px-3 py-2">
-          <h4 className="mb-2 text-sm font-semibold">Tournaments</h4>
-          <div className="flex flex-col gap-1 pl-2">
+        <div className="px-4 sm:px-6 py-3">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tournaments</h4>
+          <div className="flex flex-col gap-0.5">
             {filteredTournamentsLinks.map((link) => (
               <Link
                 key={link.title}
                 href={link.href}
                 className={cn(
-                  "flex items-center px-4 py-2 text-sm rounded-lg hover:bg-accent",
-                  pathname === link.href ? "bg-accent" : ""
+                  "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+                  pathname === link.href 
+                    ? "bg-accent text-accent-foreground" 
+                    : "hover:bg-accent/50 text-foreground"
                 )}
                 onClick={handleLinkClick}
               >
-                {link.icon}
-                {link.title}
+                <span className="flex-shrink-0">{link.icon}</span>
+                <span className="ml-3">{link.title}</span>
               </Link>
             ))}
           </div>
         </div>
       )}
 
-      {/* Bottom margin to ensure scrolling works properly */}
-      <div className="h-6"></div>
+      {hasModAccess && (
+        <div className="px-4 sm:px-6 py-3 border-t border-border/40 mt-2">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Admin</h4>
+          <div className="flex flex-col gap-0.5">
+            {adminLinks.map((link) => (
+              <Link
+                key={link.title}
+                href={link.href}
+                className={cn(
+                  "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+                  pathname === link.href 
+                    ? "bg-accent text-accent-foreground" 
+                    : "hover:bg-accent/50 text-foreground"
+                )}
+                onClick={handleLinkClick}
+              >
+                <span className="flex-shrink-0">{link.icon}</span>
+                <span className="ml-3">{link.title}</span>
+              </Link>
+            ))}
+            <Link
+              href="/moderation-log"
+              className={cn(
+                "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+                pathname === "/moderation-log" 
+                  ? "bg-accent text-accent-foreground" 
+                  : "hover:bg-accent/50 text-foreground"
+              )}
+              onClick={handleLinkClick}
+            >
+              <span className="flex-shrink-0">
+                <ExternalLink className="w-5 h-5 mr-2 text-primary" />
+              </span>
+              <span className="ml-3">Public Mod Log</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Bottom padding to ensure scrolling works properly */}
+      <div className="h-4"></div>
     </div>
   );
 }

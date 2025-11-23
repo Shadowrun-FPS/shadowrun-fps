@@ -7,6 +7,7 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
+import { useSession } from "next-auth/react";
 
 export interface Notification {
   _id: string;
@@ -56,6 +57,7 @@ const NotificationsContext = createContext<
 >(undefined);
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -70,6 +72,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   };
 
   const fetchNotifications = async (force = false) => {
+    // Don't fetch if user is not authenticated
+    if (!session?.user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      localStorage.setItem("notificationCount", "0");
+      return;
+    }
+
     const now = Date.now();
     if (!force && now - lastFetchAttempt < 10000) {
       return;
@@ -223,6 +233,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    // Only fetch notifications if user is authenticated
+    if (!session?.user) {
+      setNotifications([]);
+      setUnreadCount(0);
+      localStorage.setItem("notificationCount", "0");
+      return;
+    }
+
     setUnreadCount(0);
     localStorage.setItem("notificationCount", "0");
 
@@ -230,7 +248,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [session?.user?.id]); // Only recreate interval when user ID changes, not on every session object change
 
   return (
     <NotificationsContext.Provider

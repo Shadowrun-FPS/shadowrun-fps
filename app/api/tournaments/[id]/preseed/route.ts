@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { SECURITY_CONFIG } from "@/lib/security-config";
+import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 
 // POST endpoint to pre-seed a tournament bracket
 export async function POST(
@@ -73,14 +73,6 @@ export async function POST(
       );
     }
 
-    // Sort teams by ELO for proper seeding
-    const registeredTeams = tournament.registeredTeams || [];
-
-    // Sort teams by ELO (highest to lowest)
-    const sortedTeams = [...registeredTeams].sort(
-      (a, b) => (b.teamElo || 0) - (a.teamElo || 0)
-    );
-
     // At the start of the POST handler, after basic validation
     // Check if the tournament has exactly the required number of teams
     const requiredTeamCount = tournament.maxTeams || 8;
@@ -95,6 +87,14 @@ export async function POST(
         { status: 400 }
       );
     }
+
+    // Sort teams by ELO for proper seeding (highest ELO = seed 1, lowest ELO = last seed)
+    const registeredTeams = tournament.registeredTeams || [];
+
+    // Sort teams by ELO (highest to lowest) - highest ELO gets seed 1
+    const sortedTeams = [...registeredTeams].sort(
+      (a, b) => (b.teamElo || 0) - (a.teamElo || 0)
+    );
 
     // Then continue with the existing valid team check
     const validTeams = sortedTeams.filter((team) => team && team._id);
@@ -132,13 +132,16 @@ export async function POST(
     const usedTeamIds = new Set();
 
     // Standard tournament seeding pattern: 1 vs 8, 2 vs 7, 3 vs 6, 4 vs 5
+    // validTeams is sorted highest ELO to lowest ELO
+    // validTeams[0] = highest ELO = seed 1
+    // validTeams[7] = lowest ELO = seed 8
     for (let i = 0; i < Math.floor(numTeams / 2); i++) {
-      const topSeed = i;
-      const bottomSeed = numTeams - 1 - i;
+      const topSeedIndex = i; // Index in sorted array (0 = highest ELO = seed 1)
+      const bottomSeedIndex = numTeams - 1 - i; // Index in sorted array (7 = lowest ELO = seed 8)
 
-      // Get the teams
-      const teamA = validTeams[topSeed];
-      const teamB = validTeams[bottomSeed];
+      // Get the teams - teamA gets the higher seed (lower index = higher ELO)
+      const teamA = validTeams[topSeedIndex]; // Higher ELO team
+      const teamB = validTeams[bottomSeedIndex]; // Lower ELO team
 
       // Skip if either team is undefined or already used
       if (
@@ -171,23 +174,32 @@ export async function POST(
       matches,
     };
 
-    // Now we update each match with a proper matchId
+    // Now we update each match with a proper matchId and correct seed assignments
+    // Match index 0: teamA = validTeams[0] (highest ELO) = seed 1, teamB = validTeams[7] (lowest ELO) = seed 8
+    // Match index 1: teamA = validTeams[1] (2nd highest) = seed 2, teamB = validTeams[6] (2nd lowest) = seed 7
+    // etc.
     firstRound.matches.forEach((match, index) => {
       // Add matchId that can be referenced before tournament is launched
       match.matchId = `${id}-r1-m${index + 1}`;
 
-      // For debugging, add seed info
-      if (match.teamA) match.teamA.seed = index + 1;
-      if (match.teamB) match.teamB.seed = numTeams - index;
+      // Assign seeds correctly: teamA is from higher position in sorted array (lower index = higher ELO = lower seed number)
+      // teamB is from lower position in sorted array (higher index = lower ELO = higher seed number)
+      if (match.teamA) {
+        match.teamA.seed = index + 1; // Seed 1, 2, 3, 4... (highest ELO teams)
+      }
+      if (match.teamB) {
+        match.teamB.seed = numTeams - index; // Seed 8, 7, 6, 5... (lowest ELO teams)
+      }
     });
 
     // Generate subsequent rounds with empty matches
-    const roundCount = Math.ceil(Math.log2(validTeams.length));
+    const baseRoundCount = Math.ceil(Math.log2(validTeams.length)); // For 8 teams: 3 rounds
     const rounds = [];
     rounds.push(firstRound);
 
-    for (let i = 1; i < roundCount; i++) {
-      const matchCount = Math.pow(2, roundCount - i - 1);
+    // Create the standard winners bracket rounds (WR1, WR2, WR3 for 8 teams)
+    for (let i = 1; i < baseRoundCount; i++) {
+      const matchCount = Math.pow(2, baseRoundCount - i - 1);
       const matches = [];
 
       for (let j = 0; j < matchCount; j++) {
@@ -204,27 +216,121 @@ export async function POST(
       });
     }
 
+    // For double elimination, add Grand Finals (WR4) and potential Decisive Match (WR5)
+    if (tournament.format === "double_elimination") {
+      // Round 4: Grand Finals (Winners Bracket Champion vs Losers Bracket Champion)
+      rounds.push({
+        name: "Round 4 (Grand Finals)",
+        matches: [
+          {
+            matchId: `${baseRoundCount + 1}-1`,
+            scores: { teamA: 0, teamB: 0 },
+            status: "upcoming",
+          },
+        ],
+      });
+
+      // Round 5: Decisive Match (only if losers bracket champion wins WR4)
+      // Create it empty - it will be populated if needed
+      rounds.push({
+        name: "Round 5 (Decisive Match)",
+        matches: [
+          {
+            matchId: `${baseRoundCount + 2}-1`,
+            scores: { teamA: 0, teamB: 0 },
+            status: "upcoming",
+          },
+        ],
+      });
+    }
+
+    // For double elimination, create losers bracket rounds
+    let losersRounds: any[] = [];
+    if (tournament.format === "double_elimination") {
+      // Losers bracket structure for double elimination
+      // Pattern:
+      // - LR1: numTeams / 4 matches (losers from WR1)
+      // - LR2: numTeams / 4 matches (winners from LR1 + losers from WR2)
+      // - LR3 to LR(baseRoundCount-1): Alternating pattern
+      // - LR(baseRoundCount): 1 match (winner from previous + loser from WR(baseRoundCount))
+      // - LR(baseRoundCount+1): 1 match (winner from LR(baseRoundCount) + loser from Grand Finals)
+      const losersRoundCount = baseRoundCount + 1;
+
+      for (let i = 0; i < losersRoundCount; i++) {
+        let matchCount = 0;
+
+        if (i === 0) {
+          // First losers round: pairs up losers from first winners round
+          // For 4 teams: 1 match, 8 teams: 2 matches, 16 teams: 4 matches, etc.
+          matchCount = Math.floor(numTeams / 4);
+        } else if (i === 1) {
+          // Second losers round: winners from LR1 + losers from WR2
+          // Same count as LR1
+          matchCount = Math.floor(numTeams / 4);
+        } else if (i < baseRoundCount - 1) {
+          // Middle losers rounds (LR3, LR4, etc. up to LR(baseRoundCount-1))
+          // Pattern: Each round has half the matches of the previous round
+          // LR3: numTeams / 8, LR4: numTeams / 16, etc.
+          const divisor = Math.pow(2, i + 2); // 2^5=32 for LR3, 2^6=64 for LR4, etc.
+          matchCount = Math.max(1, Math.floor(numTeams / divisor));
+        } else if (i === baseRoundCount - 1) {
+          // Second-to-last losers round: winner from previous LR + loser from WR(baseRoundCount)
+          // This is the round before the losers bracket final
+          matchCount = 1;
+        } else if (i === baseRoundCount) {
+          // Last losers round: winner from previous LR + loser from Grand Finals
+          // This determines the losers bracket champion
+          matchCount = 1;
+        }
+
+        // Only create rounds with matches
+        if (matchCount > 0) {
+          const matches = [];
+          for (let j = 0; j < matchCount; j++) {
+            matches.push({
+              matchId: `L${i + 1}-${j + 1}`,
+              scores: { teamA: 0, teamB: 0 },
+              status: "upcoming",
+            });
+          }
+
+          losersRounds.push({
+            name: `Losers Round ${i + 1}`,
+            matches,
+          });
+        }
+      }
+    }
+
     // Update tournament with seeded brackets
     await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
-          brackets: { rounds },
+          brackets: {
+            rounds,
+            ...(tournament.format === "double_elimination" && { losersRounds }),
+          },
           updatedAt: new Date(),
         },
       }
     );
 
-    // Update the admin check to include your Discord ID for testing
-    const isAdmin =
-      user?.roles?.includes("admin") ||
-      tournament.createdBy?.discordId === session.user.id ||
-      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      false;
+    // Check admin permissions - include admin, founder, and developer
+    const userRoles = user?.roles || [];
+    const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+    const hasAdmin = hasAdminRole(userRoles);
+    const isTournamentCreator =
+      tournament.createdBy?.userId === session.user.id;
 
-    if (!isAdmin) {
+    const isAuthorized = isDeveloper || hasAdmin || isTournamentCreator;
+
+    if (!isAuthorized) {
       return NextResponse.json(
-        { error: "You must be an administrator to perform this action" },
+        {
+          error:
+            "You must be an administrator, founder, or tournament creator to perform this action",
+        },
         { status: 403 }
       );
     }

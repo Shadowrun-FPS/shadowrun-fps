@@ -2,6 +2,82 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 
+// Helper function to recalculate team ELO for a specific tournament team size
+async function recalculateTeamEloForTournament(
+  teamId: string,
+  tournamentTeamSize: number,
+  db: any,
+  db2: any
+): Promise<number> {
+  const DEFAULT_INDIVIDUAL_ELO = 800;
+
+  // Get the team document
+  const team = await db.collection("Teams").findOne({
+    _id: new ObjectId(teamId),
+  });
+
+  if (!team || !team.members || team.members.length === 0) {
+    return DEFAULT_INDIVIDUAL_ELO * tournamentTeamSize;
+  }
+
+  // Get all member IDs including captain
+  const memberIds = team.members.map((member: any) => member.discordId);
+  if (team.captain && team.captain.discordId) {
+    if (!memberIds.includes(team.captain.discordId)) {
+      memberIds.push(team.captain.discordId);
+    }
+  }
+
+  // Get players data from ShadowrunWeb
+  const webPlayers = await db
+    .collection("Players")
+    .find({ discordId: { $in: memberIds } })
+    .toArray();
+
+  // If team size is 4, also get players from ShadowrunDB2
+  let db2Players: any[] = [];
+  if (tournamentTeamSize === 4) {
+    db2Players = await db2
+      .collection("players")
+      .find({ discordId: { $in: memberIds } })
+      .toArray();
+  }
+
+  // Calculate ELO for each member
+  const memberElos: number[] = [];
+  for (const playerId of memberIds) {
+    let playerElo = DEFAULT_INDIVIDUAL_ELO;
+
+    // First check ShadowrunWeb for player stats
+    const webPlayer = webPlayers.find((p: any) => p.discordId === playerId);
+    if (webPlayer && webPlayer.stats && Array.isArray(webPlayer.stats)) {
+      const statForSize = webPlayer.stats.find(
+        (s: any) => s.teamSize === tournamentTeamSize
+      );
+      if (statForSize && typeof statForSize.elo === "number") {
+        playerElo = statForSize.elo;
+      }
+    }
+
+    // For teamSize 4, prioritize DB2 data if available
+    if (tournamentTeamSize === 4) {
+      const db2Player = db2Players.find((p: any) => p.discordId === playerId);
+      if (db2Player && db2Player.rating !== undefined) {
+        playerElo = db2Player.rating;
+      }
+    }
+
+    memberElos.push(playerElo);
+  }
+
+  // Take top players based on tournament team size
+  const sortedElos = [...memberElos].sort((a, b) => b - a);
+  const topElos = sortedElos.slice(0, tournamentTeamSize);
+  const totalElo = topElos.reduce((sum, elo) => sum + elo, 0);
+
+  return totalElo || DEFAULT_INDIVIDUAL_ELO * tournamentTeamSize;
+}
+
 interface Team {
   _id: string | ObjectId;
   name: string;
@@ -43,7 +119,8 @@ export async function GET(
     }
 
     const client = await clientPromise;
-    const db = client.db();
+    const db = client.db("ShadowrunWeb");
+    const db2 = client.db("ShadowrunDB2");
 
     const tournament = await db.collection("Tournaments").findOne({
       _id: new ObjectId(id),
@@ -56,58 +133,80 @@ export async function GET(
       );
     }
 
-    // Important: Fix the registeredTeams structure
+    const tournamentTeamSize = tournament.teamSize || 4;
+
+    // Important: Fix the registeredTeams structure and recalculate ELO
     if (
       tournament.registeredTeams &&
       Array.isArray(tournament.registeredTeams)
     ) {
-      console.log(
-        "Processing registered teams in API:",
-        tournament.registeredTeams.length
+      // Enhance each team with proper structure and fresh ELO
+      const enhancedTeams = await Promise.all(
+        tournament.registeredTeams.map(async (team) => {
+          // Recalculate team ELO based on current player ELOs and tournament team size
+          let freshTeamElo = 0;
+          if (team._id) {
+            try {
+              freshTeamElo = await recalculateTeamEloForTournament(
+                team._id.toString(),
+                tournamentTeamSize,
+                db,
+                db2
+              );
+            } catch (error) {
+              console.error(
+                `Error recalculating ELO for team ${team._id}:`,
+                error
+              );
+              // Fallback to stored ELO if recalculation fails
+              freshTeamElo =
+                typeof team.teamElo === "number" ? team.teamElo : 0;
+            }
+          }
+
+          // Ensure we have an object with proper structure
+          return {
+            _id: team._id ? team._id.toString() : "",
+            name: team.name || "Unknown Team",
+            tag: team.tag || "",
+            description: team.description || "",
+            teamElo: freshTeamElo,
+
+            // Ensure members is always an array
+            members: Array.isArray(team.members)
+              ? team.members.map((member: TeamMember) => ({
+                  discordId: member.discordId || "",
+                  discordUsername: member.discordUsername || "Unknown",
+                  discordNickname: member.discordNickname || null,
+                  discordProfilePicture: member.discordProfilePicture || null,
+                  role: member.role || "member",
+                  elo: typeof member.elo === "number" ? member.elo : 0,
+                }))
+              : [],
+
+            // Ensure captain is a valid object
+            captain: team.captain
+              ? {
+                  discordId: team.captain.discordId || "",
+                  discordUsername: team.captain.discordUsername || "Unknown",
+                  discordNickname: team.captain.discordNickname || null,
+                  discordProfilePicture:
+                    team.captain.discordProfilePicture || null,
+                  elo:
+                    typeof team.captain.elo === "number" ? team.captain.elo : 0,
+                }
+              : {
+                  discordId: "",
+                  discordUsername: "Unknown",
+                  discordNickname: null,
+                  discordProfilePicture: null,
+                  elo: 0,
+                },
+          };
+        })
       );
 
-      // Enhance each team with proper structure
-      tournament.registeredTeams = tournament.registeredTeams.map((team) => {
-        // Ensure we have an object with proper structure
-        return {
-          _id: team._id ? team._id.toString() : "",
-          name: team.name || "Unknown Team",
-          tag: team.tag || "",
-          description: team.description || "",
-          teamElo: typeof team.teamElo === "number" ? team.teamElo : 0,
-
-          // Ensure members is always an array
-          members: Array.isArray(team.members)
-            ? team.members.map((member: TeamMember) => ({
-                discordId: member.discordId || "",
-                discordUsername: member.discordUsername || "Unknown",
-                discordNickname: member.discordNickname || null,
-                discordProfilePicture: member.discordProfilePicture || null,
-                role: member.role || "member",
-                elo: typeof member.elo === "number" ? member.elo : 0,
-              }))
-            : [],
-
-          // Ensure captain is a valid object
-          captain: team.captain
-            ? {
-                discordId: team.captain.discordId || "",
-                discordUsername: team.captain.discordUsername || "Unknown",
-                discordNickname: team.captain.discordNickname || null,
-                discordProfilePicture:
-                  team.captain.discordProfilePicture || null,
-                elo:
-                  typeof team.captain.elo === "number" ? team.captain.elo : 0,
-              }
-            : {
-                discordId: "",
-                discordUsername: "Unknown",
-                discordNickname: null,
-                discordProfilePicture: null,
-                elo: 0,
-              },
-        };
-      });
+      tournament.registeredTeams = enhancedTeams;
     } else {
       tournament.registeredTeams = [];
     }

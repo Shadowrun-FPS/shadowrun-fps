@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  X,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
@@ -54,9 +55,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { TeamCard } from "@/components/teams/team-card";
@@ -115,6 +113,7 @@ export default function TeamsPage() {
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
   const [view, setView] = useState<string>("grid");
   const [teamStatus, setTeamStatus] = useState<"all" | "full" | "open">("all");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -311,99 +310,25 @@ export default function TeamsPage() {
   return (
     <FeatureGate feature="teams">
       <TooltipProvider>
-        <div className="min-h-screen">
-          <main className="container px-4 py-8 mx-auto">
+        <div className="min-h-screen bg-background">
+          <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10">
             {/* Page Header */}
-            <div className="flex flex-col gap-4 mb-8 md:items-center md:flex-row md:justify-between">
-              <div>
-                <h1 className="text-3xl font-bold">Teams</h1>
-                <p className="text-muted-foreground">
-                  Browse and manage competitive teams
-                </p>
+            <div className="flex flex-col gap-4 mb-8 sm:mb-10 md:items-center md:flex-row md:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-lg shadow-primary/10 shrink-0">
+                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/40 to-transparent opacity-50" />
+                  <Shield className="relative w-6 h-6 sm:w-7 sm:h-7 text-primary drop-shadow-sm" />
+                </div>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                    Teams
+                  </h1>
+                  <p className="text-sm sm:text-base text-muted-foreground mt-1">
+                    Browse and manage competitive teams
+                  </p>
+                </div>
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Sheet>
-                  <SheetTrigger asChild>
-                    <Button variant="outline" className="gap-2">
-                      <Filter className="w-4 h-4" />
-                      <span className="hidden sm:inline">Filter</span>
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent>
-                    <SheetHeader>
-                      <SheetTitle>Filter Teams</SheetTitle>
-                      <SheetDescription>
-                        Narrow down teams based on tournaments and stats.
-                      </SheetDescription>
-                    </SheetHeader>
-                    <div className="grid gap-4 py-4">
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">
-                          Tournament
-                        </label>
-                        <Select
-                          value={selectedTournament}
-                          onValueChange={setSelectedTournament}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="All Tournaments" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All Tournaments</SelectItem>
-                            {Array.isArray(tournaments) &&
-                            tournaments.length > 0 ? (
-                              tournaments.map((tournament) => (
-                                <SelectItem
-                                  key={tournament._id}
-                                  value={tournament._id}
-                                >
-                                  {tournament.name}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="none" disabled>
-                                No tournaments available
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid gap-2">
-                        <label className="text-sm font-medium">
-                          Team Status
-                        </label>
-                        <RadioGroup
-                          value={teamStatus}
-                          onValueChange={(value) =>
-                            setTeamStatus(value as "all" | "full" | "open")
-                          }
-                          className="flex flex-col space-y-1"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="all" id="all-teams" />
-                            <label htmlFor="all-teams" className="text-sm">
-                              All Teams
-                            </label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="full" id="full-teams" />
-                            <label htmlFor="full-teams" className="text-sm">
-                              Full Teams (4+ members)
-                            </label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="open" id="open-teams" />
-                            <label htmlFor="open-teams" className="text-sm">
-                              Teams Looking for Members
-                            </label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    </div>
-                  </SheetContent>
-                </Sheet>
-
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
@@ -425,9 +350,16 @@ export default function TeamsPage() {
                 tournament.status === "active" ||
                 tournament.status === "upcoming"
             ).length > 0 && (
-              <div className="mt-12">
-                <h2 className="text-2xl font-bold">Active Tournaments</h2>
-                <div className="grid grid-cols-1 gap-6 mt-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-8 sm:mt-12">
+                <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                  <div className="relative p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 shadow-sm">
+                    <Trophy className="w-5 h-5 text-primary" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                    Active Tournaments
+                  </h2>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 mt-4 sm:mt-6 md:grid-cols-2 lg:grid-cols-3">
                   {tournaments
                     .filter(
                       (tournament) =>
@@ -438,16 +370,25 @@ export default function TeamsPage() {
                       <Link
                         key={tournament._id}
                         href={`/tournaments/${tournament._id}`}
-                        className="transition-transform hover:scale-[1.02]"
+                        className="transition-all hover:scale-[1.02] hover:shadow-lg"
                       >
-                        <Card className="overflow-hidden h-full border-t-4 border-t-primary">
-                          <div className="flex flex-col p-6 h-full">
+                        <Card className="overflow-hidden h-full border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 hover:border-primary/40 hover:shadow-xl transition-all">
+                          <div className="flex flex-col p-4 sm:p-6 h-full">
                             {/* Tournament Header */}
-                            <div className="flex justify-between items-start mb-2">
-                              <h3 className="text-xl font-bold">
+                            <div className="flex justify-between items-start mb-3">
+                              <h3 className="text-lg sm:text-xl font-bold pr-2">
                                 {tournament.name}
                               </h3>
-                              <Badge variant="outline" className="bg-muted/50">
+                              <Badge 
+                                variant="outline" 
+                                className={`shrink-0 ${
+                                  tournament.status === "active"
+                                    ? "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400"
+                                    : tournament.status === "upcoming"
+                                    ? "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400"
+                                    : "bg-muted/50"
+                                }`}
+                              >
                                 {tournament.status === "upcoming"
                                   ? "UPCOMING"
                                   : tournament.status === "active"
@@ -458,26 +399,26 @@ export default function TeamsPage() {
 
                             {/* Tournament Format & Description */}
                             <div className="mb-4">
-                              <p className="text-sm text-muted-foreground">
+                              <Badge variant="secondary" className="mb-2 text-xs">
                                 {tournament.format === "single_elimination"
                                   ? "Single Elimination"
                                   : "Double Elimination"}
-                              </p>
-                              <p className="mt-1 text-sm">
+                              </Badge>
+                              <p className="text-sm text-muted-foreground line-clamp-2">
                                 {tournament.description ||
                                   "Our first tournament!"}
                               </p>
                             </div>
 
                             {/* Tournament Details Grid */}
-                            <div className="grid grid-cols-2 gap-3 mt-auto">
-                              <div className="flex gap-2 items-center text-sm">
-                                <Calendar className="w-4 h-4 text-muted-foreground" />
-                                <span>{formatDate(tournament.startDate)}</span>
+                            <div className="grid grid-cols-2 gap-3 mt-auto pt-4 border-t border-border/50">
+                              <div className="flex gap-2 items-center text-xs sm:text-sm">
+                                <Calendar className="w-4 h-4 text-primary shrink-0" />
+                                <span className="truncate">{formatDate(tournament.startDate)}</span>
                               </div>
-                              <div className="flex gap-2 items-center text-sm">
-                                <Users className="w-4 h-4 text-muted-foreground" />
-                                <span>
+                              <div className="flex gap-2 items-center text-xs sm:text-sm">
+                                <Users className="w-4 h-4 text-primary shrink-0" />
+                                <span className="truncate">
                                   {tournament.registeredTeams?.length || 0}/
                                   {tournament.maxTeams || 8} teams
                                 </span>
@@ -494,9 +435,16 @@ export default function TeamsPage() {
             {/* My Team Section */}
             {userTeam && (
               <>
-                <div className="mb-8">
-                  <h2 className="mt-8 mb-4 text-xl font-semibold">My Team</h2>
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <div className="mb-8 sm:mb-10 mt-8 sm:mt-12">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="relative p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 shadow-sm">
+                      <Star className="w-5 h-5 text-primary" />
+                    </div>
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                      My Team
+                    </h2>
+                  </div>
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     <TeamCard
                       key={userTeam._id}
                       _id={userTeam._id}
@@ -512,15 +460,18 @@ export default function TeamsPage() {
                       teamElo={userTeam.teamElo}
                     />
 
-                    <Card className="border-dashed bg-primary/5 border-primary/30">
-                      <CardContent className="flex flex-col justify-center items-center py-8 h-full">
-                        <h3 className="mb-2 text-lg font-medium">
+                    <Card className="border-2 border-dashed bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/30 hover:border-primary/50 hover:shadow-lg transition-all">
+                      <CardContent className="flex flex-col justify-center items-center py-6 sm:py-8 h-full">
+                        <div className="relative p-3 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-sm mb-4">
+                          <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+                        </div>
+                        <h3 className="mb-2 text-base sm:text-lg font-semibold">
                           Team Management
                         </h3>
-                        <p className="mb-4 text-sm text-center text-muted-foreground">
+                        <p className="mb-4 text-xs sm:text-sm text-center text-muted-foreground px-4">
                           Manage your team roster and invites
                         </p>
-                        <Button asChild>
+                        <Button asChild className="w-full sm:w-auto">
                           <Link
                             href={`/tournaments/teams/${userTeam._id.toString()}`}
                           >
@@ -537,149 +488,193 @@ export default function TeamsPage() {
             )}
 
             {/* All Teams Section */}
-            <div className="mt-8">
-              <div className="flex flex-col gap-4 justify-between mb-6 sm:flex-row sm:items-center">
-                <div>
-                  <h2 className="text-xl font-semibold">All Teams</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Browse or search for teams
-                  </p>
-                </div>
-                <div className="flex flex-col gap-4 sm:flex-row">
-                  <Sheet>
-                    <SheetTrigger asChild>
-                      <Button variant="outline" className="gap-2">
-                        <Filter className="w-4 h-4" />
-                        <span className="hidden sm:inline">Filter</span>
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent>
-                      <SheetHeader>
-                        <SheetTitle>Filter Teams</SheetTitle>
-                        <SheetDescription>
-                          Narrow down teams based on tournaments and stats.
-                        </SheetDescription>
-                      </SheetHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid gap-2">
-                          <label className="text-sm font-medium">
-                            Tournament
-                          </label>
-                          <Select
-                            value={selectedTournament}
-                            onValueChange={setSelectedTournament}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="All Tournaments" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">
-                                All Tournaments
-                              </SelectItem>
-                              {Array.isArray(tournaments) &&
-                              tournaments.length > 0 ? (
-                                tournaments.map((tournament) => (
-                                  <SelectItem
-                                    key={tournament._id}
-                                    value={tournament._id}
-                                  >
-                                    {tournament.name}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <SelectItem value="none" disabled>
-                                  No tournaments available
-                                </SelectItem>
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="grid gap-2">
-                          <label className="text-sm font-medium">
-                            Team Status
-                          </label>
-                          <RadioGroup
-                            value={teamStatus}
-                            onValueChange={(value) =>
-                              setTeamStatus(value as "all" | "full" | "open")
-                            }
-                            className="flex flex-col space-y-1"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="all" id="all-teams-2" />
-                              <label htmlFor="all-teams-2" className="text-sm">
-                                All Teams
-                              </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="full" id="full-teams-2" />
-                              <label htmlFor="full-teams-2" className="text-sm">
-                                Full Teams (4+ members)
-                              </label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem value="open" id="open-teams-2" />
-                              <label htmlFor="open-teams-2" className="text-sm">
-                                Teams Looking for Members
-                              </label>
-                            </div>
-                          </RadioGroup>
-                        </div>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search teams..."
-                      className="pl-9 w-full sm:w-[260px]"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+            <div className="mt-8 sm:mt-12">
+              <div className="flex flex-col gap-4 justify-between mb-6 sm:mb-8 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="relative p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 shadow-sm">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                      All Teams
+                    </h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                      Browse or search for teams
+                    </p>
                   </div>
                 </div>
               </div>
 
+              {/* Filters Section */}
+              <Card className="border-2 mb-6 bg-gradient-to-br from-card via-card to-primary/5">
+                <CardHeader className="pb-4 border-b border-border/50">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="relative p-2 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
+                        <Filter className="w-4 h-4 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base sm:text-lg">Filters</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm mt-0.5">
+                          Narrow down teams based on tournaments and stats
+                        </CardDescription>
+                      </div>
+                    </div>
+                    {(selectedTournament !== "all" || teamStatus !== "all") && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedTournament("all");
+                          setTeamStatus("all");
+                        }}
+                        className="h-9 gap-2 text-xs sm:text-sm"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-3">
+                      <label className="text-sm font-semibold flex items-center gap-2">
+                        <div className="relative p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                          <Trophy className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        Tournament
+                        {selectedTournament !== "all" && (
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            Active
+                          </Badge>
+                        )}
+                      </label>
+                      <Select
+                        value={selectedTournament}
+                        onValueChange={setSelectedTournament}
+                      >
+                        <SelectTrigger className="h-11 border-2 focus:border-primary/50 transition-colors">
+                          <SelectValue placeholder="All Tournaments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">
+                            All Tournaments
+                          </SelectItem>
+                          {Array.isArray(tournaments) &&
+                          tournaments.length > 0 ? (
+                            tournaments.map((tournament) => (
+                              <SelectItem
+                                key={tournament._id}
+                                value={tournament._id}
+                              >
+                                {tournament.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              No tournaments available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-sm font-semibold flex items-center gap-2">
+                        <div className="relative p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                          <Users className="w-3.5 h-3.5 text-primary" />
+                        </div>
+                        Team Status
+                        {teamStatus !== "all" && (
+                          <Badge variant="secondary" className="ml-auto text-xs">
+                            Active
+                          </Badge>
+                        )}
+                      </label>
+                      <RadioGroup
+                        value={teamStatus}
+                        onValueChange={(value) =>
+                          setTeamStatus(value as "all" | "full" | "open")
+                        }
+                        className="flex flex-col gap-3"
+                      >
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all cursor-pointer group ${
+                          teamStatus === "all" 
+                            ? "border-primary/40 bg-primary/10 shadow-sm" 
+                            : "border-transparent hover:border-primary/20 hover:bg-primary/5"
+                        }`}>
+                          <RadioGroupItem value="all" id="all-teams" />
+                          <label htmlFor="all-teams" className="text-sm cursor-pointer flex-1 font-medium">
+                            All Teams
+                          </label>
+                        </div>
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all cursor-pointer group ${
+                          teamStatus === "full" 
+                            ? "border-primary/40 bg-primary/10 shadow-sm" 
+                            : "border-transparent hover:border-primary/20 hover:bg-primary/5"
+                        }`}>
+                          <RadioGroupItem value="full" id="full-teams" />
+                          <label htmlFor="full-teams" className="text-sm cursor-pointer flex-1 font-medium">
+                            Full Teams (4+ members)
+                          </label>
+                        </div>
+                        <div className={`flex items-center space-x-3 p-3 rounded-lg border-2 transition-all cursor-pointer group ${
+                          teamStatus === "open" 
+                            ? "border-primary/40 bg-primary/10 shadow-sm" 
+                            : "border-transparent hover:border-primary/20 hover:bg-primary/5"
+                        }`}>
+                          <RadioGroupItem value="open" id="open-teams" />
+                          <label htmlFor="open-teams" className="text-sm cursor-pointer flex-1 font-medium">
+                            Teams Looking for Members
+                          </label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Main content section with fixed Tabs structure */}
               <Tabs value={view} onValueChange={setView}>
-                <div className="flex justify-between mb-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-6">
                   <div className="flex gap-2 items-center">
-                    <p className="text-sm text-muted-foreground">
-                      {filteredTeams.length} teams found
-                    </p>
+                    <Badge variant="secondary" className="text-xs sm:text-sm">
+                      {filteredTeams.length} {filteredTeams.length === 1 ? 'team' : 'teams'} found
+                    </Badge>
                   </div>
-                  <TabsList className="h-8">
-                    <TabsTrigger value="grid" className="px-3 h-8">
-                      Grid
-                    </TabsTrigger>
-                    <TabsTrigger value="list" className="px-3 h-8">
-                      List
-                    </TabsTrigger>
-                  </TabsList>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm text-muted-foreground hidden sm:inline">View:</span>
+                    <TabsList className="h-10 sm:h-10 w-full sm:w-auto">
+                      <TabsTrigger value="grid" className="flex-1 sm:flex-none px-4 sm:px-4 h-10 text-xs sm:text-sm">
+                        Grid
+                      </TabsTrigger>
+                      <TabsTrigger value="list" className="flex-1 sm:flex-none px-4 sm:px-4 h-10 text-xs sm:text-sm">
+                        List
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
                 </div>
 
                 {loading ? (
-                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <Card key={i} className="overflow-hidden">
-                        <CardHeader>
+                      <Card key={i} className="overflow-hidden border-2">
+                        <CardHeader className="p-4 sm:p-6">
                           <Skeleton className="w-36 h-6" />
-                          <Skeleton className="mt-1 w-24 h-4" />
+                          <Skeleton className="mt-2 w-24 h-4" />
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="p-4 sm:p-6 pt-0">
                           <Skeleton className="w-full h-16" />
                           <div className="grid grid-cols-2 gap-2 mt-4">
                             <Skeleton className="w-full h-12" />
                             <Skeleton className="w-full h-12" />
                           </div>
                         </CardContent>
-                        <CardFooter className="border-t">
+                        <CardFooter className="border-t p-4 sm:p-6">
                           <div className="flex gap-2 justify-end w-full">
-                            <Skeleton className="w-24 h-8" />
-                            <Skeleton className="w-24 h-8" />
+                            <Skeleton className="w-20 sm:w-24 h-8 sm:h-9" />
+                            <Skeleton className="w-20 sm:w-24 h-8 sm:h-9" />
                           </div>
                         </CardFooter>
                       </Card>
@@ -687,8 +682,8 @@ export default function TeamsPage() {
                   </div>
                 ) : filteredTeams.length > 0 ? (
                   <>
-                    <TabsContent value="grid">
-                      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <TabsContent value="grid" className="mt-0">
+                      <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {currentTeams.map((team) => (
                           <TeamCard
                             key={team._id}
@@ -708,69 +703,95 @@ export default function TeamsPage() {
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="list">
-                      <div className="overflow-x-auto">
+                    <TabsContent value="list" className="mt-0">
+                      <div className="overflow-x-auto rounded-lg border-2">
                         <table className="w-full border-collapse">
                           <thead>
-                            <tr className="bg-muted/50">
-                              <th className="p-3 text-left">Team</th>
-                              <th className="p-3 text-left">Captain</th>
-                              <th className="p-3 text-left">Members</th>
-                              <th className="p-3 text-left">ELO</th>
-                              <th className="p-3 text-right"></th>
+                            <tr className="bg-gradient-to-r from-muted/80 via-muted/60 to-muted/80 border-b-2 border-border">
+                              <th className="p-3 sm:p-4 text-left text-xs sm:text-sm font-semibold">Team</th>
+                              <th className="p-3 sm:p-4 text-left text-xs sm:text-sm font-semibold hidden sm:table-cell">Captain</th>
+                              <th className="p-3 sm:p-4 text-left text-xs sm:text-sm font-semibold">Members</th>
+                              <th className="p-3 sm:p-4 text-left text-xs sm:text-sm font-semibold hidden md:table-cell">ELO</th>
+                              <th className="p-3 sm:p-4 text-right text-xs sm:text-sm font-semibold">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
                             {currentTeams.map((team) => (
                               <tr
                                 key={team._id}
-                                className="border-b border-muted hover:bg-muted/30"
+                                className="border-b border-border/50 hover:bg-muted/30 transition-colors"
                               >
-                                <td className="p-3">
-                                  <div className="font-medium">{team.name}</div>
-                                  <div className="text-sm text-muted-foreground">
+                                <td className="p-3 sm:p-4">
+                                  <div className="font-semibold text-sm sm:text-base">{team.name}</div>
+                                  <div className="text-xs sm:text-sm text-muted-foreground mt-0.5">
                                     [{team.tag}]
                                   </div>
+                                  <div className="text-xs text-muted-foreground mt-1 sm:hidden">
+                                    {team.members.find(
+                                      (m) =>
+                                        m.role === "captain" ||
+                                        m.discordId === team.captain?.discordId
+                                    )?.discordNickname ||
+                                      team.captain?.discordNickname ||
+                                      "Stock Captain"}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-0.5 md:hidden">
+                                    ELO: {team.teamElo?.toLocaleString() || "N/A"}
+                                  </div>
                                 </td>
-                                <td className="p-3">
-                                  {team.members.find(
-                                    (m) =>
-                                      m.role === "captain" ||
-                                      m.discordId === team.captain?.discordId
-                                  )?.discordNickname ||
-                                    team.captain?.discordNickname ||
-                                    "Stock Captain"}
+                                <td className="p-3 sm:p-4 hidden sm:table-cell">
+                                  <div className="text-sm">
+                                    {team.members.find(
+                                      (m) =>
+                                        m.role === "captain" ||
+                                        m.discordId === team.captain?.discordId
+                                    )?.discordNickname ||
+                                      team.captain?.discordNickname ||
+                                      "Stock Captain"}
+                                  </div>
                                 </td>
-                                <td className="p-3">
-                                  {team.members?.length || 0}
+                                <td className="p-3 sm:p-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                                    <span className="text-sm sm:text-base font-medium">
+                                      {team.members?.length || 0}
+                                    </span>
+                                  </div>
                                 </td>
-                                <td className="p-3">
-                                  {team.teamElo?.toLocaleString() || "N/A"}
+                                <td className="p-3 sm:p-4 hidden md:table-cell">
+                                  <div className="flex items-center gap-1.5">
+                                    <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary" />
+                                    <span className="text-sm sm:text-base font-medium">
+                                      {team.teamElo?.toLocaleString() || "N/A"}
+                                    </span>
+                                  </div>
                                 </td>
-                                <td className="p-3 space-x-2 text-right">
-                                  <Button variant="outline" size="sm" asChild>
-                                    <Link
-                                      href={`/tournaments/teams/${team.tag}`}
-                                    >
-                                      View
-                                    </Link>
-                                  </Button>
-                                  {userTeam &&
-                                    team._id !== userTeam._id &&
-                                    session?.user?.id ===
-                                      userTeam?.captain?.discordId && (
-                                      <ChallengeTeamDialog
-                                        team={{
-                                          _id: team._id,
-                                          name: team.name,
-                                          tag: team.tag,
-                                          captain: team.captain,
-                                          members: team.members,
-                                        }}
-                                        userTeam={userTeam}
-                                        disabled={team.members.length < 4}
-                                      />
-                                    )}
+                                <td className="p-3 sm:p-4">
+                                  <div className="flex flex-col sm:flex-row gap-2 justify-end items-stretch sm:items-center">
+                                    <Button variant="outline" size="sm" asChild className="h-9 sm:h-10 text-xs sm:text-sm">
+                                      <Link
+                                        href={`/tournaments/teams/${team.tag}`}
+                                      >
+                                        View
+                                      </Link>
+                                    </Button>
+                                    {userTeam &&
+                                      team._id !== userTeam._id &&
+                                      session?.user?.id ===
+                                        userTeam?.captain?.discordId && (
+                                        <ChallengeTeamDialog
+                                          team={{
+                                            _id: team._id,
+                                            name: team.name,
+                                            tag: team.tag,
+                                            captain: team.captain,
+                                            members: team.members,
+                                          }}
+                                          userTeam={userTeam}
+                                          disabled={team.members.length < 4}
+                                        />
+                                      )}
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -781,97 +802,103 @@ export default function TeamsPage() {
 
                     {/* Pagination UI */}
                     {totalPages > 1 && (
-                      <div className="flex justify-between items-center p-4 mt-6 rounded-md border bg-card">
-                        <div className="text-sm text-muted-foreground">
-                          Showing {indexOfFirstTeam + 1} to{" "}
-                          {Math.min(indexOfLastTeam, filteredTeams.length)} of{" "}
-                          {filteredTeams.length} teams
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(1)}
-                            disabled={currentPage === 1}
-                            className="px-3 h-8"
-                          >
-                            First
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(Math.max(1, currentPage - 1))
-                            }
-                            disabled={currentPage === 1}
-                            className="px-3 h-8"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                          </Button>
-                          <div className="flex items-center px-3 h-8 text-sm rounded-md border bg-background border-input">
-                            Page {currentPage} of {totalPages}
+                      <Card className="border-2 mt-6 sm:mt-8">
+                        <CardContent className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center p-4 sm:p-6">
+                          <div className="text-xs sm:text-sm text-muted-foreground">
+                            Showing <span className="font-medium text-foreground">{indexOfFirstTeam + 1}</span> to{" "}
+                            <span className="font-medium text-foreground">{Math.min(indexOfLastTeam, filteredTeams.length)}</span> of{" "}
+                            <span className="font-medium text-foreground">{filteredTeams.length}</span> teams
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              handlePageChange(
-                                Math.min(totalPages, currentPage + 1)
-                              )
-                            }
-                            disabled={currentPage === totalPages}
-                            className="px-3 h-8"
-                          >
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handlePageChange(totalPages)}
-                            disabled={currentPage === totalPages}
-                            className="px-3 h-8"
-                          >
-                            Last
-                          </Button>
-                        </div>
-                      </div>
+                          <div className="flex flex-wrap gap-2 justify-center sm:justify-end">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(1)}
+                              disabled={currentPage === 1}
+                              className="h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm"
+                            >
+                              First
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handlePageChange(Math.max(1, currentPage - 1))
+                              }
+                              disabled={currentPage === 1}
+                              className="h-9 sm:h-10 px-3 sm:px-4"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            <div className="flex items-center px-3 sm:px-4 h-9 sm:h-10 text-xs sm:text-sm rounded-md border-2 bg-background border-input font-medium">
+                              Page {currentPage} of {totalPages}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                handlePageChange(
+                                  Math.min(totalPages, currentPage + 1)
+                                )
+                              }
+                              disabled={currentPage === totalPages}
+                              className="h-9 sm:h-10 px-3 sm:px-4"
+                            >
+                              <ChevronRight className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(totalPages)}
+                              disabled={currentPage === totalPages}
+                              className="h-9 sm:h-10 px-3 sm:px-4 text-xs sm:text-sm"
+                            >
+                              Last
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     )}
                   </>
                 ) : (
-                  <Card className="flex justify-center items-center p-8">
-                    <div className="text-center">
-                      <Users className="mx-auto mb-3 w-8 h-8 text-muted-foreground" />
-                      <h3 className="text-lg font-medium">No Teams Found</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        {searchQuery
-                          ? `No teams match "${searchQuery}"`
-                          : selectedTournament !== "all"
-                          ? "No teams found for this tournament"
-                          : "Create the first team to get started!"}
-                      </p>
-                      <Sheet>
-                        <SheetTrigger asChild>
-                          <Button className="mt-4">
-                            <Plus className="mr-2 w-4 h-4" />
-                            Create a Team
-                          </Button>
-                        </SheetTrigger>
-                        <SheetContent>
-                          <SheetHeader>
-                            <SheetTitle>Create New Team</SheetTitle>
-                            <SheetDescription>
-                              Fill out the form to create your team.
-                            </SheetDescription>
-                          </SheetHeader>
-                          <CreateTeamForm
-                            onSuccess={() => {
-                              fetchTeams();
-                              // Close the sheet after successful creation
-                            }}
-                          />
-                        </SheetContent>
-                      </Sheet>
-                    </div>
+                  <Card className="border-2 border-dashed">
+                    <CardContent className="flex justify-center items-center p-8 sm:p-12">
+                      <div className="text-center max-w-md">
+                        <div className="relative mx-auto mb-4 w-16 h-16 sm:w-20 sm:h-20 p-4 rounded-full bg-gradient-to-br from-muted to-muted/50 border-2 border-border/50">
+                          <Users className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-semibold mb-2">No Teams Found</h3>
+                        <p className="mt-1 text-sm sm:text-base text-muted-foreground mb-6">
+                          {searchQuery
+                            ? `No teams match "${searchQuery}"`
+                            : selectedTournament !== "all"
+                            ? "No teams found for this tournament"
+                            : "Create the first team to get started!"}
+                        </p>
+                        {!searchQuery && selectedTournament === "all" && (
+                          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                            <SheetTrigger asChild>
+                              <Button className="h-10 sm:h-11 px-4 sm:px-6">
+                                <Plus className="mr-2 w-4 h-4" />
+                                Create a Team
+                              </Button>
+                            </SheetTrigger>
+                            <SheetContent className="w-full sm:max-w-lg overflow-y-auto px-4 sm:px-6 py-4 sm:py-6">
+                              <CreateTeamForm
+                                isSheet={true}
+                                onSuccess={() => {
+                                  fetchTeams();
+                                  setSheetOpen(false);
+                                }}
+                                onClose={() => {
+                                  setSheetOpen(false);
+                                }}
+                              />
+                            </SheetContent>
+                          </Sheet>
+                        )}
+                      </div>
+                    </CardContent>
                   </Card>
                 )}
               </Tabs>

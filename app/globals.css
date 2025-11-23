@@ -97,6 +97,11 @@
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  /* Touch optimization for mobile */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
   /* Responsive text sizes */
   .responsive-text {
     @apply text-sm sm:text-base md:text-lg;

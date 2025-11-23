@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { SECURITY_CONFIG } from "@/lib/security-config";
+import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { isAuthorizedAdmin } from "@/lib/admin-auth";
 
 // GET all rules
 export async function GET() {
@@ -33,14 +34,7 @@ export async function POST(req: Request) {
     // Get user session
     const session = await getServerSession(authOptions);
 
-    // Check if user has required roles
-    const isAuthorized =
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session?.user?.roles &&
-        (session?.user?.roles.includes("admin") ||
-          session?.user?.roles.includes("founder")));
-
-    if (!session?.user || !isAuthorized) {
+    if (!isAuthorizedAdmin(session)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

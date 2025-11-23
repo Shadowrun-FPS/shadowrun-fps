@@ -96,3 +96,23 @@ export function getRankProgress(elo: number, rankName: string): number {
 
   return Math.min(Math.max(progress, 0), 100);
 }
+
+export function getEloToNextRank(elo: number): { eloNeeded: number; nextRank: RankTier | null } {
+  const currentRank = getRankByElo(elo);
+  
+  if (currentRank.name === "Obsidian") {
+    return { eloNeeded: 0, nextRank: null }; // Already at max rank
+  }
+
+  // RANKS array is ordered from highest to lowest (Obsidian -> Diamond -> Platinum -> Gold -> Silver -> Bronze)
+  // To go UP in rank, we need to go to a LOWER index (previous element)
+  const currentRankIndex = RANKS.findIndex((r) => r.name === currentRank.name);
+  const nextRank = RANKS[currentRankIndex - 1]; // Previous index = higher rank
+
+  if (!nextRank || currentRankIndex === 0) {
+    return { eloNeeded: 0, nextRank: null };
+  }
+
+  const eloNeeded = nextRank.min - elo;
+  return { eloNeeded: Math.max(0, eloNeeded), nextRank: nextRank.name };
+}

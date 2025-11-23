@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Users, AlertTriangle } from "lucide-react";
+import { Loader2, Users, AlertTriangle, Search, Check, UserPlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -104,6 +104,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
       toast({
         title: "Invite Sent",
         description: "Team invitation has been sent to the player.",
+        duration: 2000,
       });
     } catch (error: any) {
       console.error("Error inviting player:", error);
@@ -123,93 +124,130 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
           Invite Player
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Invite Players to Team</DialogTitle>
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+        <DialogHeader className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border-2 border-primary/30 shadow-lg shadow-primary/10 shrink-0">
+              <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/40 to-transparent opacity-50" />
+              <Users className="relative w-5 h-5 text-primary drop-shadow-sm" />
+            </div>
+            <DialogTitle className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+              Invite Players to Team
+            </DialogTitle>
+          </div>
+          <p className="text-sm text-muted-foreground pl-11">
+            Search for players to invite to your team
+          </p>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Input
-              placeholder="Search players..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            />
+        <div className="space-y-4 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or username..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-9 h-11 border-2"
+              />
+            </div>
             <Button
               onClick={handleSearch}
               disabled={isLoading || !searchTerm.trim()}
+              className="h-11 w-full sm:w-auto"
             >
               {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span className="hidden sm:inline">Searching...</span>
+                </>
               ) : (
-                "Search"
+                <>
+                  <Search className="mr-2 h-4 w-4 sm:hidden" />
+                  Search
+                </>
               )}
             </Button>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {results.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {isLoading
-                  ? "Searching..."
-                  : "No players found. Try searching for a player."}
-              </p>
+              <div className="p-8 text-center rounded-lg border-2 border-dashed bg-muted/30">
+                <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-sm font-medium text-muted-foreground mb-1">
+                  {isLoading ? "Searching for players..." : "No players found"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isLoading
+                    ? "Please wait..."
+                    : "Try searching by name or username"}
+                </p>
+              </div>
             ) : (
               results.map((player) => (
                 <div
                   key={player.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  className="flex items-center justify-between p-3 sm:p-4 rounded-lg border-2 bg-card hover:bg-muted/30 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarFallback>
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 border-2 border-primary/20">
+                      <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
                         {player.name.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <p className="font-medium">{player.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {player.username} • ELO: {player.elo}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm sm:text-base truncate">{player.name}</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                        @{player.username} • ELO: {player.elo.toLocaleString()}
                         {player.inTeam && (
-                          <span className="ml-1 text-amber-500">
-                            • In team: {player.teamName}
+                          <span className="ml-1 text-amber-500 font-medium">
+                            • In {player.teamName}
                           </span>
                         )}
                       </p>
                     </div>
                   </div>
 
-                  {player.isInvited ? (
-                    <Button size="sm" variant="secondary" disabled>
-                      Invited
-                    </Button>
-                  ) : player.inTeam ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled
-                            className="cursor-not-allowed"
-                          >
-                            <AlertTriangle className="h-3 w-3 mr-1 text-amber-500" />
-                            Invite
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="left">
-                          <p>
-                            This player is already in team &quot;
-                            {player.teamName}&quot;
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <Button size="sm" onClick={() => handleInvite(player.id)}>
-                      Invite
-                    </Button>
-                  )}
+                  <div className="shrink-0 ml-2">
+                    {player.isInvited ? (
+                      <Button size="sm" variant="secondary" disabled className="h-9 sm:h-10">
+                        <Check className="h-4 w-4 mr-1.5" />
+                        <span className="hidden sm:inline">Invited</span>
+                      </Button>
+                    ) : player.inTeam ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled
+                              className="cursor-not-allowed h-9 sm:h-10"
+                            >
+                              <AlertTriangle className="h-4 w-4 mr-1.5 text-amber-500" />
+                              <span className="hidden sm:inline">In Team</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">
+                            <p>
+                              This player is already in team &quot;
+                              {player.teamName}&quot;
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleInvite(player.id)}
+                        className="h-9 sm:h-10"
+                      >
+                        <UserPlus className="h-4 w-4 mr-1.5" />
+                        <span className="hidden sm:inline">Invite</span>
+                        <span className="sm:hidden">+</span>
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))
             )}

@@ -29,7 +29,7 @@ export function PlayerUpdater() {
           setGuildNickname(data.guildNickname || null);
         }
       } catch (error) {
-        console.error("Error fetching guild nickname:", error);
+        // Silently handle errors
       }
     };
 
@@ -73,19 +73,15 @@ export function PlayerUpdater() {
             }),
           });
 
-          if (process.env.NODE_ENV === "development") {
-            const data = await response.json();
-            console.log("Player data refreshed:", data);
-          }
         } catch (error) {
-          console.error("Error refreshing player data:", error);
+          // Silently handle errors
         }
       };
 
       updatePlayerData();
     }
     // Include pathname in dependencies to trigger updates on navigation
-  }, [session?.user?.id, guildNickname, pathname, session?.user]);
+  }, [session?.user?.id, session?.user, guildNickname, pathname]);
 
   return null;
 }

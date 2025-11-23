@@ -15,8 +15,6 @@ export async function POST(request: NextRequest) {
     const { db } = await connectToDatabase();
     const data = await request.json();
 
-    console.log("Challenge data received:", data);
-
     // Validate required fields
     if (!data.challengedTeamId) {
       return NextResponse.json(
@@ -72,15 +70,6 @@ export async function POST(request: NextRequest) {
       ...map,
       gameMode: map.gameMode || "Attrition", // Use the gameMode with a fallback
     }));
-
-    // Log for verification when saving
-    console.log(
-      "Maps with gameMode:",
-      mapsWithGameMode.map((m: { name: any; gameMode: any }) => ({
-        name: m.name,
-        gameMode: m.gameMode,
-      }))
-    );
 
     // Create the scrimmage
     const scrimmage = {
@@ -161,7 +150,6 @@ export async function POST(request: NextRequest) {
       scrimmageId: scrimmage.scrimmageId,
     });
   } catch (error) {
-    console.error("Error creating scrimmage challenge:", error);
     return NextResponse.json(
       { error: "Failed to create scrimmage challenge" },
       { status: 500 }

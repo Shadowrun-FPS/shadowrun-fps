@@ -1,3 +1,6 @@
+// Patch punycode before any other imports
+import "./lib/patch-punycode";
+
 import { createServer } from "http";
 import { parse } from "url";
 import next from "next";

@@ -80,13 +80,15 @@ export function TeamCard({
       onClick={onClick}
     >
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>{name}</CardTitle>
-          <div className="px-3 py-1 text-sm font-medium rounded-md bg-accent/80 text-foreground">
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="min-h-[3rem] line-clamp-2 break-words flex-1">
+            {name}
+          </CardTitle>
+          <div className="px-3 py-1 text-sm font-medium rounded-md bg-accent/80 text-foreground shrink-0">
             {teamElo?.toLocaleString() || "N/A"} ELO
           </div>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground min-h-[2.5rem] line-clamp-2">
           {description || "Top ranked competitive team"}
         </p>
       </CardHeader>

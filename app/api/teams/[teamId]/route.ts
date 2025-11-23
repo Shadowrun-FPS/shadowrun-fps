@@ -5,6 +5,8 @@ import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { containsProfanity } from "@/lib/profanity-filter";
+import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 
 interface TeamMember {
   discordId: string;
@@ -50,6 +52,19 @@ export async function GET(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
+    // Automatically recalculate team ELO based on current member ELOs
+    // This ensures team ELO is always up-to-date when the page loads
+    if (team.members && team.members.length > 0) {
+      try {
+        const updatedElo = await recalculateTeamElo(team._id.toString());
+        // Update team object with fresh ELO
+        team.teamElo = updatedElo;
+      } catch (error) {
+        // Silently fail - don't block team data if ELO calculation fails
+        console.error("Failed to auto-calculate team ELO:", error);
+      }
+    }
+
     // Convert ObjectId to string for JSON serialization
     const teamWithStringId = {
       ...team,
@@ -75,6 +90,28 @@ export async function PATCH(
     const { name, tag, description } = await req.json();
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
+
+    // Check for profanity in team name, tag, and description
+    if (name && containsProfanity(name)) {
+      return NextResponse.json(
+        { error: "Team name contains inappropriate language. Please choose a different name." },
+        { status: 400 }
+      );
+    }
+
+    if (tag && containsProfanity(tag)) {
+      return NextResponse.json(
+        { error: "Team tag contains inappropriate language. Please choose a different tag." },
+        { status: 400 }
+      );
+    }
+
+    if (description && containsProfanity(description)) {
+      return NextResponse.json(
+        { error: "Team description contains inappropriate language. Please revise your description." },
+        { status: 400 }
+      );
+    }
 
     // Check if name/tag is already taken by another team
     const existingTeam = await db.collection("Teams").findOne({
