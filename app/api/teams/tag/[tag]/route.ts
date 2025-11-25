@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { ObjectId } from "mongodb";
+import { getAllTeamCollectionNames } from "@/lib/team-collections";
 
 export async function GET(
   req: NextRequest,
@@ -11,8 +12,13 @@ export async function GET(
     const { db } = await connectToDatabase();
     const tag = params.tag;
 
-    // Find the team by tag
-    const team = await db.collection("Teams").findOne({ tag });
+    // Find the team by tag - search across all collections
+    const allCollections = getAllTeamCollectionNames();
+    let team = null;
+    for (const collectionName of allCollections) {
+      team = await db.collection(collectionName).findOne({ tag });
+      if (team) break;
+    }
 
     if (!team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });

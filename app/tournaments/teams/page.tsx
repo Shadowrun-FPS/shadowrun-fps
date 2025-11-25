@@ -51,19 +51,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -172,7 +159,7 @@ function MyTeamsCarousel({ userTeams }: { userTeams: Team[] }) {
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="secondary" className="text-xs font-semibold">
-                        {teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : "Full Team"} ({teamSize} players)
+                        {teamSize === 2 ? "2v2" : teamSize === 3 ? "3v3" : teamSize === 4 ? "4v4" : "5v5"} ({teamSize} players)
                       </Badge>
                     </div>
                     <TeamCard
@@ -213,7 +200,6 @@ export default function TeamsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState<string>("all");
-  const [tournamentSearchQuery, setTournamentSearchQuery] = useState("");
   const [selectedTeamSize, setSelectedTeamSize] = useState<string>("4");
   const [view, setView] = useState<string>("grid");
   const [teamStatus, setTeamStatus] = useState<"all" | "full" | "open">("all");
@@ -609,89 +595,49 @@ export default function TeamsPage() {
                           </Badge>
                         )}
                       </label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            role="combobox"
-                            className="h-11 w-full justify-between border-2 focus:border-primary/50 transition-colors"
-                          >
-                            <span className="truncate">
-                              {selectedTournament === "all"
-                                ? "All Tournaments"
-                                : tournaments.find(
-                                    (t) => t._id === selectedTournament
-                                  )?.name || "Select tournament..."}
-                            </span>
-                            <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[300px] p-0" align="start">
-                          <Command>
-                            <CommandInput
-                              placeholder="Search tournaments..."
-                              value={tournamentSearchQuery}
-                              onValueChange={setTournamentSearchQuery}
-                            />
-                            <CommandList className="max-h-[300px]">
-                              <CommandEmpty>No tournaments found.</CommandEmpty>
-                              <CommandGroup>
-                                <CommandItem
-                                  value="all"
-                                  onSelect={() => {
-                                    setSelectedTournament("all");
-                                    setTournamentSearchQuery("");
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      selectedTournament === "all"
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  All Tournaments
-                                </CommandItem>
-                                {Array.isArray(tournaments) &&
-                                tournaments.length > 0
-                                  ? tournaments
-                                      .filter((tournament) =>
-                                        tournament.name
-                                          .toLowerCase()
-                                          .includes(
-                                            tournamentSearchQuery.toLowerCase()
-                                          )
-                                      )
-                                      .map((tournament) => (
-                                        <CommandItem
-                                          key={tournament._id}
-                                          value={tournament._id}
-                                          onSelect={() => {
-                                            setSelectedTournament(
-                                              tournament._id
-                                            );
-                                            setTournamentSearchQuery("");
-                                          }}
-                                        >
-                                          <Check
-                                            className={cn(
-                                              "mr-2 h-4 w-4",
-                                              selectedTournament ===
-                                                tournament._id
-                                                ? "opacity-100"
-                                                : "opacity-0"
-                                            )}
-                                          />
-                                          {tournament.name}
-                                        </CommandItem>
-                                      ))
-                                  : null}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <Select
+                        value={selectedTournament}
+                        onValueChange={(value) => {
+                          setSelectedTournament(value);
+                        }}
+                      >
+                        <SelectTrigger className="h-11 w-full border-2 focus:border-primary/50 transition-colors">
+                          <SelectValue placeholder="All Tournaments">
+                            {selectedTournament === "all"
+                              ? "All Tournaments"
+                              : tournaments.find(
+                                  (t) => t._id === selectedTournament
+                                )?.name || "Select tournament..."}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[300px]">
+                          <SelectItem value="all">
+                            All Tournaments
+                          </SelectItem>
+                          {Array.isArray(tournaments) &&
+                          tournaments.length > 0
+                            ? tournaments
+                                .filter((tournament) => {
+                                  // Filter by team size if selected
+                                  if (selectedTeamSize !== "all") {
+                                    const tournamentTeamSize = tournament.teamSize || 4;
+                                    if (tournamentTeamSize !== parseInt(selectedTeamSize)) {
+                                      return false;
+                                    }
+                                  }
+                                  return true;
+                                })
+                                .map((tournament) => (
+                                  <SelectItem
+                                    key={tournament._id}
+                                    value={tournament._id}
+                                  >
+                                    {tournament.name}
+                                  </SelectItem>
+                                ))
+                            : null}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-3">
@@ -715,10 +661,10 @@ export default function TeamsPage() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Team Sizes</SelectItem>
-                          <SelectItem value="2">Duos (2 players)</SelectItem>
-                          <SelectItem value="3">Trios (3 players)</SelectItem>
-                          <SelectItem value="4">Squads (4 players)</SelectItem>
-                          <SelectItem value="5">Full Team (5 players)</SelectItem>
+                          <SelectItem value="2">2v2 (2 players)</SelectItem>
+                          <SelectItem value="3">3v3 (3 players)</SelectItem>
+                          <SelectItem value="4">4v4 (4 players)</SelectItem>
+                          <SelectItem value="5">5v5 (5 players)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -827,22 +773,31 @@ export default function TeamsPage() {
                   <>
                     <TabsContent value="grid" className="mt-0">
                       <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {currentTeams.map((team) => (
-                          <TeamCard
-                            key={team._id}
-                            _id={team._id}
-                            name={team.name}
-                            tag={team.tag}
-                            description={team.description}
-                            members={team.members}
-                            wins={team.wins || 0}
-                            losses={team.losses || 0}
-                            tournamentWins={team.tournamentWins || 0}
-                            userTeam={userTeams.find((ut) => ut._id === team._id) || null}
-                            isUserTeam={userTeams.some((ut) => ut._id === team._id)}
-                            teamElo={team.teamElo}
-                          />
-                        ))}
+                        {currentTeams.map((team) => {
+                          // Find user's team that matches the displayed team's size
+                          const teamSize = team.teamSize || 4;
+                          const matchingUserTeam = userTeams.find(
+                            (ut) => (ut.teamSize || 4) === teamSize && ut._id !== team._id
+                          );
+                          
+                          return (
+                            <TeamCard
+                              key={team._id}
+                              _id={team._id}
+                              name={team.name}
+                              tag={team.tag}
+                              description={team.description}
+                              members={team.members}
+                              wins={team.wins || 0}
+                              losses={team.losses || 0}
+                              tournamentWins={team.tournamentWins || 0}
+                              userTeam={matchingUserTeam || null}
+                              isUserTeam={userTeams.some((ut) => ut._id === team._id)}
+                              teamElo={team.teamElo}
+                              teamSize={team.teamSize}
+                            />
+                          );
+                        })}
                       </div>
                     </TabsContent>
 
@@ -883,7 +838,7 @@ export default function TeamsPage() {
                                     <td colSpan={5} className="p-3 sm:p-4">
                                       <div className="flex items-center gap-2">
                                         <Badge variant="secondary" className="text-xs font-semibold">
-                                          {teamSize === 2 ? "Duos" : teamSize === 3 ? "Trios" : teamSize === 4 ? "Squads" : teamSize === 5 ? "Full Team" : `${teamSize}v${teamSize}`} ({teamSize} players)
+                                          {teamSize === 2 ? "2v2" : teamSize === 3 ? "3v3" : teamSize === 4 ? "4v4" : teamSize === 5 ? "5v5" : `${teamSize}v${teamSize}`} ({teamSize} players)
                                         </Badge>
                                         <span className="text-xs text-muted-foreground">
                                           {teamsBySize[teamSize].length} {teamsBySize[teamSize].length === 1 ? 'team' : 'teams'}
@@ -952,8 +907,12 @@ export default function TeamsPage() {
                                             </Link>
                                           </Button>
                                           {(() => {
+                                            // Find user's team that matches the displayed team's size and user is captain
+                                            const teamSize = team.teamSize || 4;
                                             const userTeamAsCaptain = userTeams.find((ut) => 
-                                              ut._id !== team._id && session?.user?.id === ut?.captain?.discordId
+                                              ut._id !== team._id && 
+                                              (ut.teamSize || 4) === teamSize &&
+                                              session?.user?.id === ut?.captain?.discordId
                                             );
                                             return userTeamAsCaptain ? (
                                               <ChallengeTeamDialog

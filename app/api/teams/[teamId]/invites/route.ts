@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 // Define an interface for the invite document
 interface TeamInvite {
@@ -30,14 +31,12 @@ export async function GET(
     const { db } = await connectToDatabase();
     const teamId = params.teamId;
 
-    // Get the team
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Get the team - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
 
     // Verify user is team captain or team member
     const isCaptain = team.captain.discordId === session.user.id;

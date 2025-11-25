@@ -81,13 +81,13 @@ export function NotificationItem({
   const getTeamSizeLabel = (size: number) => {
     switch (size) {
       case 2:
-        return "Duos";
+        return "2v2";
       case 3:
-        return "Trios";
+        return "3v3";
       case 4:
-        return "Squads";
+        return "4v4";
       case 5:
-        return "Full Team";
+        return "5v5";
       default:
         return `${size}-person`;
     }
@@ -212,13 +212,13 @@ export function NotificationItem({
           )}
 
           {notification.type === "team_invite" && !processed && (
-            <div className="flex flex-col sm:flex-row justify-end gap-2 mt-2 pt-2 border-t border-border/50">
+            <div className="flex flex-col sm:flex-row justify-end gap-2.5 mt-3 pt-3 border-t border-border/50">
               <Button
                 variant="outline"
-                size="sm"
+                size="default"
                 onClick={() => handleTeamInviteResponse("reject")}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 transition-colors"
+                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-[40px] border-2 border-destructive/40 text-destructive font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60 transition-all shadow-sm"
               >
                 {isSubmitting && actionResult === null ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -229,10 +229,10 @@ export function NotificationItem({
               </Button>
               <Button
                 variant="default"
-                size="sm"
+                size="default"
                 onClick={() => handleTeamInviteResponse("accept")}
                 disabled={isSubmitting}
-                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0 bg-primary hover:bg-primary/90 shadow-sm hover:shadow transition-all"
+                className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-[40px] bg-primary hover:bg-primary/90 shadow-md hover:shadow-lg transition-all font-medium"
               >
                 {isSubmitting && actionResult === null ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -262,28 +262,28 @@ export function NotificationItem({
             </div>
           )}
 
-          <div className="mt-1.5 flex flex-col sm:flex-row justify-end gap-1.5">
+          <div className="mt-2.5 flex flex-col sm:flex-row justify-end gap-2">
             {!notification.read &&
               onMarkAsRead &&
               notification.type !== "team_invite" && (
                 <Button
-                  size="sm"
+                  size="default"
                   variant="outline"
                   onClick={() => onMarkAsRead(notification._id)}
-                  className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-0"
+                  className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-[38px] font-medium border-2 hover:bg-accent/50 transition-colors"
                 >
-                  <Check className="mr-1.5 h-3.5 w-3.5" />
+                  <Check className="mr-2 h-4 w-4" />
                   Mark as read
                 </Button>
               )}
             {onDelete && (
               <Button
-                size="sm"
+                size="default"
                 variant="ghost"
-                className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive touch-manipulation min-h-[44px] sm:min-h-0"
+                className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive touch-manipulation min-h-[44px] sm:min-h-[38px] font-medium border border-destructive/20 hover:border-destructive/30 transition-all"
                 onClick={() => onDelete(notification._id)}
               >
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                <Trash2 className="mr-2 h-4 w-4" />
                 Delete
               </Button>
             )}

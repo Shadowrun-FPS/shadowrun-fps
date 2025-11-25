@@ -221,11 +221,11 @@ export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
             setFormData((prev) => ({ ...prev, description: e.target.value }))
           }
           className="min-h-[100px] border-2 resize-none"
-          maxLength={500}
+          maxLength={200}
           placeholder="Enter team description"
         />
         <p className="text-xs text-muted-foreground">
-          {formData.description.length}/500 characters
+          {formData.description.length}/200 characters
         </p>
       </div>
 

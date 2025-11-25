@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Check, X, Loader2, Users } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 interface TeamInviteNotificationProps {
   id: string;
   inviteId: string;
   teamId: string;
   teamName: string;
+  notificationId?: string; // Add notification ID to mark as read
   onInviteProcessed?: () => void;
 }
 
@@ -19,6 +21,7 @@ export function TeamInviteNotification({
   inviteId,
   teamId,
   teamName,
+  notificationId,
   onInviteProcessed,
 }: TeamInviteNotificationProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,6 +31,7 @@ export function TeamInviteNotification({
   );
   const { toast } = useToast();
   const router = useRouter();
+  const { markAsRead } = useNotifications();
 
   const handleResponse = async (action: "accept" | "reject") => {
     setIsSubmitting(true);
@@ -49,6 +53,11 @@ export function TeamInviteNotification({
       const statusValue = action === "accept" ? "accepted" : "rejected";
       setStatus(statusValue);
       setProcessed(true);
+
+      // Mark notification as read automatically
+      if (notificationId) {
+        await markAsRead(notificationId);
+      }
 
       toast({
         title: action === "accept" ? "Team Joined" : "Invite Rejected",

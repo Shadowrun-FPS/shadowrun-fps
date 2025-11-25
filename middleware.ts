@@ -15,11 +15,12 @@ export function middleware(request: NextRequest) {
     "/api/auth/callback",
   ];
 
+  // Skip rate limiting for notifications API (frequently polled by frontend)
   const shouldSkipRateLimit = criticalAuthPaths.some((path) =>
     pathname.startsWith(path)
-  );
+  ) || pathname.startsWith("/api/notifications");
 
-  // Apply rate limiting based on route (but skip critical auth paths)
+  // Apply rate limiting based on route (but skip critical auth paths and notifications)
   let rateLimitResult;
 
   if (!shouldSkipRateLimit) {

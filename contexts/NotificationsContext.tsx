@@ -81,7 +81,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
 
     const now = Date.now();
-    if (!force && now - lastFetchAttempt < 10000) {
+    // Increase debounce time to 15 seconds to prevent rapid successive calls
+    if (!force && now - lastFetchAttempt < 15000) {
       return;
     }
 
@@ -156,6 +157,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const markAsRead = async (id: string) => {
     try {
+      // Optimistically update UI
       const updatedNotifications = notifications.map((n) =>
         n._id === id ? { ...n, read: true } : n
       );
@@ -170,6 +172,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (!response.ok) {
         throw new Error("Failed to mark notification as read");
       }
+
+      // Refresh notifications to ensure UI is in sync with server
+      await fetchNotifications(true);
     } catch (error) {
       // Only log errors in development or for non-auth related issues
       if (
@@ -178,6 +183,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       ) {
         console.error("Error marking notification as read:", error);
       }
+      // Revert optimistic update on error
+      await fetchNotifications(true);
     }
   };
 
@@ -211,9 +218,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const deleteNotification = async (id: string) => {
     try {
+      // Optimistically update UI
+      const wasUnread = notifications.find((n) => n._id === id && !n.read);
       setNotifications(notifications.filter((n) => n._id !== id));
 
-      const wasUnread = notifications.find((n) => n._id === id && !n.read);
       if (wasUnread) {
         const newCount = unreadCount - 1;
         setUnreadCount(newCount);
@@ -227,6 +235,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (!response.ok) {
         throw new Error("Failed to delete notification");
       }
+
+      // Refresh notifications to ensure UI is in sync with server
+      await fetchNotifications(true);
     } catch (error) {
       // Only log errors in development or for non-auth related issues
       if (
@@ -235,7 +246,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       ) {
         console.error("Error deleting notification:", error);
       }
-      fetchNotifications();
+      // Revert optimistic update on error
+      await fetchNotifications(true);
     }
   };
 
@@ -258,7 +270,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     fetchNotifications();
 
-    const interval = setInterval(fetchNotifications, 60000);
+    // Increase polling interval to 90 seconds to reduce API calls
+    const interval = setInterval(fetchNotifications, 90000);
     return () => clearInterval(interval);
   }, [session?.user?.id]); // Only recreate interval when user ID changes, not on every session object change
 

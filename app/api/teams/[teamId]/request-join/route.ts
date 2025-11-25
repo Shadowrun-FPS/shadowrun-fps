@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
+import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 
 export async function POST(
   request: NextRequest,
@@ -25,14 +26,12 @@ export async function POST(
     const userName = session.user.name || "Unknown User";
     const teamId = params.teamId;
 
-    // Check that the team exists
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Check that the team exists across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const { team, collectionName } = teamResult;
 
     // Check if user is already a member of the team
     const isMember = team.members.some((m: any) => m.discordId === userId);
@@ -43,13 +42,37 @@ export async function POST(
       );
     }
 
-    // Check if the team is full (max 5 active members)
-    const activeMembers = team.members.filter(
-      (m: any) => m.role.toLowerCase() !== "substitute"
+    // Get team size (default to 4 if not specified)
+    const teamSize = team.teamSize || 4;
+
+    // Check if the team is full
+    const memberCount = team.members.length;
+    const captainInMembers = team.members.some(
+      (m: any) => m.discordId === team.captain?.discordId
     );
-    if (activeMembers.length >= 5) {
+    const totalMembers = captainInMembers ? memberCount : memberCount + 1;
+
+    if (totalMembers >= teamSize) {
       return NextResponse.json(
-        { error: "This team is full (maximum 5 active members)" },
+        { error: `This team is full (${teamSize}/${teamSize} members)` },
+        { status: 400 }
+      );
+    }
+
+    // Check if user is already in a team of the SAME size
+    const teamCollectionName = getTeamCollectionName(teamSize);
+    const existingTeamOfSameSize = await db.collection(teamCollectionName).findOne({
+      $or: [
+        { "members.discordId": userId },
+        { "captain.discordId": userId },
+      ],
+    });
+
+    if (existingTeamOfSameSize) {
+      return NextResponse.json(
+        {
+          error: `You are already a member of a ${teamSize}-person team "${existingTeamOfSameSize.name}". You must leave your current team before joining another team of the same size.`,
+        },
         { status: 400 }
       );
     }
@@ -68,12 +91,13 @@ export async function POST(
       );
     }
 
-    // Create the join request
+    // Create the join request with team size
     const joinRequestResult = await db
       .collection("TeamJoinRequests")
       .insertOne({
         teamId: team._id.toString(),
         teamName: team.name,
+        teamSize: teamSize, // Store team size for conflict checking
         userId: session.user.id,
         userName: session.user.name,
         userNickname: session.user.nickname || session.user.name,

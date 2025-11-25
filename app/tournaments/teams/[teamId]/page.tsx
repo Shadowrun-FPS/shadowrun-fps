@@ -98,6 +98,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   } | null>(null);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showTransferCaptainDialog, setShowTransferCaptainDialog] = useState(false);
   const router = useRouter();
   const fetchTeamRef = useRef(false);
   const checkUserTeamRef = useRef(false);
@@ -227,18 +228,18 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
       return;
     }
 
-    if (
-      !confirm(
-        "Are you sure you want to transfer the captain role? This cannot be undone."
-      )
-    ) {
+    // Show confirmation dialog instead of using confirm()
+    setShowTransferCaptainDialog(true);
+  };
+
+  // Function to confirm and execute captain transfer
+  const confirmTransferCaptain = async () => {
+    if (!newCaptainId) {
       return;
     }
 
     setIsSubmitting(true);
     try {
-      console.log("Transferring captain to:", newCaptainId);
-
       const response = await fetch(`/api/teams/${team?._id}/transfer-captain`, {
         method: "POST",
         headers: {
@@ -252,6 +253,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
         throw new Error(data.error || "Failed to transfer captain role");
       }
 
+      setShowTransferCaptainDialog(false);
       toast({
         title: "Success",
         description: "Captain role transferred successfully",
@@ -610,14 +612,14 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                       </h3>
                       <Badge variant="secondary" className="text-base">
                         {team.teamSize === 2
-                          ? "Duos"
+                          ? "2v2"
                           : team.teamSize === 3
-                          ? "Trios"
+                          ? "3v3"
                           : team.teamSize === 4
-                          ? "Squads"
+                          ? "4v4"
                           : team.teamSize === 5
-                          ? "Full Team"
-                          : "Squads"}{" "}
+                          ? "5v5"
+                          : "4v4"}{" "}
                         ({team.teamSize || 4} players)
                       </Badge>
                     </div>
@@ -1264,13 +1266,17 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         );
                       }
 
+                      const userTeamSize = userCurrentTeam?.teamSize || 4;
+                      const targetTeamSize = teamSize || 4;
+                      const isSameSizeTeam = userCurrentTeam && userTeamSize === targetTeamSize;
+
                       return (
                         <>
                           <p className="text-sm text-muted-foreground">
-                            This team has {team.members.length}/4 members. Send
+                            This team has {team.members.length}/{teamSize || 4} members. Send
                             a request to join this team.
                           </p>
-                          {userCurrentTeam ? (
+                          {isSameSizeTeam ? (
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -1286,9 +1292,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>
-                                    You are already a member of{" "}
-                                    {userCurrentTeam.name}. Leave your current
-                                    team to join another.
+                                    You are already a member of a {targetTeamSize}-person team &quot;{userCurrentTeam.name}&quot;. Leave your current
+                                    team to join another team of the same size.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
@@ -1363,6 +1368,73 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
               </Card>
             )}
         </div>
+
+        {/* Transfer Captain Confirmation Dialog */}
+        <AlertDialog
+          open={showTransferCaptainDialog}
+          onOpenChange={setShowTransferCaptainDialog}
+        >
+          <AlertDialogContent className="sm:max-w-[425px]">
+            <AlertDialogHeader>
+              <div className="flex gap-3 items-center mb-2">
+                <div className="relative p-2 rounded-lg border bg-amber-500/20 border-amber-500/30">
+                  <Shield className="w-5 h-5 text-amber-500" />
+                </div>
+                <AlertDialogTitle className="text-lg sm:text-xl">
+                  Transfer Captain Role
+                </AlertDialogTitle>
+              </div>
+              <AlertDialogDescription className="pt-2 text-sm sm:text-base space-y-2">
+                <p>
+                  Are you sure you want to transfer the captain role to{" "}
+                  <span className="font-semibold text-foreground">
+                    {team?.members.find((m) => m.discordId === newCaptainId)
+                      ?.discordNickname ||
+                      team?.members.find((m) => m.discordId === newCaptainId)
+                        ?.discordUsername ||
+                      "this member"}
+                  </span>
+                  ?
+                </p>
+                <div className="p-3 rounded-lg border-2 border-amber-500/30 bg-amber-500/10 mt-3">
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                    ⚠️ Warning: This action cannot be undone!
+                  </p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                    You will lose all captain privileges and will not be able to
+                    reverse this transfer yourself. Only the new captain can
+                    transfer leadership back to you.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:gap-0">
+              <AlertDialogCancel
+                className="w-full h-10 sm:w-auto sm:h-11"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmTransferCaptain}
+                disabled={isSubmitting}
+                className="w-full h-10 bg-amber-600 sm:w-auto sm:h-11 hover:bg-amber-700"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Transferring...
+                  </>
+                ) : (
+                  <>
+                    <Shield className="mr-2 w-4 h-4" />
+                    Transfer Captain Role
+                  </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Remove Member Confirmation Dialog */}
         <AlertDialog open={showRemoveDialog} onOpenChange={setShowRemoveDialog}>

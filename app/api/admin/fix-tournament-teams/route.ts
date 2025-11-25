@@ -74,10 +74,12 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Fetch the complete team document
-        const teamDoc = await db.collection("Teams").findOne({
-          _id: typeof team._id === "string" ? new ObjectId(team._id) : team._id,
-        });
+        // Fetch the complete team document - search across all collections
+        const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+        const teamIdStr = typeof team._id === "string" ? team._id : team._id.toString();
+        const teamResult = await findTeamAcrossCollections(db, teamIdStr);
+        if (!teamResult) continue;
+        const teamDoc = teamResult.team;
 
         if (!teamDoc) continue;
 
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get all players
-        const memberIds = teamDoc.members.map((m) => m.discordId);
+        const memberIds = teamDoc.members.map((m: any) => m.discordId);
         const players = await db
           .collection("Players")
           .find({ discordId: { $in: memberIds } })
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
 
         // Calculate team ELO
         const teamSize = tournament.teamSize || 5;
-        const enhancedMembers = teamDoc.members.map((member) => {
+        const enhancedMembers = teamDoc.members.map((member: any) => {
           const player =
             players.find((p) => p.discordId === member.discordId) || {};
 

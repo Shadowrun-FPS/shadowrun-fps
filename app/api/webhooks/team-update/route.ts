@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,14 +16,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find the team
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Find the team - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
+    const collectionName = teamResult.collectionName;
+    const teamSize = team.teamSize || 4;
 
     // Get all team members' IDs
     const memberIds = team.members.map((member: any) => member.discordId);
@@ -38,13 +39,13 @@ export async function POST(req: NextRequest) {
     let memberElos = [];
 
     for (const player of players) {
-      // Find the 4v4 stats object in the player's stats array
-      const teamSize4Stats = player.stats?.find(
-        (stat: any) => stat.teamSize === 4
+      // Find the stats object for this team's size in the player's stats array
+      const statsForTeamSize = player.stats?.find(
+        (stat: any) => stat.teamSize === teamSize
       );
 
-      if (teamSize4Stats && teamSize4Stats.elo) {
-        const playerElo = parseInt(teamSize4Stats.elo);
+      if (statsForTeamSize && statsForTeamSize.elo) {
+        const playerElo = parseInt(statsForTeamSize.elo);
         playerEloMap.set(player.discordId, playerElo);
 
         // Store for logging
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
     console.log(`Total team ELO: ${totalElo}`);
 
     // Update the team document with updated members and team ELO
-    await db.collection("Teams").updateOne(
+    await db.collection(collectionName).updateOne(
       { _id: new ObjectId(teamId) },
       {
         $set: {

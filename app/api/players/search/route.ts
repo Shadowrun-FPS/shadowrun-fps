@@ -53,19 +53,25 @@ export async function GET(req: NextRequest) {
     let playersWithTeamInfo = players;
 
     if (includeTeamInfo) {
-      // Get the team for each player
+      // Get the team for each player - search across all collections
+      const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
       const playerIds = players.map((player) => player.discordId);
 
-      const teamsWithPlayers = await db
-        .collection("Teams")
-        .find({ "members.discordId": { $in: playerIds } })
-        .project({
-          _id: 1,
-          name: 1,
-          teamSize: 1,
-          "members.discordId": 1,
-        })
-        .toArray();
+      const allCollections = getAllTeamCollectionNames();
+      const teamsWithPlayers = [];
+      for (const collectionName of allCollections) {
+        const teams = await db
+          .collection(collectionName)
+          .find({ "members.discordId": { $in: playerIds } })
+          .project({
+            _id: 1,
+            name: 1,
+            teamSize: 1,
+            "members.discordId": 1,
+          })
+          .toArray();
+        teamsWithPlayers.push(...teams);
+      }
 
       // Create a map of player ID to team
       const playerTeamMap = new Map();

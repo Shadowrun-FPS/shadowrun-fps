@@ -224,10 +224,10 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                   <SelectValue placeholder="Select team size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2">Duos (2 players)</SelectItem>
-                  <SelectItem value="3">Trios (3 players)</SelectItem>
-                  <SelectItem value="4">Squads (4 players)</SelectItem>
-                  <SelectItem value="5">Full Team (5 players)</SelectItem>
+                  <SelectItem value="2">2v2 (2 players)</SelectItem>
+                  <SelectItem value="3">3v3 (3 players)</SelectItem>
+                  <SelectItem value="4">4v4 (4 players)</SelectItem>
+                  <SelectItem value="5">5v5 (5 players)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -293,11 +293,11 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                   "min-h-[100px] border-2 resize-none focus:border-primary/50 transition-colors",
                   validationErrors.description && "border-red-500 focus:border-red-500"
                 )}
-                maxLength={500}
+                maxLength={200}
               />
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {formData.description.length}/500 characters
+                  {formData.description.length}/200 characters
                 </p>
                 {validationErrors.description && (
                   <p className="text-xs text-red-500 font-medium">
@@ -414,10 +414,10 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                   <SelectValue placeholder="Select team size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="2">Duos (2 players)</SelectItem>
-                  <SelectItem value="3">Trios (3 players)</SelectItem>
-                  <SelectItem value="4">Squads (4 players)</SelectItem>
-                  <SelectItem value="5">Full Team (5 players)</SelectItem>
+                  <SelectItem value="2">2v2 (2 players)</SelectItem>
+                  <SelectItem value="3">3v3 (3 players)</SelectItem>
+                  <SelectItem value="4">4v4 (4 players)</SelectItem>
+                  <SelectItem value="5">5v5 (5 players)</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
@@ -483,11 +483,11 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                   "min-h-[100px] border-2 resize-none focus:border-primary/50 transition-colors",
                   validationErrors.description && "border-red-500 focus:border-red-500"
                 )}
-                maxLength={500}
+                maxLength={200}
               />
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">
-                  {formData.description.length}/500 characters
+                  {formData.description.length}/200 characters
                 </p>
                 {validationErrors.description && (
                   <p className="text-xs text-red-500 font-medium">

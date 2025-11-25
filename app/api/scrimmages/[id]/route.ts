@@ -42,12 +42,15 @@ export async function GET(
 
     // Last resort: try to find a recently created scrimmage for this user (within last 5 minutes)
     if (!scrimmage && session.user.id) {
-      const userTeams = await db
-        .collection("Teams")
-        .find({
+      const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
+      const allCollections = getAllTeamCollectionNames();
+      const userTeams = [];
+      for (const collectionName of allCollections) {
+        const teams = await db.collection(collectionName).find({
           "members.discordId": session.user.id,
-        })
-        .toArray();
+        }).toArray();
+        userTeams.push(...teams);
+      }
 
       const teamIds = userTeams.map((team) => team._id.toString());
 
@@ -75,17 +78,14 @@ export async function GET(
     // Ensure the teams are properly populated
     if (!scrimmage.challengerTeam || !scrimmage.challengedTeam) {
       try {
+        const { findTeamAcrossCollections } = await import("@/lib/team-collections");
         const teams = await Promise.all([
-          db.collection("Teams").findOne({
-            _id: new ObjectId(scrimmage.challengerTeamId.toString()),
-          }),
-          db.collection("Teams").findOne({
-            _id: new ObjectId(scrimmage.challengedTeamId.toString()),
-          }),
+          findTeamAcrossCollections(db, scrimmage.challengerTeamId.toString()),
+          findTeamAcrossCollections(db, scrimmage.challengedTeamId.toString()),
         ]);
 
-        scrimmage.challengerTeam = teams[0];
-        scrimmage.challengedTeam = teams[1];
+        scrimmage.challengerTeam = teams[0]?.team;
+        scrimmage.challengedTeam = teams[1]?.team;
       } catch (error) {
         // Continue with the incomplete scrimmage data rather than failing
       }

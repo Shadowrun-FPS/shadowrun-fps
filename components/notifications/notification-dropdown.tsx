@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
   DropdownMenu,
@@ -10,27 +10,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
-import { format, differenceInSeconds } from "date-fns";
+import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
-
-interface Notification {
-  _id: string;
-  type: "team_invite" | "role_change" | "team_removal" | "queue_full";
-  title: string;
-  message: string;
-  createdAt: Date;
-  read: boolean;
-  data?: {
-    queueId?: string;
-    queueName?: string;
-    queueType?: string;
-    teamSize?: number;
-    redirectUrl?: string;
-    expiresAt?: Date;
-    [key: string]: any;
-  };
-}
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   const [timeLeft, setTimeLeft] = useState<number>(300); // Start with default 5 min
@@ -81,68 +64,11 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
 export function NotificationDropdown() {
   const { data: session } = useSession();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
-  const [loading, setLoading] = useState<boolean>(false);
+  const { notifications, unreadCount, markAsRead, loading } = useNotifications();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!session?.user?.id) return;
-
-    const fetchNotifications = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/notifications");
-
-        if (response.status === 401) {
-          // User is not logged in, handle gracefully
-          setNotifications([]);
-          setUnreadCount(0);
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch notifications");
-        }
-
-        const data = await response.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      } catch (error) {
-        // Only log error if user is logged in
-        if (session?.user) {
-          console.error("Error fetching notifications:", error);
-        }
-        // Set empty state
-        setNotifications([]);
-        setUnreadCount(0);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [session]);
-
-  const handleMarkAsRead = async (notificationId: string) => {
-    try {
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notificationIds: [notificationId] }),
-      });
-
-      setNotifications(
-        notifications.map((n) =>
-          n._id === notificationId ? { ...n, read: true } : n
-        )
-      );
-    } catch (error) {
-      console.error("Failed to mark notification as read:", error);
-    }
-  };
+  // Filter to show only recent notifications in dropdown (last 10)
+  const recentNotifications = notifications.slice(0, 10);
 
   return (
     <DropdownMenu>
@@ -157,31 +83,38 @@ export function NotificationDropdown() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        {notifications.length === 0 ? (
+        {recentNotifications.length === 0 ? (
           <div className="p-4 text-sm text-center text-muted-foreground">
             No notifications
           </div>
         ) : (
-          notifications.map((notification) => (
-            <DropdownMenuItem
-              key={notification._id}
-              className={`p-4 ${notification.read ? "opacity-60" : ""} ${
-                notification.type === "queue_full"
-                  ? "bg-blue-50 dark:bg-blue-950/30"
-                  : ""
-              }`}
-              onClick={() => {
-                handleMarkAsRead(notification._id);
+          recentNotifications.map((notification) => {
+            // Map context notification type to dropdown notification type
+            const notificationData = notification.metadata || {};
+            const isQueueFull = notification.type === "queue_match";
+            
+            return (
+              <DropdownMenuItem
+                key={notification._id}
+                className={`p-4 ${notification.read ? "opacity-60" : ""} ${
+                  isQueueFull
+                    ? "bg-blue-50 dark:bg-blue-950/30"
+                    : ""
+                }`}
+                onClick={() => {
+                  if (!notification.read) {
+                    markAsRead(notification._id);
+                  }
 
-                // Only navigate on the item click if it's not a queue notification
-                if (
-                  notification.type !== "queue_full" &&
-                  notification.data?.redirectUrl
-                ) {
-                  router.push(notification.data.redirectUrl);
-                }
-              }}
-            >
+                  // Only navigate on the item click if it's not a queue notification
+                  if (
+                    !isQueueFull &&
+                    notificationData.teamId
+                  ) {
+                    router.push(`/teams/${notificationData.teamId}`);
+                  }
+                }}
+              >
               <div className="w-full space-y-1">
                 <div className="flex items-center justify-between">
                   <p className="font-medium">{notification.title}</p>
@@ -190,26 +123,26 @@ export function NotificationDropdown() {
                   </span>
                 </div>
 
-                {notification.type === "queue_full" ? (
+                {isQueueFull ? (
                   <div>
                     <div className="flex items-center justify-between">
                       <p className="text-sm">{notification.message}</p>
                     </div>
-                    {notification.data?.expiresAt && (
+                    {(notificationData as any).expiresAt && (
                       <div className="flex items-center mt-1">
                         <CountdownTimer
-                          expiresAt={notification.data.expiresAt.toString()}
+                          expiresAt={(notificationData as any).expiresAt.toString()}
                         />
                       </div>
                     )}
-                    {notification.data && (
+                    {notificationData && (
                       <div className="flex items-center mt-2">
                         <Badge variant="secondary" className="mr-2">
-                          {notification.data.teamSize}v
-                          {notification.data.teamSize}
+                          {(notificationData as any).teamSize || 4}v
+                          {(notificationData as any).teamSize || 4}
                         </Badge>
                         <Badge variant="outline">
-                          {notification.data.queueType || "Ranked"}
+                          {(notificationData as any).queueType || "Ranked"}
                         </Badge>
                         <Button
                           variant="outline"
@@ -232,7 +165,8 @@ export function NotificationDropdown() {
                 )}
               </div>
             </DropdownMenuItem>
-          ))
+          );
+          })
         )}
       </DropdownMenuContent>
     </DropdownMenu>

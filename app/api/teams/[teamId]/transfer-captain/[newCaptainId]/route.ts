@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
+import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -17,14 +18,13 @@ export async function POST(
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
-    // Get team
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(params.teamId),
-    });
-
-    if (!team) {
+    // Get team - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, params.teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
+    const collectionName = teamResult.collectionName;
 
     // Verify current user is captain
     if (team.captain.discordId !== session.user.id) {
@@ -54,7 +54,7 @@ export async function POST(
     }
 
     // Update team captain and member roles
-    await db.collection("Teams").updateOne(
+    await db.collection(collectionName).updateOne(
       { _id: new ObjectId(params.teamId) },
       {
         $set: {

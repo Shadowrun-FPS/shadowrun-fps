@@ -1104,19 +1104,23 @@ export async function POST(
                 placement === 1 ? "1st" : placement === 2 ? "2nd" : "3rd",
             };
 
-            // Update the team document in the Teams collection
-            await db.collection("Teams").updateOne(
-              { _id: new ObjectId(team._id.toString()) },
-              {
-                $push: {
-                  // MongoDB push format needs to be this way for TypeScript
-                  tournaments: teamTournamentResult,
-                } as any, // Add type assertion to bypass TypeScript checking
-                $set: {
-                  updatedAt: new Date(),
-                },
-              }
-            );
+            // Update the team document - find which collection it's in
+            const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+            const teamResult = await findTeamAcrossCollections(db, team._id.toString());
+            if (teamResult) {
+              await db.collection(teamResult.collectionName).updateOne(
+                { _id: new ObjectId(team._id.toString()) },
+                {
+                  $push: {
+                    // MongoDB push format needs to be this way for TypeScript
+                    tournaments: teamTournamentResult,
+                  } as any, // Add type assertion to bypass TypeScript checking
+                  $set: {
+                    updatedAt: new Date(),
+                  },
+                }
+              );
+            }
 
             console.log(
               `Updated team ${team.name} with ${placement}${

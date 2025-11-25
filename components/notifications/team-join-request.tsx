@@ -1,9 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useNotifications } from "@/contexts/NotificationsContext";
+
+// Cache for join request status checks to prevent duplicate API calls
+const joinRequestStatusCache = new Map<string, { status: string; timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 seconds
+const pendingChecks = new Map<string, Promise<any>>();
 
 interface TeamJoinRequestProps {
   notification: any;
@@ -17,7 +23,107 @@ export function TeamJoinRequest({
   const [loading, setLoading] = useState(false);
   const [actionTaken, setActionTaken] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(true);
   const { toast } = useToast();
+  const { markAsRead } = useNotifications();
+
+  // Check the status of the join request when component mounts
+  useEffect(() => {
+    const checkRequestStatus = async () => {
+      if (!notification.metadata?.requestId || !notification.metadata?.teamId) {
+        setCheckingStatus(false);
+        return;
+      }
+
+      const cacheKey = `${notification.metadata.teamId}-${notification.metadata.requestId}`;
+      
+      // Check cache first
+      const cached = joinRequestStatusCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        if (cached.status !== "pending") {
+          setActionTaken(true);
+          setActionResult(
+            cached.status === "accepted"
+              ? "Player added to your team"
+              : cached.status === "rejected"
+              ? "Join request declined"
+              : "Join request processed"
+          );
+        }
+        setCheckingStatus(false);
+        return;
+      }
+
+      // Check if there's already a pending request for this join request
+      if (pendingChecks.has(cacheKey)) {
+        try {
+          const data = await pendingChecks.get(cacheKey);
+          if (data?.status && data.status !== "pending") {
+            setActionTaken(true);
+            setActionResult(
+              data.status === "accepted"
+                ? "Player added to your team"
+                : data.status === "rejected"
+                ? "Join request declined"
+                : "Join request processed"
+            );
+          }
+        } catch (error) {
+          // Ignore errors from shared request
+        } finally {
+          setCheckingStatus(false);
+        }
+        return;
+      }
+
+      // Create new request and share it
+      const requestPromise = fetch(
+        `/api/teams/${notification.metadata.teamId}/join-requests/${notification.metadata.requestId}`
+      )
+        .then(async (response) => {
+          if (response.ok) {
+            const data = await response.json();
+            // Cache the result
+            joinRequestStatusCache.set(cacheKey, {
+              status: data.status || "pending",
+              timestamp: Date.now(),
+            });
+            return data;
+          }
+          return null;
+        })
+        .catch((error) => {
+          console.error("Error checking join request status:", error);
+          return null;
+        })
+        .finally(() => {
+          // Remove from pending checks after a delay
+          setTimeout(() => pendingChecks.delete(cacheKey), 1000);
+        });
+
+      pendingChecks.set(cacheKey, requestPromise);
+
+      try {
+        const data = await requestPromise;
+        if (data?.status && data.status !== "pending") {
+          setActionTaken(true);
+          setActionResult(
+            data.status === "accepted"
+              ? "Player added to your team"
+              : data.status === "rejected"
+              ? "Join request declined"
+              : "Join request processed"
+          );
+        }
+      } catch (error) {
+        // Error already handled in promise
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkRequestStatus();
+  }, [notification.metadata?.requestId, notification.metadata?.teamId]);
 
   const handleAction = async (action: "accept" | "reject") => {
     if (!notification.metadata?.requestId) {
@@ -83,10 +189,8 @@ export function TeamJoinRequest({
             : "Join request declined",
       });
 
-      // Mark notification as read
-      await fetch(`/api/notifications/${notification._id}/mark-read`, {
-        method: "POST",
-      });
+      // Mark notification as read automatically
+      await markAsRead(notification._id);
 
       onActionComplete();
     } catch (error: any) {
@@ -101,41 +205,52 @@ export function TeamJoinRequest({
     }
   };
 
+  // Show loading state while checking status
+  if (checkingStatus) {
+    return (
+      <div className="mt-2 flex justify-end">
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   // If action already taken, show result instead of buttons
   if (actionTaken) {
     return (
       <div className="mt-2">
-        <p className="text-sm text-green-500">{actionResult}</p>
+        <p className={`text-sm ${actionResult?.includes("added") ? "text-green-500" : "text-muted-foreground"}`}>
+          {actionResult}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="mt-2 flex justify-end gap-2">
+    <div className="mt-3 pt-3 border-t border-border/50 flex flex-col sm:flex-row justify-end gap-2.5">
       <Button
-        size="sm"
+        size="default"
         variant="outline"
-        className="border-red-500 hover:bg-red-500/10"
+        className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-[40px] border-2 border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/60 font-medium shadow-sm transition-all"
         onClick={() => handleAction("reject")}
         disabled={loading}
       >
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : (
-          <X className="w-4 h-4 mr-1" />
+          <X className="w-4 h-4 mr-2" />
         )}
         Decline
       </Button>
       <Button
-        size="sm"
-        className="bg-green-600 hover:bg-green-700"
+        size="default"
+        className="w-full sm:w-auto touch-manipulation min-h-[44px] sm:min-h-[40px] bg-green-600 hover:bg-green-700 font-medium shadow-md hover:shadow-lg transition-all"
         onClick={() => handleAction("accept")}
         disabled={loading}
       >
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
         ) : (
-          <Check className="w-4 h-4 mr-1" />
+          <Check className="w-4 h-4 mr-2" />
         )}
         Accept
       </Button>

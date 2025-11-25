@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
+import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -37,21 +39,19 @@ export async function POST(
     }
 
     // Get the team being joined to check its size
-    const teamBeingJoined = await db.collection("Teams").findOne({
-      _id: new ObjectId(invite.teamId),
-    });
-
-    if (!teamBeingJoined) {
+    const teamResult = await findTeamAcrossCollections(db, invite.teamId);
+    if (!teamResult) {
       return NextResponse.json(
         { error: "Team not found" },
         { status: 404 }
       );
     }
-
+    const teamBeingJoined = teamResult.team;
     const teamSize = teamBeingJoined.teamSize || 4;
 
     // Check if user is already in a team of the SAME size
-    const existingTeamOfSameSize = await db.collection("Teams").findOne(
+    const collectionName = getTeamCollectionName(teamSize);
+    const existingTeamOfSameSize = await db.collection(collectionName).findOne(
       {
         "members.discordId": session.user.id,
         teamSize: teamSize,
@@ -95,7 +95,7 @@ export async function POST(
       };
 
       await db
-        .collection("Teams")
+        .collection(collectionName)
         .updateOne(
           { _id: existingTeamOfSameSize._id },
           pullUpdate as unknown as UpdateFilter<Document>
@@ -103,7 +103,7 @@ export async function POST(
 
       // Add notification to the team's captain
       const oldTeam = await db
-        .collection("Teams")
+        .collection(collectionName)
         .findOne({ _id: existingTeamOfSameSize._id });
 
       if (oldTeam && oldTeam.captain) {
@@ -125,6 +125,9 @@ export async function POST(
         });
       }
     }
+
+    // Ensure user has ELO records for all team sizes before joining
+    await ensurePlayerEloForAllTeamSizes(session.user.id);
 
     // Update invite status
     await db
@@ -155,12 +158,13 @@ export async function POST(
     const typedUpdateDoc = updateDoc as unknown as UpdateFilter<Document>;
 
     // Use the typed update document in the MongoDB operation
+    const teamCollectionName = getTeamCollectionName(teamSize);
     const teamUpdateResult = await db
-      .collection("Teams")
+      .collection(teamCollectionName)
       .updateOne({ _id: new ObjectId(invite.teamId) }, typedUpdateDoc);
 
     // Create notification for team captain
-    const team = await db.collection("Teams").findOne({
+    const team = await db.collection(teamCollectionName).findOne({
       _id: new ObjectId(invite.teamId),
     });
 

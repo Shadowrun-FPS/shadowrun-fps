@@ -15,13 +15,15 @@ import {
 interface RequestJoinTeamProps {
   teamId: string;
   teamName: string;
+  teamSize?: number;
 }
 
-export function RequestJoinTeam({ teamId, teamName }: RequestJoinTeamProps) {
+export function RequestJoinTeam({ teamId, teamName, teamSize }: RequestJoinTeamProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingTeam, setIsCheckingTeam] = useState(true);
   const [isAlreadyInTeam, setIsAlreadyInTeam] = useState(false);
-  const [currentTeam, setCurrentTeam] = useState<{ name: string } | null>(null);
+  const [currentTeam, setCurrentTeam] = useState<{ name: string; teamSize?: number } | null>(null);
+  const [isSameSizeTeam, setIsSameSizeTeam] = useState(false);
   const { toast } = useToast();
   const { data: session, status } = useSession();
 
@@ -52,11 +54,23 @@ export function RequestJoinTeam({ teamId, teamName }: RequestJoinTeamProps) {
 
         if (data.team) {
           console.log("User is already in team:", data.team.name);
-          setIsAlreadyInTeam(true);
-          setCurrentTeam(data.team);
+          const userTeamSize = data.team.teamSize || 4;
+          const targetTeamSize = teamSize || 4;
+          
+          // Only block if user is in a team of the same size
+          if (userTeamSize === targetTeamSize) {
+            setIsAlreadyInTeam(true);
+            setIsSameSizeTeam(true);
+            setCurrentTeam(data.team);
+          } else {
+            setIsAlreadyInTeam(false);
+            setIsSameSizeTeam(false);
+            setCurrentTeam(data.team);
+          }
         } else {
           console.log("User is not in any team");
           setIsAlreadyInTeam(false);
+          setIsSameSizeTeam(false);
           setCurrentTeam(null);
         }
       } catch (error) {
@@ -73,14 +87,15 @@ export function RequestJoinTeam({ teamId, teamName }: RequestJoinTeamProps) {
     };
 
     checkTeamStatus();
-  }, [session, status, toast]);
+  }, [session, status, toast, teamSize]);
 
   const handleRequestJoin = async () => {
-    if (isAlreadyInTeam) {
+    if (isAlreadyInTeam && isSameSizeTeam) {
+      const targetTeamSize = teamSize || 4;
       toast({
         variant: "destructive",
         title: "Already in a team",
-        description: `You are already a member of ${currentTeam?.name}. Leave your current team to join another.`,
+        description: `You are already a member of a ${targetTeamSize}-person team "${currentTeam?.name}". Leave your current team to join another team of the same size.`,
       });
       return;
     }
@@ -122,7 +137,8 @@ export function RequestJoinTeam({ teamId, teamName }: RequestJoinTeamProps) {
     );
   }
 
-  if (isAlreadyInTeam) {
+  if (isAlreadyInTeam && isSameSizeTeam) {
+    const targetTeamSize = teamSize || 4;
     return (
       <TooltipProvider>
         <Tooltip>
@@ -139,8 +155,8 @@ export function RequestJoinTeam({ teamId, teamName }: RequestJoinTeamProps) {
           </TooltipTrigger>
           <TooltipContent>
             <p>
-              You are already a member of {currentTeam?.name}. Leave your
-              current team to join another.
+              You are already a member of a {targetTeamSize}-person team &quot;{currentTeam?.name}&quot;. Leave your
+              current team to join another team of the same size.
             </p>
           </TooltipContent>
         </Tooltip>

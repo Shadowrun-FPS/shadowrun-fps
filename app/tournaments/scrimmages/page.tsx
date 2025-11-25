@@ -118,7 +118,17 @@ export default function ScrimmagesPage() {
         throw new Error("Failed to fetch scrimmages");
       }
       const data = await response.json();
-      setScrimmages(data);
+      
+      // Handle both old format (array) and new format (object with scrimmages and userTeam)
+      if (Array.isArray(data)) {
+        setScrimmages(data);
+      } else {
+        setScrimmages(data.scrimmages || []);
+        // Update user team if provided (avoids separate API call)
+        if (data.userTeam !== undefined) {
+          setUserTeam(data.userTeam);
+        }
+      }
     } catch (error) {
       console.error("Error fetching scrimmages:", error);
       toast({
@@ -131,9 +141,9 @@ export default function ScrimmagesPage() {
     }
   }, []); // Empty dependency array means this function won't change
 
-  // Wrap fetchUserTeam in useCallback
+  // Only fetch user team separately if we don't have it from scrimmages API
   const fetchUserTeam = useCallback(async () => {
-    if (session?.user) {
+    if (session?.user?.id && !userTeam) {
       try {
         const response = await fetch("/api/teams/user-team");
         if (response.ok) {
@@ -144,17 +154,23 @@ export default function ScrimmagesPage() {
         console.error("Error fetching user team:", error);
       }
     }
-  }, [session?.user]); // Only recreate if session.user changes
+  }, [session?.user?.id, userTeam]); // Only recreate if session.user.id or userTeam changes
 
   useEffect(() => {
-    // Fetch scrimmages for all users (including signed-out)
+    // Fetch scrimmages (which now also returns user team if available)
     fetchScrimmages();
+  }, [fetchScrimmages]);
 
-    // Only fetch user team if logged in
-    if (session?.user) {
-      fetchUserTeam();
+  // Fallback: Only fetch user team separately if we still don't have it after scrimmages fetch
+  useEffect(() => {
+    if (session?.user?.id && !userTeam) {
+      // Small delay to allow scrimmages fetch to complete first
+      const timer = setTimeout(() => {
+        fetchUserTeam();
+      }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [session, fetchScrimmages, fetchUserTeam]);
+  }, [session?.user?.id, userTeam, fetchUserTeam]);
 
   useEffect(() => {
     const filterByTeam = (scrimmages: Scrimmage[]) => {
@@ -392,13 +408,13 @@ export default function ScrimmagesPage() {
                             {scrimmage.teamSize && (
                               <Badge variant="secondary" className="text-xs">
                                 {scrimmage.teamSize === 2
-                                  ? "Duos"
+                                  ? "2v2"
                                   : scrimmage.teamSize === 3
-                                  ? "Trios"
+                                  ? "3v3"
                                   : scrimmage.teamSize === 4
-                                  ? "Squads"
+                                  ? "4v4"
                                   : scrimmage.teamSize === 5
-                                  ? "Full Team"
+                                  ? "5v5"
                                   : `${scrimmage.teamSize}v${scrimmage.teamSize}`}
                               </Badge>
                             )}
@@ -758,13 +774,13 @@ export default function ScrimmagesPage() {
                                         {scrimmage.teamSize && (
                                           <Badge variant="secondary" className="text-xs">
                                             {scrimmage.teamSize === 2
-                                              ? "Duos"
+                                              ? "2v2"
                                               : scrimmage.teamSize === 3
-                                              ? "Trios"
+                                              ? "3v3"
                                               : scrimmage.teamSize === 4
-                                              ? "Squads"
+                                              ? "4v4"
                                               : scrimmage.teamSize === 5
-                                              ? "Full Team"
+                                              ? "5v5"
                                               : `${scrimmage.teamSize}v${scrimmage.teamSize}`}
                                           </Badge>
                                         )}

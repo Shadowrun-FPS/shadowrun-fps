@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { canRegisterTeamsForTournament } from "@/lib/tournament-permissions";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 // POST endpoint to register a team for a tournament
 export async function POST(
@@ -61,29 +63,37 @@ export async function POST(
     }
 
     // Fetch the complete team document with all information
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
 
-    // Check if user is authorized (captain, admin, founder, or developer)
+    // Check if user is authorized (captain, admin, founder, developer, or co-host)
     const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
     const userRoles = session.user.roles || [];
     const isAdminOrFounder = hasAdminRole(userRoles);
-    const isAuthorized = 
-      team.captain?.discordId === session.user.id ||
+    const isTeamCaptain = team.captain?.discordId === session.user.id;
+    const isTournamentManager = canRegisterTeamsForTournament(
+      session.user.id,
+      userRoles,
+      {
+        coHosts: tournament.coHosts,
+        createdBy: tournament.createdBy,
+      }
+    );
+    const isAuthorized =
+      isTeamCaptain ||
       isDeveloper ||
       isAdminOrFounder ||
+      isTournamentManager ||
       (await isAdmin(db, session.user.id));
 
     if (!isAuthorized) {
       return NextResponse.json(
         {
           error:
-            "You must be team captain, admin, founder, or developer to register for tournaments",
+            "You must be team captain, admin, founder, developer, or tournament co-host to register for tournaments",
         },
         { status: 403 }
       );
@@ -171,7 +181,9 @@ export async function POST(
         // Find the correct ELO for this team size
         let playerElo = 0;
         if (player && player.stats && Array.isArray(player.stats)) {
-          const statForSize = player.stats.find((s) => s.teamSize === tournamentTeamSize);
+          const statForSize = player.stats.find(
+            (s) => s.teamSize === tournamentTeamSize
+          );
           if (statForSize && typeof statForSize.elo === "number") {
             playerElo = statForSize.elo;
           }

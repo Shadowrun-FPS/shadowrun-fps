@@ -17,15 +17,10 @@ export async function DELETE(
     const { db } = await connectToDatabase();
     const id = params.id;
 
-    console.log("Attempting to delete notification:", id);
-    console.log("User ID from session:", session.user.id);
-
-    // Try to find the notification first to debug
+    // Find the notification first to verify ownership
     const notification = await db.collection("Notifications").findOne({
       _id: new ObjectId(id),
     });
-
-    console.log("Found notification:", notification);
 
     if (!notification) {
       return NextResponse.json(
@@ -34,17 +29,19 @@ export async function DELETE(
       );
     }
 
-    // Check if the user ID matches
-    const userIdMatches = notification.userId === session.user.id;
-    console.log("User ID matches:", userIdMatches);
+    // Verify the user owns this notification
+    if (notification.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 403 }
+      );
+    }
 
-    // Use the same ID format as stored in the notification
+    // Delete the notification
     const result = await db.collection("Notifications").deleteOne({
       _id: new ObjectId(id),
-      userId: notification.userId, // Use the exact format from the notification
+      userId: session.user.id,
     });
-
-    console.log("Delete result:", result);
 
     if (result.deletedCount === 0) {
       return NextResponse.json(
@@ -55,9 +52,8 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete notification:", error);
     return NextResponse.json(
-      { error: "Failed to delete notification", details: String(error) },
+      { error: "Failed to delete notification" },
       { status: 500 }
     );
   }

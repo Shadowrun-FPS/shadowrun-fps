@@ -14,6 +14,12 @@ import { Shield, Users, Swords } from "lucide-react";
 import type { MongoTeam, TeamMember } from "@/types/mongodb";
 import { cn } from "@/lib/utils";
 import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TeamCardProps {
   _id?: string;
@@ -28,6 +34,7 @@ interface TeamCardProps {
   tournamentWins?: number;
   isUserTeam?: boolean;
   teamElo?: number; // Use the original name to avoid confusion
+  teamSize?: number;
 }
 
 export function TeamCard({
@@ -43,6 +50,7 @@ export function TeamCard({
   tournamentWins = 0,
   isUserTeam = false,
   teamElo, // Use the original name
+  teamSize,
 }: TeamCardProps) {
   const { data: session } = useSession();
 
@@ -55,21 +63,33 @@ export function TeamCard({
     (member) => member.role !== "substitute"
   ).length;
 
-  // Check if user's team has 4 members
-  const hasFullTeam = userTeam?.members?.length === 4;
+  // Get team sizes (default to 4 if not specified)
+  const targetTeamSize = teamSize || 4;
+  const userTeamSize = userTeam?.teamSize || 4;
 
-  // Check if the team being viewed has 4 members
-  const targetTeamHasFullTeam = activeMembersCount === 4;
+  // Check if user's team is full
+  const userTeamMemberCount = userTeam?.members?.filter(
+    (m: TeamMember) => m.role !== "substitute"
+  ).length || 0;
+  const hasFullTeam = userTeamMemberCount >= userTeamSize;
 
-  // Determine tooltip text based on team membership status
-  const challengeTooltip = !hasFullTeam
-    ? "Your team needs 4 members to challenge other teams"
+  // Check if the team being viewed is full
+  const targetTeamHasFullTeam = activeMembersCount >= targetTeamSize;
+
+  // Teams must have matching sizes to challenge
+  const teamSizesMatch = targetTeamSize === userTeamSize;
+
+  // Determine tooltip text based on team membership status (simplified)
+  const challengeTooltip = !teamSizesMatch
+    ? `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but this team is ${targetTeamSize}v${targetTeamSize}.`
+    : !hasFullTeam
+    ? `Your team needs ${userTeamSize} members to challenge other teams`
     : !targetTeamHasFullTeam
-    ? `${name} needs 4 members to be challenged`
+    ? `This team needs ${targetTeamSize} members to be challenged`
     : "Challenge this team";
 
   // Determine if challenge button should be disabled
-  const disableChallenge = !hasFullTeam || !targetTeamHasFullTeam;
+  const disableChallenge = !teamSizesMatch || !hasFullTeam || !targetTeamHasFullTeam;
 
   return (
     <Card
@@ -154,7 +174,7 @@ export function TeamCard({
           // For other teams, show Challenge and View Details buttons
           <>
             {userTeam && _id ? (
-              hasFullTeam && targetTeamHasFullTeam ? (
+              teamSizesMatch && hasFullTeam && targetTeamHasFullTeam ? (
                 <ChallengeTeamDialog
                   team={{
                     _id,
@@ -162,38 +182,59 @@ export function TeamCard({
                     tag,
                     captain: captain || members[0],
                     members,
+                    teamSize: targetTeamSize,
                   }}
                   userTeam={userTeam}
                 />
               ) : (
-                <Button
-                  variant="outline"
-                  className="h-8"
-                  disabled={true}
-                  title={challengeTooltip}
-                  aria-label={challengeTooltip}
-                >
-                  <Swords className="w-4 h-4 mr-2" />
-                  Challenge
-                </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        disabled={true}
+                        aria-label={challengeTooltip}
+                      >
+                        <Swords className="w-4 h-4 mr-2" />
+                        Challenge
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{challengeTooltip}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )
             ) : (
-              <Button
-                variant="outline"
-                className="h-8"
-                onClick={() => {
-                  // Only open challenge dialog if both teams have full rosters
-                  if (hasFullTeam && targetTeamHasFullTeam) {
-                    // Existing code to open challenge dialog
-                  }
-                }}
-                disabled={disableChallenge}
-                title={challengeTooltip}
-                aria-label={challengeTooltip}
-              >
-                <Swords className="w-4 h-4 mr-2" />
-                Challenge
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      onClick={() => {
+                        // Only open challenge dialog if both teams have full rosters and matching sizes
+                        if (teamSizesMatch && hasFullTeam && targetTeamHasFullTeam) {
+                          // Existing code to open challenge dialog
+                        }
+                      }}
+                      disabled={disableChallenge}
+                      aria-label={challengeTooltip}
+                    >
+                      <Swords className="w-4 h-4 mr-2" />
+                      Challenge
+                    </Button>
+                  </TooltipTrigger>
+                  {disableChallenge && (
+                    <TooltipContent>
+                      <p>{challengeTooltip}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
             )}
 
             <Button variant="outline" size="sm" className="h-8" asChild>

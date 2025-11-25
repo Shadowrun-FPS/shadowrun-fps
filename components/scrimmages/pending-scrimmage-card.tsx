@@ -60,13 +60,13 @@ export function PendingScrimmageCard({
                 {scrimmage.teamSize && (
                   <Badge variant="secondary" className="text-xs">
                     {scrimmage.teamSize === 2
-                      ? "Duos"
+                      ? "2v2"
                       : scrimmage.teamSize === 3
-                      ? "Trios"
+                      ? "3v3"
                       : scrimmage.teamSize === 4
-                      ? "Squads"
+                      ? "4v4"
                       : scrimmage.teamSize === 5
-                      ? "Full Team"
+                      ? "5v5"
                       : `${scrimmage.teamSize}v${scrimmage.teamSize}`}
                   </Badge>
                 )}

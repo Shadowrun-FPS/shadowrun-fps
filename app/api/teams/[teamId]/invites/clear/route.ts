@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -28,14 +29,12 @@ export async function POST(
 
     const { action = "clear_all" } = body;
 
-    // Get the team to verify captain
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Get the team to verify captain - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
 
     // Verify user is team captain
     if (team.captain.discordId !== session.user.id) {

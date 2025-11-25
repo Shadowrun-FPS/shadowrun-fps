@@ -11,10 +11,13 @@ async function recalculateTeamEloForTournament(
 ): Promise<number> {
   const DEFAULT_INDIVIDUAL_ELO = 800;
 
-  // Get the team document
-  const team = await db.collection("Teams").findOne({
-    _id: new ObjectId(teamId),
-  });
+  // Get the team document - search across all collections
+  const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+  const teamResult = await findTeamAcrossCollections(db, teamId);
+  if (!teamResult) {
+    return DEFAULT_INDIVIDUAL_ELO * tournamentTeamSize;
+  }
+  const team = teamResult.team;
 
   if (!team || !team.members || team.members.length === 0) {
     return DEFAULT_INDIVIDUAL_ELO * tournamentTeamSize;

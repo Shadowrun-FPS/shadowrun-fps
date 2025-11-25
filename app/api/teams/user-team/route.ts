@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getAllTeamCollectionNames } from "@/lib/team-collections";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,15 @@ export async function GET(request: NextRequest) {
     const client = await clientPromise;
     const db = client.db();
 
-    // Find the team where the user is a member
-    const team = await db.collection("Teams").findOne({
-      "members.discordId": session.user.id,
-    });
+    // Find the team where the user is a member - search across all collections
+    const allCollections = getAllTeamCollectionNames();
+    let team = null;
+    for (const collectionName of allCollections) {
+      team = await db.collection(collectionName).findOne({
+        "members.discordId": session.user.id,
+      });
+      if (team) break;
+    }
 
     if (!team) {
       return NextResponse.json({ team: null });

@@ -1,20 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connectToDatabase } from "@/lib/mongodb";
+import clientPromise from "@/lib/mongodb";
+import { getAllTeamCollectionNames } from "@/lib/team-collections";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const { db } = await connectToDatabase();
-    const playerId = params.id;
+    const resolvedParams = await Promise.resolve(params);
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
+    const playerId = resolvedParams.id;
 
-    // Find all teams where player is a member
-    const teams = await db.collection("Teams").find({
-      "members.discordId": playerId,
-    }).toArray();
+    // Find all teams where player is a member across all collections
+    const allCollections = getAllTeamCollectionNames();
+    const allTeams = [];
+    
+    for (const collectionName of allCollections) {
+      const teams = await db.collection(collectionName).find({
+        "members.discordId": playerId,
+      }).toArray();
+      allTeams.push(...teams);
+    }
+    
+    const teams = allTeams;
 
     if (!teams || teams.length === 0) {
       return NextResponse.json({ teams: [] });

@@ -42,37 +42,31 @@ export async function GET(
 
     console.log("Match found:", match.tournamentMatchId);
 
-    // Enhance with team data
+    // Enhance with team data - search across all collections
+    const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+    
     if (match.teamA?._id) {
-      const teamA = await db.collection("Teams").findOne({
-        _id:
-          typeof match.teamA._id === "string"
-            ? new ObjectId(match.teamA._id)
-            : match.teamA._id,
-      });
+      const teamAId = typeof match.teamA._id === "string" ? match.teamA._id : match.teamA._id.toString();
+      const teamAResult = await findTeamAcrossCollections(db, teamAId);
 
-      if (teamA) {
+      if (teamAResult) {
         match.teamA = {
           ...match.teamA,
-          ...teamA,
-          _id: teamA._id.toString(),
+          ...teamAResult.team,
+          _id: teamAResult.team._id.toString(),
         };
       }
     }
 
     if (match.teamB?._id) {
-      const teamB = await db.collection("Teams").findOne({
-        _id:
-          typeof match.teamB._id === "string"
-            ? new ObjectId(match.teamB._id)
-            : match.teamB._id,
-      });
+      const teamBId = typeof match.teamB._id === "string" ? match.teamB._id : match.teamB._id.toString();
+      const teamBResult = await findTeamAcrossCollections(db, teamBId);
 
-      if (teamB) {
+      if (teamBResult) {
         match.teamB = {
           ...match.teamB,
-          ...teamB,
-          _id: teamB._id.toString(),
+          ...teamBResult.team,
+          _id: teamBResult.team._id.toString(),
         };
       }
     }

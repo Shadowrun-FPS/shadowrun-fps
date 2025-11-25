@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -27,14 +28,12 @@ export async function POST(
       );
     }
 
-    // Find the team
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Find the team - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
 
     const isAdmin =
       session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||

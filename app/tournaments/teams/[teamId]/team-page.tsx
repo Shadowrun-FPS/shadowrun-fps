@@ -372,7 +372,11 @@ export default function TeamPage({ team }: TeamPageProps) {
                     onChange={(e) =>
                       setTeamDetails({ ...teamDetails, name: e.target.value })
                     }
+                    maxLength={50}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {teamDetails.name?.length || 0}/50 characters
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -401,7 +405,11 @@ export default function TeamPage({ team }: TeamPageProps) {
                         description: e.target.value,
                       })
                     }
+                    maxLength={200}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    {teamDetails.description?.length || 0}/200 characters
+                  </p>
                 </div>
 
                 <Button type="submit" disabled={isLoading}>

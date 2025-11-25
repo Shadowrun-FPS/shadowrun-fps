@@ -72,9 +72,12 @@ export async function POST(
     }
 
     // For accepting the invite, check if the team is full
-    const team = await db.collection("Teams").findOne({
-      _id: invite.teamId,
-    });
+    const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+    const teamResult = await findTeamAcrossCollections(db, invite.teamId);
+    if (!teamResult) {
+      return NextResponse.json({ error: "Team not found" }, { status: 404 });
+    }
+    const team = teamResult.team;
 
     if (!team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
@@ -110,7 +113,9 @@ export async function POST(
     }
 
     // Check if user is already in another team of the SAME size
-    const existingTeamOfSameSize = await db.collection("Teams").findOne({
+    const { getTeamCollectionName } = await import("@/lib/team-collections");
+    const collectionName = getTeamCollectionName(teamSize);
+    const existingTeamOfSameSize = await db.collection(collectionName).findOne({
       "members.discordId": session.user.id,
       teamSize: teamSize,
       _id: { $ne: invite.teamId }, // Exclude the team being joined
@@ -155,8 +160,9 @@ export async function POST(
 
     // Use the typed update document in the MongoDB operation
     // (team is already fetched above for the full check)
+    // Use the collection name from teamResult
     await db
-      .collection("Teams")
+      .collection(teamResult.collectionName)
       .updateOne({ _id: invite.teamId }, typedUpdateDoc);
 
     // Notify the team captain

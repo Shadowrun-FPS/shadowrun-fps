@@ -10,6 +10,7 @@ import {
 } from "@/lib/security-config";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
+import { canManageTournament } from "@/lib/tournament-permissions";
 
 // Developer ID for special permissions
 const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
@@ -29,19 +30,20 @@ export const PUT = withErrorHandling(
       );
     }
 
-    // Check if user is admin or developer
-    const isDeveloper = session.user.id === DEVELOPER_ID;
+    const { db } = await connectToDatabase();
 
-    // Get user roles from session
+    // Get the existing tournament to check permissions
+    const existingTournament = await db
+      .collection("Tournaments")
+      .findOne({ _id: new ObjectId(params.id) });
+
+    if (!existingTournament) {
+      throw createError.notFound("Tournament not found");
+    }
+
+    // Check if user can manage this tournament (admin, creator, or co-host)
     const userRoles = session.user.roles || [];
-
-    // Check if user has admin permissions
-    const isAdmin =
-      isDeveloper ||
-      userRoles.some((role) => ADMIN_ROLES.includes(role)) ||
-      userRoles.some((role) => MOD_ROLES.includes(role));
-
-    if (!isAdmin) {
+    if (!canManageTournament(session.user.id, userRoles, existingTournament as any)) {
       secureLogger.warn("Unauthorized tournament edit attempt", {
         userId: session.user.id,
         tournamentId: params.id,
@@ -56,23 +58,12 @@ export const PUT = withErrorHandling(
       throw createError.badRequest("Invalid tournament ID");
     }
 
-    const { db } = await connectToDatabase();
-
     // Get the tournament data from request body
     const tournamentData = await req.json();
 
     // Validate required fields
     if (!tournamentData.name || !tournamentData.startDate) {
       throw createError.badRequest("Name and start date are required");
-    }
-
-    // Get the existing tournament to check if it's launched
-    const existingTournament = await db
-      .collection("Tournaments")
-      .findOne({ _id: new ObjectId(tournamentId) });
-
-    if (!existingTournament) {
-      throw createError.notFound("Tournament not found");
     }
 
     // Prevent format changes if tournament is launched (not "upcoming")
@@ -98,6 +89,7 @@ export const PUT = withErrorHandling(
           maxTeams: parseInt(tournamentData.maxTeams || "8"),
           registrationDeadline: tournamentData.registrationDeadline,
           status: tournamentData.status,
+          coHosts: tournamentData.coHosts || existingTournament.coHosts || [],
           updatedAt: new Date(),
         },
       }

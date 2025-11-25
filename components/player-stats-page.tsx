@@ -706,22 +706,22 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
             <CardContent>
               <div className="space-y-6">
                 {teamsInfo.map((teamInfo) => {
-                  const teamSizeLabel = teamInfo.teamSize === 2 ? "Duos" : teamInfo.teamSize === 3 ? "Trios" : teamInfo.teamSize === 4 ? "Squads" : teamInfo.teamSize === 5 ? "Full Team" : `${teamInfo.teamSize}v${teamInfo.teamSize}`;
+                  const teamSizeLabel = teamInfo.teamSize === 2 ? "2v2" : teamInfo.teamSize === 3 ? "3v3" : teamInfo.teamSize === 4 ? "4v4" : teamInfo.teamSize === 5 ? "5v5" : `${teamInfo.teamSize}v${teamInfo.teamSize}`;
                   return (
-                    <div key={teamInfo._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-border last:border-b-0 last:pb-0">
+                    <div key={teamInfo._id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-border last:border-b-0 last:pb-0">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex flex-wrap items-baseline gap-2 mb-1">
                           <Link
                             href={`/tournaments/teams/${teamInfo._id}`}
-                            className="text-xl sm:text-2xl font-bold hover:text-primary transition-colors flex items-center gap-2"
+                            className="text-xl sm:text-2xl font-bold hover:text-primary transition-colors flex items-baseline gap-2"
                           >
-                            {teamInfo.name}
+                            <span>{teamInfo.name}</span>
                             {teamInfo.tag && (
-                              <span className="text-base sm:text-lg text-muted-foreground">
+                              <span className="text-base sm:text-lg text-muted-foreground font-normal">
                                 [{teamInfo.tag}]
                               </span>
                             )}
-                            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            <ExternalLink className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 relative top-0.5" />
                           </Link>
                           <Badge variant="secondary" className="text-xs">
                             {teamSizeLabel}
@@ -738,9 +738,9 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                           </p>
                         )}
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                         <div className="text-center">
-                          <div className="text-xl sm:text-2xl font-bold">{teamInfo.teamElo || 0}</div>
+                          <div className="text-xl sm:text-2xl font-bold">{teamInfo.teamElo?.toLocaleString() || 0}</div>
                           <div className="text-xs text-muted-foreground">Team ELO</div>
                         </div>
                         <div className="text-center">

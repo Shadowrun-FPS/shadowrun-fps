@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
+import { getAllTeamCollectionNames, findTeamAcrossCollections } from "@/lib/team-collections";
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,10 +42,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the user's team
-    const userTeam = await db.collection("Teams").findOne({
-      "members.discordId": session.user.id,
-    });
+    // Get the user's team - search across all collections
+    const allCollections = getAllTeamCollectionNames();
+    let userTeam = null;
+    for (const collectionName of allCollections) {
+      userTeam = await db.collection(collectionName).findOne({
+        "members.discordId": session.user.id,
+      });
+      if (userTeam) break;
+    }
 
     if (!userTeam) {
       return NextResponse.json(
@@ -54,16 +60,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get the challenged team
-    const challengedTeam = await db.collection("Teams").findOne({
-      _id: new ObjectId(data.challengedTeamId),
-    });
-
-    if (!challengedTeam) {
+    const challengedTeamResult = await findTeamAcrossCollections(db, data.challengedTeamId);
+    if (!challengedTeamResult) {
       return NextResponse.json(
         { error: "Challenged team not found" },
         { status: 404 }
       );
     }
+    const challengedTeam = challengedTeamResult.team;
 
     // Validate team sizes match
     const userTeamSize = userTeam.teamSize || 4;

@@ -11,7 +11,7 @@ import dynamic from "next/dynamic";
 
 // Import FeaturedPosts with client-side only rendering
 const FeaturedPosts = dynamic(() => import("./featured-posts"), {
-  ssr: false, // Change to false to prevent hydration issues
+  ssr: false,
   loading: () => (
     <div className="flex items-center justify-center w-full h-96">
       Loading posts...

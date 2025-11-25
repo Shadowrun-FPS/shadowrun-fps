@@ -10,6 +10,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
@@ -27,7 +30,7 @@ export default function AccountDropdown() {
   const [userRoleDisplay, setUserRoleDisplay] = useState<UserRoleInfo[]>([]);
   const [guildNickname, setGuildNickname] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [userTeam, setUserTeam] = useState<any>(null);
+  const [userTeams, setUserTeams] = useState<any[]>([]);
   const { unreadCount } = useNotifications();
   const [discordUsername, setDiscordUsername] = useState<string | null>(null);
   const fetchUserDataRef = useRef(false);
@@ -126,17 +129,52 @@ export default function AccountDropdown() {
             // Skip on error
           }
 
-          // Check if user has a team
+          // Fetch all user teams (both as captain and member) in a single API call
           try {
-            const teamsResponse = await fetch("/api/teams/user");
-            if (teamsResponse.ok && teamsResponse.status !== 429) {
-              const teamsData = await teamsResponse.json();
-              setUserTeam(teamsData.team || null);
-            } else if (teamsResponse.status === 429) {
-              console.warn("Rate limited on teams fetch");
+            const response = await fetch("/api/users/teams?all=true").catch(
+              () => ({ ok: false, status: 429 } as Response)
+            );
+
+            if (response.ok && response.status !== 429) {
+              const data = await response.json();
+              const allTeams: any[] = [];
+              const captainTeamIds = new Set(
+                (data.captainTeams || []).map((t: any) => t._id?.toString() || t.id)
+              );
+
+              // Add captain teams
+              if (data.captainTeams && Array.isArray(data.captainTeams)) {
+                data.captainTeams.forEach((team: any) => {
+                  const teamId = team._id?.toString() || team.id;
+                  allTeams.push({
+                    id: teamId,
+                    name: team.name,
+                    tag: team.tag,
+                    isCaptain: true,
+                  });
+                });
+              }
+
+              // Add member teams (excluding duplicates where user is already captain)
+              if (data.memberTeams && Array.isArray(data.memberTeams)) {
+                data.memberTeams.forEach((team: any) => {
+                  const teamId = team._id?.toString() || team.id;
+                  if (!captainTeamIds.has(teamId)) {
+                    allTeams.push({
+                      id: teamId,
+                      name: team.name,
+                      tag: team.tag,
+                      isCaptain: false,
+                    });
+                  }
+                });
+              }
+
+              setUserTeams(allTeams);
             }
           } catch (error) {
             // Skip on error
+            console.warn("Error fetching teams:", error);
           }
         } catch (error) {
           // If API fails, use nickname from session
@@ -197,13 +235,17 @@ export default function AccountDropdown() {
 
   // Display user account dropdown when authenticated
   return (
-    <div className="flex gap-2 items-center">
+    <div className="flex gap-1.5 items-center">
       {/* Notifications button */}
       <Link href="/notifications" className="relative">
-        <Button variant="ghost" size="icon" className="relative">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+        >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
+            <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white shadow-lg border-2 border-background animate-pulse">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -215,29 +257,39 @@ export default function AccountDropdown() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="flex relative gap-2 items-center px-2 py-1 h-auto rounded-full"
+            className="flex relative gap-2.5 items-center px-2.5 py-1.5 h-auto rounded-lg hover:bg-accent transition-colors group"
           >
-            <Avatar className="w-9 h-9">
+            <Avatar className="w-8 h-8 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
               <AvatarImage src={session?.user?.image || ""} />
-              <AvatarFallback>
+              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {session?.user?.name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden md:inline max-w-[140px] truncate text-sm">
+            <span className="hidden md:inline max-w-[140px] truncate text-sm font-medium">
               {/* Use guild nickname instead of global username */}
               {guildNickname || session?.user?.nickname}
             </span>
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-56">
-          <div className="flex flex-col p-2 space-y-1">
-            <p className="font-medium">
-              {/* Use guild nickname instead of global username */}
-              {guildNickname || session?.user?.nickname}
-            </p>
+        <DropdownMenuContent align="end" className="w-64">
+          <div className="flex flex-col p-3 space-y-2">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-10 h-10 ring-2 ring-primary/20">
+                <AvatarImage src={session?.user?.image || ""} />
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {session?.user?.name?.charAt(0) || "U"}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col min-w-0 flex-1">
+                <p className="font-semibold text-sm truncate">
+                  {/* Use guild nickname instead of global username */}
+                  {guildNickname || session?.user?.nickname}
+                </p>
+              </div>
+            </div>
             {userRoleDisplay.length > 0 && (
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5 pt-1">
                 {userRoleDisplay.map((role) => (
                   <Badge
                     key={role.id}
@@ -269,17 +321,9 @@ export default function AccountDropdown() {
             </DropdownMenuItem>
           )}
 
-          {/* Link to team page if user has a team, otherwise show "Find Team" */}
-          <DropdownMenuItem asChild>
-            {userTeam ? (
-              <Link
-                href={`/tournaments/teams/${userTeam.id}`}
-                className="flex items-center cursor-pointer"
-              >
-                <Users className="mr-2 w-4 h-4" />
-                My Team
-              </Link>
-            ) : (
+          {/* Teams section - handle multiple teams */}
+          {userTeams.length === 0 ? (
+            <DropdownMenuItem asChild>
               <Link
                 href="/tournaments/teams"
                 className="flex items-center cursor-pointer"
@@ -287,22 +331,71 @@ export default function AccountDropdown() {
                 <Users className="mr-2 w-4 h-4" />
                 Find Team
               </Link>
-            )}
-          </DropdownMenuItem>
+            </DropdownMenuItem>
+          ) : userTeams.length === 1 ? (
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/tournaments/teams/${userTeams[0].id}`}
+                className="flex items-center cursor-pointer"
+              >
+                <Users className="mr-2 w-4 h-4" />
+                My Team
+              </Link>
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger className="cursor-pointer">
+                <Users className="mr-2 w-4 h-4" />
+                My Teams ({userTeams.length})
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+                {userTeams.map((team) => (
+                  <DropdownMenuItem key={team.id} asChild>
+                    <Link
+                      href={`/tournaments/teams/${team.id}`}
+                      className="flex items-center justify-between cursor-pointer min-w-[200px]"
+                    >
+                      <span className="truncate">
+                        {team.tag ? `[${team.tag}] ` : ""}
+                        {team.name}
+                      </span>
+                      {team.isCaptain && (
+                        <Badge variant="secondary" className="ml-2 text-xs shrink-0">
+                          Captain
+                        </Badge>
+                      )}
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link
+                    href="/tournaments/teams"
+                    className="flex items-center cursor-pointer text-muted-foreground"
+                  >
+                    Browse All Teams
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          )}
 
           {/* Admin link - show if user has admin, moderator, founder roles or is developer */}
           {(hasModAccess() || isDeveloper()) && (
-            <DropdownMenuItem asChild>
-              <Link href="/admin" className="flex items-center cursor-pointer">
-                <Shield className="mr-2 w-4 h-4" />
-                Admin
-              </Link>
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/admin" className="flex items-center cursor-pointer">
+                  <Shield className="mr-2 w-4 h-4" />
+                  Admin
+                </Link>
+              </DropdownMenuItem>
+            </>
           )}
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
-            className="cursor-pointer"
+            className="cursor-pointer text-destructive focus:text-destructive"
             onSelect={(event) => {
               event.preventDefault();
               handleSignOut();

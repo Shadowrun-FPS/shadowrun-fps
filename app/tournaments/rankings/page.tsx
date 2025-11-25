@@ -94,6 +94,23 @@ export default function RankingsPage() {
     fetchTeams();
   }, []);
 
+  // Get available team sizes (only show sizes that have teams)
+  const availableTeamSizes = useMemo(() => {
+    const sizes = new Set<number>();
+    teams.forEach((team) => {
+      const teamSize = team.teamSize || 4;
+      sizes.add(teamSize);
+    });
+    return Array.from(sizes).sort((a, b) => a - b);
+  }, [teams]);
+
+  // Auto-select first available team size if current selection has no teams
+  useEffect(() => {
+    if (availableTeamSizes.length > 0 && !availableTeamSizes.includes(parseInt(selectedTeamSize))) {
+      setSelectedTeamSize(availableTeamSizes[0].toString());
+    }
+  }, [availableTeamSizes, selectedTeamSize]);
+
   // Create a derived state for filtered and sorted teams
   const sortedTeams = useMemo(() => {
     if (teams.length === 0) return [];
@@ -222,10 +239,10 @@ export default function RankingsPage() {
     return winRate.toFixed(1) + "%";
   };
 
-  // Calculate default win rate-based ranking (always based on win rate, regardless of current sort)
-  const winRateRankedTeams = useMemo(() => {
-    if (teams.length === 0) return [];
-    return [...teams].sort((a, b) => {
+  // Calculate ranking based on filtered teams (win rate first, then ELO as tiebreaker)
+  const rankedTeams = useMemo(() => {
+    if (sortedTeams.length === 0) return [];
+    return [...sortedTeams].sort((a, b) => {
       // Calculate win ratio for sorting
       const aWins = Number(a.wins || 0);
       const aLosses = Number(a.losses || 0);
@@ -237,14 +254,21 @@ export default function RankingsPage() {
       const bTotal = bWins + bLosses;
       const bWinRatio = bTotal > 0 ? bWins / bTotal : 0;
       
-      // Sort by win rate descending
+      // First sort by win rate descending
+      if (bWinRatio !== aWinRatio) {
       return bWinRatio - aWinRatio;
+      }
+      
+      // If win rates are equal (including 0%), use ELO as tiebreaker
+      const aElo = a.teamElo || a.calculatedElo || 0;
+      const bElo = b.teamElo || b.calculatedElo || 0;
+      return bElo - aElo;
     });
-  }, [teams]);
+  }, [sortedTeams]);
 
-  // Get the win rate-based rank for a team (always shows rank based on win rate, not current sort)
-  const getWinRateRank = (teamId: string) => {
-    const index = winRateRankedTeams.findIndex((t) => t._id.toString() === teamId);
+  // Get the rank for a team based on filtered and ranked teams
+  const getTeamRank = (teamId: string) => {
+    const index = rankedTeams.findIndex((t) => t._id.toString() === teamId);
     return index >= 0 ? index + 1 : null;
   };
 
@@ -282,7 +306,7 @@ export default function RankingsPage() {
                     <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">Total Teams</p>
-                      <p className="text-lg sm:text-xl font-bold">{teams.length}</p>
+                      <p className="text-lg sm:text-xl font-bold">{sortedTeams.length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -294,9 +318,9 @@ export default function RankingsPage() {
                     <div>
                       <p className="text-xs text-muted-foreground">Top ELO</p>
                       <p className="text-lg sm:text-xl font-bold">
-                        {teams.length > 0
+                        {sortedTeams.length > 0
                           ? Math.max(
-                              ...teams.map(
+                              ...sortedTeams.map(
                                 (t) => t.teamElo || t.calculatedElo || 0
                               )
                             ).toLocaleString()
@@ -313,7 +337,7 @@ export default function RankingsPage() {
                     <div>
                       <p className="text-xs text-muted-foreground">Active</p>
                       <p className="text-lg sm:text-xl font-bold">
-                        {teams.filter((t) => (t.wins || 0) + (t.losses || 0) > 0)
+                        {sortedTeams.filter((t) => (t.wins || 0) + (t.losses || 0) > 0)
                           .length}
                       </p>
                     </div>
@@ -327,7 +351,7 @@ export default function RankingsPage() {
                     <div>
                       <p className="text-xs text-muted-foreground">Total Games</p>
                       <p className="text-lg sm:text-xl font-bold">
-                        {teams.reduce((total, team) => {
+                        {sortedTeams.reduce((total, team) => {
                           const wins = Number(team.wins || 0);
                           const losses = Number(team.losses || 0);
                           return total + wins + losses;
@@ -353,23 +377,26 @@ export default function RankingsPage() {
                     className="pl-9 h-10 border-2"
                   />
                 </div>
-                {/* Team Size Filter */}
-                <div className="sm:w-[200px]">
-                  <Select
-                    value={selectedTeamSize}
-                    onValueChange={setSelectedTeamSize}
-                  >
-                    <SelectTrigger className="h-10 border-2 w-full">
-                      <SelectValue placeholder="All Team Sizes" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2">Duos (2 players)</SelectItem>
-                      <SelectItem value="3">Trios (3 players)</SelectItem>
-                      <SelectItem value="4">Squads (4 players)</SelectItem>
-                      <SelectItem value="5">Full Team (5 players)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Team Size Filter - Only show sizes that have teams */}
+                {availableTeamSizes.length > 0 && (
+                  <div className="sm:w-[200px]">
+                    <Select
+                      value={selectedTeamSize}
+                      onValueChange={setSelectedTeamSize}
+                    >
+                      <SelectTrigger className="h-10 border-2 w-full">
+                        <SelectValue placeholder="Team Size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableTeamSizes.map((size) => (
+                          <SelectItem key={size} value={size.toString()}>
+                            {size}v{size}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {/* Sort Dropdown for small/medium screens */}
                 <div className="lg:hidden">
                   <Select
@@ -488,7 +515,7 @@ export default function RankingsPage() {
                       <React.Fragment key={teamSize}>
                         {/* Teams for this size */}
                         {teamsBySize[teamSize].map((team, index) => {
-                          const winRateRank = getWinRateRank(team._id.toString());
+                          const teamRank = getTeamRank(team._id.toString());
                           // Ensure wins and losses are numbers to prevent string concatenation
                           const wins = Number(team.wins || 0);
                           const losses = Number(team.losses || 0);
@@ -515,33 +542,33 @@ export default function RankingsPage() {
                           {/* Rank and Team Info */}
                           <div className="flex items-center gap-3 lg:gap-4 flex-1 min-w-0 max-w-[300px] shrink-0">
                             <div className="flex items-center justify-center w-10 lg:w-12 shrink-0">
-                              {winRateRank !== null && winRateRank <= 3 ? (
+                              {teamRank !== null && teamRank <= 3 ? (
                                 <div className="relative">
                                   <div className={`relative flex items-center justify-center p-1.5 lg:p-2 rounded-full ${
-                                    winRateRank === 1 
+                                    teamRank === 1 
                                       ? "bg-gradient-to-br from-yellow-500/20 via-yellow-400/10 to-yellow-500/20 border-2 border-yellow-400/50 shadow-lg shadow-yellow-400/30 ring-2 ring-yellow-400/20" 
-                                      : winRateRank === 2
+                                      : teamRank === 2
                                       ? "bg-gradient-to-br from-gray-300/20 via-gray-200/10 to-gray-300/20 border-2 border-gray-300/50 shadow-lg shadow-gray-300/30 ring-2 ring-gray-300/20"
                                       : "bg-gradient-to-br from-amber-600/20 via-amber-500/10 to-amber-600/20 border-2 border-amber-600/50 shadow-lg shadow-amber-600/30 ring-2 ring-amber-600/20"
                                   }`}>
                                     <Medal
                                       className={`w-6 h-6 lg:w-7 lg:h-7 ${getMedalColor(
-                                        winRateRank - 1
+                                        teamRank - 1
                                       )} drop-shadow-lg`}
                                     />
-                                    {winRateRank === 1 && (
+                                    {teamRank === 1 && (
                                       <Crown className="absolute -top-1 -right-1 w-4 h-4 text-yellow-400 drop-shadow-md z-10" />
                                     )}
                                   </div>
                                 </div>
                               ) : (
                                 <span className="text-lg lg:text-xl font-bold text-muted-foreground">
-                                  #{winRateRank || "?"}
+                                  #{teamRank || "?"}
                                 </span>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-baseline gap-2 mb-1">
                                 <Link
                                   href={`/tournaments/teams/${team._id}`}
                                   className="font-bold text-base lg:text-lg hover:text-primary transition-colors hover:underline whitespace-nowrap"
@@ -551,23 +578,23 @@ export default function RankingsPage() {
                                 {team.tag && (
                                   <Badge
                                     variant="secondary"
-                                    className="text-xs lg:text-sm font-mono shrink-0"
+                                    className="text-xs lg:text-sm font-mono shrink-0 leading-none"
                                   >
                                     [{team.tag}]
                                   </Badge>
                                 )}
                               </div>
-                              <div className="flex items-center gap-1.5 text-xs lg:text-sm text-muted-foreground">
-                                <Crown className="w-3 h-3 shrink-0" />
+                              <div className="flex items-baseline gap-1.5 text-xs lg:text-sm text-muted-foreground">
+                                <Crown className="w-3 h-3 shrink-0 relative top-0.5" />
                                 {playerStatsEnabled && captainProfileUrl ? (
                                   <Link
                                     href={captainProfileUrl}
-                                    className="hover:text-primary transition-colors hover:underline break-words"
+                                    className="hover:text-primary transition-colors hover:underline"
                                   >
                                     {captainName}
                                   </Link>
                                 ) : (
-                                  <span className="break-words">{captainName}</span>
+                                  <span>{captainName}</span>
                                 )}
                               </div>
                             </div>

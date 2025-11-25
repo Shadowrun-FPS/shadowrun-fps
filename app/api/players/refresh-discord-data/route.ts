@@ -115,16 +115,23 @@ export async function POST(req: NextRequest) {
 
     // If updateTeamInfo is true, update the player's info in any teams they belong to
     if (updateTeamInfo) {
-      // Find all teams where this player is a member
-      const teams = await db
-        .collection("Teams")
-        .find({
-          "members.discordId": discordId,
-        })
-        .toArray();
+      // Find all teams where this player is a member - search across all collections
+      const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
+      const allCollections = getAllTeamCollectionNames();
+      const teams = [];
+      for (const collectionName of allCollections) {
+        const collectionTeams = await db
+          .collection(collectionName)
+          .find({
+            "members.discordId": discordId,
+          })
+          .toArray();
+        teams.push(...collectionTeams.map((t: any) => ({ ...t, _collectionName: collectionName })));
+      }
 
       // Update each team with the player's latest Discord info
       for (const team of teams) {
+        const collectionName = (team as any)._collectionName;
         const updateFields: any = {
           "members.$.discordUsername": discordUsername,
           "members.$.discordNickname": discordNickname,
@@ -136,7 +143,7 @@ export async function POST(req: NextRequest) {
             discordProfilePicture;
         }
 
-        await db.collection("Teams").updateOne(
+        await db.collection(collectionName).updateOne(
           {
             _id: team._id,
             "members.discordId": discordId,
@@ -159,7 +166,7 @@ export async function POST(req: NextRequest) {
               discordProfilePicture;
           }
 
-          await db.collection("Teams").updateOne(
+          await db.collection(collectionName).updateOne(
             { _id: team._id },
             {
               $set: captainUpdateFields,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { getAllTeamCollectionNames } from "@/lib/team-collections";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -13,13 +14,21 @@ export async function GET(req: NextRequest) {
 
     const { db } = await connectToDatabase();
 
-    // Get all teams where the user is a member
-    const teams = await db
-      .collection("Teams")
-      .find({
-        "members.discordId": session.user.id,
-      })
-      .toArray();
+    // Get all teams where the user is a member across all collections
+    const allCollections = getAllTeamCollectionNames();
+    const allTeams = [];
+    
+    for (const collectionName of allCollections) {
+      const teams = await db
+        .collection(collectionName)
+        .find({
+          "members.discordId": session.user.id,
+        })
+        .toArray();
+      allTeams.push(...teams);
+    }
+    
+    const teams = allTeams;
 
     return NextResponse.json({ teams });
   } catch (error) {

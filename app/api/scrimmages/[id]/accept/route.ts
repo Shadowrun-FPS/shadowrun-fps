@@ -42,13 +42,12 @@ export async function POST(
     }
 
     // Fetch both teams to validate team sizes and member counts
-    const challengedTeam = await db.collection("Teams").findOne({
-      _id: new ObjectId(scrimmage.challengedTeamId),
-    });
-
-    const challengerTeam = await db.collection("Teams").findOne({
-      _id: new ObjectId(scrimmage.challengerTeamId),
-    });
+    const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+    const challengedTeamResult = await findTeamAcrossCollections(db, scrimmage.challengedTeamId);
+    const challengerTeamResult = await findTeamAcrossCollections(db, scrimmage.challengerTeamId);
+    
+    const challengedTeam = challengedTeamResult?.team;
+    const challengerTeam = challengerTeamResult?.team;
 
     if (!challengerTeam) {
       return NextResponse.json(

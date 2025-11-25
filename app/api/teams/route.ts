@@ -5,6 +5,8 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { MongoTeam } from "@/types/mongodb";
 import { containsProfanity } from "@/lib/profanity-filter";
+import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
+import { getTeamCollectionName, getAllTeamCollectionNames } from "@/lib/team-collections";
 
 interface TeamMember {
   discordId: string;
@@ -50,14 +52,28 @@ export async function GET(req: NextRequest) {
       query = { name: { $regex: new RegExp(name, "i") } };
     }
 
-    const teams = await db
-      .collection("Teams")
-      .find(query)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .toArray();
+    // Search across all team collections
+    const allCollections = getAllTeamCollectionNames();
+    const allTeams = [];
+    
+    for (const collectionName of allCollections) {
+      const teams = await db
+        .collection(collectionName)
+        .find(query)
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .toArray();
+      allTeams.push(...teams);
+    }
 
-    return NextResponse.json(teams);
+    // Sort all teams by creation date
+    allTeams.sort((a, b) => {
+      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bDate - aDate;
+    });
+
+    return NextResponse.json(allTeams.slice(0, 100));
   } catch (error) {
     console.error("Error fetching teams:", error);
     return NextResponse.json(
@@ -107,9 +123,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate teamSize
-    const validTeamSize = teamSize ? parseInt(teamSize) : 4;
-    if (![2, 3, 4, 5].includes(validTeamSize)) {
+    // Validate max lengths
+    if (name.length > 50) {
+      return NextResponse.json(
+        { error: "Team name must be 50 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    if (description && description.length > 200) {
+      return NextResponse.json(
+        { error: "Team description must be 200 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    // Validate teamSize - ensure it's a number
+    let validTeamSize: number;
+    if (teamSize === undefined || teamSize === null) {
+      validTeamSize = 4;
+    } else if (typeof teamSize === "string") {
+      validTeamSize = parseInt(teamSize, 10);
+    } else if (typeof teamSize === "number") {
+      validTeamSize = teamSize;
+    } else {
+      validTeamSize = 4;
+    }
+    
+    // Ensure it's a valid integer
+    if (isNaN(validTeamSize) || ![2, 3, 4, 5].includes(validTeamSize)) {
       return NextResponse.json(
         { error: "Team size must be 2, 3, 4, or 5" },
         { status: 400 }
@@ -118,13 +160,18 @@ export async function POST(req: NextRequest) {
 
     const { db } = await connectToDatabase();
 
-    // Check if name or tag already exists
-    const existingTeam = await db.collection("Teams").findOne({
-      $or: [
-        { name: { $regex: new RegExp(`^${name}$`, "i") } },
-        { tag: { $regex: new RegExp(`^${tag}$`, "i") } },
-      ],
-    });
+    // Check if name or tag already exists across ALL team collections
+    const allCollections = getAllTeamCollectionNames();
+    let existingTeam = null;
+    for (const collectionName of allCollections) {
+      existingTeam = await db.collection(collectionName).findOne({
+        $or: [
+          { name: { $regex: new RegExp(`^${name}$`, "i") } },
+          { tag: { $regex: new RegExp(`^${tag}$`, "i") } },
+        ],
+      });
+      if (existingTeam) break;
+    }
 
     if (existingTeam) {
       return NextResponse.json(
@@ -134,9 +181,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if the user already has a team of this specific size
-    const userTeamOfSize = await db.collection("Teams").findOne({
-      "members.discordId": session.user.id,
-      teamSize: validTeamSize,
+    const teamCollectionName = getTeamCollectionName(validTeamSize);
+    const userTeamOfSize = await db.collection(teamCollectionName).findOne({
+      $or: [
+        { "members.discordId": session.user.id },
+        { "captain.discordId": session.user.id },
+      ],
     });
 
     if (userTeamOfSize) {
@@ -145,6 +195,9 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Ensure captain has ELO records for all team sizes
+    await ensurePlayerEloForAllTeamSizes(session.user.id);
 
     // Get player information from Players collection to ensure we have the latest data
     const player = await db.collection("Players").findOne({
@@ -171,8 +224,15 @@ export async function POST(req: NextRequest) {
       joinedAt: new Date(),
     };
 
-    // Create team
-    const result = await db.collection("Teams").insertOne({
+    // Create team in the appropriate collection based on team size
+    // Double-check the collection name matches the team size (in case teamCollectionName was modified)
+    const finalCollectionName = getTeamCollectionName(validTeamSize);
+    
+    // Log for debugging (remove in production if needed)
+    console.log(`Creating ${validTeamSize}v${validTeamSize} team in collection: ${finalCollectionName}`);
+    
+    // Create team with initial ELO (will be recalculated immediately after)
+    const result = await db.collection(finalCollectionName).insertOne({
       name,
       description,
       tag: tag.toUpperCase(),
@@ -181,8 +241,17 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date(),
       captain: captainObject,
       members: [memberObject],
-      teamElo: player?.elo,
+      teamElo: 0, // Temporary, will be calculated below
     });
+
+    // Automatically calculate team ELO using the same logic as when members join/leave
+    const { recalculateTeamElo } = await import("@/lib/team-elo-calculator");
+    try {
+      await recalculateTeamElo(result.insertedId.toString());
+    } catch (error) {
+      console.error("Error calculating initial team ELO:", error);
+      // Don't fail team creation if ELO calculation fails, but log it
+    }
 
     return NextResponse.json({
       id: result.insertedId.toString(),

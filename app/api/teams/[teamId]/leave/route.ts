@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { UpdateFilter } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -21,14 +22,13 @@ export async function POST(
     const { db } = await connectToDatabase();
     const teamId = params.teamId;
 
-    // Check that the team exists
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Check that the team exists - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
+    const collectionName = teamResult.collectionName;
 
     // Check that the user is a member of the team
     const isMember = team.members.some((m: any) => m.discordId === userId);
@@ -49,9 +49,70 @@ export async function POST(
     }
 
     // Remove the user from the team using a simple type assertion
-    await db.collection("Teams").updateOne({ _id: new ObjectId(teamId) }, {
+    await db.collection(collectionName).updateOne({ _id: new ObjectId(teamId) }, {
       $pull: { members: { discordId: userId } },
     } as any);
+
+    // Get updated team to check member count
+    const updatedTeamResult = await findTeamAcrossCollections(db, teamId);
+    const updatedTeam = updatedTeamResult?.team;
+    const teamSize = updatedTeam?.teamSize || 4;
+    const memberCount = updatedTeam?.members?.length || 0;
+
+    // Check if team now has fewer members than required for pending scrimmages
+    if (memberCount < teamSize) {
+      const pendingScrimmages = await db.collection("Scrimmages").find({
+        status: "pending",
+        $or: [
+          { challengerTeamId: teamId },
+          { challengedTeamId: teamId },
+        ],
+      }).toArray();
+
+      if (pendingScrimmages.length > 0) {
+        // Cancel pending scrimmages
+        await db.collection("Scrimmages").updateMany(
+          {
+            status: "pending",
+            $or: [
+              { challengerTeamId: teamId },
+              { challengedTeamId: teamId },
+            ],
+          },
+          {
+            $set: {
+              status: "cancelled",
+              updatedAt: new Date(),
+              cancellationReason: `Team "${team.name}" no longer has enough members (${memberCount}/${teamSize})`,
+            },
+          }
+        );
+
+        // Notify the other team's captains about cancelled scrimmages
+        for (const scrimmage of pendingScrimmages) {
+          const otherTeamId = scrimmage.challengerTeamId === teamId 
+            ? scrimmage.challengedTeamId 
+            : scrimmage.challengerTeamId;
+          
+          const otherTeamResult = await findTeamAcrossCollections(db, otherTeamId);
+          if (otherTeamResult?.team?.captain?.discordId) {
+            await db.collection("Notifications").insertOne({
+              userId: otherTeamResult.team.captain.discordId,
+              type: "scrimmage_cancelled",
+              title: "Scrimmage Cancelled",
+              message: `The scrimmage with "${team.name}" has been cancelled because the team no longer has enough members.`,
+              read: false,
+              createdAt: new Date(),
+              metadata: {
+                scrimmageId: scrimmage._id.toString(),
+                cancelledTeamId: teamId,
+                cancelledTeamName: team.name,
+              },
+            });
+          }
+        }
+      }
+    }
 
     // Create a notification for the team captain
     await db.collection("Notifications").insertOne({

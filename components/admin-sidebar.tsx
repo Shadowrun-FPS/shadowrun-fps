@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Shield, Users, FileText, Book, ExternalLink, LayoutDashboard } from "lucide-react";
+import { Shield, Users, FileText, Book, ExternalLink, LayoutDashboard, MapPin } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export function AdminSidebar() {
@@ -29,6 +29,11 @@ export function AdminSidebar() {
       href: "/admin/rules",
       icon: Book,
       label: "Rules",
+    },
+    {
+      href: "/admin/queues",
+      icon: MapPin,
+      label: "Queues",
     },
   ];
 

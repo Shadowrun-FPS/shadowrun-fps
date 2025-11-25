@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
       brackets: {
         rounds: [],
       },
+      coHosts: data.coHosts || [], // Include co-hosts if provided
     };
 
     // If double elimination format, add losers bracket

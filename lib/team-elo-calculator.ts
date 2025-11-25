@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb";
 import clientPromise from "@/lib/mongodb";
+import { getAllTeamCollectionNames } from "@/lib/team-collections";
 
 /**
  * Calculates and updates a team's ELO based on its members
@@ -15,12 +16,22 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
     // Default individual ELO value
     const DEFAULT_INDIVIDUAL_ELO = 800;
 
-    // Get the team with members
-    const team = await webDb.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
+    // Get the team with members - search across all team collections
+    const allCollections = getAllTeamCollectionNames();
+    let team = null;
+    let teamCollection = null;
 
-    if (!team) {
+    for (const collectionName of allCollections) {
+      team = await webDb.collection(collectionName).findOne({
+        _id: new ObjectId(teamId),
+      });
+      if (team) {
+        teamCollection = collectionName;
+        break;
+      }
+    }
+
+    if (!team || !teamCollection) {
       console.error(`Team not found: ${teamId}`);
       return DEFAULT_INDIVIDUAL_ELO; // Fallback ELO for single player
     }
@@ -96,8 +107,8 @@ export async function recalculateTeamElo(teamId: string): Promise<number> {
     // Calculate fallback ELO based on configured team size
     const fallbackElo = DEFAULT_INDIVIDUAL_ELO * configuredTeamSize;
 
-    // Update the team with calculated ELO
-    await webDb.collection("Teams").updateOne(
+    // Update the team with calculated ELO in the correct collection
+    await webDb.collection(teamCollection).updateOne(
       { _id: new ObjectId(teamId) },
       {
         $set: {

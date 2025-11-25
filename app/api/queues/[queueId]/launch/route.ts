@@ -203,40 +203,77 @@ export async function POST(
       mapsCount: queue.maps?.length || 0,
     });
 
-    // Fetch all ranked maps from the Maps collection
-    const rankedMaps = await db
-      .collection("Maps")
-      .find({ rankedMap: true })
-      .toArray();
+    // Check if queue has a custom map pool
+    let availableMaps: any[] = [];
+    
+    if (queue.mapPool && Array.isArray(queue.mapPool) && queue.mapPool.length > 0) {
+      // Use custom map pool - fetch only the specified maps (all maps, not just ranked)
+      const mapIds = queue.mapPool.map((id: string) => new ObjectId(id));
+      const customMaps = await db
+        .collection("Maps")
+        .find({ _id: { $in: mapIds } })
+        .toArray();
 
-    // Create an array that includes both normal and small variants of maps
-    const allMapsWithVariants: GameMap[] = [];
-
-    for (const map of rankedMaps) {
-      // Add the regular map with proper type casting
-      allMapsWithVariants.push({
-        name: map.name,
-        src: map.src,
-        gameMode: map.gameMode,
-        rankedMap: map.rankedMap,
-        smallOption: map.smallOption,
-        isSmall: false,
-        _id: map._id,
-      });
-
-      // If smallOption is true, add a small variant with proper type casting
-      if (map.smallOption) {
-        allMapsWithVariants.push({
-          name: `${map.name} (Small)`,
+      // Create variants for custom maps
+      for (const map of customMaps) {
+        availableMaps.push({
+          name: map.name,
           src: map.src,
           gameMode: map.gameMode,
           rankedMap: map.rankedMap,
           smallOption: map.smallOption,
-          isSmall: true,
+          isSmall: false,
           _id: map._id,
         });
+
+        if (map.smallOption) {
+          availableMaps.push({
+            name: `${map.name} (Small)`,
+            src: map.src,
+            gameMode: map.gameMode,
+            rankedMap: map.rankedMap,
+            smallOption: map.smallOption,
+            isSmall: true,
+            _id: map._id,
+          });
+        }
+      }
+    } else {
+      // Use default behavior - fetch all ranked maps
+      const rankedMaps = await db
+        .collection("Maps")
+        .find({ rankedMap: true })
+        .toArray();
+
+      // Create an array that includes both normal and small variants of maps
+      for (const map of rankedMaps) {
+        // Add the regular map with proper type casting
+        availableMaps.push({
+          name: map.name,
+          src: map.src,
+          gameMode: map.gameMode,
+          rankedMap: map.rankedMap,
+          smallOption: map.smallOption,
+          isSmall: false,
+          _id: map._id,
+        });
+
+        // If smallOption is true, add a small variant with proper type casting
+        if (map.smallOption) {
+          availableMaps.push({
+            name: `${map.name} (Small)`,
+            src: map.src,
+            gameMode: map.gameMode,
+            rankedMap: map.rankedMap,
+            smallOption: map.smallOption,
+            isSmall: true,
+            _id: map._id,
+          });
+        }
       }
     }
+
+    const allMapsWithVariants: GameMap[] = availableMaps;
 
     // Randomly select 3 maps (or fewer if not enough maps available)
     const shuffled = [...allMapsWithVariants].sort(() => 0.5 - Math.random());

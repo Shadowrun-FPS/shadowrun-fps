@@ -7,6 +7,7 @@ import { Session } from "next-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { getAllTeamCollectionNames, getTeamCollectionName } from "@/lib/team-collections";
 
 interface TeamMember {
   discordId: string;
@@ -31,21 +32,30 @@ export async function GET(
     const { teamId } = params;
     const { db } = await connectToDatabase();
 
+    // Search across all team collections
+    const allCollections = getAllTeamCollectionNames();
+    let team = null;
+
     // Try to find by ObjectId first
-    let team;
-    try {
-      if (ObjectId.isValid(teamId)) {
-        team = await db
-          .collection("Teams")
-          .findOne({ _id: new ObjectId(teamId) });
+    if (ObjectId.isValid(teamId)) {
+      for (const collectionName of allCollections) {
+        try {
+          team = await db
+            .collection(collectionName)
+            .findOne({ _id: new ObjectId(teamId) });
+          if (team) break;
+        } catch (error) {
+          // Continue to next collection
+        }
       }
-    } catch (error) {
-      console.error("Error finding team by ID:", error);
     }
 
-    // If not found by ID, try to find by tag
+    // If not found by ID, try to find by tag across all collections
     if (!team) {
-      team = await db.collection("Teams").findOne({ tag: teamId });
+      for (const collectionName of allCollections) {
+        team = await db.collection(collectionName).findOne({ tag: teamId });
+        if (team) break;
+      }
     }
 
     if (!team) {
@@ -113,23 +123,62 @@ export async function PATCH(
       );
     }
 
-    // Check if name/tag is already taken by another team
-    const existingTeam = await db.collection("Teams").findOne({
-      _id: { $ne: new ObjectId(params.teamId) },
-      $or: [
-        { name: { $regex: new RegExp(`^${name}$`, "i") } },
-        { tag: { $regex: new RegExp(`^${tag}$`, "i") } },
-      ],
-    });
-
-    if (existingTeam) {
+    // Validate max lengths
+    if (name && name.length > 50) {
       return NextResponse.json(
-        { error: "Team name or tag already exists" },
+        { error: "Team name must be 50 characters or less" },
         { status: 400 }
       );
     }
 
-    const result = await db.collection<Team>("Teams").findOneAndUpdate(
+    if (description && description.length > 200) {
+      return NextResponse.json(
+        { error: "Team description must be 200 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    // First, find which collection the team is in
+    const allCollections = getAllTeamCollectionNames();
+    let teamCollection = null;
+    let existingTeam = null;
+
+    for (const collectionName of allCollections) {
+      existingTeam = await db.collection(collectionName).findOne({
+        _id: new ObjectId(params.teamId),
+      });
+      if (existingTeam) {
+        teamCollection = collectionName;
+        break;
+      }
+    }
+
+    if (!existingTeam || !teamCollection) {
+      return NextResponse.json(
+        { error: "Team not found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if name/tag is already taken by another team (across all collections)
+    for (const collectionName of allCollections) {
+      const conflictingTeam = await db.collection(collectionName).findOne({
+        _id: { $ne: new ObjectId(params.teamId) },
+        $or: [
+          { name: { $regex: new RegExp(`^${name}$`, "i") } },
+          { tag: { $regex: new RegExp(`^${tag}$`, "i") } },
+        ],
+      });
+
+      if (conflictingTeam) {
+        return NextResponse.json(
+          { error: "Team name or tag already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const result = await db.collection<Team>(teamCollection).findOneAndUpdate(
       { _id: new ObjectId(params.teamId) },
       {
         $set: {
@@ -174,7 +223,28 @@ export async function PUT(
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
-    const result = await db.collection<Team>("Teams").findOneAndUpdate(
+    // Find which collection the team is in
+    const allCollections = getAllTeamCollectionNames();
+    let teamCollection = null;
+
+    for (const collectionName of allCollections) {
+      const team = await db.collection(collectionName).findOne({
+        _id: new ObjectId(params.teamId),
+      });
+      if (team) {
+        teamCollection = collectionName;
+        break;
+      }
+    }
+
+    if (!teamCollection) {
+      return NextResponse.json(
+        { error: "Team not found" },
+        { status: 404 }
+      );
+    }
+
+    const result = await db.collection<Team>(teamCollection).findOneAndUpdate(
       { _id: new ObjectId(params.teamId) },
       {
         $set: {
@@ -221,10 +291,17 @@ export async function DELETE(
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
-    const result = await db.collection<Team>("Teams").findOneAndDelete({
-      _id: new ObjectId(params.teamId),
-      "captain.discordId": session.user.id,
-    });
+    // Find which collection the team is in
+    const allCollections = getAllTeamCollectionNames();
+    let result = null;
+
+    for (const collectionName of allCollections) {
+      result = await db.collection<Team>(collectionName).findOneAndDelete({
+        _id: new ObjectId(params.teamId),
+        "captain.discordId": session.user.id,
+      });
+      if (result && result.value) break;
+    }
 
     if (!result || !result.value) {
       return NextResponse.json(

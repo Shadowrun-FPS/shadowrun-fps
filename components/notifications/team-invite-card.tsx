@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { useState } from "react";
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 interface TeamInviteCardProps {
   notification: {
@@ -30,6 +31,7 @@ export function TeamInviteCard({
   onAction,
 }: TeamInviteCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const { markAsRead } = useNotifications();
 
   const handleAccept = async () => {
     setIsLoading(true);
@@ -53,6 +55,9 @@ export function TeamInviteCard({
         title: "Invite Accepted",
         description: `You have joined ${notification.metadata.teamName}`,
       });
+
+      // Mark notification as read automatically
+      await markAsRead(notification._id);
 
       // Mark notification as handled
       onAction(notification._id, "accepted");
@@ -90,6 +95,9 @@ export function TeamInviteCard({
         title: "Invite Rejected",
         description: "You have declined the team invitation",
       });
+
+      // Mark notification as read automatically
+      await markAsRead(notification._id);
 
       // Mark notification as handled
       onAction(notification._id, "rejected");

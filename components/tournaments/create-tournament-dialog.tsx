@@ -53,6 +53,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
+import { CoHostSelector } from "./co-host-selector";
 
 // Common timezones list
 const timezones = [
@@ -133,6 +134,7 @@ export function CreateTournamentDialog({
 }: CreateTournamentDialogProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [coHosts, setCoHosts] = useState<string[]>([]);
 
   // Set default values for the form
   const tomorrow = startOfHour(addDays(new Date(), 1));
@@ -189,6 +191,7 @@ export function CreateTournamentDialog({
         startDate: localDate.toISOString(),
         timezone: values.timezone,
         status: "upcoming",
+        coHosts: coHosts, // Add co-hosts to tournament data
       };
 
       // Post to API
@@ -208,6 +211,7 @@ export function CreateTournamentDialog({
         });
         onOpenChange(false);
         form.reset();
+        setCoHosts([]); // Reset co-hosts
         if (onSuccess) {
           onSuccess();
         }
@@ -629,6 +633,18 @@ export function CreateTournamentDialog({
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Co-Hosts Selection */}
+            <div className="space-y-3">
+              <CoHostSelector
+                selectedCoHosts={coHosts}
+                onCoHostsChange={setCoHosts}
+                maxCoHosts={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Select up to 3 co-hosts who can help manage this tournament. Co-hosts can edit tournament details, pre-seed teams, launch the tournament, and manage team registrations.
+              </p>
             </div>
 
             {/* Date/Time Preview */}

@@ -51,17 +51,16 @@ export async function PATCH(
       );
     }
 
-    // Get the challenged team
-    const challengedTeam = await db.collection("Teams").findOne({
-      _id: scrimmage.challengedTeamId,
-    });
-
-    if (!challengedTeam) {
+    // Get the challenged team - search across all collections
+    const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+    const challengedTeamResult = await findTeamAcrossCollections(db, scrimmage.challengedTeamId.toString());
+    if (!challengedTeamResult) {
       return NextResponse.json(
         { error: "Challenged team not found" },
         { status: 404 }
       );
     }
+    const challengedTeam = challengedTeamResult.team;
 
     // Check if user is captain of the challenged team
     if (challengedTeam.captain !== session.user.id) {
@@ -92,9 +91,8 @@ export async function PATCH(
       .updateOne({ _id: new ObjectId(scrimmageId) }, { $set: updateData });
 
     // Get the challenger team for notification
-    const challengerTeam = await db.collection("Teams").findOne({
-      _id: scrimmage.challengerTeamId,
-    });
+    const challengerTeamResult = await findTeamAcrossCollections(db, scrimmage.challengerTeamId.toString());
+    const challengerTeam = challengerTeamResult?.team;
 
     if (challengerTeam) {
       // Create notification for challenger team members

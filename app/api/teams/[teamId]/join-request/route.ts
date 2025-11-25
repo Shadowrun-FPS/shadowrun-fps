@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -26,14 +27,13 @@ export async function POST(
       currentUserName,
     });
 
-    // Get the team
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Get the team across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const { team, collectionName } = teamResult;
+    const teamSize = team.teamSize || 4;
 
     // Check if user is already a member
     const isMember = team.members.some(
@@ -66,10 +66,11 @@ export async function POST(
       discordId: currentUserId,
     });
 
-    // Create the join request with player reference
+    // Create the join request with player reference and team size
     await db.collection("TeamJoinRequests").insertOne({
       teamId: teamId,
       teamName: team.name,
+      teamSize: teamSize, // Store team size for conflict checking
       userId: currentUserId,
       userName: currentUserName,
       userImage: currentUserImage,

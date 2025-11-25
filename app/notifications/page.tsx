@@ -70,10 +70,23 @@ export default function NotificationsPage() {
   } | null>(null);
   const [pageLoading, setPageLoading] = useState(false);
 
-  // Fetch notifications with pagination
+  // Fetch notifications with pagination (only when page changes or explicitly requested)
   const fetchNotificationsWithPagination = useCallback(
-    async (page: number = 1) => {
+    async (page: number = 1, force = false) => {
       if (!session?.user) return;
+
+      // Use context data for page 1 if available and not forcing refresh
+      if (page === 1 && !force && notifications.length > 0) {
+        setPaginatedNotifications(notifications);
+        setPagination({
+          page: 1,
+          limit: 50,
+          total: notifications.length,
+          totalPages: 1,
+          hasMore: false,
+        });
+        return;
+      }
 
       try {
         setPageLoading(true);
@@ -101,19 +114,42 @@ export default function NotificationsPage() {
         setPageLoading(false);
       }
     },
-    [session?.user, toast]
+    [session?.user, toast, notifications]
   );
 
+  // Only fetch paginated data when page changes, or use context data for page 1
   useEffect(() => {
-    fetchNotificationsWithPagination(currentPage);
-  }, [currentPage, fetchNotificationsWithPagination]);
+    // Wait for context to load first to avoid duplicate calls
+    if (loading) return;
+    
+    if (currentPage === 1 && notifications.length > 0) {
+      // Use context data for first page (no additional API call needed)
+      setPaginatedNotifications(notifications);
+      setPagination({
+        page: 1,
+        limit: 50,
+        total: notifications.length,
+        totalPages: 1,
+        hasMore: false,
+      });
+    } else if (currentPage === 1 && notifications.length === 0 && !loading) {
+      // Only fetch if context hasn't loaded yet and we're not loading
+      fetchNotificationsWithPagination(currentPage);
+    } else if (currentPage > 1) {
+      // Fetch paginated data for other pages
+      fetchNotificationsWithPagination(currentPage);
+    }
+  }, [currentPage, notifications, loading, fetchNotificationsWithPagination]);
 
   const handleRefresh = () => {
-    fetchNotifications(true);
-    fetchNotificationsWithPagination(currentPage);
-    toast({
-      title: "Refreshed",
-      description: "Notifications refreshed",
+    // Refresh context (which will update notifications)
+    fetchNotifications(true).then(() => {
+      // After context refresh, update paginated view
+      fetchNotificationsWithPagination(currentPage, true);
+      toast({
+        title: "Refreshed",
+        description: "Notifications refreshed",
+      });
     });
   };
 
@@ -265,8 +301,14 @@ export default function NotificationsPage() {
             <NotificationsContent
               notifications={categorizedNotifications.all}
               loading={loading || pageLoading}
-              onMarkAsRead={markAsRead}
-              onDelete={deleteNotification}
+              onMarkAsRead={async (id: string) => {
+                await markAsRead(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
+              onDelete={async (id: string) => {
+                await deleteNotification(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
               onActionComplete={() => {
                 fetchNotifications();
                 fetchNotificationsWithPagination(currentPage);
@@ -281,8 +323,14 @@ export default function NotificationsPage() {
             <NotificationsContent
               notifications={categorizedNotifications.unread}
               loading={loading || pageLoading}
-              onMarkAsRead={markAsRead}
-              onDelete={deleteNotification}
+              onMarkAsRead={async (id: string) => {
+                await markAsRead(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
+              onDelete={async (id: string) => {
+                await deleteNotification(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
               onActionComplete={() => {
                 fetchNotifications();
                 fetchNotificationsWithPagination(currentPage);
@@ -297,8 +345,14 @@ export default function NotificationsPage() {
             <NotificationsContent
               notifications={categorizedNotifications.team}
               loading={loading || pageLoading}
-              onMarkAsRead={markAsRead}
-              onDelete={deleteNotification}
+              onMarkAsRead={async (id: string) => {
+                await markAsRead(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
+              onDelete={async (id: string) => {
+                await deleteNotification(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
               onActionComplete={() => {
                 fetchNotifications();
                 fetchNotificationsWithPagination(currentPage);
@@ -313,8 +367,14 @@ export default function NotificationsPage() {
             <NotificationsContent
               notifications={categorizedNotifications.system}
               loading={loading || pageLoading}
-              onMarkAsRead={markAsRead}
-              onDelete={deleteNotification}
+              onMarkAsRead={async (id: string) => {
+                await markAsRead(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
+              onDelete={async (id: string) => {
+                await deleteNotification(id);
+                await fetchNotificationsWithPagination(currentPage);
+              }}
               onActionComplete={() => {
                 fetchNotifications();
                 fetchNotificationsWithPagination(currentPage);

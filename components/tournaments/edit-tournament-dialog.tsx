@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/use-toast";
+import { CoHostSelector } from "./co-host-selector";
 
 // Common timezones for selection
 const commonTimezones = [
@@ -130,6 +131,7 @@ interface Tournament {
   status: "upcoming" | "active" | "completed";
   maxTeams?: number;
   registrationDeadline?: string;
+  coHosts?: string[]; // Array of player IDs
 }
 
 export function EditTournamentDialog({
@@ -144,6 +146,7 @@ export function EditTournamentDialog({
   onSuccess?: (tournament: any) => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  const [coHosts, setCoHosts] = useState<string[]>(tournament.coHosts || []);
 
   // Extract time from date
   const getTimeFromDateString = (dateString: string) => {
@@ -193,6 +196,7 @@ export function EditTournamentDialog({
         status: tournament.status,
         registrationDeadline: safeParseDate(tournament.registrationDeadline),
       });
+      setCoHosts(tournament.coHosts || []);
     }
   }, [tournament, form]);
 
@@ -221,6 +225,7 @@ export function EditTournamentDialog({
           registrationDeadline: values.registrationDeadline
             ? values.registrationDeadline.toISOString()
             : null,
+          coHosts: coHosts, // Include co-hosts in the update
         }),
       });
 
@@ -727,6 +732,18 @@ export function EditTournamentDialog({
                 </FormItem>
               )}
             />
+
+            {/* Co-Hosts Management */}
+            <div className="space-y-3">
+              <CoHostSelector
+                selectedCoHosts={coHosts}
+                onCoHostsChange={setCoHosts}
+                maxCoHosts={3}
+              />
+              <p className="text-xs text-muted-foreground">
+                Co-hosts can edit tournament details, pre-seed teams, launch the tournament, and manage team registrations.
+              </p>
+            </div>
 
             <DialogFooter className="gap-2 pt-4 border-t sm:gap-0">
               <Button

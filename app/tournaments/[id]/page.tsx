@@ -55,6 +55,7 @@ import { EditTournamentDialog } from "@/components/tournaments/edit-tournament-d
 import { Progress } from "@/components/ui/progress";
 import { formatDate, cn } from "@/lib/utils";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { canManageTournament } from "@/lib/tournament-permissions";
 
 // Types
 interface Tournament {
@@ -81,6 +82,8 @@ interface Tournament {
   teamStandings?: { team: Team; wins: number; losses: number }[];
   completedAt?: string;
   updatedAt?: string;
+  coHosts?: string[]; // Array of player IDs
+  createdBy?: { userId?: string; discordId?: string; name?: string };
 }
 
 interface Team {
@@ -297,6 +300,7 @@ export default function TournamentDetailsPage() {
   const [unregisterError, setUnregisterError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDeveloper, setIsDeveloper] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const [launching, setLaunching] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [isSeeded, setIsSeeded] = useState(false);
@@ -390,9 +394,9 @@ export default function TournamentDetailsPage() {
       if (!session?.user?.id) return;
 
       try {
-        // For admins/founders/developers, fetch all teams
+        // For admins/founders/developers/co-hosts, fetch all teams
         // For regular users, fetch only their teams
-        if (isAdmin || isDeveloper) {
+        if (isAdmin || isDeveloper || canManage) {
           const response = await fetch(`/api/teams`);
           if (response.ok) {
             const data = await response.json();
@@ -413,7 +417,7 @@ export default function TournamentDetailsPage() {
     if (session) {
       fetchTeams();
     }
-  }, [session, isAdmin, isDeveloper]);
+  }, [session, isAdmin, isDeveloper, canManage]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -446,6 +450,21 @@ export default function TournamentDetailsPage() {
 
     checkAdminStatus();
   }, [session]);
+
+  // Check if user can manage this tournament (admin, creator, or co-host)
+  useEffect(() => {
+    if (session?.user?.id && tournament) {
+      const userRoles = session.user.roles || [];
+      const hasManagePermission = canManageTournament(
+        session.user.id,
+        userRoles,
+        tournament
+      );
+      setCanManage(hasManagePermission);
+    } else {
+      setCanManage(false);
+    }
+  }, [session, tournament]);
 
   useEffect(() => {
     if (tournament) {
@@ -922,7 +941,7 @@ export default function TournamentDetailsPage() {
                   <span className="text-sm">Back</span>
                 </Button>
 
-                {isAdmin && (
+                {(isAdmin || canManage) && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -976,6 +995,17 @@ export default function TournamentDetailsPage() {
                 </span>
               </div>
 
+              {tournament.coHosts && tournament.coHosts.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <div className="p-1.5 rounded-md bg-primary/10 border border-primary/20">
+                    <UserCircle className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span className="text-foreground">
+                    {tournament.coHosts.length} Co-Host{tournament.coHosts.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+              )}
+
               <Badge
                 variant="secondary"
                 className={cn(
@@ -996,6 +1026,19 @@ export default function TournamentDetailsPage() {
               </Badge>
             </div>
           </div>
+
+          {/* Co-Hosts Display */}
+          {tournament.coHosts && tournament.coHosts.length > 0 && (
+            <div className="mt-4 p-3 rounded-lg border bg-muted/30">
+              <div className="flex items-center gap-2 mb-2">
+                <UserCircle className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Co-Hosts</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                These players can help manage this tournament: edit details, pre-seed teams, launch the tournament, and manage team registrations.
+              </p>
+            </div>
+          )}
 
           {/* Registration Progress */}
           <div className="mt-6 p-4 rounded-lg border bg-muted/30">
@@ -1156,8 +1199,8 @@ export default function TournamentDetailsPage() {
               </div>
             )}
 
-            {/* Seeding Information (Admin View) */}
-            {isAdmin && tournament.registeredTeams.length > 0 && (
+            {/* Seeding Information (Admin/Co-Host View) */}
+            {(isAdmin || canManage) && tournament.registeredTeams.length > 0 && (
               <div className="p-4 mt-8 rounded-lg border bg-muted/30">
                 <h3 className="mb-4 text-lg font-semibold flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-primary" />
@@ -1390,7 +1433,7 @@ export default function TournamentDetailsPage() {
                             </div>
 
                             {/* Action buttons */}
-                            {(isAdmin ||
+                            {((isAdmin || canManage) ||
                               (session?.user?.id === team.captain?.discordId &&
                                 tournament.status === "upcoming")) && (
                               <Button
@@ -1436,7 +1479,7 @@ export default function TournamentDetailsPage() {
                             {otherMembers.length > 0 ? (
                               <>
                                 {tournament.teamSize === 2 ? (
-                                  // For duos, show the other player with their nickname
+                                  // For 2v2, show the other player with their nickname
                                   <div className="flex items-center gap-2">
                                     {otherMembers[0] && (
                                       <>
@@ -1531,8 +1574,8 @@ export default function TournamentDetailsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Admin Controls Section */}
-        {isAdmin && tournament && (
+        {/* Admin/Co-Host Controls Section */}
+        {(isAdmin || canManage) && tournament && (
           <div className="p-6 mt-8 rounded-lg border bg-muted/30">
             <div className="flex items-center gap-2 mb-4">
               <div className="p-2 rounded-md bg-primary/10 border border-primary/20">
@@ -1694,7 +1737,7 @@ export default function TournamentDetailsPage() {
                   </TooltipProvider>
                 )}
 
-              {tournament.status === "active" && isAdmin && (
+              {tournament.status === "active" && (isAdmin || canManage) && (
                 <Button
                   variant="outline"
                   className="flex gap-2 items-center text-yellow-500 hover:text-yellow-600"

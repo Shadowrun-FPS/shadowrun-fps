@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { canManageTournament } from "@/lib/tournament-permissions";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -36,14 +38,7 @@ export async function POST(
 
     const { db } = await connectToDatabase();
 
-    // Check if user is admin or team captain
-    const isAdmin =
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session.user.roles &&
-        (session.user.roles.includes("admin") ||
-          session.user.roles.includes("moderator")));
-
-    // Get the tournament first to check if the team is registered
+    // Get the tournament first to check permissions and status
     const tournament = await db.collection("Tournaments").findOne({
       _id: new ObjectId(tournamentId),
     });
@@ -63,6 +58,19 @@ export async function POST(
       );
     }
 
+    // Check if user is admin, co-host, or team captain
+    const userRoles = session.user.roles || [];
+    const isAdmin =
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      (session.user.roles &&
+        (session.user.roles.includes("admin") ||
+          session.user.roles.includes("moderator")));
+    const isTournamentManager = canManageTournament(
+      session.user.id,
+      userRoles,
+      tournament as any
+    );
+
     // Check if the team is registered
     const isTeamRegistered = tournament.registeredTeams.some(
       (team: any) => team._id.toString() === teamId || team._id === teamId
@@ -75,16 +83,12 @@ export async function POST(
       );
     }
 
-    // If not admin, check if user is the team captain
-    if (!isAdmin) {
-      const team = await db.collection("Teams").findOne({
-        _id: new ObjectId(teamId),
-        "captain.discordId": session.user.id,
-      });
-
-      if (!team) {
+    // If not admin or tournament manager, check if user is the team captain
+    if (!isAdmin && !isTournamentManager) {
+      const teamResult = await findTeamAcrossCollections(db, teamId);
+      if (!teamResult || teamResult.team.captain.discordId !== session.user.id) {
         return NextResponse.json(
-          { error: "You must be the team captain to unregister" },
+          { error: "You must be the team captain, admin, or tournament co-host to unregister" },
           { status: 403 }
         );
       }

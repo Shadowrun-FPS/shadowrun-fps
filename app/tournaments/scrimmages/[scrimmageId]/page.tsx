@@ -904,13 +904,13 @@ export default function ScrimmageDetailsPage({
                     {match.teamSize && (
                       <Badge variant="secondary" className="text-xs">
                         {match.teamSize === 2
-                          ? "Duos"
+                          ? "2v2"
                           : match.teamSize === 3
-                          ? "Trios"
+                          ? "3v3"
                           : match.teamSize === 4
-                          ? "Squads"
+                          ? "4v4"
                           : match.teamSize === 5
-                          ? "Full Team"
+                          ? "5v5"
                           : `${match.teamSize}v${match.teamSize}`}
                       </Badge>
                     )}
@@ -983,13 +983,13 @@ export default function ScrimmageDetailsPage({
                     {match.teamSize && (
                       <Badge variant="secondary" className="text-xs">
                         {match.teamSize === 2
-                          ? "Duos"
+                          ? "2v2"
                           : match.teamSize === 3
-                          ? "Trios"
+                          ? "3v3"
                           : match.teamSize === 4
-                          ? "Squads"
+                          ? "4v4"
                           : match.teamSize === 5
-                          ? "Full Team"
+                          ? "5v5"
                           : `${match.teamSize}v${match.teamSize}`}
                       </Badge>
                     )}

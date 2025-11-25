@@ -102,13 +102,12 @@ export async function POST(
     // Check if the teams are properly populated
     if (!scrimmage.challengerTeam || !scrimmage.challengedTeam) {
       // If teams aren't populated, fetch them directly
-      const challengerTeam = await db.collection("Teams").findOne({
-        _id: new ObjectId(scrimmage.challengerTeamId),
-      });
-
-      const challengedTeam = await db.collection("Teams").findOne({
-        _id: new ObjectId(scrimmage.challengedTeamId),
-      });
+      const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+      const challengerTeamResult = await findTeamAcrossCollections(db, scrimmage.challengerTeamId);
+      const challengedTeamResult = await findTeamAcrossCollections(db, scrimmage.challengedTeamId);
+      
+      const challengerTeam = challengerTeamResult?.team;
+      const challengedTeam = challengedTeamResult?.team;
 
       scrimmage.challengerTeam = challengerTeam;
       scrimmage.challengedTeam = challengedTeam;

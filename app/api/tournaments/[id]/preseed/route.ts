@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { canManageTournament } from "@/lib/tournament-permissions";
 
 // POST endpoint to pre-seed a tournament bracket
 export async function POST(
@@ -56,15 +57,21 @@ export async function POST(
       );
     }
 
-    // Get full team data
+    // Get full team data - search across all team collections
+    const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
     const teamIds = tournament.teams.map((teamId: string | ObjectId) =>
       typeof teamId === "string" ? new ObjectId(teamId) : teamId
     );
 
-    const teams = await db
-      .collection("Teams")
-      .find({ _id: { $in: teamIds } })
-      .toArray();
+    const allCollections = getAllTeamCollectionNames();
+    const teams = [];
+    for (const collectionName of allCollections) {
+      const collectionTeams = await db
+        .collection(collectionName)
+        .find({ _id: { $in: teamIds } })
+        .toArray();
+      teams.push(...collectionTeams);
+    }
 
     if (teams.length === 0) {
       return NextResponse.json(
@@ -316,20 +323,13 @@ export async function POST(
       }
     );
 
-    // Check admin permissions - include admin, founder, and developer
+    // Check if user can manage this tournament (admin, creator, or co-host)
     const userRoles = user?.roles || [];
-    const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
-    const hasAdmin = hasAdminRole(userRoles);
-    const isTournamentCreator =
-      tournament.createdBy?.userId === session.user.id;
-
-    const isAuthorized = isDeveloper || hasAdmin || isTournamentCreator;
-
-    if (!isAuthorized) {
+    if (!canManageTournament(session.user.id, userRoles, tournament as any)) {
       return NextResponse.json(
         {
           error:
-            "You must be an administrator, founder, or tournament creator to perform this action",
+            "You must be an administrator, tournament creator, or co-host to perform this action",
         },
         { status: 403 }
       );

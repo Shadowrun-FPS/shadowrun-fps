@@ -124,13 +124,12 @@ export async function POST(
     // Check if the teams are properly populated
     if (!scrimmage.challengerTeam || !scrimmage.challengedTeam) {
       // If teams aren't populated, fetch them directly
-      const challengerTeam = await db.collection("Teams").findOne({
-        _id: new ObjectId(scrimmage.challengerTeamId),
-      });
-
-      const challengedTeam = await db.collection("Teams").findOne({
-        _id: new ObjectId(scrimmage.challengedTeamId),
-      });
+      const { findTeamAcrossCollections } = await import("@/lib/team-collections");
+      const challengerTeamResult = await findTeamAcrossCollections(db, scrimmage.challengerTeamId);
+      const challengedTeamResult = await findTeamAcrossCollections(db, scrimmage.challengedTeamId);
+      
+      const challengerTeam = challengerTeamResult?.team;
+      const challengedTeam = challengedTeamResult?.team;
 
       scrimmage.challengerTeam = challengerTeam;
       scrimmage.challengedTeam = challengedTeam;
@@ -318,36 +317,53 @@ export async function POST(
       }
 
       // Update team stats for scrimmage wins/losses
+      // Update team wins/losses - need to find which collections the teams are in
+      const { findTeamAcrossCollections, getTeamCollectionName } = await import("@/lib/team-collections");
+      
       if (matchWinner === "teamA") {
         // Team A won, update their wins and Team B's losses
-        await db
-          .collection("Teams")
-          .updateOne(
-            { _id: new ObjectId(scrimmage.challengerTeamId) },
-            { $inc: { wins: 1 } }
-          );
+        const challengerTeamResult = await findTeamAcrossCollections(db, scrimmage.challengerTeamId);
+        const challengedTeamResult = await findTeamAcrossCollections(db, scrimmage.challengedTeamId);
+        
+        if (challengerTeamResult) {
+          await db
+            .collection(challengerTeamResult.collectionName)
+            .updateOne(
+              { _id: new ObjectId(scrimmage.challengerTeamId) },
+              { $inc: { wins: 1 } }
+            );
+        }
 
-        await db
-          .collection("Teams")
-          .updateOne(
-            { _id: new ObjectId(scrimmage.challengedTeamId) },
-            { $inc: { losses: 1 } }
-          );
+        if (challengedTeamResult) {
+          await db
+            .collection(challengedTeamResult.collectionName)
+            .updateOne(
+              { _id: new ObjectId(scrimmage.challengedTeamId) },
+              { $inc: { losses: 1 } }
+            );
+        }
       } else if (matchWinner === "teamB") {
         // Team B won, update their wins and Team A's losses
-        await db
-          .collection("Teams")
-          .updateOne(
-            { _id: new ObjectId(scrimmage.challengedTeamId) },
-            { $inc: { wins: 1 } }
-          );
+        const challengerTeamResult = await findTeamAcrossCollections(db, scrimmage.challengerTeamId);
+        const challengedTeamResult = await findTeamAcrossCollections(db, scrimmage.challengedTeamId);
+        
+        if (challengedTeamResult) {
+          await db
+            .collection(challengedTeamResult.collectionName)
+            .updateOne(
+              { _id: new ObjectId(scrimmage.challengedTeamId) },
+              { $inc: { wins: 1 } }
+            );
+        }
 
-        await db
-          .collection("Teams")
-          .updateOne(
-            { _id: new ObjectId(scrimmage.challengerTeamId) },
-            { $inc: { losses: 1 } }
-          );
+        if (challengerTeamResult) {
+          await db
+            .collection(challengerTeamResult.collectionName)
+            .updateOne(
+              { _id: new ObjectId(scrimmage.challengerTeamId) },
+              { $inc: { losses: 1 } }
+            );
+        }
       }
       // No need to update stats for ties
 

@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
+import { findTeamAcrossCollections, getTeamCollectionName, getAllTeamCollectionNames } from "@/lib/team-collections";
 
 // Helper function to get a join request by ID
 async function getJoinRequest(db: any, requestId: string) {
@@ -45,14 +47,12 @@ export async function PATCH(
       );
     }
 
-    // Get the team
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(joinRequest.teamId),
-    });
-
-    if (!team) {
+    // Get the team - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, joinRequest.teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
 
     // Verify the current user is the team captain
     const isCaptain =
@@ -77,30 +77,111 @@ export async function PATCH(
       );
 
     if (action === "accept") {
-      // Add user to team if accepted
-      const memberToAdd = {
+      const teamSize = team.teamSize || 4;
+
+      // Check if user is already in a team of the SAME size
+      const collectionName = getTeamCollectionName(teamSize);
+      const existingTeamOfSameSize = await db.collection(collectionName).findOne({
+        $or: [
+          { "members.discordId": joinRequest.userId },
+          { "captain.discordId": joinRequest.userId },
+        ],
+        teamSize: teamSize,
+        _id: { $ne: new ObjectId(joinRequest.teamId) }, // Exclude the team they're joining
+      });
+
+      if (existingTeamOfSameSize) {
+        // Update request status to rejected
+        await db.collection("TeamJoinRequests").updateOne(
+          { _id: new ObjectId(requestId) },
+          {
+            $set: {
+              status: "rejected",
+              updatedAt: new Date(),
+              rejectionReason: `User is already in a ${teamSize}-person team`,
+            },
+          }
+        );
+
+        // Notify the user
+        await db.collection("Notifications").insertOne({
+          userId: joinRequest.userId,
+          type: "team_join_rejected",
+          title: "Join Request Cannot Be Accepted",
+          message: `Your request to join "${team.name}" cannot be accepted because you are already a member of a ${teamSize}-person team "${existingTeamOfSameSize.name}".`,
+          read: false,
+          createdAt: new Date(),
+          metadata: {
+            teamId: joinRequest.teamId,
+            teamName: team.name,
+          },
+        });
+
+        // Notify the captain
+        await db.collection("Notifications").insertOne({
+          userId: team.captain.discordId,
+          type: "team_join_request",
+          title: "Join Request Auto-Rejected",
+          message: `The join request from ${joinRequest.userNickname || joinRequest.userName} was automatically rejected because they are already in a ${teamSize}-person team.`,
+          read: false,
+          createdAt: new Date(),
+          metadata: {
+            teamId: joinRequest.teamId,
+            teamName: team.name,
+            requesterId: joinRequest.userId,
+          },
+        });
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: `User is already in a ${teamSize}-person team. Request has been rejected.`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Ensure user has ELO records for all team sizes before joining
+      await ensurePlayerEloForAllTeamSizes(joinRequest.userId);
+
+      // Get teamSize from joinRequest if stored, otherwise from team
+      const requestTeamSize = joinRequest.teamSize || teamSize;
+
+      // Cancel all other pending join requests for teams of the same size
+      await db.collection("TeamJoinRequests").updateMany(
+        {
+          userId: joinRequest.userId,
+          status: "pending",
+          teamSize: requestTeamSize,
+          _id: { $ne: new ObjectId(requestId) }, // Don't cancel the current request
+        },
+        {
+          $set: {
+            status: "cancelled",
+            updatedAt: new Date(),
+            cancellationReason: "User joined another team of the same size",
+          },
+        }
+      );
+
+      // Create the new member object
+      const newMember = {
         discordId: joinRequest.userId,
-        discordNickname: joinRequest.userName,
+        discordNickname: joinRequest.userNickname || joinRequest.userName,
         discordUsername: joinRequest.userName,
-        discordProfilePicture: joinRequest.userImage,
+        discordProfilePicture: joinRequest.userAvatar || "",
         role: "member",
         joinedAt: new Date(),
       };
 
-      // Create the update document
-      const updateDoc = {
-        $push: {
-          members: memberToAdd,
-        },
-      };
-
-      // Cast it to the proper MongoDB type
-      const typedUpdateDoc = updateDoc as unknown as UpdateFilter<Document>;
-
-      // Use the typed update document in the MongoDB operation
+      // Add the user to the team with proper type casting
+      const teamCollectionName = getTeamCollectionName(teamSize);
       await db
-        .collection("Teams")
-        .updateOne({ _id: new ObjectId(joinRequest.teamId) }, typedUpdateDoc);
+        .collection(teamCollectionName)
+        .updateOne(
+          { _id: new ObjectId(joinRequest.teamId) },
+          { $push: { members: newMember } as any }
+        );
 
       // Notify the user that their request was accepted
       await db.collection("Notifications").insertOne({

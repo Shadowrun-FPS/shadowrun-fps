@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 
 export async function POST(
   req: NextRequest,
@@ -18,14 +19,12 @@ export async function POST(
     const { db } = await connectToDatabase();
     const teamId = params.teamId;
 
-    // Verify user is team captain
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Verify user is team captain - search across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
 
     // Check if the current user is the team captain
     if (team.captain.discordId !== session.user.id) {
@@ -65,7 +64,8 @@ export async function POST(
     }
 
     // Check if player is already in another team of the SAME size
-    const existingTeamOfSameSize = await db.collection("Teams").findOne({
+    const collectionName = getTeamCollectionName(teamSize);
+    const existingTeamOfSameSize = await db.collection(collectionName).findOne({
       "members.discordId": playerId,
       teamSize: teamSize,
       _id: { $ne: new ObjectId(teamId) }, // Exclude the current team

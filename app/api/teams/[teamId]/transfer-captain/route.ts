@@ -5,6 +5,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 interface TeamMember {
   discordId: string;
@@ -45,13 +46,13 @@ export async function POST(
       );
     }
 
-    const team = await db.collection("Teams").findOne({
-      _id: new ObjectId(teamId),
-    });
-
-    if (!team) {
+    // Find team across all collections
+    const teamResult = await findTeamAcrossCollections(db, teamId);
+    if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
+    const team = teamResult.team;
+    const collectionName = teamResult.collectionName;
 
     console.log("Full team object:", JSON.stringify(team, null, 2));
 
@@ -120,7 +121,7 @@ export async function POST(
       );
     }
 
-    const updateResult = await db.collection("Teams").updateOne(
+    const updateResult = await db.collection(collectionName).updateOne(
       { _id: new ObjectId(teamId) },
       {
         $set: {

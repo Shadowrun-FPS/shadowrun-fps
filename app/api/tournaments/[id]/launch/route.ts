@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { canManageTournament } from "@/lib/tournament-permissions";
 
 // First, add a proper interface for tournament matches
 interface TournamentMatch {
@@ -48,14 +49,6 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user is an admin
-    if (
-      !session.user.isAdmin &&
-      session.user.id !== SECURITY_CONFIG.DEVELOPER_ID
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { id } = params;
     const { db } = await connectToDatabase();
 
@@ -69,6 +62,12 @@ export async function POST(
         { error: "Tournament not found" },
         { status: 404 }
       );
+    }
+
+    // Check if user can manage this tournament (admin, creator, or co-host)
+    const userRoles = session.user.roles || [];
+    if (!canManageTournament(session.user.id, userRoles, tournament as any)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Check if tournament is already active

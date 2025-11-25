@@ -7,7 +7,7 @@ import { ObjectId } from "mongodb";
 // Add this line to force dynamic rendering
 export const dynamic = "force-dynamic";
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     // Get current session
     const session = await getServerSession(authOptions);
@@ -17,16 +17,33 @@ export async function GET(req: Request) {
 
     const scrimmagesCollection = db.collection("Scrimmages");
 
+    // Check for teamId query parameter
+    const { searchParams } = new URL(req.url);
+    const teamIdParam = searchParams.get("teamId");
+
     // Now that we've debugged, let's create proper queries for signed-in and signed-out users
     let query: any;
+    let userTeam = null;
 
-    // If user is logged in, include pending scrimmages for their team
-    if (session?.user) {
-      // Fetch user's team
-      const teamsCollection = db.collection("Teams");
-      const userTeam = await teamsCollection.findOne({
-        "members.discordId": session.user.id,
-      });
+    // If teamId is provided in query, filter by that team
+    if (teamIdParam) {
+      query = {
+        $or: [
+          { challengerTeamId: teamIdParam },
+          { challengedTeamId: teamIdParam },
+        ],
+      };
+    } else if (session?.user) {
+      // If user is logged in, include pending scrimmages for their team
+      // Fetch user's team - search across all collections
+      const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
+      const allCollections = getAllTeamCollectionNames();
+      for (const collectionName of allCollections) {
+        userTeam = await db.collection(collectionName).findOne({
+          "members.discordId": session.user.id,
+        });
+        if (userTeam) break;
+      }
 
       if (userTeam) {
         // Include pending scrimmages for the user's team
@@ -70,7 +87,30 @@ export async function GET(req: Request) {
       };
     });
 
-    return NextResponse.json(serializedScrimmages);
+    // Also return user team if available to avoid separate API call (only when not filtering by teamId)
+    let serializedUserTeam = null;
+    if (!teamIdParam && session?.user && userTeam) {
+      serializedUserTeam = {
+        ...userTeam,
+        _id: userTeam._id.toString(),
+        members: userTeam.members?.map((member: any) => ({
+          ...member,
+          _id: member._id?.toString(),
+        })) || [],
+      };
+    }
+
+    // If teamId is provided, return array for backward compatibility
+    // Otherwise return object with scrimmages and userTeam
+    if (teamIdParam) {
+      return NextResponse.json(serializedScrimmages);
+    }
+
+    // Return both scrimmages and user team to reduce API calls
+    return NextResponse.json({
+      scrimmages: serializedScrimmages,
+      userTeam: serializedUserTeam,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Failed to fetch scrimmages" },

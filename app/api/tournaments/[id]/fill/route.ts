@@ -69,8 +69,12 @@ export async function POST(
     const maxTeams = tournament.maxTeams || 8;
     const teamSize = tournament.teamSize || 4;
 
-    // Get all teams first
-    const allTeams = await db.collection("Teams").find({}).toArray();
+    // Get all teams from the appropriate collection based on tournament team size
+    const { getTeamCollectionName, getAllTeamCollectionNames } = await import("@/lib/team-collections");
+    const collectionName = getTeamCollectionName(teamSize);
+    
+    // Get teams from the specific collection for this team size
+    const allTeams = await db.collection(collectionName).find({}).toArray();
 
     // Filter teams to only include those with enough members for the tournament
     const teamsWithEnoughMembers = allTeams.filter((team) => {
