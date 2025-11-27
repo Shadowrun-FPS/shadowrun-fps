@@ -413,13 +413,13 @@ export async function POST(
                 );
 
                 if (!matchExists) {
-                  // Find full team data from tournament.teams
-                  const teamA = updatedTournament.teams.find(
+                  // Find full team data from registeredTeams (teams array now only contains ObjectIds)
+                  const teamA = updatedTournament.registeredTeams.find(
                     (t: any) =>
                       t._id.toString() === bracketMatch.teamA._id.toString()
                   );
 
-                  const teamB = updatedTournament.teams.find(
+                  const teamB = updatedTournament.registeredTeams.find(
                     (t: any) =>
                       t._id.toString() === bracketMatch.teamB._id.toString()
                   );

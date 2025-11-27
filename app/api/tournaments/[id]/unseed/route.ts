@@ -79,12 +79,14 @@ export async function POST(
       },
     ];
 
-    // Update tournament to remove seeding
+    // Update tournament to remove seeding and clear teams array
+    // (teams array is only populated during seeding)
     await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
         $set: {
           "brackets.rounds": emptyRounds,
+          teams: [], // Clear teams array since seeding is removed
           updatedAt: new Date(),
         },
       }

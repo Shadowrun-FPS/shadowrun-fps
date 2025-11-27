@@ -130,6 +130,7 @@ export async function POST(
         {
           $set: {
             "brackets.rounds": emptyRounds,
+            teams: [], // Clear teams array since seeding is removed
             updatedAt: new Date(),
           },
         }

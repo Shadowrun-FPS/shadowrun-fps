@@ -50,32 +50,10 @@ export async function POST(
       );
     }
 
-    if (!tournament.teams || tournament.teams.length < 2) {
+    // Check if tournament has registered teams
+    if (!tournament.registeredTeams || tournament.registeredTeams.length < 2) {
       return NextResponse.json(
-        { error: "Tournament needs at least 2 teams to create a bracket" },
-        { status: 400 }
-      );
-    }
-
-    // Get full team data - search across all team collections
-    const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
-    const teamIds = tournament.teams.map((teamId: string | ObjectId) =>
-      typeof teamId === "string" ? new ObjectId(teamId) : teamId
-    );
-
-    const allCollections = getAllTeamCollectionNames();
-    const teams = [];
-    for (const collectionName of allCollections) {
-      const collectionTeams = await db
-        .collection(collectionName)
-        .find({ _id: { $in: teamIds } })
-        .toArray();
-      teams.push(...collectionTeams);
-    }
-
-    if (teams.length === 0) {
-      return NextResponse.json(
-        { error: "No valid teams found" },
+        { error: "Tournament needs at least 2 registered teams to create a bracket" },
         { status: 400 }
       );
     }
@@ -97,6 +75,34 @@ export async function POST(
 
     // Sort teams by ELO for proper seeding (highest ELO = seed 1, lowest ELO = last seed)
     const registeredTeams = tournament.registeredTeams || [];
+
+    // Get team IDs from registeredTeams to fetch full team data
+    const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
+    const teamIds = registeredTeams
+      .map((team: any) => {
+        if (typeof team === "object" && team._id) {
+          return typeof team._id === "string" ? new ObjectId(team._id) : team._id;
+        }
+        return null;
+      })
+      .filter((id): id is ObjectId => id !== null);
+
+    const allCollections = getAllTeamCollectionNames();
+    const teams = [];
+    for (const collectionName of allCollections) {
+      const collectionTeams = await db
+        .collection(collectionName)
+        .find({ _id: { $in: teamIds } })
+        .toArray();
+      teams.push(...collectionTeams);
+    }
+
+    if (teams.length === 0) {
+      return NextResponse.json(
+        { error: "No valid teams found" },
+        { status: 400 }
+      );
+    }
 
     // Sort teams by ELO (highest to lowest) - highest ELO gets seed 1
     const sortedTeams = [...registeredTeams].sort(
@@ -309,7 +315,10 @@ export async function POST(
       }
     }
 
-    // Update tournament with seeded brackets
+    // Extract ObjectIds from registeredTeams and add them to teams array
+    const registeredTeamIds = validTeams.map((team: any) => new ObjectId(team._id));
+
+    // Update tournament with seeded brackets and teams array
     await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
@@ -318,6 +327,7 @@ export async function POST(
             rounds,
             ...(tournament.format === "double_elimination" && { losersRounds }),
           },
+          teams: registeredTeamIds, // Add all registeredTeams ObjectIds to teams array
           updatedAt: new Date(),
         },
       }

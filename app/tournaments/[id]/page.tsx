@@ -623,6 +623,20 @@ export default function TournamentDetailsPage() {
     );
   };
 
+  // Find the user's registered team (if any)
+  const userRegisteredTeam = useMemo(() => {
+    if (!tournament || !session || !eligibleTeams.length) return null;
+    
+    // Find the first eligible team that is registered and where user is captain
+    return eligibleTeams.find((team) => {
+      const isRegistered = tournament.registeredTeams?.some(
+        (regTeam) => regTeam._id === team._id
+      ) || false;
+      const isCaptain = team.captain?.discordId === session.user.id;
+      return isRegistered && isCaptain;
+    }) || null;
+  }, [tournament, session, eligibleTeams]);
+
   const handlePreseed = async () => {
     if (!tournament?._id) return;
 
@@ -1364,16 +1378,31 @@ export default function TournamentDetailsPage() {
 
                 {tournament.status === "upcoming" && session && (
                   <Button
-                    onClick={() => setIsRegisterDialogOpen(true)}
+                    onClick={() => {
+                      if (userRegisteredTeam) {
+                        // If team is registered, unregister it
+                        unregisterTeam(userRegisteredTeam._id);
+                      } else {
+                        // Otherwise, open register dialog
+                        setIsRegisterDialogOpen(true);
+                      }
+                    }}
                     disabled={
-                      tournament.registeredTeams.length >=
-                        (tournament.maxTeams || 8) ||
-                      eligibleTeams.length === 0 ||
-                      eligibleTeams.every((team) => isTeamRegistered(team._id))
+                      userRegisteredTeam
+                        ? unregistering
+                        : tournament.registeredTeams.length >=
+                            (tournament.maxTeams || 8) ||
+                          eligibleTeams.length === 0 ||
+                          eligibleTeams.every((team) => isTeamRegistered(team._id))
                     }
+                    variant={userRegisteredTeam ? "destructive" : "default"}
                     className="mt-4 sm:mt-0"
                   >
-                    Register Team
+                    {userRegisteredTeam
+                      ? unregistering
+                        ? "Unregistering..."
+                        : "Unregister"
+                      : "Register Team"}
                   </Button>
                 )}
               </div>
