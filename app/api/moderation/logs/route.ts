@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { getDiscordUserInfoBatch } from "@/lib/discord-user-info";
 
 // Fetch moderation logs
 export async function GET(request: Request) {
@@ -131,41 +132,95 @@ export async function GET(request: Request) {
     });
 
     // Get all unique player IDs from logs
-    const playerIds = new Set();
+    const playerIds = new Set<string>();
     formattedLogs.forEach((log) => {
       if (log.playerId) playerIds.add(log.playerId);
     });
 
-    // Convert playerIds to an array of valid ObjectIds
-    const validPlayerIds = Array.from(playerIds)
+    // Convert playerIds to an array of valid ObjectIds for Players collection lookup
+    const validPlayerObjectIds = Array.from(playerIds)
       .filter((id): id is string => typeof id === "string")
+      .filter((id) => ObjectId.isValid(id))
       .map((id) => new ObjectId(id));
 
-    // Fetch current player information
+    // Fetch players to get their Discord IDs
     const players = await db
       .collection("Players")
       .find({
-        _id: { $in: validPlayerIds },
+        $or: [
+          { _id: { $in: validPlayerObjectIds } },
+          { discordId: { $in: Array.from(playerIds) } },
+        ],
       })
       .toArray();
 
-    // Create lookup map for quick access
-    const playerMap = new Map();
+    // Extract Discord IDs from players
+    const playerDiscordIds = new Set<string>();
     players.forEach((player) => {
-      playerMap.set(player._id.toString(), {
-        nickname: player.discordNickname || player.discordUsername,
-        username: player.discordUsername,
-      });
+      if (player.discordId) {
+        playerDiscordIds.add(player.discordId);
+      }
     });
 
-    // Update logs with current names
+    // Also check if any playerId is already a Discord ID
+    playerIds.forEach((id) => {
+      if (!ObjectId.isValid(id)) {
+        playerDiscordIds.add(id);
+      }
+    });
+
+    // Fetch Discord user info for all players
+    const discordUserInfoMap = await getDiscordUserInfoBatch(
+      Array.from(playerDiscordIds)
+    );
+
+    // Create a map from playerId (ObjectId) to Discord ID
+    const playerIdToDiscordId = new Map<string, string>();
+    players.forEach((player) => {
+      if (player._id && player.discordId) {
+        playerIdToDiscordId.set(player._id.toString(), player.discordId);
+      }
+    });
+
+    // Update logs with current Discord info
     const updatedLogs = formattedLogs.map((log) => {
-      const playerInfo = log.playerId ? playerMap.get(log.playerId) : null;
+      // Get Discord ID for player
+      let playerDiscordId: string | null = null;
+      if (log.playerId) {
+        if (!ObjectId.isValid(log.playerId)) {
+          playerDiscordId = log.playerId;
+        } else {
+          playerDiscordId = playerIdToDiscordId.get(log.playerId) || null;
+        }
+      }
+
+      const playerInfo = playerDiscordId
+        ? discordUserInfoMap.get(playerDiscordId)
+        : null;
+
+      // Check if this ban was revoked (unbanned)
+      // A ban is considered revoked if there's a more recent unban action for the same player
+      let isRevoked = false;
+      if (log.action === "ban" && playerDiscordId) {
+        const unbanLog = logs.find(
+          (l) =>
+            l.action === "unban" &&
+            l.playerId === log.playerId &&
+            new Date(l.timestamp).getTime() > new Date(log.timestamp).getTime()
+        );
+        isRevoked = !!unbanLog;
+      }
 
       return {
         ...log,
-        // Update player name if we have current info
-        playerName: playerInfo ? playerInfo.nickname : log.playerName,
+        // Update player info with current Discord data
+        playerName: playerInfo
+          ? playerInfo.nickname || playerInfo.username
+          : log.playerName,
+        playerNickname: playerInfo?.nickname,
+        playerProfilePicture: playerInfo?.profilePicture || null,
+        playerDiscordId: playerDiscordId,
+        revoked: isRevoked,
       };
     });
 

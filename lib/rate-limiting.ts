@@ -109,10 +109,11 @@ export function withRateLimit(
   };
 }
 
-// Rate limiting specifically for admin endpoints (stricter)
+// Rate limiting specifically for admin endpoints
+// Increased limit for admin operations (map pool management, etc.)
 export function adminRateLimit(request: NextRequest) {
   return rateLimit(request, {
-    rpm: 30, // More restrictive for admin operations
+    rpm: 60, // Increased from 30 to 60 for admin operations like map pool management
     windowMs: 60000, // 1 minute window
   });
 }

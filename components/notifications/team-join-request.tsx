@@ -37,7 +37,7 @@ export function TeamJoinRequest({
 
       const cacheKey = `${notification.metadata.teamId}-${notification.metadata.requestId}`;
       
-      // Check cache first
+      // Check cache first (extended cache duration for better efficiency)
       const cached = joinRequestStatusCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
         if (cached.status !== "pending") {
@@ -83,7 +83,7 @@ export function TeamJoinRequest({
         .then(async (response) => {
           if (response.ok) {
             const data = await response.json();
-            // Cache the result
+            // Cache the result with longer duration
             joinRequestStatusCache.set(cacheKey, {
               status: data.status || "pending",
               timestamp: Date.now(),
@@ -97,8 +97,8 @@ export function TeamJoinRequest({
           return null;
         })
         .finally(() => {
-          // Remove from pending checks after a delay
-          setTimeout(() => pendingChecks.delete(cacheKey), 1000);
+          // Remove from pending checks after a longer delay to prevent rapid re-requests
+          setTimeout(() => pendingChecks.delete(cacheKey), 5000);
         });
 
       pendingChecks.set(cacheKey, requestPromise);
@@ -122,8 +122,13 @@ export function TeamJoinRequest({
       }
     };
 
-    checkRequestStatus();
-  }, [notification.metadata?.requestId, notification.metadata?.teamId]);
+    // Only check if status is still pending (avoid unnecessary checks)
+    if (notification.metadata?.status !== "accepted" && notification.metadata?.status !== "rejected") {
+      checkRequestStatus();
+    } else {
+      setCheckingStatus(false);
+    }
+  }, [notification.metadata?.requestId, notification.metadata?.teamId, notification.metadata?.status]);
 
   const handleAction = async (action: "accept" | "reject") => {
     if (!notification.metadata?.requestId) {

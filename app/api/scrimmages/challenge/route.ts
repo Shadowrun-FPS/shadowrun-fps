@@ -5,6 +5,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { getAllTeamCollectionNames, findTeamAcrossCollections } from "@/lib/team-collections";
+import { notifyScrimmageChallenge, getGuildId } from "@/lib/discord-bot-api";
 
 export async function POST(request: NextRequest) {
   try {
@@ -183,6 +184,27 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
         read: false,
       });
+    }
+
+    // Send Discord DM notification via bot API (primary method)
+    // Change streams will act as fallback if API fails (with duplicate prevention)
+    if (challengedTeam.captain?.discordId) {
+      try {
+        const guildId = getGuildId();
+        await notifyScrimmageChallenge(
+          scrimmage.scrimmageId,
+          userTeam._id.toString(),
+          userTeam.name,
+          challengedTeam._id.toString(),
+          challengedTeam.captain.discordId,
+          scrimmage.proposedDate,
+          scrimmage.selectedMaps,
+          scrimmage.message,
+          guildId
+        );
+      } catch (error) {
+        // Don't throw - change stream will catch it as fallback with duplicate prevention
+      }
     }
 
     return NextResponse.json({

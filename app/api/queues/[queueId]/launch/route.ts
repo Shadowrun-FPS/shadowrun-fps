@@ -207,33 +207,95 @@ export async function POST(
     let availableMaps: any[] = [];
     
     if (queue.mapPool && Array.isArray(queue.mapPool) && queue.mapPool.length > 0) {
-      // Use custom map pool - fetch only the specified maps (all maps, not just ranked)
-      const mapIds = queue.mapPool.map((id: string) => new ObjectId(id));
-      const customMaps = await db
-        .collection("Maps")
-        .find({ _id: { $in: mapIds } })
-        .toArray();
-
-      // Create variants for custom maps
-      for (const map of customMaps) {
-        availableMaps.push({
-          name: map.name,
-          src: map.src,
-          gameMode: map.gameMode,
-          rankedMap: map.rankedMap,
-          smallOption: map.smallOption,
-          isSmall: false,
-          _id: map._id,
-        });
-
-        if (map.smallOption) {
+      // Use custom map pool - mapPool now contains map objects with _id, name, src, gameMode, isSmall
+      // or variant IDs for backward compatibility
+      
+      const firstItem = queue.mapPool[0];
+      const isObjectFormat = typeof firstItem === "object" && firstItem !== null && firstItem._id;
+      
+      if (isObjectFormat) {
+        // New format: map objects stored directly
+        // Optionally validate/refresh data from Maps collection using _id
+        const mapIds: ObjectId[] = queue.mapPool
+          .map((item: any) => (typeof item === "object" && item._id ? new ObjectId(item._id) : null))
+          .filter((id): id is ObjectId => id !== null);
+        
+        // Fetch current map data for validation (optional - can use stored data directly)
+        const currentMaps = await db
+          .collection("Maps")
+          .find({ _id: { $in: mapIds } })
+          .toArray();
+        
+        const mapById = new Map(currentMaps.map((map) => [map._id.toString(), map]));
+        
+        // Use stored map objects, but validate against current Maps collection
+        for (const mapItem of queue.mapPool) {
+          if (typeof mapItem !== "object" || !mapItem._id) continue;
+          
+          // Validate map still exists and supports the variant
+          const currentMap = mapById.get(mapItem._id);
+          if (!currentMap) continue; // Skip if map was deleted
+          
+          if (mapItem.isSmall && !currentMap.smallOption) {
+            continue; // Skip if small variant no longer supported
+          }
+          
+          // Use stored data (or optionally refresh from currentMap)
           availableMaps.push({
-            name: `${map.name} (Small)`,
+            name: mapItem.name,
+            src: mapItem.src,
+            gameMode: mapItem.gameMode,
+            rankedMap: currentMap.rankedMap, // Use current value
+            smallOption: currentMap.smallOption, // Use current value
+            isSmall: mapItem.isSmall,
+            _id: new ObjectId(mapItem._id),
+          });
+        }
+      } else {
+        // Backward compatibility: old format with variant IDs
+        const baseMapIds = new Set<string>();
+        queue.mapPool.forEach((variantId: string) => {
+          const baseId = variantId.replace(/-normal$/, "").replace(/-small$/, "");
+          baseMapIds.add(baseId);
+        });
+        
+        const mapIds = Array.from(baseMapIds).map((id: string) => new ObjectId(id));
+        const customMaps = await db
+          .collection("Maps")
+          .find({ _id: { $in: mapIds } })
+          .toArray();
+
+        const mapById = new Map(customMaps.map((map) => [map._id.toString(), map]));
+
+        for (const variantId of queue.mapPool) {
+          let baseId: string;
+          let isSmall: boolean;
+          
+          if (variantId.includes("-normal")) {
+            baseId = variantId.replace("-normal", "");
+            isSmall = false;
+          } else if (variantId.includes("-small")) {
+            baseId = variantId.replace("-small", "");
+            isSmall = true;
+          } else {
+            baseId = variantId;
+            isSmall = false;
+          }
+          
+          const map = mapById.get(baseId);
+          if (!map) continue;
+          
+          if (isSmall && !map.smallOption) {
+            continue;
+          }
+          
+          availableMaps.push({
+            name: isSmall ? `${map.name} (Small)` : map.name,
             src: map.src,
             gameMode: map.gameMode,
             rankedMap: map.rankedMap,
             smallOption: map.smallOption,
-            isSmall: true,
+            isSmall: isSmall,
             _id: map._id,
           });
         }

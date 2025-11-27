@@ -30,6 +30,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-react";
+import { toDiscordTimestamp, formatDuration } from "@/lib/discord-timestamp";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +60,7 @@ interface ModerationLog {
   duration: string;
   timestamp: string;
   expiry?: string;
+  revoked?: boolean; // If the action was revoked (e.g., unban)
 }
 
 // Add these styles to your CSS file or use inline styles
@@ -226,26 +228,66 @@ export default function PublicModerationLog() {
     }
   };
 
-  // Get ban status based on action and expiry
-  const getBanStatus = (log: ModerationLog) => {
-    if (log.action !== "ban") return null;
+  // Component to display duration with Discord timestamp format
+  const DurationDisplay = ({ log }: { log: ModerationLog }) => {
+    const [now, setNow] = useState(new Date());
 
-    if (log.duration === "Permanent") {
-      return "Permanent";
+    useEffect(() => {
+      // Update every minute to keep countdown accurate
+      const interval = setInterval(() => {
+        setNow(new Date());
+      }, 60000);
+      return () => clearInterval(interval);
+    }, []);
+
+    // Warnings don't have durations
+    if (log.action === "warn") {
+      return <span className="text-muted-foreground">—</span>;
     }
 
-    if (log.expiry) {
-      const expiryDate = new Date(log.expiry);
-      const now = new Date();
+    // If action was revoked (e.g., unban), show original duration
+    if (log.revoked) {
+      return <span>{formatDuration(log.duration)}</span>;
+    }
 
-      if (expiryDate > now) {
-        return `Expires: ${format(expiryDate, "MMMM d, yyyy")}`;
-      } else {
-        return "Expired";
+    // For bans, check if they're still active
+    if (log.action === "ban") {
+      if (log.duration === "Permanent") {
+        return <span>Permanent</span>;
+      }
+
+      if (log.expiry) {
+        const expiryDate = new Date(log.expiry);
+
+        // If ban is still active, show Discord timestamp countdown
+        if (expiryDate > now) {
+          const discordTimestamp = toDiscordTimestamp(expiryDate, "R");
+          const timeRemaining = formatDistanceToNow(expiryDate, {
+            addSuffix: true,
+          });
+          return (
+            <div className="space-y-1">
+              <div className="font-medium text-primary">
+                {timeRemaining}
+              </div>
+              <div className="text-xs text-muted-foreground font-mono">
+                {discordTimestamp}
+              </div>
+            </div>
+          );
+        } else {
+          // Ban expired, show original duration
+          return <span>{formatDuration(log.duration)}</span>;
+        }
       }
     }
 
-    return null;
+    // For other actions, show the duration if available
+    if (log.duration) {
+      return <span>{formatDuration(log.duration)}</span>;
+    }
+
+    return <span className="text-muted-foreground">—</span>;
   };
 
   return (
@@ -397,14 +439,7 @@ export default function PublicModerationLog() {
                         </p>
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
-                          <div className="font-medium">{log.duration}</div>
-                          {getBanStatus(log) && (
-                            <div className="text-xs text-muted-foreground">
-                              {getBanStatus(log)}
-                            </div>
-                          )}
-                        </div>
+                        <DurationDisplay log={log} />
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">

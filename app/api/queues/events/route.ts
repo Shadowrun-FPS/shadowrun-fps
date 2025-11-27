@@ -21,49 +21,104 @@ export async function GET(req: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Send initial queues data
-        const initialQueues = await db.collection("Queues").find({}).toArray();
-        controller.enqueue(`data: ${JSON.stringify(initialQueues)}\n\n`);
+        let heartbeatInterval: NodeJS.Timeout | null = null;
+        let isClosed = false;
 
-        // Watch for queue changes
-        changeStream.on("change", async () => {
-          try {
-            // Fetch updated queues
-            const updatedQueues = await db
-              .collection("Queues")
-              .find({})
-              .toArray();
-            controller.enqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
-          } catch (error) {
-            console.error("Error sending queue update:", error);
+        const cleanup = () => {
+          if (isClosed) return;
+          isClosed = true;
+          
+          if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
           }
-        });
-
-        // Send heartbeat every 30 seconds
-        const heartbeat = setInterval(() => {
+          
           try {
-            controller.enqueue(
-              `data: ${JSON.stringify({ type: "heartbeat" })}\n\n`
-            );
+            changeStream.close();
           } catch (error) {
-            console.error("Error sending heartbeat:", error);
-            clearInterval(heartbeat);
+            // Change stream might already be closed
           }
-        }, 30000);
+        };
 
-        // Clean up on stream end
-        req.signal.addEventListener("abort", () => {
-          clearInterval(heartbeat);
-          changeStream.close();
-        });
+        try {
+          // Send initial queues data
+          const initialQueues = await db.collection("Queues").find({}).toArray();
+          controller.enqueue(`data: ${JSON.stringify(initialQueues)}\n\n`);
+
+          // Watch for queue changes
+          changeStream.on("change", async () => {
+            if (isClosed) return;
+            
+            try {
+              // Fetch updated queues
+              const updatedQueues = await db
+                .collection("Queues")
+                .find({})
+                .toArray();
+              controller.enqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
+            } catch (error) {
+              console.error("Error sending queue update:", error);
+              // Don't close on error, just log it
+            }
+          });
+
+          // Handle change stream errors
+          changeStream.on("error", (error) => {
+            console.error("Change stream error:", error);
+            // Try to send error notification to client
+            try {
+              controller.enqueue(
+                `data: ${JSON.stringify({ type: "error", message: "Change stream error" })}\n\n`
+              );
+            } catch (e) {
+              // Controller might be closed
+            }
+          });
+
+          // Send heartbeat every 15 seconds (reduced from 30s for better stability)
+          heartbeatInterval = setInterval(() => {
+            if (isClosed) {
+              if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+              }
+              return;
+            }
+            
+            try {
+              controller.enqueue(
+                `data: ${JSON.stringify({ type: "heartbeat", timestamp: Date.now() })}\n\n`
+              );
+            } catch (error) {
+              // Controller closed, cleanup
+              cleanup();
+            }
+          }, 15000);
+
+          // Clean up on stream end
+          req.signal.addEventListener("abort", () => {
+            cleanup();
+          });
+        } catch (error) {
+          console.error("Error in SSE stream start:", error);
+          cleanup();
+          try {
+            controller.close();
+          } catch (e) {
+            // Already closed
+          }
+        }
       },
     });
 
     return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no", // Disable nginx buffering
+        "Access-Control-Allow-Origin": "*", // Allow CORS if needed
+        "Access-Control-Allow-Credentials": "true",
       },
     });
   } catch (error) {

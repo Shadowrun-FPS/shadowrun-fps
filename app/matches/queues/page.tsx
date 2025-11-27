@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,9 @@ import {
   AlertCircle,
   Trophy,
   Target,
+  MapPin,
+  Loader2,
+  Save,
 } from "lucide-react";
 import {
   ContextMenu,
@@ -87,6 +90,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useRouter } from "next/navigation";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { Checkbox } from "@/components/ui/checkbox";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { DialogDescription } from "@/components/ui/dialog";
 
 /*
   TODO SIN: Define a single source of truth for the Queue, QueuePlayer, etc. types
@@ -130,6 +138,9 @@ export default function QueuesPage() {
   const [queues, setQueues] = useState<Array<any>>([]);
   const [activeTab, setActiveTab] = useState<string>("all");
   const [joiningQueue, setJoiningQueue] = useState<string | null>(null);
+  const [leavingQueue, setLeavingQueue] = useState<string | null>(null);
+  const [pendingOperations, setPendingOperations] = useState<Set<string>>(new Set());
+  const [lastActionTime, setLastActionTime] = useState<Record<string, number>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreatingQueue, setIsCreatingQueue] = useState(false);
   const [playerToRemove, setPlayerToRemove] = useState<{
@@ -152,6 +163,14 @@ export default function QueuesPage() {
     eloTier?: string;
     teamSize?: number;
   } | null>(null);
+
+  // Manage Maps state
+  const [maps, setMaps] = useState<any[]>([]);
+  const [originalMaps, setOriginalMaps] = useState<any[]>([]);
+  const [selectedMaps, setSelectedMaps] = useState<Record<string, string[]>>({});
+  const [managingMapsQueue, setManagingMapsQueue] = useState<any | null>(null);
+  const [mapsDialogOpen, setMapsDialogOpen] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Create queue form
   const form = useForm<z.infer<typeof createQueueSchema>>({
@@ -184,7 +203,7 @@ export default function QueuesPage() {
     fetchRoles();
   }, [session?.user?.id]);
 
-  const isAdmin = () => {
+  const isAdmin = useCallback(() => {
     if (!session?.user?.id) return false;
 
     const isDeveloper =
@@ -196,7 +215,7 @@ export default function QueuesPage() {
     const isAdminUser = session.user.isAdmin;
 
     return isDeveloper || isAdminUser || hasAdminRoleCheck;
-  };
+  }, [session?.user?.id, session?.user?.isAdmin, session?.user?.roles, userRoles]);
 
   // Update the isAdmin function to also check for moderator role
   const isAdminOrMod = () => {
@@ -225,69 +244,316 @@ export default function QueuesPage() {
 
     fetchQueues();
 
-    // Update the SSE connection logic
-    const eventSource = new EventSource("/api/queues/events");
-    console.log("Establishing SSE connection");
-
-    eventSource.onmessage = (event) => {
+    // Fetch maps for manage maps functionality (only if user has permission)
+    const fetchMaps = async () => {
       try {
-        const data = JSON.parse(event.data);
+        const response = await fetch("/api/maps");
+        if (!response.ok) throw new Error("Failed to fetch maps");
+        const mapsData = await response.json();
+        setOriginalMaps(mapsData);
 
-        // Ignore heartbeat messages
-        if (data.type === "heartbeat") {
-          return;
-        }
+        // Create map variants (normal and small if applicable)
+        const mapsWithVariants: any[] = [];
+        for (const map of mapsData) {
+          mapsWithVariants.push({
+            ...map,
+            _id: `${map._id}-normal`,
+            name: map.name,
+            src: `/maps/map_${map.name.toLowerCase().replace(/\s+/g, "")}.png`,
+          });
 
-        // Update queues if we received an array
-        if (Array.isArray(data)) {
-          setQueues(data);
+          if (map.smallOption) {
+            mapsWithVariants.push({
+              ...map,
+              _id: `${map._id}-small`,
+              name: `${map.name} (Small)`,
+              src: `/maps/map_${map.name.toLowerCase().replace(/\s+/g, "")}.png`,
+            });
+          }
         }
+        setMaps(mapsWithVariants);
       } catch (error) {
-        console.error("Error parsing SSE data:", error);
+        console.error("Error fetching maps:", error);
       }
     };
 
-    eventSource.onerror = (error) => {
-      console.error("SSE connection error:", error);
-      // Attempt to reconnect after a delay
-      setTimeout(() => {
-        eventSource.close();
-        // The browser will automatically attempt to reconnect
-      }, 1000);
+    // Check if user can manage maps
+    const roles = userRoles.length > 0 ? userRoles : session?.user?.roles || [];
+    const isDeveloper = session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID || session?.user?.id === "238329746671271936";
+    const hasModeratorRole = roles.includes(SECURITY_CONFIG.ROLES.MODERATOR);
+    const hasAdminRole = roles.includes(SECURITY_CONFIG.ROLES.ADMIN);
+    const hasFounderRole = roles.includes(SECURITY_CONFIG.ROLES.FOUNDER);
+    const canManage = isDeveloper || isAdmin() || hasModeratorRole || hasAdminRole || hasFounderRole || session?.user?.isAdmin;
+
+    if (canManage) {
+      fetchMaps();
+    }
+
+    // Hybrid approach: SSE for real-time updates, polling as fallback
+    // This ensures users always have fresh data, even if SSE disconnects overnight
+    let eventSource: EventSource | null = null;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let pollingInterval: ReturnType<typeof setTimeout> | null = null;
+    let heartbeatCheckInterval: ReturnType<typeof setTimeout> | null = null;
+    let reconnectAttempts = 0;
+    let isPollingActive = false;
+    let lastHeartbeat = Date.now();
+    let isSSEConnected = false;
+    const maxReconnectAttempts = 5; // Reduced since we have polling fallback
+    const baseReconnectDelay = 2000; // Start with 2 seconds
+    const pollingIntervalMs = 10000; // Poll every 10 seconds as fallback
+    const heartbeatTimeoutMs = 30000; // If no heartbeat for 30s, assume SSE is dead
+
+    // Polling function - fetches queues via regular API
+    const pollQueues = async () => {
+      // Only poll if page is visible (save resources when tab is in background)
+      if (document.hidden) return;
+      
+      try {
+        const response = await fetch("/api/queues");
+        if (!response.ok) throw new Error("Failed to fetch queues");
+        const data = await response.json();
+        setQueues(data);
+      } catch (error) {
+        console.error("Error polling queues:", error);
+      }
     };
 
-    return () => {
-      console.log("Cleaning up SSE connection");
-      eventSource.close();
+    // Start polling fallback
+    const startPolling = () => {
+      if (isPollingActive) return; // Already polling
+      
+      isPollingActive = true;
+      // Poll immediately, then at intervals
+      pollQueues();
+      pollingInterval = setInterval(() => {
+        pollQueues();
+      }, pollingIntervalMs);
     };
-  }, [session?.user]);
+
+    // Stop polling fallback
+    const stopPolling = () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+      isPollingActive = false;
+    };
+
+    // Check if SSE is still alive by monitoring heartbeats
+    const startHeartbeatMonitoring = () => {
+      if (heartbeatCheckInterval) {
+        clearInterval(heartbeatCheckInterval);
+      }
+      
+      heartbeatCheckInterval = setInterval(() => {
+        const timeSinceLastHeartbeat = Date.now() - lastHeartbeat;
+        
+        // If no heartbeat for too long and SSE claims to be connected, start polling
+        if (timeSinceLastHeartbeat > heartbeatTimeoutMs && isSSEConnected && !isPollingActive) {
+          console.log("SSE appears dead (no heartbeat), starting polling fallback");
+          isSSEConnected = false;
+          startPolling();
+        }
+      }, 10000); // Check every 10 seconds
+    };
+
+    const connectSSE = () => {
+      // Close existing connection if any
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+
+      // Clear any pending reconnection
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+
+      try {
+        eventSource = new EventSource("/api/queues/events");
+
+        eventSource.onopen = () => {
+          // Connection established, reset reconnect attempts and stop polling
+          reconnectAttempts = 0;
+          isSSEConnected = true;
+          lastHeartbeat = Date.now();
+          stopPolling(); // SSE is working, no need for polling
+          startHeartbeatMonitoring(); // Start monitoring SSE health
+        };
+
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            // Update heartbeat timestamp (confirms connection is alive)
+            if (data.type === "heartbeat") {
+              lastHeartbeat = Date.now();
+              return;
+            }
+
+            // Handle error messages from server
+            if (data.type === "error") {
+              console.error("SSE server error:", data.message);
+              return;
+            }
+
+            // Update queues if we received an array
+            if (Array.isArray(data)) {
+              setQueues(data);
+            }
+          } catch (error) {
+            console.error("Error parsing SSE data:", error);
+          }
+        };
+
+        eventSource.onerror = (error) => {
+          // Mark SSE as disconnected
+          isSSEConnected = false;
+          
+          // Close the connection
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+
+          // If SSE fails multiple times, start polling as fallback
+          if (reconnectAttempts >= 2 && !isPollingActive) {
+            startPolling(); // Start polling fallback after 2 failed attempts
+          }
+
+          // Attempt to reconnect with exponential backoff
+          if (reconnectAttempts < maxReconnectAttempts) {
+            const delay = Math.min(
+              baseReconnectDelay * Math.pow(2, reconnectAttempts),
+              30000 // Max 30 seconds
+            );
+            
+            reconnectAttempts++;
+            reconnectTimeout = setTimeout(() => {
+              connectSSE();
+            }, delay);
+          } else {
+            // Max reconnection attempts reached, rely on polling
+            if (!isPollingActive) {
+              startPolling();
+            }
+          }
+        };
+      } catch (error) {
+        console.error("Error creating SSE connection:", error);
+        // Retry connection, but start polling if this keeps failing
+        if (reconnectAttempts >= 2 && !isPollingActive) {
+          startPolling();
+        }
+        
+        if (reconnectAttempts < maxReconnectAttempts) {
+          const delay = Math.min(
+            baseReconnectDelay * Math.pow(2, reconnectAttempts),
+            30000
+          );
+          reconnectAttempts++;
+          reconnectTimeout = setTimeout(() => {
+            connectSSE();
+          }, delay);
+        } else if (!isPollingActive) {
+          startPolling();
+        }
+      }
+    };
+
+    // Start the SSE connection
+    // If it fails, polling will kick in automatically
+    connectSSE();
+
+    // Start heartbeat monitoring
+    startHeartbeatMonitoring();
+
+    // Handle page visibility changes - pause polling when tab is hidden
+    const handleVisibilityChange = () => {
+      if (document.hidden && isPollingActive) {
+        // Page hidden, but keep polling interval (it will skip if hidden)
+        // This way we resume immediately when page becomes visible
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
+      }
+      if (heartbeatCheckInterval) {
+        clearInterval(heartbeatCheckInterval);
+        heartbeatCheckInterval = null;
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      stopPolling();
+    };
+  }, [session?.user, userRoles, isAdmin]);
 
   const handleJoinQueue = async (queueId: string) => {
     if (!session?.user) return;
 
-    // Check if already joining a queue
-    if (joiningQueue) return;
+    // Prevent spam: Check if there's a recent action on this queue (within 500ms)
+    const now = Date.now();
+    const lastAction = lastActionTime[queueId] || 0;
+    if (now - lastAction < 500) {
+      return; // Too soon, ignore the click
+    }
 
-    // Set the joining state to prevent multiple clicks
+    // Check if already processing an operation for this queue
+    if (pendingOperations.has(queueId) || joiningQueue || leavingQueue) {
+      return;
+    }
+
+    // Check if player is already in this queue
+    const queueToJoin = queues.find((q) => q._id === queueId);
+    const alreadyInQueue = queueToJoin?.players.some(
+      (p: QueuePlayer) => p.discordId === session.user.id
+    );
+
+    if (alreadyInQueue) {
+      toast({
+        title: "Already in queue",
+        description: "You are already in this queue",
+        duration: 2000,
+      });
+      return;
+    }
+
+    // Mark operation as pending
+    setPendingOperations((prev) => new Set(prev).add(queueId));
     setJoiningQueue(queueId);
+    setLastActionTime((prev) => ({ ...prev, [queueId]: now }));
+
+    // Optimistic update: Add player to queue immediately
+    const optimisticPlayer = {
+      discordId: session.user.id,
+      discordUsername: session.user.name || "",
+      discordNickname: session.user.nickname || session.user.name || "",
+      discordProfilePicture: session.user.image || "",
+      joinedAt: Date.now(),
+      elo: 0, // Will be updated by server response
+    };
+
+    setQueues((prevQueues) =>
+      prevQueues.map((q) =>
+        q._id === queueId
+          ? {
+              ...q,
+              players: [...(q.players || []), optimisticPlayer],
+            }
+          : q
+      )
+    );
 
     try {
-      // First check if player is already in this queue
-      const queueToJoin = queues.find((q) => q._id === queueId);
-      const alreadyInQueue = queueToJoin?.players.some(
-        (p: QueuePlayer) => p.discordId === session.user.id
-      );
-
-      if (alreadyInQueue) {
-        toast({
-          title: "Already in queue",
-          description: "You are already in this queue",
-          duration: 3000,
-        });
-        setJoiningQueue(null);
-        return;
-      }
-
       const response = await fetch(`/api/queues/${queueId}/join`, {
         method: "POST",
       });
@@ -297,15 +563,27 @@ export default function QueuesPage() {
         throw new Error(data.error || "Failed to join queue");
       }
 
-      // Instead of optimistically updating the UI, we'll wait for the SSE update
-      // This prevents the duplicate entry issue
-
+      // Success - SSE will update with correct data, but optimistic update already shown
       toast({
         title: "Success",
         description: "Successfully joined queue",
         duration: 2000,
       });
     } catch (error) {
+      // Revert optimistic update on error
+      setQueues((prevQueues) =>
+        prevQueues.map((q) =>
+          q._id === queueId
+            ? {
+                ...q,
+                players: (q.players || []).filter(
+                  (p: QueuePlayer) => p.discordId !== session.user.id
+                ),
+              }
+            : q
+        )
+      );
+
       console.error("Error joining queue:", error);
       toast({
         title: "Error",
@@ -315,13 +593,67 @@ export default function QueuesPage() {
         duration: 2000,
       });
     } finally {
-      // Reset joining state after a short delay to prevent spam clicks
-      setTimeout(() => setJoiningQueue(null), 1000);
+      // Clear pending state after a delay
+      setTimeout(() => {
+        setJoiningQueue(null);
+        setPendingOperations((prev) => {
+          const next = new Set(prev);
+          next.delete(queueId);
+          return next;
+        });
+      }, 500);
     }
   };
 
   const handleLeaveQueue = async (queueId: string) => {
     if (!session?.user) return;
+
+    // Prevent spam: Check if there's a recent action on this queue (within 500ms)
+    const now = Date.now();
+    const lastAction = lastActionTime[queueId] || 0;
+    if (now - lastAction < 500) {
+      return; // Too soon, ignore the click
+    }
+
+    // Check if already processing an operation for this queue
+    if (pendingOperations.has(queueId) || joiningQueue || leavingQueue) {
+      return;
+    }
+
+    // Check if player is actually in this queue
+    const queueToLeave = queues.find((q) => q._id === queueId);
+    const isInQueue = queueToLeave?.players.some(
+      (p: QueuePlayer) => p.discordId === session.user.id
+    );
+
+    if (!isInQueue) {
+      toast({
+        title: "Not in queue",
+        description: "You are not in this queue",
+        duration: 2000,
+      });
+      return;
+    }
+
+    // Mark operation as pending
+    setPendingOperations((prev) => new Set(prev).add(queueId));
+    setLeavingQueue(queueId);
+    setLastActionTime((prev) => ({ ...prev, [queueId]: now }));
+
+    // Optimistic update: Remove player from queue immediately
+    const previousQueues = queues;
+    setQueues((prevQueues) =>
+      prevQueues.map((q) =>
+        q._id === queueId
+          ? {
+              ...q,
+              players: (q.players || []).filter(
+                (p: QueuePlayer) => p.discordId !== session.user.id
+              ),
+            }
+          : q
+      )
+    );
 
     try {
       const response = await fetch(`/api/queues/${queueId}/leave`, {
@@ -332,12 +664,16 @@ export default function QueuesPage() {
         throw new Error("Failed to leave queue");
       }
 
+      // Success - SSE will update with correct data, but optimistic update already shown
       toast({
         title: "Success",
         description: "Successfully left queue",
         duration: 2000,
       });
     } catch (error) {
+      // Revert optimistic update on error
+      setQueues(previousQueues);
+
       console.error("Error leaving queue:", error);
       toast({
         title: "Error",
@@ -347,7 +683,15 @@ export default function QueuesPage() {
         duration: 2000,
       });
     } finally {
-      setJoiningQueue(null);
+      // Clear pending state after a delay
+      setTimeout(() => {
+        setLeavingQueue(null);
+        setPendingOperations((prev) => {
+          const next = new Set(prev);
+          next.delete(queueId);
+          return next;
+        });
+      }, 500);
     }
   };
 
@@ -812,6 +1156,228 @@ export default function QueuesPage() {
     );
   };
 
+  // Check if user can manage maps (developer, admin, moderator, or founder)
+  const canManageMaps = () => {
+    if (!session?.user) return false;
+    const roles = userRoles || session.user.roles || [];
+    const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID || session.user.id === "238329746671271936";
+    const hasModeratorRole = roles.includes(SECURITY_CONFIG.ROLES.MODERATOR);
+    const hasAdminRole = roles.includes(SECURITY_CONFIG.ROLES.ADMIN);
+    const hasFounderRole = roles.includes(SECURITY_CONFIG.ROLES.FOUNDER);
+    
+    return (
+      isDeveloper ||
+      isAdmin() ||
+      hasModeratorRole ||
+      hasAdminRole ||
+      hasFounderRole ||
+      session.user.isAdmin
+    );
+  };
+
+  // Manage Maps functions
+  const toggleMapSelection = (queueId: string, mapId: string) => {
+    setSelectedMaps((prev) => {
+      const current = prev[queueId] || [];
+      const updated = current.includes(mapId)
+        ? current.filter((id) => id !== mapId)
+        : [...current, mapId];
+      return {
+        ...prev,
+        [queueId]: Array.from(new Set(updated)),
+      };
+    });
+  };
+
+  const selectAllMaps = (queueId: string) => {
+    setSelectedMaps((prev) => ({
+      ...prev,
+      [queueId]: maps.map((m) => m._id),
+    }));
+  };
+
+  const deselectAllMaps = (queueId: string) => {
+    setSelectedMaps((prev) => ({
+      ...prev,
+      [queueId]: [],
+    }));
+  };
+
+  // Initialize selected maps when managingMapsQueue changes
+  useEffect(() => {
+    if (managingMapsQueue && maps.length > 0) {
+      // Fetch the latest queue data to ensure we have the current mapPool
+      const fetchQueueData = async () => {
+        try {
+          const response = await fetch(`/api/admin/queues/${managingMapsQueue._id}/map-pool`);
+          if (response.ok) {
+            const queueData = await response.json();
+            const currentQueue = { ...managingMapsQueue, mapPool: queueData.mapPool };
+            
+            // Always re-initialize selected maps from queue mapPool
+            // This ensures the UI reflects the current database state
+            if (
+              currentQueue.mapPool &&
+              Array.isArray(currentQueue.mapPool) &&
+              currentQueue.mapPool.length > 0
+            ) {
+              // Convert map objects to variant IDs for UI state
+              const variantIds: string[] = [];
+              currentQueue.mapPool.forEach((mapItem: any) => {
+                // Handle both old format (variant IDs) and new format (objects)
+                if (typeof mapItem === "string") {
+                  // Backward compatibility: old format with variant IDs
+                  if (maps.some((m) => m._id === mapItem)) {
+                    variantIds.push(mapItem);
+                  }
+                } else if (mapItem && mapItem._id) {
+                  // New format: map object
+                  const variantId = mapItem.isSmall
+                    ? `${mapItem._id}-small`
+                    : `${mapItem._id}-normal`;
+                  // Verify the variant exists in our maps list
+                  if (maps.some((m) => m._id === variantId)) {
+                    variantIds.push(variantId);
+                  }
+                }
+              });
+              setSelectedMaps((prev) => ({
+                ...prev,
+                [managingMapsQueue._id]: Array.from(new Set(variantIds)),
+              }));
+            } else if (!currentQueue.mapPool || currentQueue.mapPool.length === 0) {
+              // If no map pool, initialize with empty selection (not all maps)
+              setSelectedMaps((prev) => ({
+                ...prev,
+                [managingMapsQueue._id]: [],
+              }));
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching queue map pool:", error);
+          // Fallback to using the queue object's mapPool if available
+          if (managingMapsQueue.mapPool && Array.isArray(managingMapsQueue.mapPool)) {
+            const variantIds: string[] = [];
+            managingMapsQueue.mapPool.forEach((mapItem: any) => {
+              if (typeof mapItem === "string") {
+                if (maps.some((m) => m._id === mapItem)) {
+                  variantIds.push(mapItem);
+                }
+              } else if (mapItem && mapItem._id) {
+                const variantId = mapItem.isSmall
+                  ? `${mapItem._id}-small`
+                  : `${mapItem._id}-normal`;
+                if (maps.some((m) => m._id === variantId)) {
+                  variantIds.push(variantId);
+                }
+              }
+            });
+            setSelectedMaps((prev) => ({
+              ...prev,
+              [managingMapsQueue._id]: Array.from(new Set(variantIds)),
+            }));
+          }
+        }
+      };
+
+      fetchQueueData();
+    }
+  }, [managingMapsQueue, maps]);
+
+  const handleSaveMaps = async (queue: any): Promise<void> => {
+    if (saving[queue._id]) return;
+
+    try {
+      setSaving((prev) => ({ ...prev, [queue._id]: true }));
+
+      const selected = selectedMaps[queue._id] || [];
+      if (selected.length === 0) {
+        throw new Error("Please select at least one map");
+      }
+
+      // Convert selected variant IDs to map objects for storage
+      const mapPoolItems: any[] = [];
+      const processedVariants = new Set<string>();
+
+      selected.forEach((variantId: string) => {
+        if (processedVariants.has(variantId)) return;
+
+        let baseId: string;
+        let isSmall: boolean;
+
+        if (variantId.includes("-normal")) {
+          baseId = variantId.replace("-normal", "");
+          isSmall = false;
+        } else if (variantId.includes("-small")) {
+          baseId = variantId.replace("-small", "");
+          isSmall = true;
+        } else {
+          baseId = variantId;
+          isSmall = false;
+        }
+
+        const map = originalMaps.find((m) => m._id === baseId);
+        if (!map) return;
+
+        if (isSmall && !map.smallOption) {
+          return;
+        }
+
+        mapPoolItems.push({
+          _id: baseId,
+          name: isSmall ? `${map.name} (Small)` : map.name,
+          src: map.src,
+          gameMode: map.gameMode,
+          isSmall: isSmall,
+        });
+
+        processedVariants.add(variantId);
+      });
+
+      const response = await fetch(`/api/admin/queues/${queue._id}/map-pool`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mapPool: mapPoolItems.length > 0 ? mapPoolItems : null,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || error.message || "Failed to save");
+      }
+
+      // Refetch queue to update state
+      const queueResponse = await fetch("/api/queues");
+      if (queueResponse.ok) {
+        const queuesData = await queueResponse.json();
+        setQueues(queuesData);
+      }
+
+      toast({
+        title: "Success",
+        description: `Map pool updated for ${queue.gameType} ${queue.eloTier}`,
+      });
+
+      setMapsDialogOpen((prev) => ({
+        ...prev,
+        [queue._id]: false,
+      }));
+      setManagingMapsQueue(null);
+    } catch (error: any) {
+      console.error("Error saving map pool:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save map pool",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving((prev) => ({ ...prev, [queue._id]: false }));
+    }
+  };
+
   // First, update the handleDeleteQueue function to include more information
   const handleDeleteQueue = async (
     queueId: string,
@@ -1214,19 +1780,43 @@ export default function QueuesPage() {
                                 <Button
                                   variant="destructive"
                                   onClick={() => handleLeaveQueue(queue._id)}
-                                  disabled={joiningQueue === queue._id}
+                                  disabled={
+                                    joiningQueue === queue._id ||
+                                    leavingQueue === queue._id ||
+                                    pendingOperations.has(queue._id)
+                                  }
                                   size="sm"
                                   className="shadow-md transition-shadow hover:shadow-lg"
                                 >
-                                  Leave
+                                  {leavingQueue === queue._id ||
+                                  pendingOperations.has(queue._id) ? (
+                                    <>
+                                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                      Leaving...
+                                    </>
+                                  ) : (
+                                    "Leave"
+                                  )}
                                 </Button>
                               ) : (
                                 <Button
                                   onClick={() => handleJoinQueue(queue._id)}
-                                  disabled={joiningQueue === queue._id}
+                                  disabled={
+                                    joiningQueue === queue._id ||
+                                    leavingQueue === queue._id ||
+                                    pendingOperations.has(queue._id)
+                                  }
                                   size="sm"
                                 >
-                                  Join Queue
+                                  {joiningQueue === queue._id ||
+                                  pendingOperations.has(queue._id) ? (
+                                    <>
+                                      <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                      Joining...
+                                    </>
+                                  ) : (
+                                    "Join Queue"
+                                  )}
                                 </Button>
                               )}
                             </div>
@@ -1457,7 +2047,11 @@ export default function QueuesPage() {
                                       onClick={() =>
                                         handleFillQueue(queue._id, true)
                                       }
-                                      disabled={joiningQueue === queue._id}
+                                      disabled={
+                                    joiningQueue === queue._id ||
+                                    leavingQueue === queue._id ||
+                                    pendingOperations.has(queue._id)
+                                  }
                                       className="w-full"
                                     >
                                       Fill Queue
@@ -1619,21 +2213,45 @@ export default function QueuesPage() {
                                         onClick={() =>
                                           handleLeaveQueue(queue._id)
                                         }
-                                        disabled={joiningQueue === queue._id}
+                                        disabled={
+                                          joiningQueue === queue._id ||
+                                          leavingQueue === queue._id ||
+                                          pendingOperations.has(queue._id)
+                                        }
                                         size="sm"
                                       >
-                                        Leave
+                                        {leavingQueue === queue._id ||
+                                        pendingOperations.has(queue._id) ? (
+                                          <>
+                                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                            Leaving...
+                                          </>
+                                        ) : (
+                                          "Leave"
+                                        )}
                                       </Button>
                                     ) : (
                                       <Button
                                         onClick={() =>
                                           handleJoinQueue(queue._id)
                                         }
-                                        disabled={joiningQueue === queue._id}
+                                        disabled={
+                                          joiningQueue === queue._id ||
+                                          leavingQueue === queue._id ||
+                                          pendingOperations.has(queue._id)
+                                        }
                                         size="sm"
                                         className="shadow-md transition-shadow hover:shadow-lg"
                                       >
-                                        Join Queue
+                                        {joiningQueue === queue._id ||
+                                        pendingOperations.has(queue._id) ? (
+                                          <>
+                                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                                            Joining...
+                                          </>
+                                        ) : (
+                                          "Join Queue"
+                                        )}
                                       </Button>
                                     )}
                                   </div>
@@ -1916,6 +2534,20 @@ export default function QueuesPage() {
                               {isDeveloperOrAdmin() && (
                                 <>
                                   <ContextMenuSeparator />
+                                  {canManageMaps() && (
+                                    <ContextMenuItem
+                                      onClick={() => {
+                                        setManagingMapsQueue(queue);
+                                        setMapsDialogOpen((prev) => ({
+                                          ...prev,
+                                          [queue._id]: true,
+                                        }));
+                                      }}
+                                    >
+                                      <MapPin className="mr-2 w-4 h-4" />
+                                      Manage Maps
+                                    </ContextMenuItem>
+                                  )}
                                   <ContextMenuSub>
                                     <ContextMenuSubTrigger>
                                       <UserMinus className="mr-2 w-4 h-4" />
@@ -2043,6 +2675,150 @@ export default function QueuesPage() {
           </pre>
         </div>
       )}
+
+      {/* Manage Maps Dialog */}
+      <Dialog
+        open={
+          managingMapsQueue
+            ? mapsDialogOpen[managingMapsQueue._id] || false
+            : false
+        }
+        onOpenChange={(open) => {
+          if (!open && managingMapsQueue) {
+            setMapsDialogOpen((prev) => ({
+              ...prev,
+              [managingMapsQueue._id]: false,
+            }));
+            setManagingMapsQueue(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle>Manage Map Pool</DialogTitle>
+            <DialogDescription>
+              Select which maps are available for {managingMapsQueue?.gameType}{" "}
+              {managingMapsQueue?.eloTier}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex overflow-hidden flex-col flex-1 space-y-4">
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 text-xs"
+                onClick={() =>
+                  managingMapsQueue && selectAllMaps(managingMapsQueue._id)
+                }
+              >
+                Select All
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 text-xs"
+                onClick={() =>
+                  managingMapsQueue && deselectAllMaps(managingMapsQueue._id)
+                }
+              >
+                Deselect All
+              </Button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 pr-2 space-y-2">
+              {managingMapsQueue &&
+                maps.map((map) => {
+                  const isSelected = (
+                    selectedMaps[managingMapsQueue._id] || []
+                  ).includes(map._id);
+                  return (
+                    <div
+                      key={map._id}
+                      className={cn(
+                        "flex gap-3 items-center p-2 rounded-lg border transition-colors",
+                        isSelected
+                          ? "bg-primary/10 border-primary/50"
+                          : "border-transparent bg-muted/50"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() =>
+                          managingMapsQueue &&
+                          toggleMapSelection(managingMapsQueue._id, map._id)
+                        }
+                      />
+                      <div className="overflow-hidden relative w-12 h-12 rounded shrink-0">
+                        <Image
+                          src={map.src}
+                          alt={map.name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {map.name}
+                        </p>
+                        <div className="flex gap-2 items-center text-xs text-muted-foreground">
+                          <span>{map.gameMode}</span>
+                          {map.rankedMap && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Ranked
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+          <DialogFooter className="gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (managingMapsQueue) {
+                  setMapsDialogOpen((prev) => ({
+                    ...prev,
+                    [managingMapsQueue._id]: false,
+                  }));
+                  setManagingMapsQueue(null);
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (managingMapsQueue && !saving[managingMapsQueue._id]) {
+                  try {
+                    await handleSaveMaps(managingMapsQueue);
+                  } catch (error) {
+                    // Error already handled in handleSaveMaps
+                  }
+                }
+              }}
+              disabled={
+                managingMapsQueue ? saving[managingMapsQueue._id] : false
+              }
+            >
+              {managingMapsQueue && saving[managingMapsQueue._id] ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 w-4 h-4" />
+                  Save Map Pool
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </FeatureGate>
   );
 }

@@ -21,6 +21,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface PlayerHistoryProps {
   playerId: string;
@@ -32,8 +33,10 @@ interface HistoryItem {
   type: string;
   reason: string;
   rule?: string;
+  moderatorId?: string;
   moderatorName: string;
   moderatorNickname?: string;
+  moderatorProfilePicture?: string | null;
   timestamp: Date | string;
   expiry?: Date | string;
 }
@@ -65,25 +68,74 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
       const playerData = await playerResponse.json();
       setPlayer(playerData);
 
-      console.log("Player data:", playerData);
-
       // Create history from player document only
       let combinedHistory: HistoryItem[] = [];
 
+      // Collect all moderator IDs to fetch Discord info
+      const moderatorIds = new Set<string>();
+      
       // Add warnings from player document
       if (playerData.warnings && playerData.warnings.length > 0) {
-        console.log("Player warnings:", playerData.warnings);
 
+        playerData.warnings.forEach((warning: any) => {
+          if (warning.moderatorId) {
+            moderatorIds.add(warning.moderatorId);
+          }
+        });
+      }
+
+      // Add bans from player document
+      if (playerData.bans && playerData.bans.length > 0) {
+
+        playerData.bans.forEach((ban: any) => {
+          if (ban.moderatorId) {
+            moderatorIds.add(ban.moderatorId);
+          }
+        });
+      }
+
+      // Fetch Discord user info for all moderators
+      const moderatorDiscordInfo = new Map<string, any>();
+      if (moderatorIds.size > 0) {
+        try {
+          const response = await fetch(
+            `/api/discord/user-info-batch?ids=${Array.from(moderatorIds).join(",")}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            data.forEach((info: any) => {
+              if (info.discordId) {
+                moderatorDiscordInfo.set(info.discordId, info);
+              }
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching moderator Discord info:", error);
+        }
+      }
+
+      // Add warnings from player document
+      if (playerData.warnings && playerData.warnings.length > 0) {
         const warningHistory: HistoryItem[] = playerData.warnings.map(
-          (warning: any) => ({
-            _id: warning._id || `warning-${Date.now()}-${Math.random()}`,
-            type: "warning",
-            reason: warning.reason || "No reason provided",
-            rule: warning.rule || "",
-            moderatorName: warning.moderatorName || "Unknown",
-            moderatorNickname: warning.moderatorNickname || "",
-            timestamp: warning.timestamp || warning.createdAt || new Date(),
-          })
+          (warning: any) => {
+            const modInfo = warning.moderatorId
+              ? moderatorDiscordInfo.get(warning.moderatorId)
+              : null;
+
+            return {
+              _id: warning._id || `warning-${Date.now()}-${Math.random()}`,
+              type: "warning",
+              reason: warning.reason || "No reason provided",
+              rule: warning.rule || "",
+              moderatorId: warning.moderatorId,
+              moderatorName: modInfo
+                ? modInfo.nickname || modInfo.username
+                : warning.moderatorName || "Unknown",
+              moderatorNickname: modInfo?.nickname,
+              moderatorProfilePicture: modInfo?.profilePicture || null,
+              timestamp: warning.timestamp || warning.createdAt || new Date(),
+            };
+          }
         );
 
         combinedHistory = [...combinedHistory, ...warningHistory];
@@ -91,18 +143,26 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
 
       // Add bans from player document
       if (playerData.bans && playerData.bans.length > 0) {
-        console.log("Player bans:", playerData.bans);
+        const banHistory: HistoryItem[] = playerData.bans.map((ban: any) => {
+          const modInfo = ban.moderatorId
+            ? moderatorDiscordInfo.get(ban.moderatorId)
+            : null;
 
-        const banHistory: HistoryItem[] = playerData.bans.map((ban: any) => ({
-          _id: ban._id || `ban-${Date.now()}-${Math.random()}`,
-          type: ban.permanent ? "perm_ban" : "temp_ban",
-          reason: ban.reason || "No reason provided",
-          rule: ban.rule || "",
-          moderatorName: ban.moderatorName || "Unknown",
-          moderatorNickname: ban.moderatorNickname || "",
-          timestamp: ban.timestamp || ban.createdAt || new Date(),
-          expiry: ban.expiry,
-        }));
+          return {
+            _id: ban._id || `ban-${Date.now()}-${Math.random()}`,
+            type: ban.permanent ? "perm_ban" : "temp_ban",
+            reason: ban.reason || "No reason provided",
+            rule: ban.rule || "",
+            moderatorId: ban.moderatorId,
+            moderatorName: modInfo
+              ? modInfo.nickname || modInfo.username
+              : ban.moderatorName || "Unknown",
+            moderatorNickname: modInfo?.nickname,
+            moderatorProfilePicture: modInfo?.profilePicture || null,
+            timestamp: ban.timestamp || ban.createdAt || new Date(),
+            expiry: ban.expiry,
+          };
+        });
 
         combinedHistory = [...combinedHistory, ...banHistory];
       }
@@ -114,7 +174,6 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
         return dateB - dateA;
       });
 
-      console.log("Combined history from player document:", combinedHistory);
       setHistory(combinedHistory);
     } catch (err) {
       console.error("Error fetching player history:", err);
@@ -227,9 +286,22 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
                         {item.rule || "N/A"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
-                        {item.moderatorNickname ||
-                          item.moderatorName ||
-                          "Unknown"}
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarImage
+                              src={item.moderatorProfilePicture || undefined}
+                              alt={item.moderatorName}
+                            />
+                            <AvatarFallback>
+                              {item.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>
+                            {item.moderatorNickname ||
+                              item.moderatorName ||
+                              "Unknown"}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {item.timestamp

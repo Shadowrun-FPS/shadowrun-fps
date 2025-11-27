@@ -5,6 +5,7 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { notifyTeamJoinRequest } from "@/lib/discord-bot-api";
 
 export async function POST(
   request: NextRequest,
@@ -124,6 +125,20 @@ export async function POST(
         requestId: joinRequestResult.insertedId.toString(),
       },
     });
+
+    // Send Discord DM notification via bot API (primary method)
+    // Change streams will act as fallback if API fails (with duplicate prevention)
+    try {
+      await notifyTeamJoinRequest(
+        teamId,
+        userId,
+        session.user.nickname || userName,
+        team.name,
+        team.captain.discordId
+      );
+    } catch (error) {
+      // Don't throw - change stream will catch it as fallback with duplicate prevention
+    }
 
     return NextResponse.json({
       success: true,

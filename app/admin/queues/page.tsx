@@ -15,7 +15,13 @@ import {
   Ban,
   Settings,
 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -62,19 +68,36 @@ interface Map {
   src: string;
 }
 
+interface MapPoolItem {
+  _id: string; // Base map ObjectId for validation
+  name: string;
+  src: string;
+  gameMode: string;
+  isSmall: boolean; // true for small variant, false for normal
+}
+
 export default function AdminQueuesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
   const [queues, setQueues] = useState<Queue[]>([]);
   const [maps, setMaps] = useState<Map[]>([]);
+  const [originalMaps, setOriginalMaps] = useState<Map[]>([]); // Store original maps without variants
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
-  const [selectedMaps, setSelectedMaps] = useState<Record<string, string[]>>({});
-  const [editDialogOpen, setEditDialogOpen] = useState<Record<string, boolean>>({});
-  const [mapsDialogOpen, setMapsDialogOpen] = useState<Record<string, boolean>>({});
+  const [selectedMaps, setSelectedMaps] = useState<Record<string, string[]>>(
+    {}
+  );
+  const [editDialogOpen, setEditDialogOpen] = useState<Record<string, boolean>>(
+    {}
+  );
+  const [mapsDialogOpen, setMapsDialogOpen] = useState<Record<string, boolean>>(
+    {}
+  );
   const [editingQueue, setEditingQueue] = useState<Queue | null>(null);
-  const [managingMapsQueue, setManagingMapsQueue] = useState<Queue | null>(null);
+  const [managingMapsQueue, setManagingMapsQueue] = useState<Queue | null>(
+    null
+  );
   const [queueName, setQueueName] = useState("");
   const [queueTier, setQueueTier] = useState("");
   const [minElo, setMinElo] = useState("");
@@ -93,7 +116,8 @@ export default function AdminQueuesPage() {
       const isDeveloper =
         session.user.id === "238329746671271936" ||
         session.user.id === DEVELOPER_DISCORD_ID;
-      const isAdmin = session.user.roles?.includes("admin") || session.user.isAdmin;
+      const isAdmin =
+        session.user.roles?.includes("admin") || session.user.isAdmin;
       const isFounder = session.user.roles?.includes("founder");
 
       if (!isDeveloper && !isAdmin && !isFounder) {
@@ -138,19 +162,43 @@ export default function AdminQueuesPage() {
               ...map,
               _id: `${map._id}-small`,
               name: `${map.name} (Small)`,
-              src: `/maps/map_${map.name.toLowerCase().replace(/\s+/g, "")}.png`,
+              src: `/maps/map_${map.name
+                .toLowerCase()
+                .replace(/\s+/g, "")}.png`,
             });
           }
         }
 
         setMaps(mapsWithVariants);
+        setOriginalMaps(mapsData); // Store original maps for variant checking
         setQueues(queuesData);
 
         // Initialize selected maps from queue map pools
+        // mapPool now contains map objects with _id, name, src, gameMode, isSmall
         const initialSelected: Record<string, string[]> = {};
         queuesData.forEach((queue: Queue) => {
           if (queue.mapPool && Array.isArray(queue.mapPool)) {
-            initialSelected[queue._id] = queue.mapPool;
+            // Convert map objects back to variant IDs for UI state
+            const variantIds: string[] = [];
+            queue.mapPool.forEach((mapItem: any) => {
+              // Handle both old format (variant IDs) and new format (objects)
+              if (typeof mapItem === "string") {
+                // Backward compatibility: old format with variant IDs
+                if (mapsWithVariants.some((m) => m._id === mapItem)) {
+                  variantIds.push(mapItem);
+                }
+              } else if (mapItem && mapItem._id) {
+                // New format: map object
+                const variantId = mapItem.isSmall
+                  ? `${mapItem._id}-small`
+                  : `${mapItem._id}-normal`;
+                // Verify the variant exists in our maps list
+                if (mapsWithVariants.some((m) => m._id === variantId)) {
+                  variantIds.push(variantId);
+                }
+              }
+            });
+            initialSelected[queue._id] = Array.from(new Set(variantIds));
           } else {
             // If no map pool, select all maps by default
             initialSelected[queue._id] = mapsWithVariants.map((m) => m._id);
@@ -177,17 +225,24 @@ export default function AdminQueuesPage() {
   const toggleMapSelection = (queueId: string, mapId: string) => {
     setSelectedMaps((prev) => {
       const current = prev[queueId] || [];
-      if (current.includes(mapId)) {
-        return {
-          ...prev,
-          [queueId]: current.filter((id) => id !== mapId),
-        };
-      } else {
-        return {
-          ...prev,
-          [queueId]: [...current, mapId],
-        };
-      }
+
+      // Extract base ID from variant ID
+      const baseId = mapId.replace(/-normal$/, "").replace(/-small$/, "");
+
+      // If selecting a variant, check if the other variant is already selected
+      // If so, we might want to keep both or handle it differently
+      // For now, we'll allow both variants to be selected (they'll deduplicate on save)
+
+      // Remove duplicates and toggle the selection
+      const updated = current.includes(mapId)
+        ? current.filter((id) => id !== mapId)
+        : [...current, mapId];
+
+      // Ensure no duplicates
+      return {
+        ...prev,
+        [queueId]: Array.from(new Set(updated)),
+      };
     });
   };
 
@@ -206,50 +261,205 @@ export default function AdminQueuesPage() {
   };
 
   const handleSave = async (queue: Queue): Promise<void> => {
+    // Prevent double-clicks and rapid successive saves
+    if (saving[queue._id]) {
+      return;
+    }
+
     try {
       setSaving((prev) => ({ ...prev, [queue._id]: true }));
 
       const selected = selectedMaps[queue._id] || [];
-      
-      // Convert map IDs back to original map IDs (remove -normal/-small suffix)
-      const mapIds = selected.map((id) => {
-        if (id.includes("-normal")) {
-          return id.replace("-normal", "");
-        } else if (id.includes("-small")) {
-          return id.replace("-small", "");
-        }
-        return id;
-      });
 
-      // Remove duplicates
-      const uniqueMapIds = Array.from(new Set(mapIds));
-
-      const response = await fetch(
-        `/api/admin/queues/${queue._id}/map-pool`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mapPool: uniqueMapIds.length > 0 ? uniqueMapIds : null,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to save");
+      if (selected.length === 0) {
+        throw new Error("Please select at least one map");
       }
 
-      // Update local state
-      setQueues((prev) =>
-        prev.map((q) =>
-          q._id === queue._id
-            ? { ...q, mapPool: uniqueMapIds.length > 0 ? uniqueMapIds : null }
-            : q
-        )
-      );
+      // Convert selected variant IDs to map objects for storage
+      // Each variant ID is like "baseId-normal" or "baseId-small"
+      const mapPoolItems: MapPoolItem[] = [];
+      const processedVariants = new Set<string>(); // Track to avoid duplicates
+
+      selected.forEach((variantId: string) => {
+        if (processedVariants.has(variantId)) return; // Skip duplicates
+
+        // Extract base ID and variant type
+        let baseId: string;
+        let isSmall: boolean;
+
+        if (variantId.includes("-normal")) {
+          baseId = variantId.replace("-normal", "");
+          isSmall = false;
+        } else if (variantId.includes("-small")) {
+          baseId = variantId.replace("-small", "");
+          isSmall = true;
+        } else {
+          // Fallback: treat as normal variant
+          baseId = variantId;
+          isSmall = false;
+        }
+
+        // Find the map in originalMaps
+        const map = originalMaps.find((m) => m._id === baseId);
+        if (!map) return; // Skip if map not found
+
+        // Validate small variant
+        if (isSmall && !map.smallOption) {
+          return; // Skip if map doesn't support small variant
+        }
+
+        // Create map pool item
+        mapPoolItems.push({
+          _id: baseId, // Keep ObjectId for validation
+          name: isSmall ? `${map.name} (Small)` : map.name,
+          src: map.src,
+          gameMode: map.gameMode,
+          isSmall: isSmall,
+        });
+
+        processedVariants.add(variantId);
+      });
+
+      // Retry logic for rate limiting
+      let response: Response | null = null;
+      let retries = 3;
+      let lastError: Error | null = null;
+
+      while (retries > 0) {
+        try {
+          response = await fetch(`/api/admin/queues/${queue._id}/map-pool`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              mapPool: mapPoolItems.length > 0 ? mapPoolItems : null,
+            }),
+          });
+
+          if (response.ok) {
+            break; // Success, exit retry loop
+          }
+
+          // Handle rate limiting
+          if (response.status === 429) {
+            const errorData = await response.json().catch(() => ({}));
+            const retryAfter = response.headers.get("Retry-After");
+            const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 2000; // Default 2 seconds
+
+            if (retries > 1) {
+              // Wait before retrying
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              retries--;
+              continue;
+            } else {
+              // Last retry failed
+              throw new Error(
+                errorData.message ||
+                  `Rate limit exceeded. Please wait ${
+                    retryAfter || "a few"
+                  } seconds and try again.`
+              );
+            }
+          }
+
+          // Other errors
+          const error = await response.json();
+          throw new Error(error.error || error.message || "Failed to save");
+        } catch (error: any) {
+          lastError = error;
+          if (error.message?.includes("Rate limit") && retries > 1) {
+            // Wait before retrying rate limit errors
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+            retries--;
+            continue;
+          }
+          throw error;
+        }
+      }
+
+      if (!response || !response.ok) {
+        if (lastError) {
+          throw lastError;
+        }
+        const error = await response?.json().catch(() => ({}));
+        throw new Error(error.error || error.message || "Failed to save");
+      }
+
+      // Get the response data to confirm what was saved
+      const responseData = await response.json();
+
+      // Refetch the queue data to ensure we have the latest state from the database
+      try {
+        const queueResponse = await fetch(
+          `/api/admin/queues/${queue._id}/map-pool`
+        );
+        if (queueResponse.ok) {
+          const queueData = await queueResponse.json();
+
+          // Update local state with the refetched data
+          setQueues((prev) =>
+            prev.map((q) =>
+              q._id === queue._id
+                ? { ...q, mapPool: queueData.mapPool || null }
+                : q
+            )
+          );
+
+          // Update selectedMaps based on the refetched mapPool
+          // mapPool now contains map objects - convert to variant IDs for UI state
+          if (queueData.mapPool && Array.isArray(queueData.mapPool)) {
+            const variantIds: string[] = [];
+            queueData.mapPool.forEach((mapItem: any) => {
+              // Handle both old format (variant IDs) and new format (objects)
+              if (typeof mapItem === "string") {
+                // Backward compatibility: old format
+                variantIds.push(mapItem);
+              } else if (mapItem && mapItem._id) {
+                // New format: map object
+                const variantId = mapItem.isSmall
+                  ? `${mapItem._id}-small`
+                  : `${mapItem._id}-normal`;
+                variantIds.push(variantId);
+              }
+            });
+            setSelectedMaps((prev) => ({
+              ...prev,
+              [queue._id]: Array.from(new Set(variantIds)),
+            }));
+          }
+        }
+      } catch (refetchError) {
+        console.error("Error refetching queue data:", refetchError);
+        // Fallback to using response data (which contains map objects)
+        const savedMapPool = responseData.mapPool || mapPoolItems;
+        setQueues((prev) =>
+          prev.map((q) =>
+            q._id === queue._id
+              ? { ...q, mapPool: savedMapPool.length > 0 ? savedMapPool : null }
+              : q
+          )
+        );
+
+        // Convert map objects to variant IDs for UI state
+        const variantIds: string[] = [];
+        if (Array.isArray(savedMapPool)) {
+          savedMapPool.forEach((mapItem: any) => {
+            if (typeof mapItem === "string") {
+              variantIds.push(mapItem);
+            } else if (mapItem && mapItem._id) {
+              const variantId = mapItem.isSmall
+                ? `${mapItem._id}-small`
+                : `${mapItem._id}-normal`;
+              variantIds.push(variantId);
+            }
+          });
+        }
+        setSelectedMaps((prev) => ({
+          ...prev,
+          [queue._id]: Array.from(new Set(variantIds)),
+        }));
+      }
 
       toast({
         title: "Success",
@@ -272,13 +482,13 @@ export default function AdminQueuesPage() {
     switch (status?.toLowerCase()) {
       case "active":
         return (
-          <Badge className="bg-green-500/20 text-green-400 border-green-500/50">
+          <Badge className="text-green-400 bg-green-500/20 border-green-500/50">
             Active
           </Badge>
         );
       case "open":
         return (
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/50">
+          <Badge className="text-blue-400 bg-blue-500/20 border-blue-500/50">
             Open
           </Badge>
         );
@@ -299,7 +509,11 @@ export default function AdminQueuesPage() {
     };
 
     return (
-      <Badge className={colors[tier] || "bg-gray-500/20 text-gray-400 border-gray-500/50"}>
+      <Badge
+        className={
+          colors[tier] || "bg-gray-500/20 text-gray-400 border-gray-500/50"
+        }
+      >
         {tier.toUpperCase()}
       </Badge>
     );
@@ -312,8 +526,8 @@ export default function AdminQueuesPage() {
           {[1, 2, 3].map((i) => (
             <Card key={i}>
               <CardContent className="p-6">
-                <Skeleton className="h-8 w-full mb-4" />
-                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="mb-4 w-full h-8" />
+                <Skeleton className="w-3/4 h-4" />
               </CardContent>
             </Card>
           ))}
@@ -335,16 +549,19 @@ export default function AdminQueuesPage() {
   return (
     <div className="container px-4 py-6 mx-auto sm:px-6 lg:px-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold sm:text-3xl mb-2">Queue Management</h1>
+        <h1 className="mb-2 text-2xl font-bold sm:text-3xl">
+          Queue Management
+        </h1>
         <p className="text-sm text-muted-foreground">
-          Manage map pools and settings for each queue. Customize which maps are available and configure queue details.
+          Manage map pools and settings for each queue. Customize which maps are
+          available and configure queue details.
         </p>
       </div>
 
       {Object.keys(queuesByTeamSize).length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center">
-            <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <AlertCircle className="mx-auto mb-4 w-12 h-12 text-muted-foreground" />
             <p className="text-muted-foreground">No queues found</p>
           </CardContent>
         </Card>
@@ -352,11 +569,12 @@ export default function AdminQueuesPage() {
         <div className="space-y-6">
           {Object.entries(queuesByTeamSize).map(([teamSize, teamQueues]) => (
             <div key={teamSize}>
-              <h2 className="text-xl font-semibold mb-4">{teamSize} Queues</h2>
+              <h2 className="mb-4 text-xl font-semibold">{teamSize} Queues</h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {teamQueues.map((queue) => {
                   const selected = selectedMaps[queue._id] || [];
-                  const hasCustomMapPool = queue.mapPool !== null && queue.mapPool !== undefined;
+                  const hasCustomMapPool =
+                    queue.mapPool !== null && queue.mapPool !== undefined;
 
                   return (
                     <Card
@@ -367,7 +585,7 @@ export default function AdminQueuesPage() {
                       )}
                     >
                       <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex gap-2 justify-between items-start">
                           <div className="flex-1 min-w-0">
                             <CardTitle className="text-lg truncate">
                               {queue.gameType}
@@ -390,13 +608,21 @@ export default function AdminQueuesPage() {
                         <div className="text-sm text-muted-foreground">
                           <p>Queue ID: {queue.queueId}</p>
                           <p className="mt-1">
-                            {selected.length} of {maps.length} maps selected
+                            {(() => {
+                              // Count total variant selections (normal + small)
+                              const totalSelected = selected.length;
+                              // Total available variants = all maps with variants
+                              const totalAvailable = maps.length;
+                              return `${totalSelected} out of ${totalAvailable}`;
+                            })()}
                           </p>
-                          {queue.minElo !== undefined && queue.maxElo !== undefined && (
-                            <p className="mt-1">
-                              ELO Range: {queue.minElo.toLocaleString()} - {queue.maxElo.toLocaleString()}
-                            </p>
-                          )}
+                          {queue.minElo !== undefined &&
+                            queue.maxElo !== undefined && (
+                              <p className="mt-1">
+                                ELO Range: {queue.minElo.toLocaleString()} -{" "}
+                                {queue.maxElo.toLocaleString()}
+                              </p>
+                            )}
                         </div>
 
                         <div className="flex flex-col gap-2">
@@ -410,10 +636,13 @@ export default function AdminQueuesPage() {
                               setQueueTier(queue.eloTier || "");
                               setMinElo(queue.minElo?.toString() || "");
                               setMaxElo(queue.maxElo?.toString() || "");
-                              setEditDialogOpen((prev) => ({ ...prev, [queue._id]: true }));
+                              setEditDialogOpen((prev) => ({
+                                ...prev,
+                                [queue._id]: true,
+                              }));
                             }}
                           >
-                            <Settings className="w-4 h-4 mr-2" />
+                            <Settings className="mr-2 w-4 h-4" />
                             Edit Queue Details
                           </Button>
                           <Button
@@ -422,10 +651,13 @@ export default function AdminQueuesPage() {
                             className="w-full"
                             onClick={() => {
                               setManagingMapsQueue(queue);
-                              setMapsDialogOpen((prev) => ({ ...prev, [queue._id]: true }));
+                              setMapsDialogOpen((prev) => ({
+                                ...prev,
+                                [queue._id]: true,
+                              }));
                             }}
                           >
-                            <MapPin className="w-4 h-4 mr-2" />
+                            <MapPin className="mr-2 w-4 h-4" />
                             Manage Maps
                           </Button>
                           <Button
@@ -435,14 +667,13 @@ export default function AdminQueuesPage() {
                             disabled
                             title="Coming soon: Manage players for this queue"
                           >
-                            <Ban className="w-4 h-4 mr-2" />
+                            <Ban className="mr-2 w-4 h-4" />
                             Manage Players
                             <Badge variant="secondary" className="ml-2 text-xs">
                               Soon
                             </Badge>
                           </Button>
                         </div>
-
                       </CardContent>
                     </Card>
                   );
@@ -455,10 +686,13 @@ export default function AdminQueuesPage() {
 
       {/* Edit Queue Details Dialog */}
       <Dialog
-        open={editingQueue ? (editDialogOpen[editingQueue._id] || false) : false}
+        open={editingQueue ? editDialogOpen[editingQueue._id] || false : false}
         onOpenChange={(open) => {
           if (!open && editingQueue) {
-            setEditDialogOpen((prev) => ({ ...prev, [editingQueue._id]: false }));
+            setEditDialogOpen((prev) => ({
+              ...prev,
+              [editingQueue._id]: false,
+            }));
             setEditingQueue(null);
           }
         }}
@@ -467,7 +701,8 @@ export default function AdminQueuesPage() {
           <DialogHeader className="pb-4">
             <DialogTitle>Edit Queue Details</DialogTitle>
             <DialogDescription>
-              Update the queue name, tier, and ELO range for {editingQueue?.gameType} {editingQueue?.eloTier}
+              Update the queue name, tier, and ELO range for{" "}
+              {editingQueue?.gameType} {editingQueue?.eloTier}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -521,7 +756,10 @@ export default function AdminQueuesPage() {
               variant="outline"
               onClick={() => {
                 if (editingQueue) {
-                  setEditDialogOpen((prev) => ({ ...prev, [editingQueue._id]: false }));
+                  setEditDialogOpen((prev) => ({
+                    ...prev,
+                    [editingQueue._id]: false,
+                  }));
                   setEditingQueue(null);
                 }
               }}
@@ -575,13 +813,17 @@ export default function AdminQueuesPage() {
                     description: "Queue details updated successfully",
                   });
 
-                  setEditDialogOpen((prev) => ({ ...prev, [editingQueue._id]: false }));
+                  setEditDialogOpen((prev) => ({
+                    ...prev,
+                    [editingQueue._id]: false,
+                  }));
                   setEditingQueue(null);
                 } catch (error: any) {
                   console.error("Error updating queue details:", error);
                   toast({
                     title: "Error",
-                    description: error.message || "Failed to update queue details",
+                    description:
+                      error.message || "Failed to update queue details",
                     variant: "destructive",
                   });
                 } finally {
@@ -592,12 +834,12 @@ export default function AdminQueuesPage() {
             >
               {savingDetails ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="mr-2 w-4 h-4" />
                   Save Changes
                 </>
               )}
@@ -608,11 +850,46 @@ export default function AdminQueuesPage() {
 
       {/* Manage Maps Dialog */}
       <Dialog
-        open={managingMapsQueue ? (mapsDialogOpen[managingMapsQueue._id] || false) : false}
+        open={
+          managingMapsQueue
+            ? mapsDialogOpen[managingMapsQueue._id] || false
+            : false
+        }
         onOpenChange={(open) => {
           if (!open && managingMapsQueue) {
-            setMapsDialogOpen((prev) => ({ ...prev, [managingMapsQueue._id]: false }));
+            setMapsDialogOpen((prev) => ({
+              ...prev,
+              [managingMapsQueue._id]: false,
+            }));
             setManagingMapsQueue(null);
+          } else if (open && managingMapsQueue) {
+            // Ensure selectedMaps is initialized for this queue when modal opens
+            // mapPool now contains variant IDs directly
+            if (
+              !selectedMaps[managingMapsQueue._id] ||
+              selectedMaps[managingMapsQueue._id].length === 0
+            ) {
+              if (
+                managingMapsQueue.mapPool &&
+                Array.isArray(managingMapsQueue.mapPool)
+              ) {
+                // mapPool contains variant IDs - use them directly
+                // Filter to only include valid variant IDs that exist in our maps list
+                const validVariantIds = managingMapsQueue.mapPool.filter(
+                  (variantId: string) => maps.some((m) => m._id === variantId)
+                );
+                setSelectedMaps((prev) => ({
+                  ...prev,
+                  [managingMapsQueue._id]: Array.from(new Set(validVariantIds)),
+                }));
+              } else if (!managingMapsQueue.mapPool) {
+                // If no map pool, initialize with all maps selected
+                setSelectedMaps((prev) => ({
+                  ...prev,
+                  [managingMapsQueue._id]: maps.map((m) => m._id),
+                }));
+              }
+            }
           }
         }}
       >
@@ -620,16 +897,19 @@ export default function AdminQueuesPage() {
           <DialogHeader className="pb-4">
             <DialogTitle>Manage Map Pool</DialogTitle>
             <DialogDescription>
-              Select which maps are available for {managingMapsQueue?.gameType} {managingMapsQueue?.eloTier}
+              Select which maps are available for {managingMapsQueue?.gameType}{" "}
+              {managingMapsQueue?.eloTier}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-hidden flex flex-col space-y-4">
+          <div className="flex overflow-hidden flex-col flex-1 space-y-4">
             <div className="flex gap-2">
               <Button
                 variant="ghost"
                 size="sm"
                 className="flex-1 text-xs"
-                onClick={() => managingMapsQueue && selectAllMaps(managingMapsQueue._id)}
+                onClick={() =>
+                  managingMapsQueue && selectAllMaps(managingMapsQueue._id)
+                }
               >
                 Select All
               </Button>
@@ -637,56 +917,62 @@ export default function AdminQueuesPage() {
                 variant="ghost"
                 size="sm"
                 className="flex-1 text-xs"
-                onClick={() => managingMapsQueue && deselectAllMaps(managingMapsQueue._id)}
+                onClick={() =>
+                  managingMapsQueue && deselectAllMaps(managingMapsQueue._id)
+                }
               >
                 Deselect All
               </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-              {managingMapsQueue && maps.map((map) => {
-                const isSelected = (selectedMaps[managingMapsQueue._id] || []).includes(map._id);
-                return (
-                  <div
-                    key={map._id}
-                    className={cn(
-                      "flex items-center gap-3 p-2 rounded-lg border transition-colors",
-                      isSelected
-                        ? "bg-primary/10 border-primary/50"
-                        : "bg-muted/50 border-transparent"
-                    )}
-                  >
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() =>
-                        managingMapsQueue && toggleMapSelection(managingMapsQueue._id, map._id)
-                      }
-                    />
-                    <div className="relative w-12 h-12 shrink-0 rounded overflow-hidden">
-                      <Image
-                        src={map.src}
-                        alt={map.name}
-                        fill
-                        className="object-cover"
-                        unoptimized
+            <div className="overflow-y-auto flex-1 pr-2 space-y-2">
+              {managingMapsQueue &&
+                maps.map((map) => {
+                  const isSelected = (
+                    selectedMaps[managingMapsQueue._id] || []
+                  ).includes(map._id);
+                  return (
+                    <div
+                      key={map._id}
+                      className={cn(
+                        "flex gap-3 items-center p-2 rounded-lg border transition-colors",
+                        isSelected
+                          ? "bg-primary/10 border-primary/50"
+                          : "border-transparent bg-muted/50"
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() =>
+                          managingMapsQueue &&
+                          toggleMapSelection(managingMapsQueue._id, map._id)
+                        }
                       />
+                      <div className="overflow-hidden relative w-12 h-12 rounded shrink-0">
+                        <Image
+                          src={map.src}
+                          alt={map.name}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {map.name}
+                        </p>
+                        <div className="flex gap-2 items-center text-xs text-muted-foreground">
+                          <span>{map.gameMode}</span>
+                          {map.rankedMap && (
+                            <Badge variant="outline" className="text-[10px]">
+                              Ranked
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {map.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {map.gameMode}
-                        {map.rankedMap && (
-                          <Badge variant="outline" className="ml-2 text-[10px]">
-                            Ranked
-                          </Badge>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           </div>
           <DialogFooter className="gap-2 pt-4 border-t">
@@ -694,7 +980,10 @@ export default function AdminQueuesPage() {
               variant="outline"
               onClick={() => {
                 if (managingMapsQueue) {
-                  setMapsDialogOpen((prev) => ({ ...prev, [managingMapsQueue._id]: false }));
+                  setMapsDialogOpen((prev) => ({
+                    ...prev,
+                    [managingMapsQueue._id]: false,
+                  }));
                   setManagingMapsQueue(null);
                 }
               }}
@@ -703,26 +992,31 @@ export default function AdminQueuesPage() {
             </Button>
             <Button
               onClick={async () => {
-                if (managingMapsQueue) {
+                if (managingMapsQueue && !saving[managingMapsQueue._id]) {
                   try {
                     await handleSave(managingMapsQueue);
-                    setMapsDialogOpen((prev) => ({ ...prev, [managingMapsQueue._id]: false }));
+                    setMapsDialogOpen((prev) => ({
+                      ...prev,
+                      [managingMapsQueue._id]: false,
+                    }));
                     setManagingMapsQueue(null);
                   } catch (error) {
                     // Error already handled in handleSave, just don't close dialog
                   }
                 }
               }}
-              disabled={managingMapsQueue ? saving[managingMapsQueue._id] : false}
+              disabled={
+                managingMapsQueue ? saving[managingMapsQueue._id] : false
+              }
             >
               {managingMapsQueue && saving[managingMapsQueue._id] ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="mr-2 w-4 h-4" />
                   Save Map Pool
                 </>
               )}
@@ -733,4 +1027,3 @@ export default function AdminQueuesPage() {
     </div>
   );
 }
-
