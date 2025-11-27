@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ban, AlertTriangle, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import Image from "next/image";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export function ModerationLogs() {
   const [logs, setLogs] = useState<ModerationAction[]>([]);
@@ -90,16 +92,42 @@ export function ModerationLogs() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredLogs.map((log) => (
+              filteredLogs.map((log: any) => (
                 <TableRow key={log._id.toString()}>
                   <TableCell className="whitespace-nowrap">
                     {new Date(log.timestamp).toLocaleString()}
                   </TableCell>
-                  <TableCell>{log.playerName}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage
+                          src={log.playerProfilePicture || undefined}
+                          alt={log.playerName}
+                        />
+                        <AvatarFallback>
+                          {log.playerName?.charAt(0)?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{log.playerName}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <ActionBadge type={log.type} />
                   </TableCell>
-                  <TableCell>{log.moderatorName}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage
+                          src={log.moderatorProfilePicture || undefined}
+                          alt={log.moderatorName}
+                        />
+                        <AvatarFallback>
+                          {log.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{log.moderatorName}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="max-w-xs truncate">
                     {log.reason}
                   </TableCell>
@@ -117,21 +145,43 @@ export function ModerationLogs() {
             No moderation logs found
           </div>
         ) : (
-          filteredLogs.map((log) => (
+          filteredLogs.map((log: any) => (
             <Card key={log._id.toString()}>
               <CardHeader className="p-4 pb-2">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-base">{log.playerName}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage
+                        src={log.playerProfilePicture || undefined}
+                        alt={log.playerName}
+                      />
+                      <AvatarFallback>
+                        {log.playerName?.charAt(0)?.toUpperCase() || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <CardTitle className="text-base">{log.playerName}</CardTitle>
+                  </div>
                   <ActionBadge type={log.type} />
                 </div>
               </CardHeader>
               <CardContent className="p-4 pt-0 space-y-2">
                 <div className="text-xs text-muted-foreground">
-                  <div>
+                  <div className="flex items-center gap-2">
                     {formatTimeAgo(new Date(log.timestamp))} •
-                    <span className="ml-1 font-medium">
-                      By {log.moderatorName}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      <Avatar className="h-4 w-4">
+                        <AvatarImage
+                          src={log.moderatorProfilePicture || undefined}
+                          alt={log.moderatorName}
+                        />
+                        <AvatarFallback className="text-[8px]">
+                          {log.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="ml-1 font-medium">
+                        By {log.moderatorName}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-2">{log.reason}</div>
                 </div>

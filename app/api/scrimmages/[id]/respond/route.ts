@@ -3,6 +3,7 @@ import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { notifyScrimmageResponse, getGuildId } from "@/lib/discord-bot-api";
 
 export async function PATCH(
   request: NextRequest,
@@ -121,6 +122,25 @@ export async function PATCH(
 
       if (notifications.length > 0) {
         await db.collection("Notifications").insertMany(notifications);
+      }
+
+      // Send Discord DM notification via bot API (primary method)
+      // Change streams will act as fallback if API fails (with duplicate prevention)
+      try {
+        const guildId = getGuildId();
+        const memberIds = challengerTeam.members.map((m: any) => m.discordId);
+        await notifyScrimmageResponse(
+          scrimmageId,
+          scrimmage.challengerTeamId.toString(),
+          challengedTeam.name,
+          response,
+          memberIds,
+          updateData.counterProposedDate || undefined,
+          updateData.responseMessage,
+          guildId
+        );
+      } catch (error) {
+        // Don't throw - change stream will catch it as fallback with duplicate prevention
       }
     }
 

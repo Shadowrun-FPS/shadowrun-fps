@@ -48,6 +48,36 @@ export async function POST(req: Request) {
       );
     }
 
+    // Fetch all ranked maps to set as default mapPool
+    const rankedMaps = await db
+      .collection("Maps")
+      .find({ rankedMap: true })
+      .toArray();
+
+    // Create default mapPool with all ranked maps (normal variants, and small variants if available)
+    const defaultMapPool: any[] = [];
+    for (const map of rankedMaps) {
+      // Add normal variant
+      defaultMapPool.push({
+        _id: map._id.toString(),
+        name: map.name,
+        src: map.src,
+        gameMode: map.gameMode,
+        isSmall: false,
+      });
+
+      // Add small variant if available
+      if (map.smallOption) {
+        defaultMapPool.push({
+          _id: map._id.toString(),
+          name: `${map.name} (Small)`,
+          src: map.src,
+          gameMode: map.gameMode,
+          isSmall: true,
+        });
+      }
+    }
+
     // Create queue document
     const queueData = {
       queueId: uuidv4(),
@@ -58,6 +88,7 @@ export async function POST(req: Request) {
       minElo,
       maxElo,
       status: status || "active",
+      mapPool: defaultMapPool, // Set default mapPool with all ranked maps
       createdAt: new Date(),
       createdBy: {
         discordId: session.user.id,

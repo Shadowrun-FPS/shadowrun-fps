@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import type { UpdateFilter } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { notifyTeamMemberChange, notifyScrimmageCancellation, getGuildId } from "@/lib/discord-bot-api";
 
 export async function POST(
   req: NextRequest,
@@ -30,9 +31,9 @@ export async function POST(
     const team = teamResult.team;
     const collectionName = teamResult.collectionName;
 
-    // Check that the user is a member of the team
-    const isMember = team.members.some((m: any) => m.discordId === userId);
-    if (!isMember) {
+    // Check that the user is a member of the team and get their info
+    const memberLeaving = team.members.find((m: any) => m.discordId === userId);
+    if (!memberLeaving) {
       return NextResponse.json(
         { error: "You are not a member of this team" },
         { status: 400 }
@@ -109,6 +110,23 @@ export async function POST(
                 cancelledTeamName: team.name,
               },
             });
+
+            // Send Discord DM notification via bot API (primary method)
+            // Change streams will act as fallback if API fails (with duplicate prevention)
+            try {
+              const guildId = getGuildId();
+              const cancellationReason = `Team "${team.name}" no longer has enough members (${memberCount}/${teamSize})`;
+              await notifyScrimmageCancellation(
+                scrimmage.scrimmageId || scrimmage._id.toString(),
+                teamId,
+                team.name,
+                otherTeamResult.team.captain.discordId,
+                cancellationReason,
+                guildId
+              );
+            } catch (error) {
+              // Don't throw - change stream will catch it as fallback with duplicate prevention
+            }
           }
         }
       }
@@ -131,6 +149,25 @@ export async function POST(
         memberId: userId,
       },
     });
+
+    // Send Discord DM notification via bot API
+    try {
+      const teamSize = team.teamSize || 4;
+      await notifyTeamMemberChange(
+        teamId,
+        "left",
+        {
+          discordId: userId,
+          discordUsername: session.user.name || "Unknown",
+          discordNickname: session.user.nickname || memberLeaving.discordNickname || session.user.name || "Unknown",
+        },
+        teamSize
+      ).catch(() => {
+        // Don't fail the request if notification fails
+      });
+    } catch (error) {
+      // Don't fail the request if notification fails
+    }
 
     // UPDATED: Use the recalculateTeamElo function to update the team's ELO
     await recalculateTeamElo(teamId);

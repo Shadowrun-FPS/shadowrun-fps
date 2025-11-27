@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { notifyTeamMemberChange } from "@/lib/discord-bot-api";
 
 export async function POST(
   req: NextRequest,
@@ -181,6 +182,26 @@ export async function POST(
         teamTag: team?.tag,
       },
     });
+
+    // Send Discord DM notification via bot API
+    try {
+      await notifyTeamMemberChange(
+        invite.teamId.toString(),
+        "joined",
+        {
+          discordId: session.user.id,
+          discordUsername: session.user.name || "Unknown",
+          discordNickname: session.user.nickname || session.user.name || "Unknown",
+        },
+        teamSize
+      ).catch((error) => {
+        console.error("Failed to send team member join Discord notification:", error);
+        // Don't fail the request if notification fails
+      });
+    } catch (error) {
+      console.error("Error sending team member join Discord notification:", error);
+      // Don't fail the request if notification fails
+    }
 
     // Cancel all other pending invites for this user
     await db.collection("TeamInvites").updateMany(

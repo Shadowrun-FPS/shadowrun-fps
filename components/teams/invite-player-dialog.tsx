@@ -74,10 +74,20 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
 
       // Check for invites for these players
       const inviteCheckPromises = data.players.map(async (player: any) => {
-        const inviteResponse = await fetch(
-          `/api/teams/${teamId}/invites/check/${player.id}`
-        );
-        const inviteData = await inviteResponse.json();
+        let isInvited = false;
+        try {
+          const inviteResponse = await fetch(
+            `/api/teams/${teamId}/invites/check/${player.id}`
+          );
+          if (inviteResponse.ok) {
+            const inviteData = await inviteResponse.json();
+            isInvited = inviteData.isInvited || false;
+          } else {
+            console.error(`Failed to check invite status for player ${player.id}:`, inviteResponse.statusText);
+          }
+        } catch (error) {
+          console.error(`Error checking invite status for player ${player.id}:`, error);
+        }
         
         // Check if player is in a team of the same size
         // Only block invites if the player is in a team of the SAME size
@@ -88,7 +98,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
         
         return {
           ...player,
-          isInvited: inviteData.isInvited,
+          isInvited: isInvited,
           inTeam: false, // Don't use this for blocking - only use inTeamOfSameSize
           inTeamOfSameSize: inTeamOfSameSize,
           teamName: player.team?.name,
@@ -110,29 +120,58 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
     }
   };
 
-  const handleInvite = async (playerId: string) => {
+  const handleInvite = async (playerId: string, playerName: string) => {
     try {
+      // Optimistically update UI immediately
+      setResults((prev) =>
+        prev.map((p) => (p.id === playerId ? { ...p, isInvited: true } : p))
+      );
+
       const response = await fetch(`/api/teams/${teamId}/invite`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ playerId }),
+        body: JSON.stringify({ playerId, playerName }),
       });
 
       if (!response.ok) {
         const data = await response.json();
+        // Revert optimistic update on error
+        setResults((prev) =>
+          prev.map((p) => (p.id === playerId ? { ...p, isInvited: false } : p))
+        );
         throw new Error(data.error || "Failed to send invite");
       }
 
-      // Update the invited status in local state
-      setResults((prev) =>
-        prev.map((p) => (p.id === playerId ? { ...p, isInvited: true } : p))
-      );
+      // Wait a bit for database write to complete, then verify
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Re-check the invite status from the server to ensure accuracy
+      try {
+        const checkResponse = await fetch(
+          `/api/teams/${teamId}/invites/check/${playerId}`
+        );
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();
+          // Update the invited status in local state based on server response
+          setResults((prev) =>
+            prev.map((p) =>
+              p.id === playerId ? { ...p, isInvited: checkData.isInvited } : p
+            )
+          );
+        } else {
+          // If check fails but invite was successful, keep optimistic update
+          console.warn("Failed to verify invite status, keeping optimistic update");
+        }
+      } catch (checkError) {
+        // If check fails but invite was successful, keep optimistic update
+        console.warn("Error verifying invite status, keeping optimistic update:", checkError);
+      }
 
       toast({
-        title: "Invite Sent",
-        description: "Team invitation has been sent to the player.",
+        title: "Success",
+        description: `Invite sent to ${playerName}`,
         duration: 2000,
       });
     } catch (error: any) {
@@ -268,7 +307,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
                     ) : (
                       <Button 
                         size="sm" 
-                        onClick={() => handleInvite(player.id)}
+                        onClick={() => handleInvite(player.id, player.name)}
                         className="h-9 sm:h-10"
                       >
                         <UserPlus className="h-4 w-4 mr-1.5" />

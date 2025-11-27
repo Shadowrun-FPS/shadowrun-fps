@@ -87,12 +87,26 @@ export async function PATCH(
     const body = await req.json();
     const { mapPool } = body;
 
-    // Validate mapPool is an array of map IDs (strings or ObjectIds)
+    // Validate mapPool is an array of map objects or variant IDs (for backward compatibility)
     if (mapPool !== null && !Array.isArray(mapPool)) {
       return NextResponse.json(
         { error: "mapPool must be an array or null" },
         { status: 400 }
       );
+    }
+
+    // Validate map objects if provided
+    if (mapPool && Array.isArray(mapPool) && mapPool.length > 0) {
+      const firstItem = mapPool[0];
+      // If it's an object, validate structure
+      if (typeof firstItem === "object" && firstItem !== null) {
+        if (!firstItem._id || !firstItem.name || !firstItem.src || firstItem.isSmall === undefined) {
+          return NextResponse.json(
+            { error: "mapPool objects must have _id, name, src, gameMode, and isSmall properties" },
+            { status: 400 }
+          );
+        }
+      }
     }
 
     const { db } = await connectToDatabase();
@@ -120,10 +134,15 @@ export async function PATCH(
       updateData
     );
 
+    // Verify what was actually saved
+    const updatedQueue = await db.collection("Queues").findOne({
+      _id: new ObjectId(params.queueId),
+    });
+
     return NextResponse.json({
       success: true,
       message: "Queue map pool updated successfully",
-      mapPool,
+      mapPool: updatedQueue?.mapPool || mapPool, // Return what was actually saved
     });
   } catch (error) {
     console.error("Error updating queue map pool:", error);

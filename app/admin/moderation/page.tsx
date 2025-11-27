@@ -55,6 +55,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 
 interface ModerationLog {
@@ -62,9 +63,14 @@ interface ModerationLog {
   action: string;
   playerId: string;
   playerName: string;
-  playerNickname: string;
+  playerNickname?: string;
+  playerProfilePicture?: string | null;
+  playerDiscordId?: string;
   moderatorId: string;
   moderatorName: string;
+  moderatorNickname?: string;
+  moderatorProfilePicture?: string | null;
+  moderatorDiscordId?: string;
   reason: string;
   timestamp: string;
   duration?: string;
@@ -684,13 +690,37 @@ export default function ModerationPage() {
                       activeActions.map((action) => (
                         <TableRow key={action._id}>
                           <TableCell className="font-medium">
-                            {action.playerName}
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage
+                                  src={action.playerProfilePicture || undefined}
+                                  alt={action.playerName}
+                                />
+                                <AvatarFallback>
+                                  {action.playerName?.charAt(0)?.toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{action.playerName}</span>
+                            </div>
                           </TableCell>
                           <TableCell>{action.reason}</TableCell>
                           <TableCell>
                             {action.duration || "Permanent"}
                           </TableCell>
-                          <TableCell>{action.moderatorName}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarImage
+                                  src={action.moderatorProfilePicture || undefined}
+                                  alt={action.moderatorName}
+                                />
+                                <AvatarFallback>
+                                  {action.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{action.moderatorName}</span>
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {new Date(action.timestamp).toLocaleDateString()}
                           </TableCell>
@@ -731,11 +761,22 @@ export default function ModerationPage() {
                     <Card key={action._id} className="border-2 hover:border-primary/50 transition-all duration-300 bg-gradient-to-br from-background to-muted/20">
                       <CardContent className="p-4 sm:p-6">
                         <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <h3 className="font-medium">{action.playerName}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {formatTimeAgo(new Date(action.timestamp))}
-                            </p>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-8 w-8">
+                              <AvatarImage
+                                src={action.playerProfilePicture || undefined}
+                                alt={action.playerName}
+                              />
+                              <AvatarFallback>
+                                {action.playerName?.charAt(0)?.toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <h3 className="font-medium">{action.playerName}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {formatTimeAgo(new Date(action.timestamp))}
+                              </p>
+                            </div>
                           </div>
                           <Badge
                             variant={
@@ -765,7 +806,18 @@ export default function ModerationPage() {
                             <p className="font-medium text-muted-foreground">
                               Moderator:
                             </p>
-                            <p>{action.moderatorName}</p>
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage
+                                  src={action.moderatorProfilePicture || undefined}
+                                  alt={action.moderatorName}
+                                />
+                                <AvatarFallback className="text-[10px]">
+                                  {action.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <p>{action.moderatorName}</p>
+                            </div>
                           </div>
                           {action.duration && (
                             <div>
@@ -876,10 +928,34 @@ export default function ModerationPage() {
                           )}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {action.playerName}
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage
+                                src={action.playerProfilePicture || undefined}
+                                alt={action.playerName}
+                              />
+                              <AvatarFallback>
+                                {action.playerName?.charAt(0)?.toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{action.playerName}</span>
+                          </div>
                         </TableCell>
                         <TableCell>{action.reason}</TableCell>
-                        <TableCell>{action.moderatorName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarImage
+                                src={action.moderatorProfilePicture || undefined}
+                                alt={action.moderatorName}
+                              />
+                              <AvatarFallback>
+                                {action.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>{action.moderatorName}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>
                           {new Date(action.timestamp).toLocaleDateString()}
                         </TableCell>
@@ -939,11 +1015,22 @@ export default function ModerationPage() {
                   <Card key={action._id} className="border-2 hover:border-primary/50 transition-all duration-300 bg-gradient-to-br from-background to-muted/20">
                     <CardContent className="p-4 sm:p-6">
                       <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium">{action.playerName}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(action.timestamp).toLocaleDateString()}
-                          </p>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage
+                              src={action.playerProfilePicture || undefined}
+                              alt={action.playerName}
+                            />
+                            <AvatarFallback>
+                              {action.playerName?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">{action.playerName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(action.timestamp).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
                         <Badge
                           variant={
@@ -963,9 +1050,20 @@ export default function ModerationPage() {
                       </div>
                       <p className="mb-2 text-sm">{action.reason}</p>
                       <div className="flex justify-between items-center">
-                        <p className="text-sm text-muted-foreground">
-                          By {action.moderatorName}
-                        </p>
+                        <div className="flex items-center gap-1.5">
+                          <Avatar className="h-4 w-4">
+                            <AvatarImage
+                              src={action.moderatorProfilePicture || undefined}
+                              alt={action.moderatorName}
+                            />
+                            <AvatarFallback className="text-[8px]">
+                              {action.moderatorName?.charAt(0)?.toUpperCase() || "?"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <p className="text-sm text-muted-foreground">
+                            By {action.moderatorName}
+                          </p>
+                        </div>
                         <div className="flex gap-2">
                           <Button
                             variant="ghost"

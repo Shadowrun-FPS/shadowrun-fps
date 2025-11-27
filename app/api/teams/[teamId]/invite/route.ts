@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { notifyTeamInvite, getGuildId } from "@/lib/discord-bot-api";
 
 export async function POST(
   req: NextRequest,
@@ -118,7 +119,7 @@ export async function POST(
     // Insert the invitation and capture the result with the generated _id
     const result = await db.collection("TeamInvites").insertOne(invitation);
 
-    // Create a notification for the invitee
+    // Create a notification for the invitee (for web app notifications page)
     await db.collection("Notifications").insertOne({
       userId: playerId,
       type: "team_invite",
@@ -134,6 +135,30 @@ export async function POST(
         inviteId: result.insertedId.toString(),
       },
     });
+
+    // Send Discord DM notification via bot API (primary method)
+    // Change streams will act as fallback if API fails (with duplicate prevention)
+    try {
+      const guildId = getGuildId();
+      const currentMembers = team.members.length;
+      
+      await notifyTeamInvite(
+        teamId,
+        playerId,
+        playerName,
+        session.user.id,
+        inviterNickname || session.user.name || "Unknown",
+        team.name,
+        result.insertedId.toString(), // REQUIRED: Pass the inviteId so bot can use it in buttons
+        teamSize,
+        team.tag,
+        team.description, // Optional: team description
+        currentMembers, // Current member count
+        guildId // Helps fetch inviter's guild nickname
+      );
+    } catch (error) {
+      // Don't throw - change stream will catch it as fallback with duplicate prevention
+    }
 
     return NextResponse.json({
       success: true,

@@ -10,6 +10,7 @@ import {
   hasAdminRole,
   hasModeratorRole,
 } from "@/lib/security-config";
+import { getDiscordUserInfoBatch } from "@/lib/discord-user-info";
 
 export const dynamic = "force-dynamic";
 
@@ -50,66 +51,113 @@ export async function GET(request: NextRequest) {
       .sort({ timestamp: -1 })
       .toArray();
 
-    // Get all unique player and moderator IDs from logs
-    const playerIds = new Set();
-    const moderatorIds = new Set();
+    // Get all unique player and moderator Discord IDs from logs
+    const playerDiscordIds = new Set<string>();
+    const moderatorDiscordIds = new Set<string>();
 
     logs.forEach((log) => {
-      if (log.playerId) playerIds.add(log.playerId);
-      if (log.moderatorId) moderatorIds.add(log.moderatorId);
+      // For players, we need to get their Discord ID from the Players collection
+      // For moderators, moderatorId should be the Discord ID
+      if (log.moderatorId) {
+        moderatorDiscordIds.add(log.moderatorId);
+      }
     });
 
-    // Convert playerIds to an array of valid ObjectIds
-    const validPlayerIds = Array.from(playerIds)
+    // Fetch player Discord IDs from Players collection
+    const playerIds = new Set<string>();
+    logs.forEach((log) => {
+      if (log.playerId) {
+        // playerId might be ObjectId or Discord ID, we'll check both
+        playerIds.add(log.playerId);
+      }
+    });
+
+    // Convert playerIds to an array of valid ObjectIds for Players collection lookup
+    const validPlayerObjectIds = Array.from(playerIds)
       .filter((id): id is string => typeof id === "string")
+      .filter((id) => ObjectId.isValid(id))
       .map((id) => new ObjectId(id));
 
-    // Fetch current player information
+    // Fetch players to get their Discord IDs
     const players = await db
       .collection("Players")
       .find({
         $or: [
-          { _id: { $in: validPlayerIds } },
-          { discordId: { $in: Array.from(moderatorIds) } },
+          { _id: { $in: validPlayerObjectIds } },
+          { discordId: { $in: Array.from(playerIds) } },
         ],
       })
       .toArray();
 
-    // Create lookup maps for quick access
-    const playerMap = new Map();
-    const moderatorMap = new Map();
-
+    // Extract Discord IDs from players
     players.forEach((player) => {
-      // Map by ObjectId for players
-      if (player._id) {
-        playerMap.set(player._id.toString(), {
-          nickname: player.discordNickname || player.discordUsername,
-          username: player.discordUsername,
-        });
-      }
-
-      // Map by discordId for moderators
       if (player.discordId) {
-        moderatorMap.set(player.discordId, {
-          nickname: player.discordNickname || player.discordUsername,
-          username: player.discordUsername,
-        });
+        playerDiscordIds.add(player.discordId);
       }
     });
 
-    // Update logs with current names
+    // Also check if any playerId is already a Discord ID
+    playerIds.forEach((id) => {
+      // If it's not a valid ObjectId, assume it's a Discord ID
+      if (!ObjectId.isValid(id)) {
+        playerDiscordIds.add(id);
+      }
+    });
+
+    // Fetch Discord user info for all players and moderators
+    const playerIdsArray = Array.from(playerDiscordIds);
+    const moderatorIdsArray = Array.from(moderatorDiscordIds);
+    const allDiscordIds = Array.from(
+      new Set([...playerIdsArray, ...moderatorIdsArray])
+    );
+    const discordUserInfoMap = await getDiscordUserInfoBatch(allDiscordIds);
+
+    // Create a map from playerId (ObjectId) to Discord ID
+    const playerIdToDiscordId = new Map<string, string>();
+    players.forEach((player) => {
+      if (player._id && player.discordId) {
+        playerIdToDiscordId.set(player._id.toString(), player.discordId);
+      }
+    });
+
+    // Update logs with current Discord info
     const updatedLogs = logs.map((log) => {
-      const playerInfo = log.playerId ? playerMap.get(log.playerId) : null;
-      const modInfo = log.moderatorId
-        ? moderatorMap.get(log.moderatorId)
+      // Get Discord ID for player
+      let playerDiscordId: string | null = null;
+      if (log.playerId) {
+        // Check if playerId is already a Discord ID
+        if (!ObjectId.isValid(log.playerId)) {
+          playerDiscordId = log.playerId;
+        } else {
+          // Look up Discord ID from ObjectId
+          playerDiscordId = playerIdToDiscordId.get(log.playerId) || null;
+        }
+      }
+
+      // Get Discord info for player and moderator
+      const playerInfo = playerDiscordId
+        ? discordUserInfoMap.get(playerDiscordId)
+        : null;
+      const moderatorInfo = log.moderatorId
+        ? discordUserInfoMap.get(log.moderatorId)
         : null;
 
       return {
         ...log,
-        // Update player name if we have current info
-        playerName: playerInfo ? playerInfo.nickname : log.playerName,
-        // Update moderator name if we have current info
-        moderatorName: modInfo ? modInfo.nickname : log.moderatorName,
+        // Update player info with current Discord data
+        playerName: playerInfo
+          ? playerInfo.nickname || playerInfo.username
+          : log.playerName,
+        playerNickname: playerInfo?.nickname,
+        playerProfilePicture: playerInfo?.profilePicture || null,
+        playerDiscordId: playerDiscordId,
+        // Update moderator info with current Discord data
+        moderatorName: moderatorInfo
+          ? moderatorInfo.nickname || moderatorInfo.username
+          : log.moderatorName,
+        moderatorNickname: moderatorInfo?.nickname,
+        moderatorProfilePicture: moderatorInfo?.profilePicture || null,
+        moderatorDiscordId: log.moderatorId,
       };
     });
 

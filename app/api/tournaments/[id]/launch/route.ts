@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { canManageTournament } from "@/lib/tournament-permissions";
+import { notifyTournamentLaunch, getGuildId } from "@/lib/discord-bot-api";
 
 // First, add a proper interface for tournament matches
 interface TournamentMatch {
@@ -227,6 +228,26 @@ export async function POST(
         },
       }
     );
+
+    // Send Discord DM notification to all team captains via bot API (primary method)
+    // Change streams will act as fallback if API fails (with duplicate prevention)
+    try {
+      const guildId = getGuildId();
+      const captainIds = (tournament.registeredTeams || [])
+        .map((team: any) => team.captain?.discordId)
+        .filter((id: string | undefined): id is string => !!id);
+      
+      if (captainIds.length > 0) {
+        await notifyTournamentLaunch(
+          id,
+          tournament.name || "Tournament",
+          captainIds,
+          guildId
+        );
+      }
+    } catch (error) {
+      // Don't throw - change stream will catch it as fallback with duplicate prevention
+    }
 
     return NextResponse.json({
       success: true,

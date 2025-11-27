@@ -138,16 +138,36 @@ export function InvitePlayerModal() {
       const data = await response.json();
       const players = data.players || [];
 
-      // Add team status to each player - only block if same team size
-      const playersWithInviteStatus = players.map((player: any) => {
+      // Check invite status for each player
+      if (!teamId) {
+        setSearchResults([]);
+        return;
+      }
+
+      const inviteCheckPromises = players.map(async (player: any) => {
+        let isInvited = false;
+        try {
+          const inviteResponse = await fetch(
+            `/api/teams/${teamId}/invites/check/${player.id}`
+          );
+          if (inviteResponse.ok) {
+            const inviteData = await inviteResponse.json();
+            isInvited = inviteData.isInvited || false;
+          }
+        } catch (error) {
+          // Silently handle errors - keep isInvited as false
+        }
+
+        // Check if player is in a team of the same size
         const playerTeamSize = player.team?.teamSize || 4;
-        const inTeamOfSameSize = player.team != null && 
-          currentTeamSize != null && 
+        const inTeamOfSameSize =
+          player.team != null &&
+          currentTeamSize != null &&
           playerTeamSize === currentTeamSize;
-        
+
         return {
           ...player,
-          isInvited: false, // Will check this separately if needed
+          isInvited: isInvited,
           inTeam: false, // Don't use this for blocking - only use inTeamOfSameSize
           inTeamOfSameSize: inTeamOfSameSize,
           teamName: player.team?.name,
@@ -156,6 +176,7 @@ export function InvitePlayerModal() {
         };
       });
 
+      const playersWithInviteStatus = await Promise.all(inviteCheckPromises);
       setSearchResults(playersWithInviteStatus);
     } catch (error) {
       console.error("Error searching players:", error);
@@ -174,6 +195,11 @@ export function InvitePlayerModal() {
   const handleInvite = async (playerId: string, playerName: string) => {
     if (!teamId) return;
 
+    // Optimistically update UI immediately
+    setSearchResults((prev) =>
+      prev.map((p) => (p.id === playerId ? { ...p, isInvited: true } : p))
+    );
+
     setInviting((prev) => ({ ...prev, [playerId]: true }));
 
     try {
@@ -190,7 +216,32 @@ export function InvitePlayerModal() {
 
       if (!response.ok) {
         const data = await response.json();
+        // Revert optimistic update on error
+        setSearchResults((prev) =>
+          prev.map((p) => (p.id === playerId ? { ...p, isInvited: false } : p))
+        );
         throw new Error(data.error || "Failed to send invite");
+      }
+
+      // Wait a bit for database write to complete, then verify
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Re-check the invite status from the server to ensure accuracy
+      try {
+        const checkResponse = await fetch(
+          `/api/teams/${teamId}/invites/check/${playerId}`
+        );
+        if (checkResponse.ok) {
+          const checkData = await checkResponse.json();
+          // Update the invited status in local state based on server response
+          setSearchResults((prev) =>
+            prev.map((p) =>
+              p.id === playerId ? { ...p, isInvited: checkData.isInvited } : p
+            )
+          );
+        }
+      } catch (checkError) {
+        // If check fails but invite was successful, keep optimistic update
       }
 
       toast({
@@ -212,17 +263,17 @@ export function InvitePlayerModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+    <div className="flex fixed inset-0 z-50 justify-center items-center bg-black/70">
       <div
         ref={modalRef}
-        className="w-full max-w-md m-4 border rounded-lg shadow-lg bg-card border-border"
+        className="m-4 w-full max-w-md rounded-lg border shadow-lg bg-card border-border"
       >
         <div className="flex justify-between p-4 border-b border-border">
           <h2 className="text-xl font-semibold">Invite Players</h2>
           <Button
             variant="ghost"
             size="sm"
-            className="w-8 h-8 p-0"
+            className="p-0 w-8 h-8"
             onClick={closeModal}
           >
             <X className="w-4 h-4" />
@@ -253,7 +304,7 @@ export function InvitePlayerModal() {
             </Button>
           </div>
 
-          <div className="space-y-2 overflow-auto max-h-64">
+          <div className="overflow-auto space-y-2 max-h-64">
             {searchResults.length === 0 ? (
               <p className="py-4 text-sm text-center text-muted-foreground">
                 {searching
@@ -264,9 +315,9 @@ export function InvitePlayerModal() {
               searchResults.map((player) => (
                 <div
                   key={player.id}
-                  className="flex items-center justify-between p-3 border rounded-md border-border"
+                  className="flex justify-between items-center p-3 rounded-md border border-border"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex gap-3 items-center">
                     <Avatar className="w-10 h-10">
                       {player.profilePicture ? (
                         <AvatarImage
@@ -300,7 +351,7 @@ export function InvitePlayerModal() {
                               className="cursor-not-allowed"
                               size="sm"
                             >
-                              <AlertTriangle className="w-3 h-3 mr-1 text-amber-500" />
+                              <AlertTriangle className="mr-1 w-3 h-3 text-amber-500" />
                               Invite
                             </Button>
                           </span>
@@ -310,7 +361,8 @@ export function InvitePlayerModal() {
                           className="p-2 text-sm bg-secondary text-secondary-foreground"
                         >
                           <p>
-                            This player is already in a {player.teamSize}-person team &quot;
+                            This player is already in a {player.teamSize}-person
+                            team &quot;
                             {player.teamName}&quot;
                           </p>
                         </TooltipContent>

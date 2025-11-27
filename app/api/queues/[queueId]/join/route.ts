@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 import { sendDirectMessage } from "@/lib/discord-bot";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { notifyQueueReady, getGuildId } from "@/lib/discord-bot-api";
 
 export const dynamic = "force-dynamic";
 
@@ -230,52 +231,17 @@ export async function POST(
       updatedQueue &&
       updatedQueue.players.length === updatedQueue.teamSize * 2
     ) {
-      console.log("Queue is now full, sending notifications to players");
+      // Send queue ready notifications via Discord bot API (primary method)
+      // Change streams will act as fallback if API fails (with duplicate prevention)
+      try {
+        const guildId = getGuildId();
+        await notifyQueueReady(updatedQueue.queueId || params.queueId, guildId);
+      } catch (error) {
+        // Don't throw - change stream will catch it as fallback with duplicate prevention
+      }
 
-      const expirationTime = new Date();
-      expirationTime.setMinutes(expirationTime.getMinutes() + 5);
-
-      const testingDiscordId = SECURITY_CONFIG.DEVELOPER_ID;
-
+      // Also send in-app notifications
       for (const player of updatedQueue.players) {
-        if (player.discordId !== testingDiscordId) continue;
-
-        const formattedQueueName =
-          updatedQueue.name ||
-          `${updatedQueue.teamSize}v${updatedQueue.teamSize} ${
-            updatedQueue.eloTier
-              ? updatedQueue.eloTier.charAt(0).toUpperCase() +
-                updatedQueue.eloTier.slice(1)
-              : "Ranked"
-          }`;
-
-        const notificationMessage = `Your ${updatedQueue.teamSize}v${updatedQueue.teamSize} ${formattedQueueName} queue is now full and ready to launch! You have 5 minutes to ready up!`;
-
-        await sendDirectMessage(
-          player.discordId,
-          "A match is ready! Join now:",
-          {
-            queueInfo: {
-              queueName: formattedQueueName,
-              playerCount: updatedQueue.players.length,
-              timeLimit: 5, // 5 minute countdown
-              timestamp: expirationTime.toLocaleString("en-US", {
-                month: "numeric",
-                day: "numeric",
-                year: "numeric",
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true,
-              }),
-            },
-          }
-        ).catch((error) => {
-          console.error(
-            `Failed to send Discord DM to user ${player.discordId}:`,
-            error
-          );
-        });
-
         if (global.io) {
           const userNotifications = await db
             .collection("Notifications")
