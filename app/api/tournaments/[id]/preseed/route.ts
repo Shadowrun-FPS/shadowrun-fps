@@ -79,13 +79,13 @@ export async function POST(
     // Get team IDs from registeredTeams to fetch full team data
     const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
     const teamIds = registeredTeams
-      .map((team: any) => {
+      .map((team: any): ObjectId | null => {
         if (typeof team === "object" && team._id) {
           return typeof team._id === "string" ? new ObjectId(team._id) : team._id;
         }
         return null;
       })
-      .filter((id): id is ObjectId => id !== null);
+      .filter((id: ObjectId | null): id is ObjectId => id !== null);
 
     const allCollections = getAllTeamCollectionNames();
     const teams = [];
