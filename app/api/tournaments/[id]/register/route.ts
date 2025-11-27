@@ -267,10 +267,10 @@ export async function POST(
     };
 
     // Register team for tournament
-    const result = await db.collection("Tournaments").updateOne(
+    // Remove any existing registration for this team first
+    await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(id) },
       {
-        $addToSet: { teams: new ObjectId(teamId) },
         $pull: { registeredTeams: { _id: team._id.toString() } as any },
       }
     );
