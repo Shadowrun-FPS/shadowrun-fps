@@ -121,9 +121,12 @@ export function PostCard({ post }: { post: Post }) {
               />
               <div className="absolute inset-0 transition-opacity duration-300 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-70 group-hover:opacity-50" />
               {hasLink && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100">
+                <div
+                  className="absolute inset-0 z-10 flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100"
+                  aria-hidden="true"
+                >
                   <div className="p-3 sm:p-4 rounded-full bg-primary/90 backdrop-blur-sm shadow-lg border-2 border-primary/20">
-                    <ExternalLink className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                    <ExternalLink className="w-5 h-5 sm:w-6 sm:h-6 text-white" aria-hidden="true" />
                   </div>
                 </div>
               )}

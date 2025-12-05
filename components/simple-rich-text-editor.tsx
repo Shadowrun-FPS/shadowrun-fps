@@ -79,12 +79,13 @@ export function SimpleRichTextEditor({
 
   return (
     <div className="border rounded-md">
-      <div className="flex flex-wrap items-center gap-1 p-1 border-b bg-muted/50">
+      <div className="flex flex-wrap items-center gap-1 p-1 border-b bg-muted/50" role="toolbar" aria-label="Text formatting toolbar">
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={() => executeCommand("bold")}
+          aria-label="Bold"
         >
           <Bold className="w-4 h-4" />
         </Button>
@@ -93,6 +94,7 @@ export function SimpleRichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => executeCommand("italic")}
+          aria-label="Italic"
         >
           <Italic className="w-4 h-4" />
         </Button>
@@ -101,6 +103,7 @@ export function SimpleRichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => executeCommand("underline")}
+          aria-label="Underline"
         >
           <UnderlineIcon className="w-4 h-4" />
         </Button>
@@ -109,6 +112,7 @@ export function SimpleRichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => executeCommand("formatBlock", "<h2>")}
+          aria-label="Heading"
         >
           <Heading2 className="w-4 h-4" />
         </Button>
@@ -117,6 +121,7 @@ export function SimpleRichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => executeCommand("insertUnorderedList")}
+          aria-label="Bullet List"
         >
           <List className="w-4 h-4" />
         </Button>
@@ -125,10 +130,17 @@ export function SimpleRichTextEditor({
           variant="ghost"
           size="sm"
           onClick={() => executeCommand("insertOrderedList")}
+          aria-label="Numbered List"
         >
           <ListOrdered className="w-4 h-4" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={createLink}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={createLink}
+          aria-label="Create Link"
+        >
           <LinkIcon className="w-4 h-4" />
         </Button>
       </div>
@@ -136,10 +148,13 @@ export function SimpleRichTextEditor({
         ref={editorRef}
         contentEditable={true}
         onKeyDown={handleKeyDown}
-        className="p-3 prose prose-sm dark:prose-invert max-w-none min-h-[150px] focus:outline-none"
+        className="p-3 prose prose-sm dark:prose-invert max-w-none min-h-[150px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
         onInput={handleInput}
         data-placeholder={placeholder}
         style={{ position: "relative" }}
+        role="textbox"
+        aria-label="Rich text editor"
+        aria-multiline="true"
       />
     </div>
   );

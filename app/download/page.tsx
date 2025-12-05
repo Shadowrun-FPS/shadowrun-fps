@@ -110,6 +110,7 @@ export default function DownloadPage() {
                     href="https://github.com/shub-wub/Shadowrun-Launcher-WPF"
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label="View Source on GitHub (opens in new window)"
                   >
                     <span className="flex relative z-10 items-center">
                       <Github className="mr-2 w-5 h-5" />
@@ -136,6 +137,7 @@ export default function DownloadPage() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline"
+                    aria-label=".NET Desktop Runtime 9.0 (opens in new window)"
                   >
                     .NET Desktop Runtime 9.0
                   </a>{" "}

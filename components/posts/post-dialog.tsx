@@ -243,7 +243,7 @@ export function PostDialog({
               <div className="mt-2 sm:mt-3 rounded-lg overflow-hidden border-2 border-border relative w-full h-40 sm:h-48">
                 <Image
                   src={formData.imageUrl}
-                  alt="Preview"
+                  alt={`Preview of image for ${formData.title || "post"}`}
                   fill
                   className="object-cover"
                   unoptimized

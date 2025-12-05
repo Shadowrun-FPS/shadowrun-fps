@@ -143,6 +143,7 @@ export function NotificationsDropdown() {
           variant="ghost"
           size="icon"
           className="relative"
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
           onContextMenu={(e) => {
             e.preventDefault();
             resetUnreadCount();

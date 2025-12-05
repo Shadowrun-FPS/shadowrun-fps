@@ -138,6 +138,7 @@ export default function Home() {
                 <Link
                   href="/docs/troubleshoot"
                   className="inline-flex overflow-hidden relative items-center justify-center px-5 sm:px-6 py-2.5 sm:py-3 text-base sm:text-lg font-medium rounded-lg transition-all group bg-secondary hover:bg-secondary/90 min-h-[44px] sm:min-h-0"
+                  aria-label="Go to troubleshooting guide"
                 >
                   <span className="relative z-10 text-secondary-foreground">
                     Troubleshooting

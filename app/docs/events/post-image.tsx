@@ -34,7 +34,9 @@ export default function PostImage({
       <Link
         href={href}
         target="_blank"
+        rel="noopener noreferrer"
         className={`relative block w-full h-64 ${className || ""}`}
+        aria-label={`${alt} (opens in new window)`}
       >
         {image}
       </Link>
