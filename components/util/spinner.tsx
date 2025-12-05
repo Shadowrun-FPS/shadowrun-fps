@@ -8,14 +8,21 @@ interface SpinnerProps {
 export default function Spinner({
   size = "w-5 h-5",
   className = "",
-}: SpinnerProps) {
+  ariaLabel = "Loading",
+}: SpinnerProps & { ariaLabel?: string }) {
   return (
-    <div className={`animate-spin ${size} ${className}`} role="status">
+    <div
+      className={`animate-spin ${size} ${className}`}
+      role="status"
+      aria-label={ariaLabel}
+    >
+      <span className="sr-only">{ariaLabel}</span>
       <svg
         className="text-primary"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"
+        aria-hidden="true"
       >
         <circle
           className="opacity-25"

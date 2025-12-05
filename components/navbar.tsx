@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { isFeatureEnabled, FeatureFlag } from "@/lib/features";
 import { useSession } from "next-auth/react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { UserPermissions } from "@/lib/client-config";
 import {
   Sheet,
@@ -130,18 +130,37 @@ export function Navbar() {
   const pathname = usePathname();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Filter the links based on feature flags
-  const filteredMatchesLinks = MatchesLinks.filter((link) =>
-    link.feature ? isFeatureEnabled(link.feature) : true
+  // Memoize filtered links to prevent unnecessary re-renders
+  const filteredMatchesLinks = useMemo(
+    () =>
+      MatchesLinks.filter((link) =>
+        link.feature ? isFeatureEnabled(link.feature) : true
+      ),
+    []
   );
 
-  const filteredTournamentsLinks = TournamentsLinks.filter((link) =>
-    link.feature ? isFeatureEnabled(link.feature) : true
+  const filteredTournamentsLinks = useMemo(
+    () =>
+      TournamentsLinks.filter((link) =>
+        link.feature ? isFeatureEnabled(link.feature) : true
+      ),
+    []
   );
 
   // Only show the dropdown if there are enabled links
   const showMatchesMenu = filteredMatchesLinks.length > 0;
   const showTournamentsMenu = filteredTournamentsLinks.length > 0;
+
+  // Handle escape key to close dropdowns
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileNavOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
 
   return (
     <nav className="flex flex-1 items-center">
@@ -177,7 +196,7 @@ export function Navbar() {
                 </div>
               </div>
             </SheetHeader>
-            <div className="overflow-y-auto flex-1">
+            <div className="flex-1 overflow-hidden">
               <MobileNav onNavigate={() => setMobileNavOpen(false)} />
             </div>
           </SheetContent>
@@ -190,9 +209,11 @@ export function Navbar() {
         <Link
           href="/docs/events"
           className={cn(
-            "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none",
-            pathname === "/docs/events" && "bg-accent/50"
+            "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            pathname === "/docs/events" &&
+              "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
           )}
+          aria-current={pathname === "/docs/events" ? "page" : undefined}
         >
           <Calendar className="mr-2 w-4 h-4" />
           Events
@@ -201,9 +222,11 @@ export function Navbar() {
         <Link
           href="/docs/install"
           className={cn(
-            "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none",
-            pathname === "/docs/install" && "bg-accent/50"
+            "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            pathname === "/docs/install" &&
+              "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
           )}
+          aria-current={pathname === "/docs/install" ? "page" : undefined}
         >
           <Download className="mr-2 w-4 h-4" />
           Install
@@ -212,9 +235,11 @@ export function Navbar() {
         <Link
           href="/docs/troubleshoot"
           className={cn(
-            "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none",
-            pathname === "/docs/troubleshoot" && "bg-accent/50"
+            "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            pathname === "/docs/troubleshoot" &&
+              "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
           )}
+          aria-current={pathname === "/docs/troubleshoot" ? "page" : undefined}
         >
           <HelpCircle className="mr-2 w-4 h-4" />
           Troubleshoot
@@ -225,17 +250,21 @@ export function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none",
+                "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 (pathname?.startsWith("/matches") ||
                   pathname?.startsWith("/leaderboard")) &&
-                  "bg-accent/50"
+                  "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
               )}
             >
               <Clock className="mr-2 w-4 h-4" />
               Matches
-              <ChevronDown className="ml-1 w-4 h-4" />
+              <ChevronDown className="ml-1 w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[400px]">
+            <DropdownMenuContent
+              align="start"
+              className="w-[400px]"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
               <div className="flex flex-col gap-1 p-2">
                 {filteredMatchesLinks.map((link) => {
                   const isActive =
@@ -246,9 +275,11 @@ export function Navbar() {
                       key={link.title}
                       href={link.href}
                       className={cn(
-                        "flex items-start gap-3 rounded-md p-3 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive && "bg-accent/50"
+                        "relative flex items-start gap-3 rounded-md p-3 text-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                        isActive &&
+                          "bg-accent/50 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-md"
                       )}
+                      aria-current={isActive ? "page" : undefined}
                     >
                       <div className="mt-0.5 shrink-0">{link.icon}</div>
                       <div className="flex-1">
@@ -270,15 +301,20 @@ export function Navbar() {
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
-                "inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none",
-                pathname?.startsWith("/tournaments") && "bg-accent/50"
+                "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                pathname?.startsWith("/tournaments") &&
+                  "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
               )}
             >
               <Trophy className="mr-2 w-4 h-4" />
               Tournaments
-              <ChevronDown className="ml-1 w-4 h-4" />
+              <ChevronDown className="ml-1 w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-[400px]">
+            <DropdownMenuContent
+              align="start"
+              className="w-[400px]"
+              onCloseAutoFocus={(e) => e.preventDefault()}
+            >
               <div className="flex flex-col gap-1 p-2">
                 {filteredTournamentsLinks.map((link) => {
                   const isActive =
@@ -289,9 +325,11 @@ export function Navbar() {
                       key={link.title}
                       href={link.href}
                       className={cn(
-                        "flex items-start gap-3 rounded-md p-3 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive && "bg-accent/50"
+                        "relative flex items-start gap-3 rounded-md p-3 text-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                        isActive &&
+                          "bg-accent/50 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-md"
                       )}
+                      aria-current={isActive ? "page" : undefined}
                     >
                       <div className="mt-0.5 shrink-0">{link.icon}</div>
                       <div className="flex-1">
@@ -317,11 +355,34 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   const { data: session } = useSession();
   const [userPermissions, setUserPermissions] =
     useState<UserPermissions | null>(null);
+  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
 
-  // Fetch user permissions
+  // Memoize filtered links to prevent unnecessary re-renders
+  const filteredMatchesLinks = useMemo(
+    () =>
+      MatchesLinks.filter((link) =>
+        link.feature ? isFeatureEnabled(link.feature) : true
+      ),
+    []
+  );
+
+  const filteredTournamentsLinks = useMemo(
+    () =>
+      TournamentsLinks.filter((link) =>
+        link.feature ? isFeatureEnabled(link.feature) : true
+      ),
+    []
+  );
+
+  // Only show the sections if there are enabled links
+  const showMatchesSection = filteredMatchesLinks.length > 0;
+  const showTournamentsSection = filteredTournamentsLinks.length > 0;
+
+  // Optimize permission fetching - only fetch once when session is available
   useEffect(() => {
     const fetchPermissions = async () => {
-      if (session?.user) {
+      if (session?.user?.id && !userPermissions && !isLoadingPermissions) {
+        setIsLoadingPermissions(true);
         try {
           const response = await fetch("/api/user/permissions");
           if (response.ok) {
@@ -330,33 +391,22 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           }
         } catch (error) {
           // Silently handle errors
+        } finally {
+          setIsLoadingPermissions(false);
         }
       }
     };
 
     fetchPermissions();
-  }, [session?.user?.id, session?.user]);
+  }, [session?.user?.id, userPermissions, isLoadingPermissions]);
 
   // Check if user has admin/mod access
   const hasModAccess =
     userPermissions?.isModerator || userPermissions?.isAdmin || false;
 
-  // Filter the links based on feature flags
-  const filteredMatchesLinks = MatchesLinks.filter((link) =>
-    link.feature ? isFeatureEnabled(link.feature) : true
-  );
-
-  const filteredTournamentsLinks = TournamentsLinks.filter((link) =>
-    link.feature ? isFeatureEnabled(link.feature) : true
-  );
-
-  // Only show the sections if there are enabled links
-  const showMatchesSection = filteredMatchesLinks.length > 0;
-  const showTournamentsSection = filteredTournamentsLinks.length > 0;
-
-  const handleLinkClick = () => {
+  const handleLinkClick = useCallback(() => {
     onNavigate();
-  };
+  }, [onNavigate]);
 
   // Admin links
   const adminLinks = [
@@ -383,128 +433,152 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   ];
 
   return (
-    <div className="flex overflow-y-auto flex-col gap-1 py-4">
+    <div className="flex flex-col gap-1 py-4">
       <Link
         href="/"
         className={cn(
-          "flex items-center px-4 sm:px-6 py-3 text-base font-medium rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+          "relative flex items-center px-4 sm:px-6 py-3 text-base font-medium rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
           pathname === "/"
-            ? "bg-accent text-accent-foreground"
+            ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
             : "hover:bg-accent/50 text-foreground"
         )}
         onClick={handleLinkClick}
+        aria-current={pathname === "/" ? "page" : undefined}
       >
         <Home className="flex-shrink-0 mr-3 w-5 h-5" />
         <span>Home</span>
       </Link>
 
-      <div className="px-4 py-3 mt-2 sm:px-6">
-        <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+      <div className="px-4 py-3 mt-2 sm:px-6 border-t border-border/40">
+        <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
           Documentation
         </h4>
-        <div className="flex flex-col gap-0.5">
-          {DocLinks.map((link) => (
-            <Link
-              key={link.title}
-              href={link.href}
-              className={cn(
-                "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
-                pathname === link.href
-                  ? "bg-accent text-accent-foreground"
-                  : "hover:bg-accent/50 text-foreground"
-              )}
-              onClick={handleLinkClick}
-            >
-              <span className="flex-shrink-0">{link.icon}</span>
-              <span className="ml-3">{link.title}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {showMatchesSection && (
-        <div className="px-4 py-3 sm:px-6">
-          <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-            Matches
-          </h4>
-          <div className="flex flex-col gap-0.5">
-            {filteredMatchesLinks.map((link) => (
+        <div className="flex flex-col gap-1">
+          {DocLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
               <Link
                 key={link.title}
                 href={link.href}
                 className={cn(
-                  "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
-                  pathname === link.href
-                    ? "bg-accent text-accent-foreground"
+                  "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  isActive
+                    ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
                     : "hover:bg-accent/50 text-foreground"
                 )}
                 onClick={handleLinkClick}
+                aria-current={isActive ? "page" : undefined}
               >
                 <span className="flex-shrink-0">{link.icon}</span>
                 <span className="ml-3">{link.title}</span>
               </Link>
-            ))}
+            );
+          })}
+        </div>
+      </div>
+
+      {showMatchesSection && (
+        <div className="px-4 py-3 sm:px-6 border-t border-border/40">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+            Matches
+          </h4>
+          <div className="flex flex-col gap-1">
+            {filteredMatchesLinks.map((link) => {
+              const isActive =
+                pathname === link.href ||
+                pathname?.startsWith(link.href + "/");
+              return (
+                <Link
+                  key={link.title}
+                  href={link.href}
+                  className={cn(
+                    "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    isActive
+                      ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
+                      : "hover:bg-accent/50 text-foreground"
+                  )}
+                  onClick={handleLinkClick}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <span className="flex-shrink-0">{link.icon}</span>
+                  <span className="ml-3">{link.title}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
 
       {showTournamentsSection && (
-        <div className="px-4 py-3 sm:px-6">
-          <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+        <div className="px-4 py-3 sm:px-6 border-t border-border/40">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
             Tournaments
           </h4>
-          <div className="flex flex-col gap-0.5">
-            {filteredTournamentsLinks.map((link) => (
-              <Link
-                key={link.title}
-                href={link.href}
-                className={cn(
-                  "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
-                  pathname === link.href
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50 text-foreground"
-                )}
-                onClick={handleLinkClick}
-              >
-                <span className="flex-shrink-0">{link.icon}</span>
-                <span className="ml-3">{link.title}</span>
-              </Link>
-            ))}
+          <div className="flex flex-col gap-1">
+            {filteredTournamentsLinks.map((link) => {
+              const isActive =
+                pathname === link.href ||
+                pathname?.startsWith(link.href + "/");
+              return (
+                <Link
+                  key={link.title}
+                  href={link.href}
+                  className={cn(
+                    "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    isActive
+                      ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
+                      : "hover:bg-accent/50 text-foreground"
+                  )}
+                  onClick={handleLinkClick}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <span className="flex-shrink-0">{link.icon}</span>
+                  <span className="ml-3">{link.title}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
 
       {hasModAccess && (
         <div className="px-4 py-3 mt-2 border-t sm:px-6 border-border/40">
-          <h4 className="mb-2 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+          <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
             Admin
           </h4>
-          <div className="flex flex-col gap-0.5">
-            {adminLinks.map((link) => (
-              <Link
-                key={link.title}
-                href={link.href}
-                className={cn(
-                  "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
-                  pathname === link.href
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/50 text-foreground"
-                )}
-                onClick={handleLinkClick}
-              >
-                <span className="flex-shrink-0">{link.icon}</span>
-                <span className="ml-3">{link.title}</span>
-              </Link>
-            ))}
+          <div className="flex flex-col gap-1">
+            {adminLinks.map((link) => {
+              const isActive =
+                pathname === link.href ||
+                pathname?.startsWith(link.href + "/");
+              return (
+                <Link
+                  key={link.title}
+                  href={link.href}
+                  className={cn(
+                    "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    isActive
+                      ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
+                      : "hover:bg-accent/50 text-foreground"
+                  )}
+                  onClick={handleLinkClick}
+                  aria-current={isActive ? "page" : undefined}
+                >
+                  <span className="flex-shrink-0">{link.icon}</span>
+                  <span className="ml-3">{link.title}</span>
+                </Link>
+              );
+            })}
             <Link
               href="/moderation-log"
               className={cn(
-                "flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-colors touch-manipulation min-h-[44px]",
+                "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                 pathname === "/moderation-log"
-                  ? "bg-accent text-accent-foreground"
+                  ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
                   : "hover:bg-accent/50 text-foreground"
               )}
               onClick={handleLinkClick}
+              aria-current={pathname === "/moderation-log" ? "page" : undefined}
             >
               <span className="flex-shrink-0">
                 <ExternalLink className="mr-2 w-5 h-5 text-primary" />
@@ -515,8 +589,6 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         </div>
       )}
 
-      {/* Bottom padding to ensure scrolling works properly */}
-      <div className="h-4"></div>
     </div>
   );
 }

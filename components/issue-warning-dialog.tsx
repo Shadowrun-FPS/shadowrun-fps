@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -114,9 +115,11 @@ export function IssueWarningDialog({
 
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Rule Violated</label>
+            <Label htmlFor="rule-select" className="text-sm font-medium">
+              Rule Violated
+            </Label>
             <Select value={rule} onValueChange={setRule}>
-              <SelectTrigger>
+              <SelectTrigger id="rule-select">
                 <SelectValue placeholder="Select a rule" />
               </SelectTrigger>
               <SelectContent>
@@ -130,17 +133,24 @@ export function IssueWarningDialog({
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">
+            <Label htmlFor="reason-textarea" className="text-sm font-medium">
               Reason <span className="text-red-500">*</span>
-            </label>
+            </Label>
             <Textarea
+              id="reason-textarea"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Explain why this action is being taken..."
               className="h-24 resize-none"
               required
+              aria-describedby={error ? "reason-error" : undefined}
+              aria-invalid={!!error}
             />
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && (
+              <p id="reason-error" className="text-sm text-red-500" role="alert">
+                {error}
+              </p>
+            )}
           </div>
         </div>
 

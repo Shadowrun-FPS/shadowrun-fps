@@ -145,6 +145,7 @@ export function FloatingPlayer({
           size="icon"
           onClick={togglePlay}
           className="w-12 h-12 rounded-full bg-primary/10 hover:bg-primary/20"
+          aria-label={isPlaying ? "Pause audio" : "Play audio"}
         >
           {isPlaying ? (
             <Pause className="w-6 h-6" />
@@ -183,6 +184,7 @@ export function FloatingPlayer({
             size="icon"
             onClick={toggleMute}
             className="w-8 h-8 rounded-full sm:flex"
+            aria-label={isMuted ? "Unmute audio" : "Mute audio"}
           >
             {isMuted ? (
               <VolumeX className="w-4 h-4" />

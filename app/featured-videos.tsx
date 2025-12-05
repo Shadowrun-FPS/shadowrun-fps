@@ -29,6 +29,7 @@ export default async function FeaturedVideos() {
               frameBorder="0"
               allowFullScreen
               style={{ width: "100%" }}
+              title={video.title || `Featured video ${index + 1}`}
             ></iframe>
             <div className="text-center text-white">
               <h2 className="mt-4 mb-8 text-2xl font-bold md:text-4xl not-prose">

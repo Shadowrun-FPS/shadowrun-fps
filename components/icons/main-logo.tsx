@@ -15,6 +15,7 @@ function MainLogo({ className }: MainLogoProps) {
         className
       )}
       href="/"
+      aria-label="Shadowrun FPS - Home"
     >
       <Image
         src="/serverIcon.png"

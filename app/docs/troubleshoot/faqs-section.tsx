@@ -392,6 +392,7 @@ export function FAQsSection() {
                       href={faq.href}
                       target="_blank"
                       rel="noopener noreferrer"
+                      aria-label={`${faq.link} (opens in new window)`}
                       className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-primary/10 hover:text-primary/90 transition-colors duration-200 border border-primary/20 hover:border-primary/40"
                     >
                       {faq.link || "Download fix"}
