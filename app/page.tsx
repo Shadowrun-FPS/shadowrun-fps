@@ -157,6 +157,75 @@ export default function Home() {
 
       {/* Regular page content starts here */}
       <main className="flex flex-col">
+        {/* Quick Links Section */}
+        <section className="relative py-12 sm:py-16 md:py-20">
+          <div className="relative px-3 sm:px-4 md:px-6 lg:px-8 mx-auto max-w-7xl">
+            <div className="mx-auto max-w-5xl">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-6 sm:mb-8">
+                Getting Started
+              </h2>
+              <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                <Link
+                  href="/docs/install"
+                  className="group relative p-6 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-300 bg-card/30 hover:bg-card/50 hover:shadow-xl hover:shadow-primary/10 border border-border/50 hover:border-primary/50"
+                >
+                  <div className="space-y-3">
+                    <h3 className="text-lg sm:text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Installation Guide
+                    </h3>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                      Step-by-step instructions to get Shadowrun FPS running on your PC
+                    </p>
+                  </div>
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+
+                <Link
+                  href="/docs/troubleshoot"
+                  className="group relative p-6 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-300 bg-card/30 hover:bg-card/50 hover:shadow-xl hover:shadow-primary/10 border border-border/50 hover:border-primary/50"
+                >
+                  <div className="space-y-3">
+                    <h3 className="text-lg sm:text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Troubleshooting
+                    </h3>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                      Fix common issues, optimize performance, and get help
+                    </p>
+                  </div>
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+
+                <Link
+                  href="discord://discord.com/servers/this-is-shadowrun-930362820627943495"
+                  className="group relative p-6 rounded-xl sm:rounded-2xl backdrop-blur-sm transition-all duration-300 bg-card/30 hover:bg-card/50 hover:shadow-xl hover:shadow-primary/10 border border-border/50 hover:border-primary/50"
+                >
+                  <div className="space-y-3">
+                    <h3 className="text-lg sm:text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Join Discord
+                    </h3>
+                    <p className="text-sm sm:text-base text-muted-foreground">
+                      Connect with the community, get support, and find matches
+                    </p>
+                  </div>
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg className="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* About Section - Enhanced */}
         <section className="overflow-hidden relative py-12 sm:py-16 md:py-20 lg:py-24">
           <div className="absolute inset-0">

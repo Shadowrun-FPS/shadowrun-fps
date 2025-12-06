@@ -224,7 +224,7 @@ export default function NotificationsPage() {
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              <span className="hidden sm:inline">Refresh</span>
+              <span>Refresh</span>
             </Button>
           </div>
         </div>

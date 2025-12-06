@@ -10,12 +10,18 @@ import {
   ChevronDown,
   MoreHorizontal,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   Calendar,
   Filter,
   X,
   Copy,
   Trash2,
   Trophy,
+  RefreshCw,
+  Eye,
+  Loader2,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Popover,
   PopoverContent,
@@ -234,19 +241,42 @@ export default function MatchHistoryPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-600">Completed</Badge>;
+        return (
+          <Badge className="bg-green-600/20 text-green-400 border-green-600/50 hover:bg-green-600/30">
+            Completed
+          </Badge>
+        );
       case "in-progress":
-        return <Badge className="bg-blue-600">In-Progress</Badge>;
       case "in_progress":
-        return <Badge className="bg-blue-600">In-Progress</Badge>;
+        return (
+          <Badge className="bg-blue-600/20 text-blue-400 border-blue-600/50 hover:bg-blue-600/30">
+            In-Progress
+          </Badge>
+        );
       case "canceled":
-        return <Badge className="bg-red-600">Canceled</Badge>;
+        return (
+          <Badge className="bg-red-600/20 text-red-400 border-red-600/50 hover:bg-red-600/30">
+            Canceled
+          </Badge>
+        );
       case "ready-check":
-        return <Badge className="bg-yellow-600">Ready-Check</Badge>;
+        return (
+          <Badge className="bg-yellow-600/20 text-yellow-400 border-yellow-600/50 hover:bg-yellow-600/30">
+            Ready-Check
+          </Badge>
+        );
       case "queue":
-        return <Badge className="bg-purple-600">Queue</Badge>;
+        return (
+          <Badge className="bg-purple-600/20 text-purple-400 border-purple-600/50 hover:bg-purple-600/30">
+            Queue
+          </Badge>
+        );
       default:
-        return <Badge className="bg-gray-600">Pending</Badge>;
+        return (
+          <Badge className="bg-gray-600/20 text-gray-400 border-gray-600/50 hover:bg-gray-600/30">
+            Pending
+          </Badge>
+        );
     }
   };
 
@@ -353,29 +383,106 @@ export default function MatchHistoryPage() {
   };
 
   const formatDateDisplay = (timestamp: string | number) => {
+    // new Date() automatically converts to user's local timezone
+    // format() from date-fns formats in the local timezone
     const date = new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return format(date, "MMM d, yyyy, h:mm a");
+  };
+
+  const getSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4 opacity-50" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="w-4 h-4" />
+    ) : (
+      <ArrowDown className="w-4 h-4" />
+    );
+  };
+
+  const hasActiveFilters = () => {
+    return (
+      (statusFilter && statusFilter !== "all") ||
+      (eloTierFilter && eloTierFilter !== "all") ||
+      (teamSizeFilter && teamSizeFilter !== "all") ||
+      dateFilter !== undefined
+    );
+  };
+
+  const getVisiblePageNumbers = () => {
+    const maxVisible = 5;
+    const pages: (number | string)[] = [];
+
+    if (totalPages <= maxVisible) {
+      // Show all pages if total is less than max
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      // Always show first page
+      pages.push(1);
+
+      if (currentPage <= 3) {
+        // Near the start
+        for (let i = 2; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push("...");
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        // Near the end
+        pages.push("...");
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        // In the middle
+        pages.push("...");
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push("...");
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
   };
 
   return (
     <FeatureGate feature="matches">
       <div className="container py-8">
         <div className="flex flex-col gap-6">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-white">Match History</h1>
-            <p className="text-sm text-gray-400">
-              {matches.length} results found
-            </p>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20">
+                <History className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Match History</h1>
+                <p className="text-sm text-muted-foreground mt-1">
+                  View and manage your past matches
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchMatches}
+              disabled={loading}
+              className="bg-[#111827] border-[#1f2937] hover:bg-[#1a2234]"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Refresh
+            </Button>
           </div>
 
-          <div className="flex flex-col gap-4 md:flex-row md:items-center">
-            <div className="flex-1">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Select
                 value={statusFilter || "all"}
                 onValueChange={setStatusFilter}
@@ -390,9 +497,7 @@ export default function MatchHistoryPage() {
                   <SelectItem value="Canceled">Canceled</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row">
               <Select
                 value={eloTierFilter || "all"}
                 onValueChange={setEloTierFilter}
@@ -464,17 +569,157 @@ export default function MatchHistoryPage() {
                 </Popover>
               </div>
 
-              <Button
-                variant="outline"
-                className="bg-[#111827] border-[#1f2937]"
-                onClick={clearFilters}
-              >
-                Clear
-              </Button>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="bg-[#111827] border-[#1f2937] flex-shrink-0"
+                  onClick={clearFilters}
+                  disabled={!hasActiveFilters()}
+                >
+                  <X className="w-4 h-4 mr-2" />
+                  Clear
+                </Button>
+                <p className="text-sm text-muted-foreground whitespace-nowrap">
+                  {loading ? (
+                    "Loading..."
+                  ) : (
+                    <>
+                      {matches.length} {matches.length === 1 ? "match" : "matches"} found
+                    </>
+                  )}
+                </p>
+              </div>
             </div>
           </div>
 
-          <Card className="bg-[#111827] border-[#1f2937] overflow-hidden">
+          {/* Mobile/Tablet Card Layout */}
+          <div className="lg:hidden space-y-3">
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <Card key={i} className="bg-[#111827] border-[#1f2937]">
+                  <CardContent className="p-4 space-y-3">
+                    <Skeleton className="h-6 w-20 bg-[#1a2234]" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-4 w-16 bg-[#1a2234]" />
+                      <Skeleton className="h-4 w-12 bg-[#1a2234]" />
+                    </div>
+                    <Skeleton className="h-4 w-32 bg-[#1a2234]" />
+                  </CardContent>
+                </Card>
+              ))
+            ) : matches.length === 0 ? (
+              <Card className="bg-[#111827] border-[#1f2937]">
+                <CardContent className="p-8 text-center">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="p-3 rounded-full bg-muted/50">
+                      <History className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-base font-medium text-white mb-1">
+                        No matches found
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {hasActiveFilters()
+                          ? "Try adjusting your filters"
+                          : "No match history available yet"}
+                      </p>
+                    </div>
+                    {hasActiveFilters() && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="mt-2"
+                      >
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              matches.map((match) => (
+                <ContextMenu key={match.matchId}>
+                  <ContextMenuTrigger asChild>
+                    <Card className="bg-[#111827] border-[#1f2937] hover:bg-[#1a2234] transition-colors cursor-pointer">
+                      <CardContent className="p-4 space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {getStatusBadge(match.status)}
+                            <Badge variant="outline" className="capitalize border-border/50 bg-muted/30">
+                              {match.eloTier}
+                            </Badge>
+                            <Badge variant="outline" className="border-border/50 bg-muted/30">
+                              {match.teamSize}v{match.teamSize}
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 h-8 md:h-auto md:w-auto md:px-3 md:py-1.5 w-8 p-0 gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewMatch(match.matchId);
+                            }}
+                          >
+                            <Eye className="w-4 h-4 flex-shrink-0" />
+                            <span className="hidden md:inline">View Match</span>
+                          </Button>
+                        </div>
+                        {match.winner && (
+                          <div className={`flex items-center gap-2 ${getWinnerColor(match)}`}>
+                            <Trophy className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                            <span className="text-sm font-medium">
+                              Winner: {getTeamName(match, match.winner)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="text-sm text-muted-foreground">
+                          {formatDateDisplay(match.createdAt)}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="w-64 bg-[#1f2937] border-[#3b82f6] text-white">
+                    <ContextMenuItem
+                      className="flex items-center gap-2 cursor-pointer hover:bg-[#2d3748]"
+                      onClick={() => handleCopyMatchId(match.matchId)}
+                    >
+                      <Copy className="w-4 h-4" />
+                      <span>Copy Match ID</span>
+                    </ContextMenuItem>
+                    <ContextMenuItem
+                      className="flex items-center gap-2 cursor-pointer hover:bg-[#2d3748]"
+                      onClick={() => handleViewMatch(match.matchId)}
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>View Match</span>
+                    </ContextMenuItem>
+                    {(session?.user?.id ===
+                      SECURITY_CONFIG.DEVELOPER_ID ||
+                      (session?.user?.roles &&
+                        (session.user.roles.includes("admin") ||
+                          session.user.roles.includes("moderator") ||
+                          session.user.roles.includes("founder")))) && (
+                      <>
+                        <ContextMenuSeparator className="bg-[#3b82f6]/30" />
+                        <ContextMenuItem
+                          className="flex items-center gap-2 text-red-400 cursor-pointer hover:bg-[#2d3748] hover:text-red-300"
+                          onClick={() => handleDeleteMatch(match.matchId)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span>Delete Match</span>
+                        </ContextMenuItem>
+                      </>
+                    )}
+                  </ContextMenuContent>
+                </ContextMenu>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table Layout */}
+          <Card className="hidden lg:block bg-[#111827] border-[#1f2937] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -482,51 +727,71 @@ export default function MatchHistoryPage() {
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
+                        className={`flex gap-1 items-center text-sm font-medium hover:text-white transition-colors ${
+                          sortField === "status"
+                            ? "text-white"
+                            : "text-gray-400"
+                        }`}
                         onClick={() => handleSort("status")}
                       >
                         Status
-                        <ArrowUpDown className="w-4 h-4" />
+                        {getSortIcon("status")}
                       </Button>
                     </th>
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
+                        className={`flex gap-1 items-center text-sm font-medium hover:text-white transition-colors ${
+                          sortField === "eloTier"
+                            ? "text-white"
+                            : "text-gray-400"
+                        }`}
                         onClick={() => handleSort("eloTier")}
                       >
                         ELO Tier
-                        <ArrowUpDown className="w-4 h-4" />
+                        {getSortIcon("eloTier")}
                       </Button>
                     </th>
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
+                        className={`flex gap-1 items-center text-sm font-medium hover:text-white transition-colors ${
+                          sortField === "teamSize"
+                            ? "text-white"
+                            : "text-gray-400"
+                        }`}
                         onClick={() => handleSort("teamSize")}
                       >
                         Team Size
-                        <ArrowUpDown className="w-4 h-4" />
+                        {getSortIcon("teamSize")}
                       </Button>
                     </th>
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
+                        className={`flex gap-1 items-center text-sm font-medium hover:text-white transition-colors ${
+                          sortField === "winner"
+                            ? "text-white"
+                            : "text-gray-400"
+                        }`}
                         onClick={() => handleSort("winner")}
                       >
                         Winner
-                        <ArrowUpDown className="w-4 h-4" />
+                        {getSortIcon("winner")}
                       </Button>
                     </th>
                     <th className="p-4 text-left">
                       <Button
                         variant="ghost"
-                        className="flex gap-1 items-center text-sm font-medium text-gray-400 hover:text-white"
+                        className={`flex gap-1 items-center text-sm font-medium hover:text-white transition-colors ${
+                          sortField === "createdAt"
+                            ? "text-white"
+                            : "text-gray-400"
+                        }`}
                         onClick={() => handleSort("createdAt")}
                       >
                         Date and Time
-                        <ArrowUpDown className="w-4 h-4" />
+                        {getSortIcon("createdAt")}
                       </Button>
                     </th>
                     <th className="p-4 text-right">Actions</th>
@@ -534,52 +799,98 @@ export default function MatchHistoryPage() {
                 </thead>
                 <tbody>
                   {loading ? (
-                    <tr>
-                      <td colSpan={6} className="p-4 text-center text-gray-400">
-                        Loading matches...
-                      </td>
-                    </tr>
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={i} className="border-b border-[#1f2937]">
+                        <td className="p-4">
+                          <Skeleton className="h-6 w-20 bg-[#1a2234]" />
+                        </td>
+                        <td className="p-4">
+                          <Skeleton className="h-4 w-16 bg-[#1a2234]" />
+                        </td>
+                        <td className="p-4">
+                          <Skeleton className="h-4 w-12 bg-[#1a2234]" />
+                        </td>
+                        <td className="p-4">
+                          <Skeleton className="h-4 w-24 bg-[#1a2234]" />
+                        </td>
+                        <td className="p-4">
+                          <Skeleton className="h-4 w-32 bg-[#1a2234]" />
+                        </td>
+                        <td className="p-4 text-right">
+                          <Skeleton className="h-8 w-24 bg-[#1a2234] ml-auto" />
+                        </td>
+                      </tr>
+                    ))
                   ) : matches.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="p-4 text-center text-gray-400">
-                        No matches found
+                      <td colSpan={6} className="p-8 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="p-3 rounded-full bg-muted/50">
+                            <History className="w-8 h-8 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-base font-medium text-white mb-1">
+                              No matches found
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {hasActiveFilters()
+                                ? "Try adjusting your filters"
+                                : "No match history available yet"}
+                            </p>
+                          </div>
+                          {hasActiveFilters() && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={clearFilters}
+                              className="mt-2"
+                            >
+                              Clear Filters
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ) : (
                     matches.map((match) => (
                       <ContextMenu key={match.matchId}>
                         <ContextMenuTrigger asChild>
-                          <tr className="border-b border-[#1f2937] hover:bg-[#1a2234]">
+                          <tr className="border-b border-[#1f2937] hover:bg-[#1a2234] transition-colors cursor-pointer">
                             <td className="p-4">
                               {getStatusBadge(match.status)}
                             </td>
-                            <td className="p-4 text-white capitalize">
-                              {match.eloTier}
+                            <td className="p-4">
+                              <Badge variant="outline" className="capitalize border-border/50 bg-muted/30">
+                                {match.eloTier}
+                              </Badge>
                             </td>
-                            <td className="p-4 text-white">
+                            <td className="p-4 text-white font-medium">
                               {match.teamSize}v{match.teamSize}
                             </td>
                             <td className={`p-4 ${getWinnerColor(match)}`}>
-                              {match.winner && (
+                              {match.winner ? (
                                 <div className="flex gap-2 items-center">
-                                  <Trophy className="w-4 h-4 text-yellow-500" />
+                                  <Trophy className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                                   <span className="text-sm font-medium">
                                     {getTeamName(match, match.winner)}
                                   </span>
                                 </div>
+                              ) : (
+                                <span className="text-sm text-muted-foreground">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-300">
+                            <td className="px-4 py-3 text-sm text-muted-foreground">
                               {formatDateDisplay(match.createdAt)}
                             </td>
                             <td className="p-4 text-right">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                                className="text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 gap-2"
                                 onClick={() => handleViewMatch(match.matchId)}
                               >
-                                View Match
+                                <Eye className="w-4 h-4" />
+                                <span>View Match</span>
                               </Button>
                             </td>
                           </tr>
@@ -620,49 +931,73 @@ export default function MatchHistoryPage() {
             </div>
           </Card>
 
-          <div className="flex gap-2 justify-center items-center">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="bg-[#111827] border-[#1f2937]"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
+          {/* Pagination - Show when there are matches or multiple pages */}
+          {(matches.length > 0 || totalPages > 1) && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <div className="flex gap-2 items-center">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1 || loading}
+                  className="bg-[#111827] border-[#1f2937] hover:bg-[#1a2234] disabled:opacity-50"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
 
-            <div className="flex gap-1 items-center">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <Button
-                    key={page}
-                    variant={page === currentPage ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(page)}
-                    className={
-                      page === currentPage
-                        ? "bg-blue-600 hover:bg-blue-700"
-                        : "bg-[#111827] border-[#1f2937]"
-                    }
-                  >
-                    {page}
-                  </Button>
-                )
+                {totalPages > 1 && (
+                  <div className="flex gap-1 items-center">
+                    {getVisiblePageNumbers().map((page, index) => {
+                      if (page === "...") {
+                        return (
+                          <span
+                            key={`ellipsis-${index}`}
+                            className="px-2 text-gray-400"
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+
+                      return (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page as number)}
+                          disabled={loading}
+                          className={
+                            page === currentPage
+                              ? "bg-blue-600 hover:bg-blue-700 min-w-[40px]"
+                              : "bg-[#111827] border-[#1f2937] hover:bg-[#1a2234] min-w-[40px]"
+                          }
+                        >
+                          {page}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages || loading || totalPages <= 1}
+                  className="bg-[#111827] border-[#1f2937] hover:bg-[#1a2234] disabled:opacity-50"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+              {totalPages > 1 && (
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages}
+                </p>
               )}
             </div>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="bg-[#111827] border-[#1f2937]"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+          )}
         </div>
       </div>
     </FeatureGate>

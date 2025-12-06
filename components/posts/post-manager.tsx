@@ -19,6 +19,9 @@ import {
   FileText,
   RefreshCw,
   AlertCircle,
+  Search,
+  ExternalLink,
+  GripVertical,
 } from "lucide-react";
 import { PostDialog } from "./post-dialog";
 import {
@@ -34,6 +37,7 @@ import {
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 interface PostManagerProps {
@@ -47,6 +51,8 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [editPost, setEditPost] = useState<any>(null);
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
@@ -170,10 +176,36 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
     }
   };
 
+  // Filter posts based on search and type
+  const filteredPosts = posts.filter((post) => {
+    const matchesSearch =
+      !searchQuery ||
+      post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.author?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesType = filterType === "all" || post.type === filterType;
+    
+    return matchesSearch && matchesType;
+  });
+
+  // Get unique post types for filter
+  const postTypes = Array.from(new Set(posts.map((post) => post.type).filter(Boolean)));
+
+  // Refresh posts after edit dialog closes
+  useEffect(() => {
+    if (!editPost && open) {
+      const timer = setTimeout(() => {
+        fetchPosts();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [editPost, open]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[900px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-4 md:p-6">
+        <DialogContent className="sm:max-w-[900px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6">
           <DialogHeader className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4 border-b border-border/40 pr-12 sm:pr-16 md:pr-20">
             <div className="flex flex-col gap-3 justify-between items-start sm:flex-row sm:items-center sm:gap-4">
               <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
@@ -206,6 +238,43 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
             </div>
           </DialogHeader>
 
+          {/* Search and Filter Bar */}
+          {!isLoading && posts.length > 0 && (
+            <div className="flex flex-col sm:flex-row gap-3 pt-3 sm:pt-4 border-b border-border/40 pb-3 sm:pb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search posts by title, description, or author..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 h-9 sm:h-10"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant={filterType === "all" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setFilterType("all")}
+                  className="h-9 sm:h-10"
+                >
+                  All ({posts.length})
+                </Button>
+                {postTypes.map((type) => (
+                  <Button
+                    key={type}
+                    variant={filterType === type ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setFilterType(type)}
+                    className="h-9 sm:h-10"
+                  >
+                    {type} ({posts.filter((p) => p.type === type).length})
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="mt-2.5 min-[375px]:mt-3 sm:mt-4 md:mt-6">
             {isLoading ? (
               <div className="flex flex-col justify-center items-center py-6 min-[375px]:py-8 sm:py-12 md:py-16">
@@ -216,7 +285,21 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
               </div>
             ) : (
               <div className="space-y-2 min-[375px]:space-y-2.5 sm:space-y-3 md:space-y-4">
-                {posts.length === 0 ? (
+                {filteredPosts.length === 0 && posts.length > 0 ? (
+                  <Card className="border-2 border-dashed">
+                    <CardContent className="flex flex-col justify-center items-center py-6 min-[375px]:py-8 sm:py-12 md:py-16 text-center px-2.5 min-[375px]:px-3 sm:px-4">
+                      <div className="p-2.5 min-[375px]:p-3 sm:p-4 rounded-full bg-muted/50 mb-3 min-[375px]:mb-4">
+                        <Search className="w-7 h-7 min-[375px]:w-8 min-[375px]:h-8 sm:w-10 sm:h-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="text-sm min-[375px]:text-base sm:text-lg font-semibold mb-1.5 min-[375px]:mb-2">
+                        No posts found
+                      </h3>
+                      <p className="text-xs min-[375px]:text-sm sm:text-base text-muted-foreground max-w-sm break-words">
+                        Try adjusting your search or filter criteria.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : posts.length === 0 ? (
                   <Card className="border-2 border-dashed">
                     <CardContent className="flex flex-col justify-center items-center py-6 min-[375px]:py-8 sm:py-12 md:py-16 text-center px-2.5 min-[375px]:px-3 sm:px-4">
                       <div className="p-2.5 min-[375px]:p-3 sm:p-4 rounded-full bg-muted/50 mb-3 min-[375px]:mb-4">
@@ -233,19 +316,24 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                   </Card>
                 ) : (
                   <div className="space-y-2 min-[375px]:space-y-2.5 sm:space-y-3 md:space-y-4">
-                    {posts.map((post, index) => (
+                    {filteredPosts.map((post, index) => {
+                      const originalIndex = posts.findIndex((p) => p._id === post._id);
+                      return (
                       <Card
                         key={post._id}
-                        className="border-2 hover:border-primary/50 transition-all duration-200 hover:shadow-md active:scale-[0.98] touch-manipulation"
+                        className="border-2 hover:border-primary/50 transition-all duration-200 hover:shadow-md active:scale-[0.98] touch-manipulation w-full max-w-full overflow-hidden"
                       >
-                        <CardContent className="p-2.5 min-[375px]:p-3 sm:p-4 md:p-5 lg:p-6">
-                          <div className="flex flex-col gap-2.5 min-[375px]:gap-3 sm:gap-4 md:gap-5">
+                        <CardContent className="p-2.5 min-[375px]:p-3 sm:p-4 md:p-5 lg:p-6 w-full max-w-full overflow-hidden">
+                          <div className="flex flex-col gap-2.5 min-[375px]:gap-3 sm:gap-4 md:gap-5 w-full max-w-full">
                             {/* Post Info */}
-                            <div className="flex-1 min-w-0 space-y-1.5 min-[375px]:space-y-2 sm:space-y-2.5">
-                              <div className="flex flex-col min-[375px]:flex-row min-[375px]:flex-wrap items-start min-[375px]:items-center gap-1.5 min-[375px]:gap-2 sm:gap-2.5">
-                                <h3 className="font-semibold text-xs min-[375px]:text-sm sm:text-base md:text-lg lg:text-xl break-words flex-1 min-w-0 w-full min-[375px]:w-auto">
-                                  {post.title}
-                                </h3>
+                            <div className="flex-1 min-w-0 space-y-1.5 min-[375px]:space-y-2 sm:space-y-2.5 w-full max-w-full overflow-hidden">
+                              <div className="flex flex-col min-[375px]:flex-row min-[375px]:flex-wrap items-start min-[375px]:items-center gap-1.5 min-[375px]:gap-2 sm:gap-2.5 w-full max-w-full">
+                                <div className="flex items-center gap-2 flex-1 min-w-0 w-full max-w-full">
+                                  <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+                                  <h3 className="font-semibold text-xs min-[375px]:text-sm sm:text-base md:text-lg lg:text-xl break-words flex-1 min-w-0 overflow-hidden">
+                                    {post.title}
+                                  </h3>
+                                </div>
                                 <div className="flex items-center gap-1 min-[375px]:gap-1.5 sm:gap-2 flex-shrink-0 w-full min-[375px]:w-auto">
                                   <Badge
                                     variant={
@@ -259,8 +347,8 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                                   >
                                     {post.type}
                                   </Badge>
-                                  <span className="text-[10px] min-[375px]:text-xs sm:text-sm text-muted-foreground font-medium px-1 min-[375px]:px-1.5 py-0.5 rounded bg-muted/50">
-                                    #{index + 1}
+                                  <span className="text-[10px] min-[375px]:text-xs sm:text-sm text-muted-foreground font-medium px-1.5 min-[375px]:px-2 py-0.5 rounded bg-muted/50">
+                                    #{originalIndex + 1}
                                   </span>
                                 </div>
                               </div>
@@ -286,14 +374,53 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center justify-between gap-2 sm:gap-2.5 pt-2 sm:pt-3 border-t border-border/40">
-                              <div className="flex items-center gap-1.5 sm:gap-2">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 sm:pt-3 border-t border-border/40 w-full max-w-full">
+                              {/* Top row on small screens: Edit, Delete, View Post */}
+                              <div className="flex gap-2 items-center flex-shrink-0 min-w-0">
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setEditPost(post)}
+                                  className="gap-2 px-4 h-10 sm:h-9 touch-manipulation flex-shrink-0 min-w-0"
+                                  title="Edit post"
+                                >
+                                  <Edit className="flex-shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
+                                  <span className="text-sm whitespace-nowrap">Edit</span>
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  onClick={() => setDeletePostId(post._id)}
+                                  className="gap-2 px-4 h-10 sm:h-9 text-destructive hover:text-destructive/90 hover:bg-destructive/10 touch-manipulation flex-shrink-0 min-w-0"
+                                  title="Delete post"
+                                >
+                                  <Trash2 className="flex-shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
+                                  <span className="text-sm whitespace-nowrap">Delete</span>
+                                </Button>
+                                {post.linkAddress && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    asChild
+                                    className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
+                                    title="View post"
+                                  >
+                                    <a
+                                      href={post.linkAddress}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      <ExternalLink className="w-4 h-4 sm:h-5 sm:w-5" />
+                                    </a>
+                                  </Button>
+                                )}
+                              </div>
+                              {/* Bottom row on small screens: Up/Down arrows */}
+                              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 sm:justify-end">
                                 <Button
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleReorder(post._id, "up")}
-                                  disabled={index === 0}
-                                  className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation"
+                                  disabled={originalIndex === 0}
+                                  className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
                                   title="Move up"
                                 >
                                   <ArrowUp className="w-4 h-4 sm:h-5 sm:w-5" />
@@ -304,38 +431,19 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                                   onClick={() =>
                                     handleReorder(post._id, "down")
                                   }
-                                  disabled={index === posts.length - 1}
-                                  className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation"
+                                  disabled={originalIndex === posts.length - 1}
+                                  className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
                                   title="Move down"
                                 >
                                   <ArrowDown className="w-4 h-4 sm:h-5 sm:w-5" />
-                                </Button>
-                              </div>
-                              <div className="flex gap-2 items-center sm:gap-2">
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => setEditPost(post)}
-                                  className="gap-2 px-6 h-10 sm:px-4 sm:h-9 touch-manipulation"
-                                  title="Edit post"
-                                >
-                                  <Edit className="flex-shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
-                                  <span className="text-sm">Edit</span>
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => setDeletePostId(post._id)}
-                                  className="gap-2 px-6 h-10 sm:px-4 sm:h-9 text-destructive hover:text-destructive/90 hover:bg-destructive/10 touch-manipulation"
-                                  title="Delete post"
-                                >
-                                  <Trash2 className="flex-shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
-                                  <span className="text-sm">Delete</span>
                                 </Button>
                               </div>
                             </div>
                           </div>
                         </CardContent>
                       </Card>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
               </div>

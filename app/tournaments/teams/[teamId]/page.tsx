@@ -23,6 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TeamSettingsForm } from "@/components/teams/team-settings-form";
 import { TeamInvites } from "@/components/teams/team-invites";
 import { useToast } from "@/components/ui/use-toast";
@@ -98,7 +99,8 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   } | null>(null);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showTransferCaptainDialog, setShowTransferCaptainDialog] = useState(false);
+  const [showTransferCaptainDialog, setShowTransferCaptainDialog] =
+    useState(false);
   const router = useRouter();
   const fetchTeamRef = useRef(false);
   const checkUserTeamRef = useRef(false);
@@ -470,14 +472,79 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
+      <div className="min-h-screen bg-background">
+        <div className="px-4 py-6 mx-auto max-w-screen-xl sm:px-6 lg:px-8 xl:px-12 sm:py-8 lg:py-10">
+          <div className="mb-4 sm:mb-6">
+            <Skeleton className="w-32 h-10" />
+          </div>
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
+              <div className="flex gap-3 items-center">
+                <Skeleton className="w-12 h-12 rounded-xl" />
+                <div className="space-y-2">
+                  <Skeleton className="w-48 h-8 sm:w-64" />
+                  <Skeleton className="w-32 h-4" />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="w-24 h-12" />
+                <Skeleton className="w-24 h-12" />
+              </div>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+            <Card className="border-2 lg:col-span-2">
+              <CardHeader>
+                <Skeleton className="w-32 h-6" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="w-full h-4" />
+                <Skeleton className="w-3/4 h-4" />
+                <Skeleton className="w-full h-4" />
+                <Skeleton className="w-2/3 h-4" />
+              </CardContent>
+            </Card>
+            <Card className="border-2">
+              <CardHeader>
+                <Skeleton className="w-32 h-6" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Skeleton className="w-full h-16 rounded-lg" />
+                <Skeleton className="w-full h-12 rounded-lg" />
+                <Skeleton className="w-full h-12 rounded-lg" />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!team) {
-    return <div>Team not found</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-background">
+        <Card className="mx-4 max-w-md border-2">
+          <CardContent className="p-8 text-center">
+            <div className="flex flex-col gap-4 items-center">
+              <div className="p-3 rounded-full bg-destructive/10">
+                <AlertCircle className="w-8 h-8 text-destructive" />
+              </div>
+              <div>
+                <h2 className="mb-2 text-xl font-bold">Team Not Found</h2>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  The team you&apos;re looking for doesn&apos;t exist or has
+                  been removed.
+                </p>
+                <Button onClick={() => router.push("/tournaments/teams")}>
+                  <ArrowLeft className="mr-2 w-4 h-4" />
+                  Back to Teams
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -508,15 +575,15 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
           {/* First Row: Team Details and Members */}
           <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
             {/* Team Details Card */}
-            <Card className="border-2 lg:col-span-2">
-              <CardHeader className="pb-4">
+            <Card className="bg-gradient-to-br border-2 shadow-lg lg:col-span-2 from-card via-card to-primary/5">
+              <CardHeader className="pb-4 border-b border-border/50">
                 <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
                   <div className="flex gap-3 items-center">
-                    <div className="relative p-2 bg-gradient-to-br rounded-lg border shadow-sm from-primary/20 to-primary/10 border-primary/30">
-                      <Shield className="w-5 h-5 text-primary" />
+                    <div className="relative p-2.5 bg-gradient-to-br rounded-xl border-2 shadow-md from-primary/30 to-primary/20 border-primary/40 ring-1 ring-primary/20">
+                      <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     </div>
                     <div className="space-y-1">
-                      <CardTitle className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-2xl from-foreground to-foreground/80">
+                      <CardTitle className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-2xl from-foreground via-foreground to-foreground/70">
                         Team Details
                       </CardTitle>
                       <p className="text-xs sm:text-sm text-muted-foreground">
@@ -569,48 +636,73 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                 {isTeamCaptain ? (
                   <TeamSettingsForm team={team} formatDate={formatDate} />
                 ) : (
-                  <>
-                    <div>
-                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                        Team Name
-                      </h3>
-                      <p className="text-xl font-semibold">{team.name}</p>
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="p-4 bg-gradient-to-br rounded-lg border-2 transition-colors from-card via-card to-primary/5 hover:bg-primary/10">
+                      <div className="flex gap-2 items-center mb-2">
+                        <Shield className="w-4 h-4 text-primary" />
+                        <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                          Team Name
+                        </h3>
+                      </div>
+                      <p className="text-xl font-bold">{team.name}</p>
                     </div>
 
-                    <div>
-                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                        Team Tag
-                      </h3>
-                      <Badge variant="secondary" className="text-lg">
+                    <div className="p-4 bg-gradient-to-br rounded-lg border-2 transition-colors from-card via-card to-primary/5 hover:bg-primary/10">
+                      <div className="flex gap-2 items-center mb-2">
+                        <Badge className="flex justify-center items-center p-0 w-4 h-4 text-primary bg-primary/20 border-primary/30" />
+                        <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                          Team Tag
+                        </h3>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="px-3 py-1 text-lg font-bold"
+                      >
                         [{team.tag}]
                       </Badge>
                     </div>
 
-                    <div>
-                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                        Description
-                      </h3>
-                      <p className="text-muted-foreground">
-                        {team.description || "No description available"}
+                    <div className="p-4 bg-gradient-to-br rounded-lg border-2 transition-colors from-card via-card to-primary/5 hover:bg-primary/10 sm:col-span-2">
+                      <div className="flex gap-2 items-center mb-2">
+                        <Settings className="w-4 h-4 text-primary" />
+                        <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                          Description
+                        </h3>
+                      </div>
+                      <p className="text-base leading-relaxed text-foreground">
+                        {team.description || (
+                          <span className="italic text-muted-foreground">
+                            No description available
+                          </span>
+                        )}
                       </p>
                     </div>
 
                     {team && team.createdAt && (
-                      <div>
-                        <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                          Created
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="p-4 bg-gradient-to-br rounded-lg border-2 transition-colors from-card via-card to-primary/5 hover:bg-primary/10">
+                        <div className="flex gap-2 items-center mb-2">
+                          <Trophy className="w-4 h-4 text-primary" />
+                          <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                            Created
+                          </h3>
+                        </div>
+                        <p className="text-base font-medium">
                           {formatDate(team.createdAt)}
                         </p>
                       </div>
                     )}
 
-                    <div>
-                      <h3 className="mb-2 text-sm font-medium text-muted-foreground">
-                        Team Size
-                      </h3>
-                      <Badge variant="secondary" className="text-base">
+                    <div className="p-4 bg-gradient-to-br rounded-lg border-2 transition-colors from-card via-card to-primary/5 hover:bg-primary/10">
+                      <div className="flex gap-2 items-center mb-2">
+                        <Users className="w-4 h-4 text-primary" />
+                        <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+                          Team Size
+                        </h3>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="px-3 py-1 text-base font-bold"
+                      >
                         {team.teamSize === 2
                           ? "2v2"
                           : team.teamSize === 3
@@ -623,20 +715,20 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         ({team.teamSize || 4} players)
                       </Badge>
                     </div>
-                  </>
+                  </div>
                 )}
               </CardContent>
             </Card>
 
             {/* Team Members Card */}
-            <Card className="border-2">
-              <CardHeader className="pb-4">
+            <Card className="bg-gradient-to-br border-2 shadow-lg from-card via-card to-primary/5">
+              <CardHeader className="pb-4 border-b border-border/50">
                 <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
                   <div className="flex gap-3 items-center">
-                    <div className="relative p-2 bg-gradient-to-br rounded-lg border shadow-sm from-primary/20 to-primary/10 border-primary/30">
-                      <Users className="w-5 h-5 text-primary" />
+                    <div className="relative p-2.5 bg-gradient-to-br rounded-xl border-2 shadow-md from-primary/30 to-primary/20 border-primary/40 ring-1 ring-primary/20">
+                      <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     </div>
-                    <CardTitle className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-xl from-foreground to-foreground/80">
+                    <CardTitle className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-xl from-foreground via-foreground to-foreground/70">
                       Team Members
                     </CardTitle>
                   </div>
@@ -678,26 +770,27 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     <h3 className="mb-3 text-xs font-semibold tracking-wide uppercase sm:text-sm text-muted-foreground">
                       Captain
                     </h3>
-                    <div className="p-3 bg-gradient-to-br to-transparent rounded-lg border-2 shadow-sm sm:p-4 from-amber-500/10 via-amber-500/5 border-amber-500/20">
-                      <div className="flex gap-3 items-center">
-                        <div className="flex overflow-hidden relative justify-center items-center w-10 h-10 bg-gradient-to-br rounded-full border-2 ring-2 sm:w-12 sm:h-12 from-amber-500/20 to-amber-500/10 border-amber-500/30 ring-amber-500/10">
+                    <div className="relative p-4 bg-gradient-to-br rounded-xl border-2 shadow-lg transition-all duration-300 group sm:p-5 from-amber-500/20 via-amber-500/10 to-amber-500/5 border-amber-500/30 hover:shadow-xl hover:border-amber-500/50 hover:from-amber-500/25 hover:via-amber-500/15">
+                      <div className="absolute inset-0 bg-gradient-to-br to-transparent rounded-xl opacity-0 transition-opacity from-amber-500/10 group-hover:opacity-100" />
+                      <div className="flex relative gap-4 items-center">
+                        <div className="flex overflow-hidden relative justify-center items-center w-12 h-12 bg-gradient-to-br rounded-full border-2 ring-2 ring-offset-2 shadow-lg ring-offset-background sm:w-14 sm:h-14 from-amber-500/30 to-amber-500/20 border-amber-500/40 ring-amber-500/20">
                           {team.captain.discordProfilePicture ? (
                             <Image
                               src={team.captain.discordProfilePicture}
                               alt={team.captain.discordNickname}
-                              width={48}
-                              height={48}
+                              width={56}
+                              height={56}
                               className="object-cover w-full h-full"
                             />
                           ) : (
-                            <Users className="w-5 h-5 text-amber-500 sm:w-6 sm:h-6" />
+                            <Users className="w-6 h-6 text-amber-500 sm:w-7 sm:h-7" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold truncate sm:text-base">
+                          <p className="text-base font-bold truncate sm:text-lg mb-1.5">
                             {team.captain.discordNickname}
                           </p>
-                          <Badge className="mt-1.5 text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                          <Badge className="text-xs font-semibold text-amber-700 shadow-sm bg-amber-500/30 dark:text-amber-300 border-amber-500/50">
                             Captain
                           </Badge>
                         </div>
@@ -733,33 +826,38 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                         .map((member) => (
                           <div
                             key={member.discordId}
-                            className="flex justify-between items-center p-3 rounded-lg border-2 transition-colors sm:p-4 bg-card hover:bg-muted/30"
+                            className="flex justify-between items-center p-3 bg-gradient-to-br rounded-xl border-2 transition-all duration-200 group sm:p-4 from-card via-card to-primary/5 hover:from-primary/10 hover:via-primary/5 hover:to-primary/10 hover:shadow-md hover:border-primary/40"
                           >
                             <div className="flex flex-1 gap-3 items-center min-w-0">
-                              <div className="overflow-hidden relative w-10 h-10 bg-gradient-to-br rounded-full border sm:w-11 sm:h-11 from-primary/20 to-primary/10 border-primary/30 shrink-0">
+                              <div className="overflow-hidden relative w-11 h-11 bg-gradient-to-br rounded-full border-2 ring-1 shadow-sm sm:w-12 sm:h-12 from-primary/30 to-primary/20 border-primary/40 shrink-0 ring-primary/20">
                                 {member.discordProfilePicture ? (
                                   <Image
                                     src={member.discordProfilePicture}
                                     alt={member.discordNickname}
-                                    width={44}
-                                    height={44}
+                                    width={48}
+                                    height={48}
                                     className="object-cover w-full h-full"
                                   />
                                 ) : (
                                   <div className="flex justify-center items-center w-full h-full">
-                                    <Users className="w-5 h-5 text-primary" />
+                                    <Users className="w-5 h-5 text-primary sm:w-6 sm:h-6" />
                                   </div>
                                 )}
                               </div>
-                              <p className="text-sm font-medium truncate sm:text-base">
-                                {member.discordNickname}
-                              </p>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold truncate sm:text-base">
+                                  {member.discordNickname}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Member
+                                </p>
+                              </div>
                             </div>
                             {isTeamCaptain && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="w-9 h-9 text-red-500 hover:text-red-700 hover:bg-red-500/10 sm:h-10 sm:w-10 shrink-0"
+                                className="w-9 h-9 text-red-500 border-2 border-transparent transition-all hover:text-red-700 hover:bg-red-500/20 hover:border-red-500/30 sm:h-10 sm:w-10 shrink-0"
                                 onClick={() =>
                                   handleRemoveMemberClick(
                                     member.discordId,
@@ -779,10 +877,22 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                           m.role.toLowerCase() !== "substitute" &&
                           m.discordId !== team.captain.discordId
                       ).length === 0 && (
-                        <div className="p-4 text-center rounded-lg border-2 border-dashed bg-muted/30">
-                          <p className="text-sm text-muted-foreground">
-                            No active members yet
-                          </p>
+                        <div className="p-6 text-center rounded-lg border-2 border-dashed sm:p-8 bg-muted/30">
+                          <div className="flex flex-col gap-3 items-center">
+                            <div className="p-3 rounded-full bg-muted/50">
+                              <Users className="w-6 h-6 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <p className="mb-1 text-sm font-medium">
+                                No active members yet
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {isTeamCaptain
+                                  ? "Invite players to join your team"
+                                  : "This team is looking for members"}
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -805,31 +915,41 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                           .map((member) => (
                             <div
                               key={member.discordId}
-                              className="flex justify-between items-center p-3 rounded-lg border bg-card border-border"
+                              className="flex justify-between items-center p-3 bg-gradient-to-br rounded-xl border-2 transition-all duration-200 group sm:p-4 from-card via-card to-muted/30 hover:from-muted/50 hover:via-muted/40 hover:to-muted/50 hover:shadow-sm border-border/50"
                             >
                               <div className="flex gap-3 items-center">
-                                <div className="overflow-hidden relative w-10 h-10 rounded-full">
+                                <div className="overflow-hidden relative w-10 h-10 rounded-full border shadow-sm border-border/50 sm:w-11 sm:h-11">
                                   {member.discordProfilePicture ? (
                                     <Image
                                       src={member.discordProfilePicture}
                                       alt={member.discordNickname}
-                                      width={48}
-                                      height={48}
+                                      width={44}
+                                      height={44}
                                       className="object-cover w-full h-full"
                                     />
                                   ) : (
-                                    <div className="flex justify-center items-center w-full h-full bg-secondary">
+                                    <div className="flex justify-center items-center w-full h-full bg-muted">
                                       <Users className="w-5 h-5 text-muted-foreground" />
                                     </div>
                                   )}
                                 </div>
-                                <p>{member.discordNickname}</p>
+                                <div>
+                                  <p className="text-sm font-medium sm:text-base">
+                                    {member.discordNickname}
+                                  </p>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs mt-0.5"
+                                  >
+                                    Substitute
+                                  </Badge>
+                                </div>
                               </div>
                               {isTeamCaptain && (
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="text-red-500 hover:text-red-700 hover:bg-red-500/10"
+                                  className="w-9 h-9 text-red-500 border-2 border-transparent transition-all hover:text-red-700 hover:bg-red-500/20 hover:border-red-500/30 sm:h-10 sm:w-10"
                                   onClick={() =>
                                     handleRemoveMemberClick(
                                       member.discordId,
@@ -857,11 +977,11 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
             session?.user?.id &&
             team.members.some((m) => m.discordId === session.user.id) &&
             !isTeamCaptain && (
-              <Card className="border-2 border-red-500/20 bg-red-500/5">
-                <CardHeader>
+              <Card className="bg-gradient-to-br border-2 shadow-lg border-red-500/30 from-red-500/10 via-red-500/5 to-red-500/10">
+                <CardHeader className="border-b border-red-500/20">
                   <div className="flex gap-3 items-center">
-                    <div className="relative p-2 rounded-lg border bg-red-500/20 border-red-500/30">
-                      <LogIn className="w-5 h-5 text-red-500" />
+                    <div className="relative p-2.5 rounded-xl border-2 shadow-md bg-red-500/30 border-red-500/40 ring-1 ring-red-500/20">
+                      <LogIn className="w-5 h-5 text-red-500 sm:w-6 sm:h-6" />
                     </div>
                     <CardTitle className="text-lg font-bold text-red-500 sm:text-xl">
                       Leave Team
@@ -942,13 +1062,13 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
           {/* Captain Settings Section (Middle Row) */}
           {isTeamCaptain && (
-            <Card className="border-2">
-              <CardHeader>
+            <Card className="bg-gradient-to-br border-2 shadow-lg from-card via-card to-primary/5">
+              <CardHeader className="border-b border-border/50">
                 <div className="flex gap-3 items-center">
-                  <div className="relative p-2 bg-gradient-to-br rounded-lg border shadow-sm from-primary/20 to-primary/10 border-primary/30">
-                    <Settings className="w-5 h-5 text-primary" />
+                  <div className="relative p-2.5 bg-gradient-to-br rounded-xl border-2 shadow-md from-primary/30 to-primary/20 border-primary/40 ring-1 ring-primary/20">
+                    <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <CardTitle className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-xl from-foreground to-foreground/80">
+                  <CardTitle className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r sm:text-xl from-foreground via-foreground to-foreground/70">
                     Captain Settings
                   </CardTitle>
                 </div>
@@ -1071,11 +1191,11 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
           {isTeamCaptain &&
             team.members.filter((m) => m.discordId !== session?.user?.id)
               .length === 0 && (
-              <Card className="border-2 border-red-500/30 bg-red-500/5">
-                <CardHeader>
+              <Card className="bg-gradient-to-br border-2 shadow-lg border-red-500/30 from-red-500/10 via-red-500/5 to-red-500/10">
+                <CardHeader className="border-b border-red-500/20">
                   <div className="flex gap-3 items-center">
-                    <div className="relative p-2 rounded-lg border bg-red-500/20 border-red-500/30">
-                      <AlertCircle className="w-5 h-5 text-red-500" />
+                    <div className="relative p-2.5 rounded-xl border-2 shadow-md bg-red-500/30 border-red-500/40 ring-1 ring-red-500/20">
+                      <AlertCircle className="w-5 h-5 text-red-500 sm:w-6 sm:h-6" />
                     </div>
                     <CardTitle className="text-lg font-bold text-red-500 sm:text-xl">
                       Delete Team
@@ -1104,7 +1224,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
           {/* Recent Invites Section (Bottom Row) */}
           {isTeamCaptain && (
-            <Card className="border-2">
+            <Card className="bg-gradient-to-br border-2 shadow-lg from-card via-card to-primary/5">
               <TeamInvitesList teamId={team._id} isCaptain={isTeamCaptain} />
             </Card>
           )}
@@ -1268,13 +1388,14 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
 
                       const userTeamSize = userCurrentTeam?.teamSize || 4;
                       const targetTeamSize = teamSize || 4;
-                      const isSameSizeTeam = userCurrentTeam && userTeamSize === targetTeamSize;
+                      const isSameSizeTeam =
+                        userCurrentTeam && userTeamSize === targetTeamSize;
 
                       return (
                         <>
                           <p className="text-sm text-muted-foreground">
-                            This team has {team.members.length}/{teamSize || 4} members. Send
-                            a request to join this team.
+                            This team has {team.members.length}/{teamSize || 4}{" "}
+                            members. Send a request to join this team.
                           </p>
                           {isSameSizeTeam ? (
                             <TooltipProvider>
@@ -1292,8 +1413,11 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                 </TooltipTrigger>
                                 <TooltipContent>
                                   <p>
-                                    You are already a member of a {targetTeamSize}-person team &quot;{userCurrentTeam.name}&quot;. Leave your current
-                                    team to join another team of the same size.
+                                    You are already a member of a{" "}
+                                    {targetTeamSize}-person team &quot;
+                                    {userCurrentTeam.name}&quot;. Leave your
+                                    current team to join another team of the
+                                    same size.
                                   </p>
                                 </TooltipContent>
                               </Tooltip>
@@ -1384,7 +1508,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                   Transfer Captain Role
                 </AlertDialogTitle>
               </div>
-              <AlertDialogDescription className="pt-2 text-sm sm:text-base space-y-2">
+              <AlertDialogDescription className="pt-2 space-y-2 text-sm sm:text-base">
                 <p>
                   Are you sure you want to transfer the captain role to{" "}
                   <span className="font-semibold text-foreground">
@@ -1396,11 +1520,11 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                   </span>
                   ?
                 </p>
-                <div className="p-3 rounded-lg border-2 border-amber-500/30 bg-amber-500/10 mt-3">
+                <div className="p-3 mt-3 rounded-lg border-2 border-amber-500/30 bg-amber-500/10">
                   <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                     ⚠️ Warning: This action cannot be undone!
                   </p>
-                  <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                  <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
                     You will lose all captain privileges and will not be able to
                     reverse this transfer yourself. Only the new captain can
                     transfer leadership back to you.

@@ -57,67 +57,58 @@ export default function EventsClient() {
   // Don't render anything until client-side hydration is complete
   if (!mounted) {
     return (
-      <div className="space-y-12">
-        <section className="relative py-16">
-          <div className="absolute inset-0">
-            <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background" />
-          </div>
-          <div className="relative max-w-4xl px-4 mx-auto text-center">
-            <h1 className="mb-6 text-4xl font-bold sm:text-5xl lg:text-6xl">
-              Community Events
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              Stay connected with the latest Shadowrun FPS community events and
-              updates
-            </p>
+      <article className="space-y-6 sm:space-y-8">
+        <section className="space-y-3 sm:space-y-4">
+          <div className="h-6 bg-muted animate-pulse rounded w-3/4" />
+          <div className="h-4 bg-muted animate-pulse rounded w-full" />
+        </section>
+        <section className="space-y-3 sm:space-y-4">
+          <div className="h-8 bg-muted animate-pulse rounded w-1/3" />
+          <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="rounded-lg h-[400px] sm:h-[450px] bg-muted/50 animate-pulse border-2 border-border"
+              />
+            ))}
           </div>
         </section>
-        <section className="relative px-4">
-          <div className="flex items-center justify-center w-full h-96">
-            Loading posts...
-          </div>
-        </section>
-      </div>
+      </article>
     );
   }
 
   return (
-    <div className="space-y-12">
-      {/* Hero Section */}
-      <section className="relative py-16">
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/95 to-background" />
-        </div>
-        <div className="relative max-w-4xl px-4 mx-auto text-center">
-          <h1 className="mb-6 text-4xl font-bold sm:text-5xl lg:text-6xl">
-            Community Events
-          </h1>
-          <p className="text-xl text-muted-foreground">
-            Stay connected with the latest Shadowrun FPS community events and
-            updates
-          </p>
+    <article className="space-y-6 sm:space-y-8">
+      {/* Introduction Section */}
+      <section className="space-y-3 sm:space-y-4">
+        <p className="text-base sm:text-lg md:text-xl text-muted-foreground">
+          Stay connected with the latest Shadowrun FPS community events, tournaments, LAN parties, and community updates.
+        </p>
 
-          {/* Admin Controls */}
-          {isAdmin && (
-            <div className="flex justify-center gap-4 mt-8">
-              <Button
-                onClick={() => setIsDialogOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <PlusCircle className="w-4 h-4" />
-                Create Post
-              </Button>
-              <Button variant="outline" onClick={() => setIsManagerOpen(true)}>
-                Manage Posts
-              </Button>
-            </div>
-          )}
-        </div>
+        {/* Admin Controls */}
+        {isAdmin && (
+          <div className="flex flex-wrap gap-3 sm:gap-4">
+            <Button
+              onClick={() => setIsDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <PlusCircle className="w-4 h-4" />
+              Create Post
+            </Button>
+            <Button variant="outline" onClick={() => setIsManagerOpen(true)}>
+              Manage Posts
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* Featured Posts Grid */}
-      <section className="relative px-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-background to-background/80" />
+      <section className="space-y-3 sm:space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            Upcoming Events
+          </h2>
+        </div>
         <div className="relative">
           <FeaturedPosts />
         </div>
@@ -132,6 +123,6 @@ export default function EventsClient() {
       {isManagerOpen && (
         <PostManager open={isManagerOpen} onOpenChange={setIsManagerOpen} />
       )}
-    </div>
+    </article>
   );
 }
