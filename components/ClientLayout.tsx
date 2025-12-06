@@ -25,8 +25,11 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         >
           Skip to main content
         </a>
+        {/* Header - Fixed at top */}
+        <Header />
+        {/* Spacer to account for fixed header */}
+        <div className="h-14 sm:h-16" />
         <div className="relative flex-1 w-full">
-          <Header />
           <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
             {children}
           </main>

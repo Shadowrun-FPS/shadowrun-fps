@@ -70,9 +70,25 @@ export default function FeaturedPosts() {
 
   if (error) {
     return (
-      <div className="py-12 sm:py-16 text-center">
-        <p className="text-base sm:text-lg text-destructive font-medium">
-          Error: {error}
+      <div className="py-12 sm:py-16 text-center rounded-lg border border-destructive/50 bg-destructive/5">
+        <p className="text-base sm:text-lg text-destructive font-medium mb-2">
+          Error loading events
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {error}
+        </p>
+      </div>
+    );
+  }
+
+  if (!posts || posts.length === 0) {
+    return (
+      <div className="py-12 sm:py-16 text-center rounded-lg border border-border/50 bg-muted/30">
+        <p className="text-base sm:text-lg text-muted-foreground mb-2">
+          No events scheduled
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Check back soon for upcoming community events and tournaments.
         </p>
       </div>
     );
@@ -80,15 +96,9 @@ export default function FeaturedPosts() {
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
-      {posts && posts.length > 0 ? (
-        posts.map((post) => <PostCard key={post._id} post={post} />)
-      ) : (
-        <div className="py-12 sm:py-16 text-center col-span-full">
-          <p className="text-base sm:text-lg text-muted-foreground">
-            No posts available.
-          </p>
-        </div>
-      )}
+      {posts.map((post) => (
+        <PostCard key={post._id} post={post} />
+      ))}
     </div>
   );
 }

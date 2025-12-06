@@ -39,6 +39,8 @@ import {
   Type,
   PlusCircle,
   Edit,
+  AlertCircle,
+  ExternalLink,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -74,6 +76,8 @@ export function PostDialog({
       "",
     authorId: initialData?.authorId || session?.user?.id || "",
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [imageError, setImageError] = useState(false);
 
   // Reset form when dialog opens/closes or initialData changes
   useEffect(() => {
@@ -94,6 +98,8 @@ export function PostDialog({
       setDate(
         initialData?.date ? new Date(initialData.date) : new Date()
       );
+      setErrors({});
+      setImageError(false);
     }
   }, [open, initialData, session]);
 
@@ -108,11 +114,48 @@ export function PostDialog({
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
+    } else if (formData.title.length > 200) {
+      newErrors.title = "Title must be 200 characters or less";
+    }
+
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required";
+    } else if (formData.description.length > 500) {
+      newErrors.description = "Description must be 500 characters or less";
+    }
+
+    if (!formData.imageUrl.trim()) {
+      newErrors.imageUrl = "Image URL is required";
+    } else if (
+      !formData.imageUrl.match(
+        /^https?:\/\/.+\..+/
+      )
+    ) {
+      newErrors.imageUrl = "Please enter a valid URL";
+    }
+
+    if (formData.link && !formData.link.match(/^https?:\/\/.+\..+/)) {
+      newErrors.link = "Please enter a valid URL";
+    }
+
+    if (!formData.author.trim()) {
+      newErrors.author = "Author is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async () => {
-    if (!formData.title || !formData.description || !formData.imageUrl) {
+    if (!validateForm()) {
       toast({
-        title: "Missing fields",
-        description: "Please fill in all required fields",
+        title: "Validation error",
+        description: "Please fix the errors in the form",
         variant: "destructive",
       });
       return;
@@ -150,8 +193,18 @@ export function PostDialog({
       });
 
       onOpenChange(false);
-      // Refresh the page to show the new post
-      window.location.reload();
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        imageUrl: "",
+        type: "EVENT",
+        link: "",
+        author: session?.user?.nickname || session?.user?.name || "",
+        authorId: session?.user?.id || "",
+      });
+      setDate(new Date());
+      setErrors({});
     } catch (error) {
       console.error("Error saving post:", error);
       toast({
@@ -194,26 +247,51 @@ export function PostDialog({
         <div className="space-y-4 sm:space-y-5 md:space-y-6 py-3 sm:py-4 md:py-6">
           {/* Title */}
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="title" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              Title <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="title" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Title <span className="text-destructive">*</span>
+              </Label>
+              <span className={cn(
+                "text-xs text-muted-foreground",
+                formData.title.length > 200 && "text-destructive"
+              )}>
+                {formData.title.length}/200
+              </span>
+            </div>
             <Input
               id="title"
               name="title"
               value={formData.title}
               onChange={handleChange}
               placeholder="Enter post title"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
+              className={cn(
+                "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full",
+                errors.title && "border-destructive focus:border-destructive"
+              )}
             />
+            {errors.title && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.title}
+              </p>
+            )}
           </div>
 
           {/* Description */}
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="description" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              Description <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="description" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Description <span className="text-destructive">*</span>
+              </Label>
+              <span className={cn(
+                "text-xs text-muted-foreground",
+                formData.description.length > 500 && "text-destructive"
+              )}>
+                {formData.description.length}/500
+              </span>
+            </div>
             <Textarea
               id="description"
               name="description"
@@ -221,8 +299,17 @@ export function PostDialog({
               onChange={handleChange}
               placeholder="Enter post description"
               rows={5}
-              className="resize-none text-base sm:text-sm border-2 focus:border-primary/50 transition-colors min-h-[120px] sm:min-h-[100px] touch-manipulation w-full"
+              className={cn(
+                "resize-none text-base sm:text-sm border-2 focus:border-primary/50 transition-colors min-h-[120px] sm:min-h-[100px] touch-manipulation w-full",
+                errors.description && "border-destructive focus:border-destructive"
+              )}
             />
+            {errors.description && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.description}
+              </p>
+            )}
           </div>
 
           {/* Image URL */}
@@ -235,22 +322,42 @@ export function PostDialog({
               id="imageUrl"
               name="imageUrl"
               value={formData.imageUrl}
-              onChange={handleChange}
+              onChange={(e) => {
+                handleChange(e);
+                setImageError(false);
+              }}
               placeholder="https://example.com/image.jpg"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
+              className={cn(
+                "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full",
+                errors.imageUrl && "border-destructive focus:border-destructive"
+              )}
             />
-            {formData.imageUrl && (
-              <div className="mt-2 sm:mt-3 rounded-lg overflow-hidden border-2 border-border relative w-full h-40 sm:h-48">
+            {errors.imageUrl && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.imageUrl}
+              </p>
+            )}
+            {formData.imageUrl && !imageError && (
+              <div className="mt-2 sm:mt-3 rounded-lg overflow-hidden border-2 border-border relative w-full h-40 sm:h-48 bg-muted">
                 <Image
                   src={formData.imageUrl}
                   alt={`Preview of image for ${formData.title || "post"}`}
                   fill
                   className="object-cover"
                   unoptimized
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
+                  onError={() => {
+                    setImageError(true);
                   }}
                 />
+              </div>
+            )}
+            {imageError && (
+              <div className="mt-2 sm:mt-3 rounded-lg border-2 border-destructive/50 bg-destructive/5 p-4 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                <p className="text-xs text-destructive">
+                  Failed to load image. Please check the URL.
+                </p>
               </div>
             )}
           </div>
@@ -315,21 +422,46 @@ export function PostDialog({
               <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
               Link (Optional)
             </Label>
-            <Input
-              id="link"
-              name="link"
-              value={formData.link}
-              onChange={handleChange}
-              placeholder="https://example.com/article"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
-            />
+            <div className="relative">
+              <Input
+                id="link"
+                name="link"
+                value={formData.link}
+                onChange={handleChange}
+                placeholder="https://example.com/article"
+                className={cn(
+                  "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full pr-10",
+                  errors.link && "border-destructive focus:border-destructive"
+                )}
+              />
+              {formData.link && (
+                <a
+                  href={formData.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                  title="Open link in new tab"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+            </div>
+            {errors.link && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.link}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              External link where users can read more about this post
+            </p>
           </div>
 
           {/* Author */}
           <div className="space-y-2 sm:space-y-2.5">
             <Label htmlFor="author" className="flex items-center gap-2 text-sm sm:text-base font-medium">
               <User className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              Author
+              Author <span className="text-destructive">*</span>
             </Label>
             <Input
               id="author"
@@ -337,8 +469,17 @@ export function PostDialog({
               value={formData.author}
               onChange={handleChange}
               placeholder="Author name"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
+              className={cn(
+                "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full",
+                errors.author && "border-destructive focus:border-destructive"
+              )}
             />
+            {errors.author && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {errors.author}
+              </p>
+            )}
           </div>
         </div>
 

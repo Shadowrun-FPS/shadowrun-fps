@@ -165,7 +165,7 @@ export function Navbar() {
   return (
     <nav className="flex flex-1 items-center">
       {/* Mobile Navigation */}
-      <div className="mr-2 md:hidden sm:mr-4">
+      <div className="mr-2 lg:hidden sm:mr-4">
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger asChild>
             <Button
@@ -196,7 +196,7 @@ export function Navbar() {
                 </div>
               </div>
             </SheetHeader>
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto">
               <MobileNav onNavigate={() => setMobileNavOpen(false)} />
             </div>
           </SheetContent>
@@ -204,7 +204,7 @@ export function Navbar() {
       </div>
 
       {/* Desktop Navigation */}
-      <div className="hidden md:flex md:items-center md:gap-1">
+      <div className="hidden lg:flex lg:items-center lg:gap-1">
         {/* Simple Links */}
         <Link
           href="/docs/events"
