@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 // Define an interface for the invite document
 interface TeamInvite {
@@ -18,18 +20,24 @@ interface TeamInvite {
   teamId: ObjectId;
 }
 
-export async function GET(
+async function getTeamInvitesHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Get the team - search across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -60,7 +68,7 @@ export async function GET(
       .sort({ createdAt: -1 })
       .toArray();
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       invites: invites.map((invite) => ({
         id: invite._id.toString(),
         inviteeId: invite.inviteeId,
@@ -72,11 +80,14 @@ export async function GET(
         createdAt: invite.createdAt,
       })),
     });
-  } catch (error) {
-    console.error("Error fetching team invites:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch team invites" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getTeamInvitesHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

@@ -3,12 +3,14 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { safeLog, rateLimiters, getClientIdentifier, sanitizeString } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 // Add this line to force dynamic rendering
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
+async function getScrimmagesHandler(req: NextRequest) {
     // Get current session
     const session = await getServerSession(authOptions);
 
@@ -17,13 +19,12 @@ export async function GET(req: NextRequest) {
 
     const scrimmagesCollection = db.collection("Scrimmages");
 
-    // Check for teamId query parameter
     const { searchParams } = new URL(req.url);
-    const teamIdParam = searchParams.get("teamId");
+    const teamIdParam = sanitizeString(searchParams.get("teamId") || "", 50);
 
     // Now that we've debugged, let's create proper queries for signed-in and signed-out users
     let query: any;
-    let userTeam = null;
+    let userTeam: any = null;
 
     // If teamId is provided in query, filter by that team
     if (teamIdParam) {
@@ -68,53 +69,57 @@ export async function GET(req: NextRequest) {
       query = { status: { $in: ["completed", "accepted"] } };
     }
 
-    // Fetch scrimmages based on query
-    const scrimmages = await scrimmagesCollection
-      .find(query)
-      .sort({ proposedDate: -1 })
-      .toArray();
+    const cacheKey = `scrimmages:${teamIdParam || "all"}:${session?.user?.id || "anonymous"}`;
 
-    // Convert ObjectIds to strings for JSON serialization
-    // Create a new array with transformed objects to avoid type issues
-    const serializedScrimmages = scrimmages.map((scrimmage) => {
-      // Create a new object instead of modifying
-      return {
-        ...scrimmage,
-        _id: scrimmage._id.toString(),
-        // Also convert other ObjectId fields if they exist
-        challengerTeamId: scrimmage.challengerTeamId?.toString(),
-        challengedTeamId: scrimmage.challengedTeamId?.toString(),
-      };
-    });
+    const result = await cachedQuery(
+      cacheKey,
+      async () => {
+        const scrimmages = await scrimmagesCollection
+          .find(query)
+          .sort({ proposedDate: -1 })
+          .toArray();
 
-    // Also return user team if available to avoid separate API call (only when not filtering by teamId)
-    let serializedUserTeam = null;
-    if (!teamIdParam && session?.user && userTeam) {
-      serializedUserTeam = {
-        ...userTeam,
-        _id: userTeam._id.toString(),
-        members: userTeam.members?.map((member: any) => ({
-          ...member,
-          _id: member._id?.toString(),
-        })) || [],
-      };
-    }
+        const serializedScrimmages = scrimmages.map((scrimmage) => ({
+          ...scrimmage,
+          _id: scrimmage._id.toString(),
+          challengerTeamId: scrimmage.challengerTeamId?.toString(),
+          challengedTeamId: scrimmage.challengedTeamId?.toString(),
+        }));
 
-    // If teamId is provided, return array for backward compatibility
-    // Otherwise return object with scrimmages and userTeam
-    if (teamIdParam) {
-      return NextResponse.json(serializedScrimmages);
-    }
+        let serializedUserTeam = null;
+        if (!teamIdParam && session?.user && userTeam) {
+          serializedUserTeam = {
+            ...userTeam,
+            _id: userTeam._id.toString(),
+            members: userTeam.members?.map((member: any) => ({
+              ...member,
+              _id: member._id?.toString(),
+            })) || [],
+          };
+        }
 
-    // Return both scrimmages and user team to reduce API calls
-    return NextResponse.json({
-      scrimmages: serializedScrimmages,
-      userTeam: serializedUserTeam,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to fetch scrimmages" },
-      { status: 500 }
+        if (teamIdParam) {
+          return serializedScrimmages;
+        }
+
+        return {
+          scrimmages: serializedScrimmages,
+          userTeam: serializedUserTeam,
+        };
+      },
+      60 * 1000 // Cache for 1 minute
     );
-  }
+
+    return NextResponse.json(result, {
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      },
+    });
 }
+
+export const GET = withApiSecurity(getScrimmagesHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 60,
+});
+

@@ -3,23 +3,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postRejectScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
+  const id = sanitizeString(params.id, 100);
+  const { db } = await connectToDatabase();
 
-    // Get the scrimmage
-    const scrimmage = await db.collection("Scrimmages").findOne({
-      _id: new ObjectId(params.id),
+  let scrimmage = null;
+  if (ObjectId.isValid(id)) {
+    scrimmage = await db.collection("Scrimmages").findOne({
+      _id: new ObjectId(id),
     });
+  }
+
+  if (!scrimmage) {
+    scrimmage = await db.collection("Scrimmages").findOne({
+      scrimmageId: id,
+    });
+  }
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -43,28 +54,27 @@ export async function POST(
       );
     }
 
-    // Update the scrimmage status to rejected
-    await db.collection("Scrimmages").updateOne(
-      { _id: new ObjectId(params.id) },
-      {
-        $set: {
-          status: "rejected",
-          rejectedAt: new Date(),
-        },
-      }
-    );
+  const updateQuery = ObjectId.isValid(id)
+    ? { _id: new ObjectId(id) }
+    : { scrimmageId: id };
 
-    // Get the updated scrimmage
-    const updatedScrimmage = await db.collection("Scrimmages").findOne({
-      _id: new ObjectId(params.id),
-    });
+  await db.collection("Scrimmages").updateOne(updateQuery, {
+    $set: {
+      status: "rejected",
+      rejectedAt: new Date(),
+    },
+  });
 
-    return NextResponse.json(updatedScrimmage);
-  } catch (error) {
-    console.error("Error rejecting scrimmage:", error);
-    return NextResponse.json(
-      { error: "Failed to reject scrimmage" },
-      { status: 500 }
-    );
-  }
+  const updatedScrimmage = await db.collection("Scrimmages").findOne(updateQuery);
+
+  revalidatePath("/scrimmages");
+  revalidatePath(`/scrimmages/${id}`);
+
+  return NextResponse.json(updatedScrimmage);
 }
+
+export const POST = withApiSecurity(postRejectScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages"],
+});

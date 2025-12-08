@@ -5,38 +5,38 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { Server } from "socket.io";
 import { NextApiResponseServerIO } from "@/types/next";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postSubmitScoreHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    console.log("User session ID:", session.user.id);
+  const scrimmageId = sanitizeString(params.id, 50);
+  const { db } = await connectToDatabase();
 
-    const { db } = await connectToDatabase();
-
-    // Try to find the scrimmage by _id first
-    let scrimmage = null;
+  let scrimmage = null;
+  if (ObjectId.isValid(scrimmageId)) {
     try {
       scrimmage = await db.collection("Scrimmages").findOne({
-        _id: new ObjectId(params.id),
+        _id: new ObjectId(scrimmageId),
       });
     } catch (error) {
-      // If ObjectId conversion fails, it's not a valid ObjectId
-      console.log("Not a valid ObjectId, trying scrimmageId");
+      // Invalid ObjectId format
     }
+  }
 
-    // If not found by _id, try to find by scrimmageId
-    if (!scrimmage) {
-      scrimmage = await db.collection("Scrimmages").findOne({
-        scrimmageId: params.id,
-      });
-    }
+  if (!scrimmage) {
+    scrimmage = await db.collection("Scrimmages").findOne({
+      scrimmageId: scrimmageId,
+    });
+  }
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -45,17 +45,26 @@ export async function POST(
       );
     }
 
-    // Log the scrimmage data to debug
-    console.log("Scrimmage found:", {
-      id: scrimmage._id,
-      scrimmageId: scrimmage.scrimmageId,
-      challengerTeamCaptain: scrimmage.challengerTeam?.captain?.discordId,
-      challengedTeamCaptain: scrimmage.challengedTeam?.captain?.discordId,
+    const data = await request.json();
+    const validation = validateBody(data, {
+      mapIndex: { type: "number", required: true, min: 0, max: 10 },
+      teamAScore: { type: "number", required: true, min: 0, max: 6 },
+      teamBScore: { type: "number", required: true, min: 0, max: 6 },
+      submittedBy: { type: "string", required: false, maxLength: 50 },
     });
 
-    // Get score data
-    const data = await request.json();
-    const { mapIndex, teamAScore, teamBScore, submittedBy } = data;
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.errors?.join(", ") || "Invalid input" },
+        { status: 400 }
+      );
+    }
+
+    const { mapIndex, teamAScore, teamBScore } = validation.data! as {
+      mapIndex: number;
+      teamAScore: number;
+      teamBScore: number;
+    };
 
     // Validate scores - ensure they are numbers between 0 and 6
     if (
@@ -134,10 +143,6 @@ export async function POST(
       scrimmage.challengerTeam = challengerTeam;
       scrimmage.challengedTeam = challengedTeam;
 
-      console.log("Teams fetched directly:", {
-        challengerTeamCaptain: challengerTeam?.captain?.discordId,
-        challengedTeamCaptain: challengedTeam?.captain?.discordId,
-      });
     }
 
     const isTeamACaptain =
@@ -154,14 +159,6 @@ export async function POST(
           member.discordId === session.user.id && member.role === "captain"
       );
 
-    console.log("Authorization check:", {
-      isAdmin,
-      isTeamACaptain,
-      isTeamBCaptain,
-      sessionUserId: session.user.id,
-      challengerCaptainId: scrimmage.challengerTeam?.captain?.discordId,
-      challengedCaptainId: scrimmage.challengedTeam?.captain?.discordId,
-    });
 
     if (!isAdmin && !isTeamACaptain && !isTeamBCaptain) {
       return NextResponse.json(
@@ -308,11 +305,7 @@ export async function POST(
       updateData.winner = matchWinner;
       updateData.completedAt = now;
 
-      // If the match is completed before the scheduled date, update the scheduledDate
       if (scrimmage.scheduledDate && new Date(scrimmage.scheduledDate) > now) {
-        console.log(
-          "Match completed before scheduled date. Updating scheduledDate."
-        );
         updateData.scheduledDate = now;
       }
 
@@ -417,12 +410,14 @@ export async function POST(
       _id: scrimmage._id,
     });
 
+    revalidatePath("/scrimmages");
+    revalidatePath("/tournaments/scrimmages");
+
     return NextResponse.json(updatedScrimmage);
-  } catch (error) {
-    console.error("Error submitting score:", error);
-    return NextResponse.json(
-      { error: "Failed to submit score" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postSubmitScoreHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages", "/tournaments/scrimmages"],
+});

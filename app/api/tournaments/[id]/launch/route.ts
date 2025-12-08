@@ -6,6 +6,9 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { canManageTournament } from "@/lib/tournament-permissions";
 import { notifyTournamentLaunch, getGuildId } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // First, add a proper interface for tournament matches
 interface TournamentMatch {
@@ -39,18 +42,22 @@ interface Match {
   winner?: "teamA" | "teamB" | "draw";
 }
 
-export async function POST(
+async function postLaunchTournamentHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Validate admin permissions
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { id } = params;
+  const id = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
     const { db } = await connectToDatabase();
 
     // Get the full tournament data
@@ -249,15 +256,18 @@ export async function POST(
       // Don't throw - change stream will catch it as fallback with duplicate prevention
     }
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${id}`);
+
     return NextResponse.json({
       success: true,
       message: "Tournament launched successfully",
     });
-  } catch (error) {
-    console.error("Error launching tournament:", error);
-    return NextResponse.json(
-      { error: "Failed to launch tournament" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postLaunchTournamentHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});

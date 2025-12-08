@@ -3,37 +3,47 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postMatchScoreHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const matchId = params.matchId;
-    const body = await request.json();
-    const { mapIndex, teamAScore, teamBScore } = body;
+  const matchId = sanitizeString(params.matchId, 200);
+  const body = await request.json();
+  const validation = validateBody(body, {
+    mapIndex: { type: "number", required: true, min: 0 },
+    teamAScore: { type: "number", required: true, min: 0, max: 6 },
+    teamBScore: { type: "number", required: true, min: 0, max: 6 },
+  });
 
-    // Validate scores
-    if (teamAScore > 6 || teamBScore > 6) {
-      return NextResponse.json(
-        { error: "Maximum score per map is 6 rounds" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    if (teamAScore === 6 && teamBScore === 6) {
-      return NextResponse.json(
-        { error: "Both teams cannot have 6 rounds" },
-        { status: 400 }
-      );
-    }
+  const { mapIndex, teamAScore, teamBScore } = validation.data! as {
+    mapIndex: number;
+    teamAScore: number;
+    teamBScore: number;
+  };
+
+  if (teamAScore === 6 && teamBScore === 6) {
+    return NextResponse.json(
+      { error: "Both teams cannot have 6 rounds" },
+      { status: 400 }
+    );
+  }
 
     const client = await clientPromise;
     const db = client.db();
@@ -144,12 +154,14 @@ export async function POST(
         { $set: { tournamentMatches: tournament.tournamentMatches } }
       );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
+
     return NextResponse.json(match);
-  } catch (error) {
-    console.error("Error submitting scores:", error);
-    return NextResponse.json(
-      { error: "Failed to submit scores", details: String(error) },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postMatchScoreHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

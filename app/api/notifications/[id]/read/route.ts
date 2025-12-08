@@ -3,19 +3,28 @@ import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postReadNotificationHandler(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const id = params.id;
+  const id = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid notification ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Mark notification as read
     const result = await db.collection("Notifications").updateOne(
@@ -33,12 +42,13 @@ export async function POST(
       );
     }
 
+    revalidatePath("/notifications");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to mark notification as read:", error);
-    return NextResponse.json(
-      { error: "Failed to mark notification as read" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postReadNotificationHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/notifications"],
+});

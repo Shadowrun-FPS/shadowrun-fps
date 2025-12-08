@@ -38,7 +38,13 @@ export async function connectToDatabase() {
     }
     throw new Error("MongoDB client promise not initialized");
   } catch (error) {
-    console.error("Failed to connect to MongoDB:", error);
+    // Use safeLog if available, fallback to console for critical errors
+    if (typeof process !== "undefined" && process.env) {
+      const { safeLog } = require("./security");
+      safeLog.error("Failed to connect to MongoDB:", error);
+    } else {
+      console.error("Failed to connect to MongoDB:", error);
+    }
     throw error;
   }
 }

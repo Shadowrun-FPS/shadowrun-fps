@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// Initialize queues for each game type and ELO tier
-export async function POST() {
-  try {
+async function postInitQueuesHandler() {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
@@ -38,12 +39,15 @@ export async function POST() {
     await db.collection("Queues").deleteMany({});
     await db.collection("Queues").insertMany(queues);
 
+    revalidatePath("/admin/queues");
+    revalidatePath("/matches/queues");
+
     return NextResponse.json({ success: true, queuesCreated: queues.length });
-  } catch (error) {
-    console.error("Failed to initialize queues:", error);
-    return NextResponse.json(
-      { error: "Failed to initialize queues" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postInitQueuesHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/admin/queues", "/matches/queues"],
+});

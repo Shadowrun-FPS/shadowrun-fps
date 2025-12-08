@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -36,11 +37,13 @@ interface SearchResult {
 export function InvitePlayerDialog({ teamId }: { teamId: string }) {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentTeamSize, setCurrentTeamSize] = useState<number | null>(null);
+  const [invitingPlayerId, setInvitingPlayerId] = useState<string | null>(null);
 
   // Fetch current team size when dialog opens
   useEffect(() => {
@@ -109,7 +112,9 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
       const playersWithInviteStatus = await Promise.all(inviteCheckPromises);
       setResults(playersWithInviteStatus);
     } catch (error) {
-      console.error("Error searching players:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error searching players:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to search for players.",
@@ -121,6 +126,8 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
   };
 
   const handleInvite = async (playerId: string, playerName: string) => {
+    if (invitingPlayerId || isLoading) return; // Prevent duplicate submissions
+    setInvitingPlayerId(playerId);
     try {
       // Optimistically update UI immediately
       setResults((prev) =>
@@ -161,13 +168,17 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
             )
           );
         } else {
-          // If check fails but invite was successful, keep optimistic update
-          console.warn("Failed to verify invite status, keeping optimistic update");
+          if (process.env.NODE_ENV === "development") {
+            console.warn("Failed to verify invite status, keeping optimistic update");
+          }
         }
       } catch (checkError) {
-        // If check fails but invite was successful, keep optimistic update
-        console.warn("Error verifying invite status, keeping optimistic update:", checkError);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("Error verifying invite status, keeping optimistic update:", checkError);
+        }
       }
+
+      router.refresh();
 
       toast({
         title: "Success",
@@ -175,12 +186,16 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
         duration: 2000,
       });
     } catch (error: any) {
-      console.error("Error inviting player:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error inviting player:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to send invite",
         variant: "destructive",
       });
+    } finally {
+      setInvitingPlayerId(null);
     }
   };
 

@@ -3,35 +3,61 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postTournamentMatchScoresHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    // Get session and verify authentication
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to submit scores" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to submit scores" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
-    const matchId = params.matchId;
+  const matchId = sanitizeString(params.matchId, 200);
+  const body = await request.json();
+  const validation = validateBody(body, {
+    mapIndex: { type: "number", required: true, min: 0 },
+    scores: {
+      type: "object",
+      required: true,
+    },
+  });
 
-    // Parse request body
-    const { mapIndex, scores } = await request.json();
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid request data" },
+      { status: 400 }
+    );
+  }
 
-    if (typeof mapIndex !== "number" || !scores) {
-      return NextResponse.json(
-        { error: "Invalid request data" },
-        { status: 400 }
-      );
-    }
+  const { mapIndex, scores } = validation.data! as {
+    mapIndex: number;
+    scores: { team1Score: number; team2Score: number };
+  };
+
+  if (
+    typeof scores.team1Score !== "number" ||
+    typeof scores.team2Score !== "number" ||
+    scores.team1Score < 0 ||
+    scores.team1Score > 6 ||
+    scores.team2Score < 0 ||
+    scores.team2Score > 6
+  ) {
+    return NextResponse.json(
+      { error: "Invalid score values (must be 0-6)" },
+      { status: 400 }
+    );
+  }
+
+  const client = await clientPromise;
+  const db = client.db();
 
     // Find the tournament with this match
     const tournament = await db.collection("Tournaments").findOne({
@@ -59,8 +85,7 @@ export async function POST(
 
     const match = tournament.tournamentMatches[tournamentMatchIndex];
 
-    // Verify user is a member of one of the teams
-    const userDiscordId = session.user.id;
+    const userDiscordId = sanitizeString(session.user.id, 50);
     let userTeam = null;
 
     // Check if user is in team A
@@ -212,15 +237,17 @@ export async function POST(
       }
     );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
+
     return NextResponse.json({
       success: true,
       message: "Score submitted successfully",
     });
-  } catch (error) {
-    console.error("Error submitting tournament match score:", error);
-    return NextResponse.json(
-      { error: "Failed to submit score" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTournamentMatchScoresHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

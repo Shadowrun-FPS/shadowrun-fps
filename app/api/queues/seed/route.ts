@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST() {
-  try {
+async function postSeedQueuesHandler() {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
@@ -43,12 +45,15 @@ export async function POST() {
     // Insert queues
     await db.collection("Queues").insertMany(queues);
 
+    revalidatePath("/admin/queues");
+    revalidatePath("/matches/queues");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to seed queues:", error);
-    return NextResponse.json(
-      { error: "Failed to seed queues" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postSeedQueuesHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/admin/queues", "/matches/queues"],
+});

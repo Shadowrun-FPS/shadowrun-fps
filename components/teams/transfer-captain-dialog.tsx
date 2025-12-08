@@ -28,6 +28,7 @@ export function TransferCaptainDialog({
   const [isLoading, setIsLoading] = useState(false);
 
   const handleConfirm = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     setIsLoading(true);
     try {
       await onConfirm();

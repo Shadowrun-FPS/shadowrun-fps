@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import {
   Dialog,
@@ -58,6 +59,7 @@ export function PostDialog({
 }: PostDialogProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [date, setDate] = useState<Date | undefined>(
     initialData?.date ? new Date(initialData.date) : new Date()
@@ -152,6 +154,7 @@ export function PostDialog({
   };
 
   const handleSubmit = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     if (!validateForm()) {
       toast({
         title: "Validation error",
@@ -192,6 +195,9 @@ export function PostDialog({
           : "Your post has been published successfully",
       });
 
+      // Refresh the page to show updated data
+      router.refresh();
+
       onOpenChange(false);
       // Reset form
       setFormData({
@@ -206,7 +212,10 @@ export function PostDialog({
       setDate(new Date());
       setErrors({});
     } catch (error) {
-      console.error("Error saving post:", error);
+      // Only log errors in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error saving post:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to save post. Please try again.",

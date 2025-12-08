@@ -601,6 +601,7 @@ export default function TournamentMatchPage() {
             width={40}
             height={40}
             className="object-cover rounded-full border-2 border-background"
+            loading="lazy"
             unoptimized
           />
         ) : (
@@ -932,6 +933,7 @@ export default function TournamentMatchPage() {
                             alt={map.mapName}
                             fill
                             className="object-cover"
+                            loading="lazy"
                             unoptimized
                           />
                           {winner && (

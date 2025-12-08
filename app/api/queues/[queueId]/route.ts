@@ -4,33 +4,40 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// DELETE endpoint to delete a queue
-export async function DELETE(
+async function deleteQueueHandler(
   req: NextRequest,
   { params }: { params: { queueId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Only allow admins or the specific developer to delete queues
-    const isAuthorized =
-      session.user.roles?.includes("admin") ||
-      session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+  const isAuthorized =
+    session.user.roles?.includes("admin") ||
+    session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 
-    if (!isAuthorized) {
-      return NextResponse.json(
-        { error: "Not authorized to delete queues" },
-        { status: 403 }
-      );
-    }
+  if (!isAuthorized) {
+    return NextResponse.json(
+      { error: "Not authorized to delete queues" },
+      { status: 403 }
+    );
+  }
 
-    const { db } = await connectToDatabase();
-    const queueId = params.queueId;
+  const queueId = sanitizeString(params.queueId, 50);
+  if (!ObjectId.isValid(queueId)) {
+    return NextResponse.json(
+      { error: "Invalid queue ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Try to find the queue first to verify it exists
     const queue = await db.collection("Queues").findOne({
@@ -46,15 +53,18 @@ export async function DELETE(
       _id: new ObjectId(queueId),
     });
 
+    revalidatePath("/matches/queues");
+    revalidatePath("/admin/queues");
+
     return NextResponse.json({
       success: true,
       message: "Queue deleted successfully",
     });
-  } catch (error) {
-    console.error("Error deleting queue:", error);
-    return NextResponse.json(
-      { error: "Failed to delete queue" },
-      { status: 500 }
-    );
-  }
 }
+
+export const DELETE = withApiSecurity(deleteQueueHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

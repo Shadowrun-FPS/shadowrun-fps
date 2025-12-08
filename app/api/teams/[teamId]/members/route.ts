@@ -5,6 +5,9 @@ import { ObjectId, Document, WithId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface TeamMember {
   discordId: string;
@@ -19,18 +22,44 @@ interface Team extends WithId<Document> {
   members: TeamMember[];
 }
 
-export async function DELETE(
+async function deleteTeamMemberHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const { memberId, requesterId } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
 
-    // Check if requester is captain or member removing themselves
-    const team = await db.collection<Team>("Teams").findOne({
-      _id: new ObjectId(params.teamId),
+  const body = await req.json();
+  const validation = validateBody(body, {
+    memberId: { type: "string", required: true, maxLength: 50 },
+    requesterId: { type: "string", required: true, maxLength: 50 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { memberId, requesterId } = validation.data! as {
+    memberId: string;
+    requesterId: string;
+  };
+
+  const sanitizedMemberId = sanitizeString(memberId, 50);
+  const sanitizedRequesterId = sanitizeString(requesterId, 50);
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const team = await db.collection<Team>("Teams").findOne({
+    _id: new ObjectId(teamId),
       $or: [
         { "captain.discordId": requesterId },
         {
@@ -50,40 +79,66 @@ export async function DELETE(
       );
     }
 
-    // Remove member
     await db.collection<Team>("Teams").updateOne(
-      { _id: new ObjectId(params.teamId) },
+      { _id: new ObjectId(teamId) },
       {
-        $pull: { members: { discordId: memberId } } as any,
+        $pull: { members: { discordId: sanitizedMemberId } } as any,
         $set: { updatedAt: new Date() },
       }
     );
 
-    // Recalculate team ELO using the shared function
-    await recalculateTeamElo(params.teamId);
+    await recalculateTeamElo(teamId);
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to remove team member:", error);
-    return NextResponse.json(
-      { error: "Failed to remove member" },
-      { status: 500 }
-    );
-  }
 }
 
-export async function POST(
+export const DELETE = withApiSecurity(deleteTeamMemberHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});
+
+async function postTeamMemberHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const { memberId, requesterId } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
 
-    // Verify requester has permission (is captain or the member being added)
-    const team = await db.collection<Team>("Teams").findOne({
-      _id: new ObjectId(params.teamId),
+  const body = await req.json();
+  const validation = validateBody(body, {
+    memberId: { type: "string", required: true, maxLength: 50 },
+    requesterId: { type: "string", required: true, maxLength: 50 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { memberId, requesterId } = validation.data! as {
+    memberId: string;
+    requesterId: string;
+  };
+
+  const sanitizedMemberId = sanitizeString(memberId, 50);
+  const sanitizedRequesterId = sanitizeString(requesterId, 50);
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const team = await db.collection<Team>("Teams").findOne({
+    _id: new ObjectId(teamId),
       $or: [
         { "captain.discordId": requesterId },
         {
@@ -103,13 +158,12 @@ export async function POST(
       );
     }
 
-    // Add member to team
     const result = await db.collection<Team>("Teams").findOneAndUpdate(
-      { _id: new ObjectId(params.teamId) },
+      { _id: new ObjectId(teamId) },
       {
         $addToSet: {
           members: {
-            discordId: memberId,
+            discordId: sanitizedMemberId,
             role: "member",
           },
         } as any,
@@ -124,15 +178,16 @@ export async function POST(
       );
     }
 
-    // Recalculate team ELO after adding a member
-    await recalculateTeamElo(params.teamId);
+    await recalculateTeamElo(teamId);
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
 
     return NextResponse.json(result.value);
-  } catch (error) {
-    console.error("Failed to add team member:", error);
-    return NextResponse.json(
-      { error: "Failed to add team member" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTeamMemberHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

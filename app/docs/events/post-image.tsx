@@ -25,6 +25,7 @@ export default function PostImage({
         objectFit: "cover",
       }}
       unoptimized={isExternal}
+      loading="lazy"
       className={className} // Apply className to the image
     />
   );

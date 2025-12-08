@@ -6,26 +6,35 @@ import { ObjectId } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 import { notifyTeamJoinRequest } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postRequestJoinHandler(
   request: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to request joining a team" },
-        { status: 401 }
-      );
-    }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to request joining a team" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
 
-    const userId = session.user.id;
-    const userName = session.user.name || "Unknown User";
-    const teamId = params.teamId;
+  const client = await clientPromise;
+  const db = client.db();
+
+  const userId = session.user.id;
+  const userName = sanitizeString(session.user.name || "Unknown User", 100);
 
     // Check that the team exists across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -92,63 +101,59 @@ export async function POST(
       );
     }
 
-    // Create the join request with team size
     const joinRequestResult = await db
       .collection("TeamJoinRequests")
       .insertOne({
         teamId: team._id.toString(),
-        teamName: team.name,
-        teamSize: teamSize, // Store team size for conflict checking
+        teamName: sanitizeString(team.name, 100),
+        teamSize: teamSize,
         userId: session.user.id,
-        userName: session.user.name,
-        userNickname: session.user.nickname || session.user.name,
-        userAvatar: session.user.image,
+        userName: sanitizeString(session.user.name || "", 100),
+        userNickname: sanitizeString(session.user.nickname || session.user.name || "", 100),
+        userAvatar: session.user.image || null,
         status: "pending",
         createdAt: new Date(),
       });
 
-    // Create a notification for the team captain with requestId included
     await db.collection("Notifications").insertOne({
       userId: team.captain.discordId,
       type: "team_join_request",
       title: "New Team Join Request",
-      message: `${
-        session.user.nickname || userName
-      } has requested to join your team "${team.name}"`,
+      message: `${sanitizeString(session.user.nickname || userName, 100)} has requested to join your team "${sanitizeString(team.name, 100)}"`,
       read: false,
       createdAt: new Date(),
       metadata: {
         teamId: teamId,
-        teamName: team.name,
+        teamName: sanitizeString(team.name, 100),
         requesterId: userId,
-        requesterName: session.user.nickname || userName,
+        requesterName: sanitizeString(session.user.nickname || userName, 100),
         requestId: joinRequestResult.insertedId.toString(),
       },
     });
 
-    // Send Discord DM notification via bot API (primary method)
-    // Change streams will act as fallback if API fails (with duplicate prevention)
     try {
       await notifyTeamJoinRequest(
         teamId,
         userId,
-        session.user.nickname || userName,
-        team.name,
+        sanitizeString(session.user.nickname || userName, 100),
+        sanitizeString(team.name, 100),
         team.captain.discordId
       );
     } catch (error) {
-      // Don't throw - change stream will catch it as fallback with duplicate prevention
+      safeLog.error("Failed to send Discord notification for join request:", error);
     }
+
+    revalidatePath(`/teams/${teamId}`);
+    revalidatePath("/teams");
 
     return NextResponse.json({
       success: true,
       message: "Join request sent successfully",
     });
-  } catch (error) {
-    console.error("Error requesting to join team:", error);
-    return NextResponse.json(
-      { error: "Failed to submit join request" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRequestJoinHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

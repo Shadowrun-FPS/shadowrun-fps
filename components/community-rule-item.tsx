@@ -5,6 +5,31 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { Rule } from "@/types/moderation";
 import { Button } from "@/components/ui/button";
 
+// Client-side HTML sanitization
+function sanitizeMarkdownHtml(text: string): string {
+  // Escape HTML special characters
+  const escapeHtml = (str: string) => {
+    const map: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;",
+    };
+    return str.replace(/[&<>"']/g, (m) => map[m]);
+  };
+  
+  // First escape all HTML
+  let sanitized = escapeHtml(text);
+  
+  // Then convert markdown to HTML (safe because we've already escaped)
+  sanitized = sanitized
+    .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*(.*?)\*/g, "<em>$1</em>");
+  
+  return sanitized;
+}
+
 interface CommunityRuleItemProps {
   rule: Rule;
   index: number;
@@ -34,7 +59,7 @@ export function CommunityRuleItem({ rule, index }: CommunityRuleItemProps) {
         <div className="px-4 pb-4">
           <div
             className="prose prose-sm dark:prose-invert max-w-none"
-            dangerouslySetInnerHTML={{ __html: rule.description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeMarkdownHtml(rule.description) }}
           />
         </div>
       )}

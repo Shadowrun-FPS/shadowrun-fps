@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { LogOut, AlertTriangle } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface LeaveTeamDialogProps {
   teamId: string;
@@ -25,16 +26,12 @@ export function LeaveTeamDialog({ teamId, teamName }: LeaveTeamDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { data: session } = useSession();
+  const router = useRouter();
 
-  useEffect(() => {
-    console.log("🔴 LeaveTeamDialog mounted for:", {
-      teamId,
-      teamName,
-      userId: session?.user?.id,
-    });
-  }, [teamId, teamName, session?.user?.id]);
+  // Removed debug console.log
 
   const handleLeaveTeam = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     setIsLoading(true);
     try {
       const response = await fetch(`/api/teams/${teamId}/leave`, {
@@ -51,10 +48,13 @@ export function LeaveTeamDialog({ teamId, teamName }: LeaveTeamDialogProps) {
         description: `You have successfully left the team "${teamName}".`,
       });
 
+      router.refresh();
       // Redirect to teams page or dashboard
       window.location.href = "/teams";
     } catch (error: any) {
-      console.error("Error leaving team:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error leaving team:", error);
+      }
       toast({
         title: "Error",
         description:

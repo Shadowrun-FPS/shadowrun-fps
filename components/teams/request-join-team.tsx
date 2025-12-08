@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { UserPlus, Loader2 } from "lucide-react";
@@ -89,7 +90,10 @@ export function RequestJoinTeam({ teamId, teamName, teamSize }: RequestJoinTeamP
     checkTeamStatus();
   }, [session, status, toast, teamSize]);
 
+  const router = useRouter();
+
   const handleRequestJoin = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     if (isAlreadyInTeam && isSameSizeTeam) {
       const targetTeamSize = teamSize || 4;
       toast({
@@ -115,8 +119,11 @@ export function RequestJoinTeam({ teamId, teamName, teamSize }: RequestJoinTeamP
         title: "Request Sent",
         description: `Your request to join ${teamName} has been sent to the team captain.`,
       });
+      router.refresh();
     } catch (error: any) {
-      console.error("Error requesting to join team:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error requesting to join team:", error);
+      }
       toast({
         title: "Error",
         description:

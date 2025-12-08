@@ -7,6 +7,10 @@ import type { MongoTeam } from "@/types/mongodb";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
 import { getTeamCollectionName, getAllTeamCollectionNames } from "@/lib/team-collections";
+import { safeLog, rateLimiters, getClientIdentifier, sanitizeString } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface TeamMember {
   discordId: string;
@@ -38,60 +42,93 @@ function containsBadWords(text: string): boolean {
   );
 }
 
-export async function GET(req: NextRequest) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const tag = searchParams.get("tag");
-    const name = searchParams.get("name");
-    const { db } = await connectToDatabase();
+async function getTeamsHandler(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const tag = sanitizeString(searchParams.get("tag") || "", 10);
+  const name = sanitizeString(searchParams.get("name") || "", 100);
+  const { db } = await connectToDatabase();
 
-    let query = {};
-    if (tag) {
-      query = { tag: { $regex: new RegExp(tag, "i") } };
-    } else if (name) {
-      query = { name: { $regex: new RegExp(name, "i") } };
-    }
-
-    // Search across all team collections
-    const allCollections = getAllTeamCollectionNames();
-    const allTeams = [];
-    
-    for (const collectionName of allCollections) {
-      const teams = await db
-        .collection(collectionName)
-        .find(query)
-        .sort({ createdAt: -1 })
-        .limit(100)
-        .toArray();
-      allTeams.push(...teams);
-    }
-
-    // Sort all teams by creation date
-    allTeams.sort((a, b) => {
-      const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bDate - aDate;
-    });
-
-    return NextResponse.json(allTeams.slice(0, 100));
-  } catch (error) {
-    console.error("Error fetching teams:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch teams" },
-      { status: 500 }
-    );
+  let query = {};
+  if (tag) {
+    query = { tag: { $regex: new RegExp(tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") } };
+  } else if (name) {
+    query = { name: { $regex: new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") } };
   }
+
+  const cacheKey = `teams:${tag}:${name}`;
+
+  const result = await cachedQuery(
+    cacheKey,
+    async () => {
+      const allCollections = getAllTeamCollectionNames();
+      const allTeams = [];
+      
+      for (const collectionName of allCollections) {
+        const teams = await db
+          .collection(collectionName)
+          .find(query)
+          .sort({ createdAt: -1 })
+          .limit(100)
+          .toArray();
+        allTeams.push(...teams);
+      }
+
+      allTeams.sort((a, b) => {
+        const aDate = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bDate = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bDate - aDate;
+      });
+
+      return allTeams.slice(0, 100);
+    },
+    2 * 60 * 1000 // Cache for 2 minutes
+  );
+
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+    },
+  });
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export const GET = withApiSecurity(getTeamsHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 120,
+});
 
-    const { name, description, tag, captain, captainProfilePicture, teamSize } =
-      await req.json();
+async function postTeamsHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json();
+  
+  // Validate and sanitize input
+  const validation = validateBody(body, {
+    name: { type: "string", required: true, maxLength: 50 },
+    description: { type: "string", required: false, maxLength: 200 },
+    tag: { type: "string", required: true, maxLength: 10 },
+    teamSize: { type: "number", required: false, min: 2, max: 5 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const validationData = validation.data! as {
+    name: string;
+    description?: string;
+    tag: string;
+    captain?: string;
+    captainProfilePicture?: string;
+    teamSize?: number;
+  };
+  const { name, description, tag, captain, captainProfilePicture, teamSize } = validationData;
 
     // Check for profanity in team name, tag, and description
     if (containsProfanity(name)) {
@@ -101,14 +138,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (containsProfanity(tag)) {
+    if (tag && typeof tag === "string" && containsProfanity(tag)) {
       return NextResponse.json(
         { error: "Team tag contains inappropriate language" },
         { status: 400 }
       );
     }
 
-    if (containsProfanity(description)) {
+    if (description && typeof description === "string" && containsProfanity(description)) {
       return NextResponse.json(
         { error: "Team description contains inappropriate language" },
         { status: 400 }
@@ -228,30 +265,30 @@ export async function POST(req: NextRequest) {
     // Double-check the collection name matches the team size (in case teamCollectionName was modified)
     const finalCollectionName = getTeamCollectionName(validTeamSize);
     
-    // Log for debugging (remove in production if needed)
-    console.log(`Creating ${validTeamSize}v${validTeamSize} team in collection: ${finalCollectionName}`);
+    safeLog.log(`Creating ${validTeamSize}v${validTeamSize} team in collection: ${finalCollectionName}`);
     
-    // Create team with initial ELO (will be recalculated immediately after)
     const result = await db.collection(finalCollectionName).insertOne({
-      name,
-      description,
-      tag: tag.toUpperCase(),
+      name: sanitizeString(name, 50),
+      description: description ? sanitizeString(description, 200) : "",
+      tag: sanitizeString(tag, 10).toUpperCase(),
       teamSize: validTeamSize,
       createdAt: new Date(),
       updatedAt: new Date(),
       captain: captainObject,
       members: [memberObject],
-      teamElo: 0, // Temporary, will be calculated below
+      teamElo: 0,
     });
 
-    // Automatically calculate team ELO using the same logic as when members join/leave
     const { recalculateTeamElo } = await import("@/lib/team-elo-calculator");
     try {
       await recalculateTeamElo(result.insertedId.toString());
     } catch (error) {
-      console.error("Error calculating initial team ELO:", error);
-      // Don't fail team creation if ELO calculation fails, but log it
+      safeLog.error("Error calculating initial team ELO:", error);
     }
+
+    // Revalidate paths
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${result.insertedId.toString()}`);
 
     return NextResponse.json({
       id: result.insertedId.toString(),
@@ -259,11 +296,10 @@ export async function POST(req: NextRequest) {
       tag,
       description,
     });
-  } catch (error) {
-    console.error("Error creating team:", error);
-    return NextResponse.json(
-      { error: "Failed to create team" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTeamsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

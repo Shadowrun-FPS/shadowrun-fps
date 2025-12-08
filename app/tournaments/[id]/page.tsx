@@ -162,6 +162,7 @@ const MemberAvatar = ({
         alt={username || "Member"}
         width={size * 4}
         height={size * 4}
+        loading="lazy"
         className="object-cover"
         unoptimized
         onError={() => setImgError(true)}

@@ -8,6 +8,10 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { containsProfanity } from "@/lib/profanity-filter";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { getAllTeamCollectionNames, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface TeamMember {
   discordId: string;
@@ -23,151 +27,167 @@ interface Team extends WithId<Document> {
   members: TeamMember[];
 }
 
-// Get team details
-export async function GET(
+async function getTeamHandler(
   request: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const { teamId } = params;
-    const { db } = await connectToDatabase();
+  const teamId = sanitizeString(params.teamId, 50);
+  const { db } = await connectToDatabase();
 
-    // Search across all team collections
-    const allCollections = getAllTeamCollectionNames();
-    let team = null;
+  const result = await cachedQuery(
+    `team:${teamId}`,
+    async () => {
+      const allCollections = getAllTeamCollectionNames();
+      let team = null;
 
-    // Try to find by ObjectId first
-    if (ObjectId.isValid(teamId)) {
-      for (const collectionName of allCollections) {
-        try {
-          team = await db
-            .collection(collectionName)
-            .findOne({ _id: new ObjectId(teamId) });
-          if (team) break;
-        } catch (error) {
-          // Continue to next collection
+      if (ObjectId.isValid(teamId)) {
+        for (const collectionName of allCollections) {
+          try {
+            team = await db
+              .collection(collectionName)
+              .findOne({ _id: new ObjectId(teamId) });
+            if (team) break;
+          } catch (error) {
+            // Continue to next collection
+          }
         }
       }
-    }
 
-    // If not found by ID, try to find by tag across all collections
-    if (!team) {
-      for (const collectionName of allCollections) {
-        team = await db.collection(collectionName).findOne({ tag: teamId });
-        if (team) break;
+      if (!team) {
+        for (const collectionName of allCollections) {
+          team = await db.collection(collectionName).findOne({ tag: teamId });
+          if (team) break;
+        }
       }
-    }
 
-    if (!team) {
-      return NextResponse.json({ error: "Team not found" }, { status: 404 });
-    }
-
-    // Automatically recalculate team ELO based on current member ELOs
-    // This ensures team ELO is always up-to-date when the page loads
-    if (team.members && team.members.length > 0) {
-      try {
-        const updatedElo = await recalculateTeamElo(team._id.toString());
-        // Update team object with fresh ELO
-        team.teamElo = updatedElo;
-      } catch (error) {
-        // Silently fail - don't block team data if ELO calculation fails
-        console.error("Failed to auto-calculate team ELO:", error);
+      if (!team) {
+        return null;
       }
-    }
 
-    // Convert ObjectId to string for JSON serialization
-    const teamWithStringId = {
-      ...team,
-      _id: team._id.toString(),
-    };
+      if (team.members && team.members.length > 0) {
+        try {
+          const updatedElo = await recalculateTeamElo(team._id.toString());
+          team.teamElo = updatedElo;
+        } catch (error) {
+          safeLog.error("Failed to auto-calculate team ELO:", error);
+        }
+      }
 
-    return NextResponse.json(teamWithStringId);
-  } catch (error) {
-    console.error("Error fetching team:", error);
-    return NextResponse.json(
-      { error: "Failed to load team data" },
-      { status: 500 }
-    );
+      return {
+        ...team,
+        _id: team._id.toString(),
+      };
+    },
+    60 * 1000 // Cache for 1 minute
+  );
+
+  if (!result) {
+    return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
+
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+    },
+  });
 }
 
-// Update team details
-export async function PATCH(
+export const GET = withApiSecurity(getTeamHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 60,
+});
+
+async function patchTeamHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const { name, tag, description } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Check for profanity in team name, tag, and description
-    if (name && containsProfanity(name)) {
-      return NextResponse.json(
-        { error: "Team name contains inappropriate language. Please choose a different name." },
-        { status: 400 }
-      );
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
+
+  const body = await req.json();
+  const validation = validateBody(body, {
+    name: { type: "string", required: false, maxLength: 50 },
+    tag: { type: "string", required: false, maxLength: 10 },
+    description: { type: "string", required: false, maxLength: 200 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const validationData = validation.data! as {
+    name?: string;
+    tag?: string;
+    description?: string;
+  };
+  const { name, tag, description } = validationData;
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  if (name && typeof name === "string" && containsProfanity(name)) {
+    return NextResponse.json(
+      { error: "Team name contains inappropriate language" },
+      { status: 400 }
+    );
+  }
+
+  if (tag && typeof tag === "string" && containsProfanity(tag)) {
+    return NextResponse.json(
+      { error: "Team tag contains inappropriate language" },
+      { status: 400 }
+    );
+  }
+
+  if (description && containsProfanity(description)) {
+    return NextResponse.json(
+      { error: "Team description contains inappropriate language" },
+      { status: 400 }
+    );
+  }
+
+  const allCollections = getAllTeamCollectionNames();
+  let teamCollection = null;
+  let existingTeam = null;
+
+  for (const collectionName of allCollections) {
+    existingTeam = await db.collection(collectionName).findOne({
+      _id: new ObjectId(teamId),
+    });
+    if (existingTeam) {
+      teamCollection = collectionName;
+      break;
     }
+  }
 
-    if (tag && containsProfanity(tag)) {
-      return NextResponse.json(
-        { error: "Team tag contains inappropriate language. Please choose a different tag." },
-        { status: 400 }
-      );
-    }
+  if (!existingTeam || !teamCollection) {
+    return NextResponse.json(
+      { error: "Team not found" },
+      { status: 404 }
+    );
+  }
 
-    if (description && containsProfanity(description)) {
-      return NextResponse.json(
-        { error: "Team description contains inappropriate language. Please revise your description." },
-        { status: 400 }
-      );
-    }
-
-    // Validate max lengths
-    if (name && name.length > 50) {
-      return NextResponse.json(
-        { error: "Team name must be 50 characters or less" },
-        { status: 400 }
-      );
-    }
-
-    if (description && description.length > 200) {
-      return NextResponse.json(
-        { error: "Team description must be 200 characters or less" },
-        { status: 400 }
-      );
-    }
-
-    // First, find which collection the team is in
-    const allCollections = getAllTeamCollectionNames();
-    let teamCollection = null;
-    let existingTeam = null;
-
-    for (const collectionName of allCollections) {
-      existingTeam = await db.collection(collectionName).findOne({
-        _id: new ObjectId(params.teamId),
-      });
-      if (existingTeam) {
-        teamCollection = collectionName;
-        break;
-      }
-    }
-
-    if (!existingTeam || !teamCollection) {
-      return NextResponse.json(
-        { error: "Team not found" },
-        { status: 404 }
-      );
-    }
-
-    // Check if name/tag is already taken by another team (across all collections)
+  if (name || tag) {
     for (const collectionName of allCollections) {
       const conflictingTeam = await db.collection(collectionName).findOne({
-        _id: { $ne: new ObjectId(params.teamId) },
+        _id: { $ne: new ObjectId(teamId) },
         $or: [
-          { name: { $regex: new RegExp(`^${name}$`, "i") } },
-          { tag: { $regex: new RegExp(`^${tag}$`, "i") } },
-        ],
+          name ? { name: { $regex: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } } : {},
+          tag ? { tag: { $regex: new RegExp(`^${tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } } : {},
+        ].filter((obj) => Object.keys(obj).length > 0),
       });
 
       if (conflictingTeam) {
@@ -177,145 +197,175 @@ export async function PATCH(
         );
       }
     }
+  }
 
-    const result = await db.collection<Team>(teamCollection).findOneAndUpdate(
-      { _id: new ObjectId(params.teamId) },
-      {
-        $set: {
-          name,
-          tag: tag.toUpperCase(),
-          description,
-          updatedAt: new Date(),
-        },
-      },
-      { returnDocument: "after" }
-    );
+  const updateData: any = { updatedAt: new Date() };
+  if (name) updateData.name = sanitizeString(name, 50);
+  if (tag) updateData.tag = sanitizeString(tag, 10).toUpperCase();
+  if (description !== undefined) updateData.description = description ? sanitizeString(description, 200) : "";
 
-    if (!result || !result.value) {
-      return NextResponse.json(
-        { error: "Failed to update team" },
-        { status: 400 }
-      );
-    }
+  const result = await db.collection<Team>(teamCollection).findOneAndUpdate(
+    { _id: new ObjectId(teamId) },
+    { $set: updateData },
+    { returnDocument: "after" }
+  );
 
-    // Convert ObjectId to string before sending response
-    const team = {
-      ...result.value,
-      _id: result.value._id.toString(),
-    };
-
-    return NextResponse.json(team);
-  } catch (error) {
-    console.error("Failed to update team:", error);
+  if (!result || !result.value) {
     return NextResponse.json(
       { error: "Failed to update team" },
-      { status: 500 }
+      { status: 400 }
     );
   }
+
+  revalidatePath(`/teams/${teamId}`);
+  revalidatePath("/teams");
+
+  return NextResponse.json({
+    ...result.value,
+    _id: result.value._id.toString(),
+  });
 }
 
-export async function PUT(
+async function putTeamHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const { name } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Find which collection the team is in
-    const allCollections = getAllTeamCollectionNames();
-    let teamCollection = null;
-
-    for (const collectionName of allCollections) {
-      const team = await db.collection(collectionName).findOne({
-        _id: new ObjectId(params.teamId),
-      });
-      if (team) {
-        teamCollection = collectionName;
-        break;
-      }
-    }
-
-    if (!teamCollection) {
-      return NextResponse.json(
-        { error: "Team not found" },
-        { status: 404 }
-      );
-    }
-
-    const result = await db.collection<Team>(teamCollection).findOneAndUpdate(
-      { _id: new ObjectId(params.teamId) },
-      {
-        $set: {
-          name,
-          updatedAt: new Date(),
-        },
-      },
-      { returnDocument: "after" }
-    );
-
-    if (!result || !result.value) {
-      return NextResponse.json(
-        { error: "Failed to update team" },
-        { status: 400 }
-      );
-    }
-
-    // Convert ObjectId to string before sending response
-    const team = {
-      ...result.value,
-      _id: result.value._id.toString(),
-    };
-
-    return NextResponse.json(team);
-  } catch (error) {
-    console.error("Failed to update team:", error);
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
-      { error: "Failed to update team" },
-      { status: 500 }
+      { error: "Invalid team ID format" },
+      { status: 400 }
     );
   }
+
+  const body = await req.json();
+  const validation = validateBody(body, {
+    name: { type: "string", required: true, maxLength: 50 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const validationData = validation.data! as { name: string };
+  const { name } = validationData;
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  if (containsProfanity(name)) {
+    return NextResponse.json(
+      { error: "Team name contains inappropriate language" },
+      { status: 400 }
+    );
+  }
+
+  const allCollections = getAllTeamCollectionNames();
+  let teamCollection = null;
+
+  for (const collectionName of allCollections) {
+    const team = await db.collection(collectionName).findOne({
+      _id: new ObjectId(teamId),
+    });
+    if (team) {
+      teamCollection = collectionName;
+      break;
+    }
+  }
+
+  if (!teamCollection) {
+    return NextResponse.json(
+      { error: "Team not found" },
+      { status: 404 }
+    );
+  }
+
+  const result = await db.collection<Team>(teamCollection).findOneAndUpdate(
+    { _id: new ObjectId(teamId) },
+    {
+      $set: {
+        name: sanitizeString(name, 50),
+        updatedAt: new Date(),
+      },
+    },
+    { returnDocument: "after" }
+  );
+
+  if (!result || !result.value) {
+    return NextResponse.json(
+      { error: "Failed to update team" },
+      { status: 400 }
+    );
+  }
+
+  revalidatePath(`/teams/${teamId}`);
+  revalidatePath("/teams");
+
+  return NextResponse.json({
+    ...result.value,
+    _id: result.value._id.toString(),
+  });
 }
 
-export async function DELETE(
+export const PUT = withApiSecurity(putTeamHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});
+
+async function deleteTeamHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
-
-    // Find which collection the team is in
-    const allCollections = getAllTeamCollectionNames();
-    let result = null;
-
-    for (const collectionName of allCollections) {
-      result = await db.collection<Team>(collectionName).findOneAndDelete({
-        _id: new ObjectId(params.teamId),
-        "captain.discordId": session.user.id,
-      });
-      if (result && result.value) break;
-    }
-
-    if (!result || !result.value) {
-      return NextResponse.json(
-        { error: "Failed to delete team" },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to delete team:", error);
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
-      { error: "Failed to delete team" },
-      { status: 500 }
+      { error: "Invalid team ID format" },
+      { status: 400 }
     );
   }
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const allCollections = getAllTeamCollectionNames();
+  let result = null;
+
+  for (const collectionName of allCollections) {
+    result = await db.collection<Team>(collectionName).findOneAndDelete({
+      _id: new ObjectId(teamId),
+      "captain.discordId": session.user.id,
+    });
+    if (result && result.value) break;
+  }
+
+  if (!result || !result.value) {
+    return NextResponse.json(
+      { error: "Team not found or you don't have permission to delete it" },
+      { status: 403 }
+    );
+  }
+
+  revalidatePath("/teams");
+  revalidatePath(`/teams/${teamId}`);
+
+  return NextResponse.json({ success: true });
 }
+
+export const DELETE = withApiSecurity(deleteTeamHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

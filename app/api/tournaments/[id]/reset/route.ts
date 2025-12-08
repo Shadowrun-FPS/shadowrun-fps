@@ -3,24 +3,30 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postResetTournamentHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Validate admin permissions
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Check if user is an admin
-    if (!session.user.isAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  if (!session.user.isAdmin) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-    const { id } = params;
+  const id = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
     const { db } = await connectToDatabase();
 
     // Get the tournament
@@ -89,15 +95,18 @@ export async function POST(
       }
     );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${id}`);
+
     return NextResponse.json({
       success: true,
       message: "Tournament reset successfully",
     });
-  } catch (error) {
-    console.error("Error resetting tournament:", error);
-    return NextResponse.json(
-      { error: "Failed to reset tournament" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postResetTournamentHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});

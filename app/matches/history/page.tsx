@@ -57,6 +57,16 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { FeatureGate } from "@/components/feature-gate";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Match {
   matchId: string;
@@ -86,6 +96,8 @@ export default function MatchHistoryPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
+  const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { toast } = useToast();
 
   // Close date picker when clicking outside
@@ -322,14 +334,14 @@ export default function MatchHistoryPage() {
   };
 
   const handleDeleteMatch = async (matchId: string) => {
-    if (!confirm("Are you sure you want to delete this match?")) {
-      return;
-    }
+    setMatchToDelete(matchId);
+  };
 
+  const confirmDeleteMatch = async () => {
+    if (!matchToDelete || isDeleting) return;
+
+    setIsDeleting(true);
     try {
-      console.log("Deleting match:", matchId);
-      console.log("Current user:", session?.user);
-
       // Check if the current user is you by ID
       const isYourAccount = session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID;
       const isstaff =
@@ -342,17 +354,16 @@ export default function MatchHistoryPage() {
       // Use different endpoints based on who is making the request
       if (isYourAccount || isstaff) {
         // For your account, use the admin override endpoint that we know works
-        console.log("Using admin override endpoint for your account");
         response = await fetch("/api/admin-override/delete-match", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ matchId }),
+          body: JSON.stringify({ matchId: matchToDelete }),
         });
       } else {
         // For other users, use the regular endpoint
-        response = await fetch(`/api/matches/${matchId}`, {
+        response = await fetch(`/api/matches/${matchToDelete}`, {
           method: "DELETE",
         });
       }
@@ -360,7 +371,9 @@ export default function MatchHistoryPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Delete response error:", data);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Delete response error:", data);
+        }
         throw new Error(data.error || "Failed to delete match");
       }
 
@@ -369,16 +382,22 @@ export default function MatchHistoryPage() {
         description: "Match deleted successfully",
       });
 
-      // Refresh matches
+      // Refresh matches and router
       fetchMatches();
+      router.refresh();
     } catch (error) {
-      console.error("Error deleting match:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting match:", error);
+      }
       toast({
         title: "Error",
         description:
           error instanceof Error ? error.message : "Failed to delete match",
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(false);
+      setMatchToDelete(null);
     }
   };
 
@@ -1000,6 +1019,39 @@ export default function MatchHistoryPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Match Confirmation Dialog */}
+      <AlertDialog
+        open={!!matchToDelete}
+        onOpenChange={(open) => !open && setMatchToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Match</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this match? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteMatch}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </FeatureGate>
   );
 }

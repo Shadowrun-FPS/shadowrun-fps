@@ -1,19 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(req: NextRequest) {
-  try {
-    const { db } = await connectToDatabase();
+export const dynamic = "force-dynamic";
 
-    // Fixed: Use "Queues" collection with capital Q
-    const queues = await db.collection("Queues").find({}).toArray();
+async function getQueuesHandler(req: NextRequest) {
+  const { db } = await connectToDatabase();
 
-    return NextResponse.json(queues);
-  } catch (error) {
-    console.error("Error fetching queues:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch queues" },
-      { status: 500 }
-    );
-  }
+  const result = await cachedQuery(
+    "queues:all",
+    async () => {
+      return await db.collection("Queues").find({}).toArray();
+    },
+    30 * 1000 // Cache for 30 seconds (queues change frequently)
+  );
+
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+    },
+  });
 }
+
+export const GET = withApiSecurity(getQueuesHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 30,
+});

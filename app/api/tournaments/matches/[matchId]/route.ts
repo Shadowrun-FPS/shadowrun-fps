@@ -3,27 +3,25 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getTournamentMatchHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    // Get session
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to access this resource" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to access this resource" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Extract tournament ID and match info from the matchId
-    const matchId = params.matchId;
+  const matchId = sanitizeString(params.matchId, 200);
+  const client = await clientPromise;
+  const db = client.db();
 
     // Find the tournament with this match
     const tournament = await db.collection("Tournaments").findOne({
@@ -31,10 +29,8 @@ export async function GET(
     });
 
     if (!tournament) {
-      // Log for debugging
-      console.log("No tournament found with match ID:", matchId);
+      safeLog.warn("No tournament found with match ID", { matchId });
 
-      // For testing: Return a sample match if no match is found
       if (process.env.NODE_ENV === "development") {
         return NextResponse.json({
           tournamentMatchId: matchId,
@@ -75,12 +71,17 @@ export async function GET(
       ];
     }
 
-    return NextResponse.json(match);
-  } catch (error) {
-    console.error("Error fetching tournament match:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch tournament match" },
-      { status: 500 }
+    const response = NextResponse.json(match);
+    response.headers.set(
+      "Cache-Control",
+      "private, s-maxage=30, stale-while-revalidate=60"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getTournamentMatchHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  cacheable: true,
+  cacheMaxAge: 30,
+});

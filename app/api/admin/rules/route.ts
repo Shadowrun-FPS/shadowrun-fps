@@ -5,73 +5,80 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// GET all rules
-export async function GET() {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+async function getRulesHandler() {
+  const { db } = await connectToDatabase();
 
-    // Connect to database
-    const { db } = await connectToDatabase();
+  const rules = await db.collection("Rules").find({}).toArray();
 
-    // Fetch rules from database
-    const rules = await db.collection("Rules").find({}).toArray();
-
-    return NextResponse.json(rules);
-  } catch (error) {
-    console.error("Error fetching rules:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch rules" },
-      { status: 500 }
-    );
-  }
+  const response = NextResponse.json(rules);
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=3600, stale-while-revalidate=86400"
+  );
+  return response;
 }
 
-// POST a new rule
-export async function POST(req: Request) {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+export const GET = withApiSecurity(getRulesHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 3600,
+});
 
-    if (!isAuthorizedAdmin(session)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+async function postRulesHandler(req: Request) {
+  const session = await getServerSession(authOptions);
 
-    const data = await req.json();
+  if (!isAuthorizedAdmin(session)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Validate rule data
-    if (!data.title) {
-      return NextResponse.json(
-        { error: "Rule title is required" },
-        { status: 400 }
-      );
-    }
+  const data = await req.json();
+  const validation = validateBody(data, {
+    title: { type: "string", required: true, maxLength: 200 },
+    description: { type: "string", required: false, maxLength: 5000 },
+    severity: { type: "string", required: false, maxLength: 50 },
+  });
 
-    // Connect to database
-    const { db } = await connectToDatabase();
-
-    // Create rule object
-    const rule = {
-      title: data.title,
-      description: data.description || "",
-      severity: data.severity || "medium",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Insert rule to database
-    const result = await db.collection("Rules").insertOne(rule);
-
-    return NextResponse.json({
-      ...rule,
-      _id: result.insertedId,
-    });
-  } catch (error) {
-    console.error("Error creating rule:", error);
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "Failed to create rule" },
-      { status: 500 }
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
     );
   }
+
+  const { title, description, severity } = validation.data! as {
+    title: string;
+    description?: string;
+    severity?: string;
+  };
+
+  const { db } = await connectToDatabase();
+
+  const rule = {
+    title: sanitizeString(title, 200),
+    description: description ? sanitizeString(description, 5000) : "",
+    severity: severity ? sanitizeString(severity, 50) : "medium",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const result = await db.collection("Rules").insertOne(rule);
+
+  revalidatePath("/admin/rules");
+  revalidatePath("/community/rules");
+
+  return NextResponse.json({
+    ...rule,
+    _id: result.insertedId,
+  });
 }
+
+export const POST = withApiSecurity(postRulesHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/admin/rules", "/community/rules"],
+});

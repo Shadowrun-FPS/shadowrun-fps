@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -114,7 +115,10 @@ export function RespondToChallengeDialog({
     userTeam?._id === challengedTeam?._id &&
     challengedTeam?.captain === session?.user?.id;
 
+  const router = useRouter();
+
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevent duplicate submissions
     if (!response || (response === "counter" && !counterDate)) return;
 
     try {
@@ -161,6 +165,7 @@ export function RespondToChallengeDialog({
         description: `You have ${responseText} the challenge from ${challengerTeam?.name}.`,
       });
 
+      router.refresh();
       if (onResponseSuccess) {
         onResponseSuccess();
       }

@@ -3,33 +3,49 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postTournamentMatchScoreHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { matchId } = params;
-    const { mapIndex, team1Score, team2Score, submittedByTeam } =
-      await request.json();
+  const matchId = sanitizeString(params.matchId, 100);
 
-    // Validate input
-    if (
-      typeof mapIndex !== "number" ||
-      typeof team1Score !== "number" ||
-      typeof team2Score !== "number" ||
-      !["teamA", "teamB"].includes(submittedByTeam)
-    ) {
-      return NextResponse.json(
-        { error: "Invalid score submission data" },
-        { status: 400 }
-      );
-    }
+  const body = await request.json();
+  const validation = validateBody(body, {
+    mapIndex: { type: "number", required: true, min: 0, max: 10 },
+    team1Score: { type: "number", required: true, min: 0, max: 6 },
+    team2Score: { type: "number", required: true, min: 0, max: 6 },
+    submittedByTeam: { type: "string", required: true, maxLength: 10 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { mapIndex, team1Score, team2Score, submittedByTeam } = validation.data! as {
+    mapIndex: number;
+    team1Score: number;
+    team2Score: number;
+    submittedByTeam: string;
+  };
+
+  if (!["teamA", "teamB"].includes(submittedByTeam)) {
+    return NextResponse.json(
+      { error: "submittedByTeam must be 'teamA' or 'teamB'" },
+      { status: 400 }
+    );
+  }
 
     // Validate first-to-6, no ties
     if (team1Score === team2Score) {
@@ -380,7 +396,7 @@ export async function POST(
           );
 
           if (allMatchesCompleted) {
-            console.log(
+            safeLog.log(
               `All matches in Round ${roundNum} are completed. Creating next round matches.`
             );
 
@@ -425,7 +441,7 @@ export async function POST(
                   );
 
                   if (!teamA || !teamB) {
-                    console.error(
+                    safeLog.error(
                       `Could not find full team data for match ${nextMatchId}`
                     );
                     continue;
@@ -479,6 +495,9 @@ export async function POST(
       }
     }
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
+
     return NextResponse.json({
       success: true,
       mapScores,
@@ -492,11 +511,10 @@ export async function POST(
           : match.teamB.name
         : null,
     });
-  } catch (error) {
-    console.error("Error submitting score:", error);
-    return NextResponse.json(
-      { error: "Failed to submit score" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTournamentMatchScoreHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

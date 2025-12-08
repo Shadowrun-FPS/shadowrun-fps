@@ -6,6 +6,10 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Helper function to check if user is admin
 async function isUserAdmin(userId: string) {
@@ -24,28 +28,42 @@ async function isUserAdmin(userId: string) {
 }
 
 // GET all posts
-export const GET = withErrorHandling(async (req: NextRequest) => {
+async function getPostsHandler(req: NextRequest) {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  // Get all posts, sorted by order field or date if order doesn't exist
-  const posts = await db
-    .collection("Posts")
-    .find({})
-    .sort({ order: 1, date: -1 })
-    .toArray();
+  const result = await cachedQuery(
+    "posts:all",
+    async () => {
+      return await db
+        .collection("Posts")
+        .find({})
+        .sort({ order: 1, date: -1 })
+        .toArray();
+    },
+    5 * 60 * 1000 // Cache for 5 minutes
+  );
 
-  return NextResponse.json(posts);
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+    },
+  });
+}
+
+export const GET = withApiSecurity(getPostsHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 300,
 });
 
 // POST new post
-export const POST = withErrorHandling(async (req: NextRequest) => {
+async function postPostsHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw createError.unauthorized("Authentication required to create posts");
   }
 
-  // Check if user is admin
   const admin = await isUserAdmin(session.user.id);
   if (!admin) {
     secureLogger.warn("Unauthorized attempt to create post", {
@@ -57,10 +75,32 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  const { title, description, type, imageUrl, link, authorId, author } =
-    await req.json();
+  const body = await req.json();
+  const validation = validateBody(body, {
+    title: { type: "string", required: true, maxLength: 200 },
+    description: { type: "string", required: false, maxLength: 5000 },
+    type: { type: "string", required: true },
+    imageUrl: { type: "string", required: false, maxLength: 500 },
+    link: { type: "string", required: false, maxLength: 500 },
+    authorId: { type: "string", required: false },
+    author: { type: "string", required: false, maxLength: 100 },
+  });
 
-  // Get the highest order value
+  if (!validation.valid) {
+    throw createError.badRequest(validation.errors?.join(", ") || "Invalid input");
+  }
+
+  const validationData = validation.data! as {
+    title: string;
+    description?: string;
+    type: string;
+    imageUrl?: string;
+    link?: string;
+    authorId?: string;
+    author?: string;
+  };
+  const { title, description, type, imageUrl, link, authorId, author } = validationData;
+
   const highestOrder = await db
     .collection("Posts")
     .find({})
@@ -71,20 +111,19 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const newOrder =
     highestOrder.length > 0 ? (highestOrder[0].order || 0) + 1 : 0;
 
-  // Create the post with the author's nickname
   const post = {
-    title,
-    description,
-    type,
-    imageUrl,
-    link,
-    authorId,
-    author, // This will now be the Discord nickname
+    title: sanitizeString(title, 200),
+    description: description ? sanitizeString(description, 5000) : "",
+    type: sanitizeString(type, 50),
+    imageUrl: imageUrl ? sanitizeString(imageUrl, 500) : "",
+    link: link ? sanitizeString(link, 500) : "",
+    authorId: authorId || session.user.id,
+    author: author || session.user.name || "",
     datePublished: new Date().toISOString(),
     published: true,
+    order: newOrder,
   };
 
-  // Create the post
   const result = await db.collection("Posts").insertOne(post);
 
   secureLogger.info("Post created successfully", {
@@ -92,20 +131,29 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     authorId: session.user.id,
   });
 
+  revalidatePath("/");
+  revalidatePath("/docs");
+
   return NextResponse.json({
     success: true,
     postId: result.insertedId,
   });
+}
+
+export const POST = withApiSecurity(postPostsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/", "/docs"],
 });
 
 // PUT update post
-export const PUT = withErrorHandling(async (req: NextRequest) => {
+async function putPostsHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw createError.unauthorized("Authentication required to update posts");
   }
 
-  // Check if user is admin
   const admin = await isUserAdmin(session.user.id);
   if (!admin) {
     secureLogger.warn("Unauthorized attempt to update post", {
@@ -117,22 +165,30 @@ export const PUT = withErrorHandling(async (req: NextRequest) => {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  const data = await req.json();
-  const { _id, ...updateData } = data;
+  const body = await req.json();
+  const { _id, ...updateData } = body;
 
-  if (!_id) {
-    throw createError.badRequest("Post ID is required");
+  if (!_id || !ObjectId.isValid(_id)) {
+    throw createError.badRequest("Valid post ID is required");
   }
 
-  // Update the post
+  // Sanitize update data
+  const sanitizedUpdate: any = {
+    updatedAt: new Date(),
+  };
+
+  if (updateData.title) sanitizedUpdate.title = sanitizeString(updateData.title, 200);
+  if (updateData.description) sanitizedUpdate.description = sanitizeString(updateData.description, 5000);
+  if (updateData.type) sanitizedUpdate.type = sanitizeString(updateData.type, 50);
+  if (updateData.imageUrl) sanitizedUpdate.imageUrl = sanitizeString(updateData.imageUrl, 500);
+  if (updateData.link) sanitizedUpdate.link = sanitizeString(updateData.link, 500);
+  if (updateData.author) sanitizedUpdate.author = sanitizeString(updateData.author, 100);
+  if (updateData.order !== undefined) sanitizedUpdate.order = updateData.order;
+  if (updateData.published !== undefined) sanitizedUpdate.published = updateData.published;
+
   await db.collection("Posts").updateOne(
     { _id: new ObjectId(_id) },
-    {
-      $set: {
-        ...updateData,
-        updatedAt: new Date(),
-      },
-    }
+    { $set: sanitizedUpdate }
   );
 
   secureLogger.info("Post updated successfully", {
@@ -140,5 +196,16 @@ export const PUT = withErrorHandling(async (req: NextRequest) => {
     adminId: session.user.id,
   });
 
+  revalidatePath("/");
+  revalidatePath("/docs");
+  revalidatePath(`/docs/${_id}`);
+
   return NextResponse.json({ success: true });
+}
+
+export const PUT = withApiSecurity(putPostsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/", "/docs"],
 });

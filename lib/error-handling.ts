@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { safeLog } from "./security";
 
 export interface ApiError {
   message: string;
@@ -79,14 +80,23 @@ export function handleApiError(error: any): NextResponse {
 
   // Log the actual error for debugging (only in server logs)
   if (process.env.NODE_ENV !== "test") {
-    const logLevel = statusCode >= 500 ? "error" : "warn";
-    console[logLevel]("API Error:", {
-      message: error.message,
-      stack: error.stack,
-      statusCode,
-      code,
-      timestamp: new Date().toISOString(),
-    });
+    if (statusCode >= 500) {
+      safeLog.error("API Error:", {
+        message: error.message,
+        stack: error.stack,
+        statusCode,
+        code,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      safeLog.warn("API Error:", {
+        message: error.message,
+        stack: error.stack,
+        statusCode,
+        code,
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   // Return safe error response
@@ -134,7 +144,7 @@ export const createError = {
 // Database error handler
 export function handleDatabaseError(error: any): AppError {
   // Don't expose database details
-  console.error("Database Error:", error);
+  safeLog.error("Database Error:", error);
 
   if (error.code === 11000) {
     return createError.conflict("Resource already exists");
@@ -145,7 +155,7 @@ export function handleDatabaseError(error: any): AppError {
 
 // Discord API error handler
 export function handleDiscordError(error: any, operation: string): AppError {
-  console.error(`Discord API Error (${operation}):`, error);
+  safeLog.error(`Discord API Error (${operation}):`, error);
 
   // Don't expose Discord API details
   return createError.internal("External service error");

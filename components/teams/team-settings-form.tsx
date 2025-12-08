@@ -36,6 +36,7 @@ export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return; // Prevent duplicate submissions
 
     // Client-side profanity check
     if (containsProfanity(formData.name)) {
@@ -93,7 +94,9 @@ export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
       setIsEditing(false);
       router.refresh();
     } catch (error: any) {
-      console.error("Error updating team:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error updating team:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to update team",

@@ -6,43 +6,54 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { canRegisterTeamsForTournament } from "@/lib/tournament-permissions";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// POST endpoint to register a team for a tournament
-export async function POST(
+async function postRegisterHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Get session and check authentication
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to register a team" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to register a team" },
+      { status: 401 }
+    );
+  }
 
-    const { id } = params;
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
+  const id = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
 
-    // Get request body
-    const data = await request.json();
-    const { teamId } = data;
+  const data = await request.json();
+  const validation = validateBody(data, {
+    teamId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    if (!teamId || !ObjectId.isValid(teamId)) {
-      return NextResponse.json({ error: "Invalid team ID" }, { status: 400 });
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const validationData = validation.data! as { teamId: string };
+  const { teamId } = validationData;
+  const sanitizedTeamId = sanitizeString(teamId, 50);
+
+  if (!ObjectId.isValid(sanitizedTeamId)) {
+    return NextResponse.json({ error: "Invalid team ID" }, { status: 400 });
+  }
 
     const client = await clientPromise;
     const db = client.db();
 
-    // Check if tournament exists
     const tournament = await db.collection("Tournaments").findOne({
       _id: new ObjectId(id),
     });
@@ -62,8 +73,7 @@ export async function POST(
       );
     }
 
-    // Fetch the complete team document with all information
-    const teamResult = await findTeamAcrossCollections(db, teamId);
+    const teamResult = await findTeamAcrossCollections(db, sanitizedTeamId);
     if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
@@ -284,20 +294,21 @@ export async function POST(
       }
     );
 
-    // Return success response
+    revalidatePath(`/tournaments/${id}`);
+    revalidatePath("/tournaments");
+
     return NextResponse.json({
       success: true,
       message: "Team successfully registered for tournament",
       team: enhancedTeamData,
     });
-  } catch (error) {
-    console.error("Error registering team for tournament:", error);
-    return NextResponse.json(
-      { error: "Failed to register team for tournament" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRegisterHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});
 
 // Helper to check if user is admin
 async function isAdmin(db: any, userId: string): Promise<boolean> {

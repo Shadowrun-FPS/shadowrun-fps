@@ -4,47 +4,65 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 const DEVELOPER_DISCORD_ID = "238329746671271936";
 
-// PATCH endpoint to update queue details
-export async function PATCH(
+async function patchQueueDetailsHandler(
   req: NextRequest,
   { params }: { params: { queueId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Check authorization
-    const isDeveloper =
-      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      session.user.id === DEVELOPER_DISCORD_ID;
-    const isAdmin = session.user.roles?.includes("admin") || session.user.isAdmin;
-    const isFounder = session.user.roles?.includes("founder");
+  const queueId = sanitizeString(params.queueId, 50);
+  if (!ObjectId.isValid(queueId)) {
+    return NextResponse.json(
+      { error: "Invalid queue ID" },
+      { status: 400 }
+    );
+  }
 
-    if (!isDeveloper && !isAdmin && !isFounder) {
-      return NextResponse.json(
-        { error: "Not authorized" },
-        { status: 403 }
-      );
-    }
+  const isDeveloper =
+    session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+    session.user.id === DEVELOPER_DISCORD_ID;
+  const isAdmin = session.user.roles?.includes("admin") || session.user.isAdmin;
+  const isFounder = session.user.roles?.includes("founder");
 
-    const body = await req.json();
-    const { gameType, eloTier, minElo, maxElo } = body;
+  if (!isDeveloper && !isAdmin && !isFounder) {
+    return NextResponse.json(
+      { error: "Not authorized" },
+      { status: 403 }
+    );
+  }
 
-    // Validate required fields
-    if (!gameType || !eloTier) {
-      return NextResponse.json(
-        { error: "gameType and eloTier are required" },
-        { status: 400 }
-      );
-    }
+  const body = await req.json();
+  const validation = validateBody(body, {
+    gameType: { type: "string", required: true, maxLength: 50 },
+    eloTier: { type: "string", required: true, maxLength: 50 },
+    minElo: { type: "number", required: false, min: 0, max: 10000 },
+    maxElo: { type: "number", required: false, min: 0, max: 10000 },
+  });
 
-    // Validate ELO range if provided
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { gameType, eloTier, minElo, maxElo } = validation.data! as {
+    gameType: string;
+    eloTier: string;
+    minElo?: number;
+    maxElo?: number;
+  };
+
     if (minElo !== undefined && maxElo !== undefined) {
       if (minElo >= maxElo) {
         return NextResponse.json(
@@ -56,9 +74,8 @@ export async function PATCH(
 
     const { db } = await connectToDatabase();
     
-    // Check if queue exists
     const queue = await db.collection("Queues").findOne({
-      _id: new ObjectId(params.queueId),
+      _id: new ObjectId(queueId),
     });
 
     if (!queue) {
@@ -81,20 +98,22 @@ export async function PATCH(
     }
 
     await db.collection("Queues").updateOne(
-      { _id: new ObjectId(params.queueId) },
+      { _id: new ObjectId(queueId) },
       updateData
     );
+
+    revalidatePath("/admin/queues");
+    revalidatePath(`/admin/queues/${queueId}`);
 
     return NextResponse.json({
       success: true,
       message: "Queue details updated successfully",
     });
-  } catch (error) {
-    console.error("Error updating queue details:", error);
-    return NextResponse.json(
-      { error: "Failed to update queue details" },
-      { status: 500 }
-    );
-  }
 }
+
+export const PATCH = withApiSecurity(patchQueueDetailsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  revalidatePaths: ["/admin/queues"],
+});
 

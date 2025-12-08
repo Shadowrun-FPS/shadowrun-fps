@@ -5,27 +5,48 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { notifyTeamMemberChange } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postRespondHandler(
   req: NextRequest,
   { params }: { params: { inviteId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const inviteId = params.inviteId;
-    const { action } = await req.json();
+  const inviteId = sanitizeString(params.inviteId, 50);
+  if (!ObjectId.isValid(inviteId)) {
+    return NextResponse.json(
+      { error: "Invalid invite ID format" },
+      { status: 400 }
+    );
+  }
 
-    if (!["accept", "reject"].includes(action)) {
-      return NextResponse.json(
-        { error: "Invalid action. Must be 'accept' or 'reject'" },
-        { status: 400 }
-      );
-    }
+  const { db } = await connectToDatabase();
+  const body = await req.json();
+  const validation = validateBody(body, {
+    action: { type: "string", required: true, maxLength: 10 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { action } = validation.data! as { action: string };
+
+  if (!["accept", "reject"].includes(action)) {
+    return NextResponse.json(
+      { error: "Invalid action. Must be 'accept' or 'reject'" },
+      { status: 400 }
+    );
+  }
 
     // Get the invite
     const invite = await db.collection("TeamInvites").findOne({
@@ -55,16 +76,17 @@ export async function POST(
         userId: invite.inviterId,
         type: "invite_rejected",
         title: "Team Invite Rejected",
-        message: `${
-          session.user.nickname || session.user.name
-        } has rejected your invitation to join team "${invite.teamName}"`,
+        message: `${sanitizeString(session.user.nickname || session.user.name || "", 100)} has rejected your invitation to join team "${sanitizeString(invite.teamName, 100)}"`,
         read: false,
         createdAt: new Date(),
         metadata: {
           teamId: invite.teamId.toString(),
-          teamName: invite.teamName,
+          teamName: sanitizeString(invite.teamName, 100),
         },
       });
+
+      revalidatePath("/teams");
+      revalidatePath("/notifications");
 
       return NextResponse.json({
         success: true,
@@ -171,9 +193,7 @@ export async function POST(
       userId: invite.inviterId,
       type: "invite_accepted",
       title: "Team Invite Accepted",
-      message: `${
-        session.user.nickname || session.user.name
-      } has accepted your invitation to join team "${invite.teamName}"`,
+        message: `${sanitizeString(session.user.nickname || session.user.name || "", 100)} has accepted your invitation to join team "${sanitizeString(invite.teamName, 100)}"`,
       read: false,
       createdAt: new Date(),
       metadata: {
@@ -190,17 +210,15 @@ export async function POST(
         "joined",
         {
           discordId: session.user.id,
-          discordUsername: session.user.name || "Unknown",
-          discordNickname: session.user.nickname || session.user.name || "Unknown",
+          discordUsername: sanitizeString(session.user.name || "Unknown", 100),
+          discordNickname: sanitizeString(session.user.nickname || session.user.name || "Unknown", 100),
         },
         teamSize
       ).catch((error) => {
-        console.error("Failed to send team member join Discord notification:", error);
-        // Don't fail the request if notification fails
+        safeLog.error("Failed to send team member join Discord notification:", error);
       });
     } catch (error) {
-      console.error("Error sending team member join Discord notification:", error);
-      // Don't fail the request if notification fails
+      safeLog.error("Error sending team member join Discord notification:", error);
     }
 
     // Cancel all other pending invites for this user
@@ -213,24 +231,25 @@ export async function POST(
       { $set: { status: "cancelled" } }
     );
 
-    // Recalculate team ELO with the new member
     try {
       await recalculateTeamElo(invite.teamId.toString());
     } catch (eloError) {
-      // Log error but don't fail the invite acceptance
-      console.error("Error recalculating team ELO after invite acceptance:", eloError);
+      safeLog.error("Error recalculating team ELO after invite acceptance:", eloError);
     }
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${invite.teamId.toString()}`);
+    revalidatePath("/notifications");
 
     return NextResponse.json({
       success: true,
       message: "Successfully joined the team",
-      teamTag: team?.tag || null,
+      teamTag: sanitizeString(team?.tag || "", 10) || null,
     });
-  } catch (error) {
-    console.error("Error responding to team invite:", error);
-    return NextResponse.json(
-      { error: "Failed to process invite response" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRespondHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams", "/notifications"],
+});

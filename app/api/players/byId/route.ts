@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic"; // Mark as dynamic route
 
-export async function GET(request: NextRequest) {
-  try {
-    // Use searchParams instead of URL
-    const id = request.nextUrl.searchParams.get("id");
+async function getPlayerByIdHandler(request: NextRequest) {
+  const idParam = request.nextUrl.searchParams.get("id");
+  const id = idParam ? sanitizeString(idParam, 50) : "";
 
-    if (!id) {
-      return NextResponse.json({ error: "Missing player ID" }, { status: 400 });
-    }
+  if (!id) {
+    return NextResponse.json({ error: "Missing player ID" }, { status: 400 });
+  }
 
     // Connect to both databases
     const client = await clientPromise;
@@ -66,12 +67,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(player);
-  } catch (error) {
-    console.error("Error fetching player:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch player data" },
-      { status: 500 }
+    const response = NextResponse.json(player);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=1800"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getPlayerByIdHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 300,
+});

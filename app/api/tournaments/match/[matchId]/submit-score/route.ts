@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, Db } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Add interface for Match and Team to make typings clearer
 interface Team {
@@ -22,26 +25,44 @@ interface Match {
   winner?: number;
 }
 
-export async function POST(
+async function postSubmitTournamentScoreHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { teamIndex, mapIndex, teamAScore, teamBScore } =
-      await request.json();
-    const matchId = params.matchId;
+  const matchId = sanitizeString(params.matchId, 100);
+  const body = await request.json();
+  const validation = validateBody(body, {
+    teamIndex: { type: "number", required: true, min: 0, max: 1 },
+    mapIndex: { type: "number", required: true, min: 0 },
+    teamAScore: { type: "number", required: true, min: 0, max: 6 },
+    teamBScore: { type: "number", required: true, min: 0, max: 6 },
+  });
 
-    if (teamAScore === teamBScore) {
-      return NextResponse.json(
-        { error: "There must be a winner - scores cannot be equal" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { teamIndex, mapIndex, teamAScore, teamBScore } = validation.data! as {
+    teamIndex: number;
+    mapIndex: number;
+    teamAScore: number;
+    teamBScore: number;
+  };
+
+  if (teamAScore === teamBScore) {
+    return NextResponse.json(
+      { error: "There must be a winner - scores cannot be equal" },
+      { status: 400 }
+    );
+  }
 
     const { db } = await connectToDatabase();
 
@@ -181,25 +202,28 @@ export async function POST(
             }
           );
 
-          console.log(
-            `Tournament ${tournament._id} completed! Winner: ${winningTeam.name}`
-          );
+          safeLog.log("Tournament completed", {
+            tournamentId: tournament._id.toString(),
+            winnerName: winningTeam.name,
+          });
         }
       }
     }
+
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
 
     return NextResponse.json({
       success: true,
       message: "Score submitted successfully",
     });
-  } catch (error) {
-    console.error("Error submitting score:", error);
-    return NextResponse.json(
-      { error: "Failed to submit score" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postSubmitTournamentScoreHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});
 
 // Helper function to advance winner to next round with proper type annotations
 async function advanceWinnerToNextRound(
@@ -230,9 +254,11 @@ async function advanceWinnerToNextRound(
     // Create the next match ID
     const nextMatchId = `${tournamentIdStr}-R${nextRound}-M${nextMatch}`;
 
-    console.log(
-      `Advancing winner of ${match.tournamentMatchId} to ${nextMatchId} as ${teamPosition}`
-    );
+    safeLog.log("Advancing winner to next round", {
+      currentMatchId: match.tournamentMatchId,
+      nextMatchId,
+      teamPosition,
+    });
 
     // Convert tournamentId to ObjectId if it's a string
     const objectIdTournamentId =
@@ -253,10 +279,12 @@ async function advanceWinnerToNextRound(
       }
     );
 
-    console.log(`Successfully advanced team ${winningTeam.name} to next round`);
+    safeLog.log("Successfully advanced team to next round", {
+      teamName: winningTeam.name,
+    });
     return true;
   } catch (error) {
-    console.error("Error advancing winner to next round:", error);
+    safeLog.error("Error advancing winner to next round:", error);
     return false;
   }
 }

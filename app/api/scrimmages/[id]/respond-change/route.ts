@@ -3,29 +3,62 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postRespondChangeScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { response, requestId } = await request.json();
+  const id = sanitizeString(params.id, 100);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid scrimmage ID" },
+      { status: 400 }
+    );
+  }
 
-    if (!["accept", "reject"].includes(response)) {
-      return NextResponse.json({ error: "Invalid response" }, { status: 400 });
-    }
+  const body = await request.json();
+  const validation = validateBody(body, {
+    response: { type: "string", required: true, maxLength: 10 },
+    requestId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    const { db } = await connectToDatabase();
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    // Get the scrimmage
-    const scrimmage = await db.collection("scrimmages").findOne({
-      _id: new ObjectId(params.id),
-    });
+  const { response, requestId } = validation.data! as {
+    response: string;
+    requestId: string;
+  };
+
+  if (!["accept", "reject"].includes(response)) {
+    return NextResponse.json({ error: "Invalid response" }, { status: 400 });
+  }
+
+  const sanitizedRequestId = sanitizeString(requestId, 50);
+  if (!ObjectId.isValid(sanitizedRequestId)) {
+    return NextResponse.json(
+      { error: "Invalid request ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
+
+  const scrimmage = await db.collection("scrimmages").findOne({
+    _id: new ObjectId(id),
+  });
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -47,9 +80,8 @@ export async function POST(
       );
     }
 
-    // Find the change request
     const changeRequest = scrimmage.changeRequests?.find(
-      (req: any) => req._id.toString() === requestId
+      (req: any) => req._id.toString() === sanitizedRequestId
     );
 
     if (!changeRequest) {
@@ -70,11 +102,10 @@ export async function POST(
       );
     }
 
-    // Update the change request status
     await db.collection("scrimmages").updateOne(
       {
-        _id: new ObjectId(params.id),
-        "changeRequests._id": new ObjectId(requestId),
+        _id: new ObjectId(id),
+        "changeRequests._id": new ObjectId(sanitizedRequestId),
       },
       {
         $set: {
@@ -99,28 +130,28 @@ export async function POST(
 
       await db
         .collection("scrimmages")
-        .updateOne({ _id: new ObjectId(params.id) }, { $set: updateData });
+        .updateOne({ _id: new ObjectId(id) }, { $set: updateData });
     } else {
-      // If rejected, just mark that there's no active request
       await db
         .collection("scrimmages")
         .updateOne(
-          { _id: new ObjectId(params.id) },
+          { _id: new ObjectId(id) },
           { $set: { hasActiveChangeRequest: false } }
         );
     }
 
-    // Get the updated scrimmage
     const updatedScrimmage = await db.collection("scrimmages").findOne({
-      _id: new ObjectId(params.id),
+      _id: new ObjectId(id),
     });
 
+    revalidatePath("/scrimmages");
+    revalidatePath(`/scrimmages/${id}`);
+
     return NextResponse.json(updatedScrimmage);
-  } catch (error) {
-    console.error("Error responding to change request:", error);
-    return NextResponse.json(
-      { error: "Failed to respond to change request" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRespondChangeScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages"],
+});

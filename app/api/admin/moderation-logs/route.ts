@@ -11,35 +11,34 @@ import {
   hasModeratorRole,
 } from "@/lib/security-config";
 import { getDiscordUserInfoBatch } from "@/lib/discord-user-info";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+async function getModerationLogsHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Check if user has required roles
-    const DEVELOPER_DISCORD_ID = "238329746671271936";
-    const isDeveloper = 
-      session.user.id === SECURITY_CONFIG.DEVELOPER_ID || 
-      session.user.id === DEVELOPER_DISCORD_ID;
-    
-    const userRoles = session.user.roles || [];
-    const userHasAdminRole = hasAdminRole(userRoles);
-    const userHasModeratorRole = hasModeratorRole(userRoles);
-    const isAdminUser = session.user.isAdmin;
+  const DEVELOPER_DISCORD_ID = "238329746671271936";
+  const isDeveloper = 
+    session.user.id === SECURITY_CONFIG.DEVELOPER_ID || 
+    session.user.id === DEVELOPER_DISCORD_ID;
+  
+  const userRoles = session.user.roles || [];
+  const userHasAdminRole = hasAdminRole(userRoles);
+  const userHasModeratorRole = hasModeratorRole(userRoles);
+  const isAdminUser = session.user.isAdmin;
 
-    const isAuthorized =
-      isDeveloper || isAdminUser || userHasAdminRole || userHasModeratorRole;
+  const isAuthorized =
+    isDeveloper || isAdminUser || userHasAdminRole || userHasModeratorRole;
 
-    if (!isAuthorized) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorized) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
     // Connect to database
     const { db } = await connectToDatabase();
@@ -161,12 +160,15 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json(updatedLogs);
-  } catch (error) {
-    console.error("Error fetching moderation logs:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch moderation logs" },
-      { status: 500 }
+    const response = NextResponse.json(updatedLogs);
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getModerationLogsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+});

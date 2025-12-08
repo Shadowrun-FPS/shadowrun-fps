@@ -4,37 +4,46 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getPlayerHandler(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!isAuthorizedAdmin(session)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorizedAdmin(session)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Connect to database
-    const { db } = await connectToDatabase();
-
-    // Fetch player from database
-    const player = await db
-      .collection("Players")
-      .findOne({ _id: new ObjectId(params.id) });
-
-    if (!player) {
-      return NextResponse.json({ error: "Player not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(player);
-  } catch (error) {
-    console.error("Error fetching player:", error);
+  const playerId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(playerId)) {
     return NextResponse.json(
-      { error: "Failed to fetch player" },
-      { status: 500 }
+      { error: "Invalid player ID" },
+      { status: 400 }
     );
   }
+
+  const { db } = await connectToDatabase();
+
+  const player = await db
+    .collection("Players")
+    .findOne({ _id: new ObjectId(playerId) });
+
+  if (!player) {
+    return NextResponse.json({ error: "Player not found" }, { status: 404 });
+  }
+
+  const response = NextResponse.json(player);
+  response.headers.set(
+    "Cache-Control",
+    "private, no-cache, no-store, must-revalidate"
+  );
+  return response;
 }
+
+export const GET = withApiSecurity(getPlayerHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+});

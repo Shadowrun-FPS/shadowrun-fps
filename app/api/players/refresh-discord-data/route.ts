@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Define the interface for the request body
 interface RefreshDiscordDataRequest {
@@ -11,35 +14,43 @@ interface RefreshDiscordDataRequest {
   forceDiscordRefresh?: boolean;
 }
 
-export async function POST(req: NextRequest) {
+async function postRefreshDiscordDataHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userId = sanitizeString(session.user.id, 50);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  let requestBody: RefreshDiscordDataRequest = {};
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    requestBody = await req.json();
+  } catch (e) {
+    // No body or invalid JSON
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const validation = validateBody(requestBody, {
+    nickname: { type: "string", required: false, maxLength: 100 },
+    updateTeamInfo: { type: "boolean", required: false },
+    forceDiscordRefresh: { type: "boolean", required: false },
+  });
 
-    // Get request body if available
-    let requestBody: RefreshDiscordDataRequest = {};
-    try {
-      requestBody = await req.json();
-    } catch (e) {
-      // No body or invalid JSON
-    }
+  const {
+    nickname,
+    updateTeamInfo = true,
+    forceDiscordRefresh = false,
+  } = validation.valid && validation.data
+    ? (validation.data as RefreshDiscordDataRequest)
+    : requestBody;
 
-    const {
-      nickname,
-      updateTeamInfo = true,
-      forceDiscordRefresh = false,
-    } = requestBody;
-
-    // Get the user's Discord data from the session
-    const discordId = session.user.id;
-    let discordUsername = session.user.name;
-    const discordNickname =
-      nickname || session.user.nickname || session.user.name;
+    const discordId = userId;
+    let discordUsername = sanitizeString(session.user.name || "", 100);
+    const discordNickname = sanitizeString(
+      nickname || session.user.nickname || session.user.name || "",
+      100
+    );
 
     // First, check if the player already exists and get their current profile picture
     const existingPlayer = await db
@@ -82,8 +93,7 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch (discordError) {
-        console.error("Error fetching Discord user data:", discordError);
-        // Continue with session data if Discord API fails
+        safeLog.error("Error fetching Discord user data:", discordError);
       }
     }
 
@@ -92,7 +102,6 @@ export async function POST(req: NextRequest) {
       discordProfilePicture = existingPlayer.discordProfilePicture;
     }
 
-    // Update the player document
     const updateResult = await db.collection("Players").updateOne(
       { discordId },
       {
@@ -133,8 +142,8 @@ export async function POST(req: NextRequest) {
       for (const team of teams) {
         const collectionName = (team as any)._collectionName;
         const updateFields: any = {
-          "members.$.discordUsername": discordUsername,
-          "members.$.discordNickname": discordNickname,
+          "members.$.discordUsername": sanitizeString(discordUsername, 100),
+          "members.$.discordNickname": sanitizeString(discordNickname, 100),
         };
 
         // Only include profile picture in update if it's not null
@@ -156,8 +165,8 @@ export async function POST(req: NextRequest) {
         // If this player is the team captain, also update the captain info
         if (team.captain.discordId === discordId) {
           const captainUpdateFields: any = {
-            "captain.discordUsername": discordUsername,
-            "captain.discordNickname": discordNickname,
+            "captain.discordUsername": sanitizeString(discordUsername, 100),
+            "captain.discordNickname": sanitizeString(discordNickname, 100),
           };
 
           // Only include profile picture in update if it's not null
@@ -176,16 +185,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    revalidatePath("/players");
+    revalidatePath(`/players/${userId}`);
+
     return NextResponse.json({
       success: true,
       updated: updateResult.modifiedCount > 0,
       created: updateResult.upsertedCount > 0,
     });
-  } catch (error) {
-    console.error("Error refreshing player data:", error);
-    return NextResponse.json(
-      { error: "Failed to refresh player data" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRefreshDiscordDataHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/players"],
+});

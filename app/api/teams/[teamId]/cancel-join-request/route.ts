@@ -3,25 +3,33 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postCancelJoinRequestHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const userId = session.user.id;
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
 
-    // Find the join request
+  const userId = sanitizeString(session.user.id, 50);
+  const { db } = await connectToDatabase();
+
     const joinRequest = await db.collection("TeamJoinRequests").findOne({
-      teamId: teamId,
-      userId: userId,
+      teamId,
+      userId,
       status: "pending",
     });
 
@@ -43,22 +51,23 @@ export async function POST(
       }
     );
 
-    // Delete the notification for the team captain
     await db.collection("Notifications").deleteMany({
       "metadata.teamId": teamId,
       "metadata.requesterId": userId,
       type: "team_join_request",
     });
 
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
+
     return NextResponse.json({
       success: true,
       message: "Join request cancelled successfully",
     });
-  } catch (error) {
-    console.error("Error cancelling join request:", error);
-    return NextResponse.json(
-      { error: "Failed to cancel join request" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postCancelJoinRequestHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

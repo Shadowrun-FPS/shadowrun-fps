@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +46,7 @@ export function IssueWarningDialog({
   playerName,
   onComplete,
 }: IssueWarningDialogProps) {
+  const router = useRouter();
   const [rule, setRule] = useState("");
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,10 +92,13 @@ export function IssueWarningDialog({
         description: `A warning has been issued to ${playerName}.`,
       });
 
+      router.refresh();
       handleClose();
       if (onComplete) onComplete();
     } catch (error) {
-      console.error("Error issuing warning:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error issuing warning:", error);
+      }
       setError("Failed to issue warning. Please try again.");
     } finally {
       setIsSubmitting(false);

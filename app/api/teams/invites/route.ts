@@ -1,21 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const userId = req.nextUrl.searchParams.get("userId");
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+async function getTeamInvitesHandler(req: NextRequest) {
+  const userIdParam = req.nextUrl.searchParams.get("userId");
+  if (!userIdParam) {
+    return NextResponse.json(
+      { error: "User ID is required" },
+      { status: 400 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const userId = sanitizeString(userIdParam, 50);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
 
     // Get pending invites for the user
     const invites = await db
@@ -55,12 +57,15 @@ export async function GET(req: NextRequest) {
       ])
       .toArray();
 
-    return NextResponse.json({ invites });
-  } catch (error) {
-    console.error("Failed to fetch invites:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch invites" },
-      { status: 500 }
+    const response = NextResponse.json({ invites });
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getTeamInvitesHandler, {
+  rateLimiter: "api",
+  requireAuth: false,
+});

@@ -146,7 +146,9 @@ export function ModerationDialog({
       onOpenChange(false);
       router.refresh();
     } catch (error) {
-      console.error(`Error ${action}ing player:`, error);
+      if (process.env.NODE_ENV === "development") {
+        console.error(`Error ${action}ing player:`, error);
+      }
       toast({
         variant: "destructive",
         title: "Error",

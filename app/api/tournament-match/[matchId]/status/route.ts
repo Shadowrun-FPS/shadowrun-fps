@@ -3,30 +3,38 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// Need to export a PATCH handler (not just define it)
-export async function PATCH(
+async function patchMatchStatusHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated (and optionally an admin)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const matchId = params.matchId;
-    const body = await request.json();
-    const { status } = body;
+  const matchId = sanitizeString(params.matchId, 200);
+  const body = await request.json();
+  const validation = validateBody(body, {
+    status: {
+      type: "string",
+      required: true,
+      pattern: /^(upcoming|in_progress|completed)$/,
+    },
+  });
 
-    if (!status || !["upcoming", "in_progress", "completed"].includes(status)) {
-      return NextResponse.json(
-        { error: "Invalid status value" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid status value" },
+      { status: 400 }
+    );
+  }
+
+  const { status } = validation.data! as { status: string };
 
     const client = await clientPromise;
     const db = client.db();
@@ -69,12 +77,14 @@ export async function PATCH(
         { $set: { [`tournamentMatches.${matchIndex}.status`]: status } }
       );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
+
     return NextResponse.json(tournament.tournamentMatches[matchIndex]);
-  } catch (error) {
-    console.error("Error updating match status:", error);
-    return NextResponse.json(
-      { error: "Failed to update match status", details: String(error) },
-      { status: 500 }
-    );
-  }
 }
+
+export const PATCH = withApiSecurity(patchMatchStatusHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

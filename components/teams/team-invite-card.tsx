@@ -88,6 +88,7 @@ export function TeamInviteCard({
     action: "accept" | "reject",
     leaveCurrentTeam: boolean = false
   ) => {
+    if (isSubmitting) return; // Prevent duplicate submissions
     setIsSubmitting(true);
     try {
       // If we need to leave current team first
@@ -146,7 +147,9 @@ export function TeamInviteCard({
         onInviteProcessed();
       }
     } catch (error: any) {
-      console.error(`Error ${action}ing invite:`, error);
+      if (process.env.NODE_ENV === "development") {
+        console.error(`Error ${action}ing invite:`, error);
+      }
       toast({
         title: "Error",
         description: error.message || `Failed to ${action} invite`,

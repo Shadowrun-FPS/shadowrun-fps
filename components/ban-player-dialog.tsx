@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Ban, X } from "lucide-react";
 import {
   Dialog,
@@ -80,6 +81,7 @@ export function BanPlayerDialog({
   playerId,
   onBanComplete,
 }: BanPlayerDialogProps) {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize the form with default values
@@ -137,10 +139,16 @@ export function BanPlayerDialog({
         }.`,
       });
 
+      // Refresh the page to show updated data
+      router.refresh();
+
       onBanComplete();
       handleOpenChange(false);
     } catch (error) {
-      console.error("Error banning player:", error);
+      // Only log errors in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error banning player:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to ban player. Please try again.",

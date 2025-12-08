@@ -1,15 +1,21 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, ChangeStream, ChangeStreamDocument } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getMatchEventsHandler(
   req: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
+  const matchId = sanitizeString(params.matchId, 100);
+  if (!ObjectId.isValid(matchId)) {
+    return NextResponse.json({ error: "Invalid match ID" }, { status: 400 });
+  }
+
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  // Create a new stream
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
@@ -17,13 +23,12 @@ export async function GET(
         const changeStream = db
           .collection("Matches")
           .watch([
-            { $match: { "documentKey._id": new ObjectId(params.matchId) } },
+            { $match: { "documentKey._id": new ObjectId(matchId) } },
           ]);
 
-        // Send initial match data
         const match = await db
           .collection("Matches")
-          .findOne({ _id: new ObjectId(params.matchId) });
+          .findOne({ _id: new ObjectId(matchId) });
 
         if (match) {
           controller.enqueue(
@@ -31,12 +36,10 @@ export async function GET(
           );
         }
 
-        // Listen for changes
         changeStream.on("change", async (change: ChangeStreamDocument) => {
-          // Fetch the latest document since fullDocument might not be available
           const updatedMatch = await db
             .collection("Matches")
-            .findOne({ _id: new ObjectId(params.matchId) });
+            .findOne({ _id: new ObjectId(matchId) });
 
           if (updatedMatch) {
             controller.enqueue(
@@ -51,13 +54,13 @@ export async function GET(
           controller.close();
         });
       } catch (error) {
-        console.error("Stream error:", error);
+        safeLog.error("Stream error:", error);
         controller.close();
       }
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
@@ -65,3 +68,8 @@ export async function GET(
     },
   });
 }
+
+export const GET = withApiSecurity(getMatchEventsHandler, {
+  rateLimiter: "api",
+  requireAuth: false,
+});

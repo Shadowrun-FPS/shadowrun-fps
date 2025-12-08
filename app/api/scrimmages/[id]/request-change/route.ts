@@ -3,38 +3,38 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postRequestChangeScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    console.log("User session ID:", session.user.id);
+  const id = sanitizeString(params.id, 100);
+  const { db } = await connectToDatabase();
 
-    const { db } = await connectToDatabase();
-
-    // Try to find the scrimmage by _id first
-    let scrimmage = null;
+  let scrimmage = null;
+  if (ObjectId.isValid(id)) {
     try {
       scrimmage = await db.collection("Scrimmages").findOne({
-        _id: new ObjectId(params.id),
+        _id: new ObjectId(id),
       });
     } catch (error) {
-      // If ObjectId conversion fails, it's not a valid ObjectId
-      console.log("Not a valid ObjectId, trying scrimmageId");
+      safeLog.log("Not a valid ObjectId, trying scrimmageId");
     }
+  }
 
-    // If not found by _id, try to find by scrimmageId
-    if (!scrimmage) {
-      scrimmage = await db.collection("Scrimmages").findOne({
-        scrimmageId: params.id,
-      });
-    }
+  if (!scrimmage) {
+    scrimmage = await db.collection("Scrimmages").findOne({
+      scrimmageId: id,
+    });
+  }
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -43,17 +43,27 @@ export async function POST(
       );
     }
 
-    // Log the scrimmage data to debug
-    console.log("Scrimmage found:", {
-      id: scrimmage._id,
-      scrimmageId: scrimmage.scrimmageId,
-      challengerTeamCaptain: scrimmage.challengerTeam?.captain?.discordId,
-      challengedTeamCaptain: scrimmage.challengedTeam?.captain?.discordId,
+    const body = await request.json();
+    const validation = validateBody(body, {
+      newDate: { type: "string", required: false, maxLength: 50 },
+      newTime: { type: "string", required: false, maxLength: 50 },
+      newMaps: { type: "array", required: false },
+      message: { type: "string", required: false, maxLength: 1000 },
     });
 
-    // Get request data
-    const data = await request.json();
-    const { newDate, newTime, newMaps, message } = data;
+    if (!validation.valid) {
+      return NextResponse.json(
+        { error: validation.errors?.join(", ") || "Invalid input" },
+        { status: 400 }
+      );
+    }
+
+    const { newDate, newTime, newMaps, message } = validation.data! as {
+      newDate?: string;
+      newTime?: string;
+      newMaps?: any[];
+      message?: string;
+    };
 
     // Check if there's already a pending change request
     if (
@@ -111,11 +121,6 @@ export async function POST(
 
       scrimmage.challengerTeam = challengerTeam;
       scrimmage.challengedTeam = challengedTeam;
-
-      console.log("Teams fetched directly:", {
-        challengerTeamCaptain: challengerTeam?.captain?.discordId,
-        challengedTeamCaptain: challengedTeam?.captain?.discordId,
-      });
     }
 
     const isTeamACaptain =
@@ -132,26 +137,6 @@ export async function POST(
           member.discordId === session.user.id && member.role === "captain"
       );
 
-    console.log("Enhanced authorization check:", {
-      isAdmin,
-      isTeamACaptain,
-      isTeamBCaptain,
-      sessionUserId: session.user.id,
-      challengerCaptainId: scrimmage.challengerTeam?.captain?.discordId,
-      challengedCaptainId: scrimmage.challengedTeam?.captain?.discordId,
-      challengerTeamMembers: scrimmage.challengerTeam?.members?.map(
-        (m: any) => ({
-          id: m.discordId,
-          role: m.role,
-        })
-      ),
-      challengedTeamMembers: scrimmage.challengedTeam?.members?.map(
-        (m: any) => ({
-          id: m.discordId,
-          role: m.role,
-        })
-      ),
-    });
 
     if (!isAdmin && !isTeamACaptain && !isTeamBCaptain) {
       return NextResponse.json(
@@ -178,7 +163,6 @@ export async function POST(
         ? scrimmage.challengerTeam?.name
         : scrimmage.challengedTeam?.name;
 
-    // Update the scrimmage with change request
     await db.collection("Scrimmages").updateOne(
       { _id: scrimmage._id },
       {
@@ -186,12 +170,12 @@ export async function POST(
           changeRequest: {
             requestedBy: session.user.id,
             requestedByTeam: requestingTeam,
-            requestedByTeamName: requestingTeamName,
+            requestedByTeamName: sanitizeString(requestingTeamName || "", 100),
             requestedAt: new Date(),
-            newDate: newDate || null,
-            newTime: newTime || null,
+            newDate: newDate ? sanitizeString(newDate, 50) : null,
+            newTime: newTime ? sanitizeString(newTime, 50) : null,
             newMaps: newMaps || null,
-            message: message || "",
+            message: message ? sanitizeString(message, 1000) : "",
             status: "pending",
             notifiedOtherTeam: false,
           },
@@ -199,19 +183,24 @@ export async function POST(
       }
     );
 
-    // Create a notification for the other team captain with improved details
     if (otherTeamCaptainId) {
       await db.collection("Notifications").insertOne({
-        userId: otherTeamCaptainId,
+        userId: sanitizeString(otherTeamCaptainId, 50),
         type: "scrimmage_change_request",
         title: "Scrimmage Change Requested",
-        message: `${requestingTeamName} has requested changes to your scheduled scrimmage on ${new Date(
-          scrimmage.proposedDate
-        ).toLocaleDateString()}.`,
-        scrimmageId: scrimmage.scrimmageId || scrimmage._id.toString(),
+        message: sanitizeString(
+          `${requestingTeamName} has requested changes to your scheduled scrimmage on ${new Date(
+            scrimmage.proposedDate
+          ).toLocaleDateString()}.`,
+          500
+        ),
+        scrimmageId: sanitizeString(
+          scrimmage.scrimmageId || scrimmage._id.toString(),
+          100
+        ),
         scrimmageDetails: {
-          teamA: scrimmage.challengerTeam?.name,
-          teamB: scrimmage.challengedTeam?.name,
+          teamA: sanitizeString(scrimmage.challengerTeam?.name || "", 100),
+          teamB: sanitizeString(scrimmage.challengedTeam?.name || "", 100),
           originalDate: scrimmage.proposedDate,
           requestedDate: newDate,
         },
@@ -225,12 +214,14 @@ export async function POST(
       _id: scrimmage._id,
     });
 
+    revalidatePath("/scrimmages");
+    revalidatePath(`/scrimmages/${id}`);
+
     return NextResponse.json(updatedScrimmage);
-  } catch (error) {
-    console.error("Error requesting change:", error);
-    return NextResponse.json(
-      { error: "Failed to request change" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRequestChangeScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages"],
+});

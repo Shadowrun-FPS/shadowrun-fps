@@ -3,39 +3,49 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postMatchReadyHandler(
   req: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const matchId = sanitizeString(params.matchId, 100);
+  if (!ObjectId.isValid(matchId)) {
+    return NextResponse.json(
+      { error: "Invalid match ID" },
+      { status: 400 }
+    );
+  }
 
-    // Find and update the match
-    const result = await db.collection("Matches").findOneAndUpdate(
-      {
-        _id: new ObjectId(params.matchId),
-        $or: [
-          { "teams.teamA.discordId": session.user.id },
-          { "teams.teamB.discordId": session.user.id },
-        ],
-      },
+  const userId = sanitizeString(session.user.id, 50);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const result = await db.collection("Matches").findOneAndUpdate(
+    {
+      _id: new ObjectId(matchId),
+      $or: [
+        { "teams.teamA.discordId": userId },
+        { "teams.teamB.discordId": userId },
+      ],
+    },
       {
         $set: {
           [`teams.$[player].ready`]: true,
         },
       },
-      {
-        arrayFilters: [{ "player.discordId": session.user.id }],
-        returnDocument: "after",
-      }
-    );
+    {
+      arrayFilters: [{ "player.discordId": userId }],
+      returnDocument: "after",
+    }
+  );
 
     if (!result) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -51,22 +61,23 @@ export async function POST(
       (player) => player.ready
     );
 
-    if (allPlayersReady) {
-      // Update match status to "in-progress"
-      await db
-        .collection("Matches")
-        .updateOne(
-          { _id: new ObjectId(params.matchId) },
-          { $set: { status: "in-progress" } }
-        );
-    }
-
-    return NextResponse.json({ success: true, match });
-  } catch (error) {
-    console.error("Failed to update ready status:", error);
-    return NextResponse.json(
-      { error: "Failed to update ready status" },
-      { status: 500 }
-    );
+  if (allPlayersReady) {
+    await db
+      .collection("Matches")
+      .updateOne(
+        { _id: new ObjectId(matchId) },
+        { $set: { status: "in-progress" } }
+      );
   }
+
+  revalidatePath("/matches");
+  revalidatePath(`/matches/${matchId}`);
+
+  return NextResponse.json({ success: true, match });
 }
+
+export const POST = withApiSecurity(postMatchReadyHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches"],
+});

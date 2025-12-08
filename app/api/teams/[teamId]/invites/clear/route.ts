@@ -4,30 +4,43 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postClearInvitesHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
+
+  let body;
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    body = await req.json();
+  } catch (error) {
+    body = { action: "clear_all" };
+  }
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  const validation = validateBody(body, {
+    action: { type: "string", required: false, maxLength: 50 },
+  });
 
-    // Parse the request body to get the action
-    let body;
-    try {
-      body = await req.json();
-    } catch (error) {
-      // Default to clearing all if no action specified
-      body = { action: "clear_all" };
-    }
-
-    const { action = "clear_all" } = body;
+  const action = validation.valid && validation.data?.action && typeof validation.data.action === "string"
+    ? sanitizeString(validation.data.action, 50)
+    : "clear_all";
 
     // Get the team to verify captain - search across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -85,17 +98,19 @@ export async function POST(
         teamId: new ObjectId(teamId),
       });
 
+      revalidatePath("/teams");
+      revalidatePath(`/teams/${teamId}`);
+
       return NextResponse.json({
         success: true,
         message: "All team invites have been permanently deleted",
         deleted: result.deletedCount,
       });
     }
-  } catch (error) {
-    console.error("Error managing team invites:", error);
-    return NextResponse.json(
-      { error: "Failed to manage team invites" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postClearInvitesHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

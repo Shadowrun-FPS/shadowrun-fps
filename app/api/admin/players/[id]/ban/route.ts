@@ -10,6 +10,9 @@ import {
   SECURITY_CONFIG,
 } from "@/lib/security-config";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Define types for your ban object
 interface BanRecord {
@@ -33,32 +36,56 @@ interface Player {
   // other necessary fields...
 }
 
-export async function POST(
+async function postBanPlayerHandler(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!isAuthorizedAdmin(session)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorizedAdmin(session)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // At this point, session is guaranteed to be non-null due to isAuthorizedAdmin check
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Parse the request body
-    const ban = await req.json();
+  const playerId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(playerId)) {
+    return NextResponse.json(
+      { error: "Invalid player ID" },
+      { status: 400 }
+    );
+  }
 
-    // Added logging to debug request
-    console.log("Ban request:", { params, ban, sessionUser: session.user.id });
+  const ban = await req.json();
+  const validation = validateBody(ban, {
+    reason: { type: "string", required: true, maxLength: 1000 },
+    ruleId: { type: "string", required: false, maxLength: 50 },
+    duration: {
+      type: "string",
+      required: true,
+      pattern: /^(permanent|24h|3d|7d|30d)$/,
+    },
+  });
 
-    // Calculate ban expiry
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { reason, ruleId, duration } = validation.data! as {
+    reason: string;
+    ruleId?: string;
+    duration: string;
+  };
+
+  const sanitizedReason = sanitizeString(reason, 1000);
+  const sanitizedRuleId = ruleId ? sanitizeString(ruleId, 50) : null;
+
     let banExpiry = null;
-    let duration = ban.duration;
 
     if (duration !== "permanent") {
       const now = new Date();
@@ -73,21 +100,20 @@ export async function POST(
       }
     }
 
-    // Connect to database
     const { db } = await connectToDatabase();
 
-    try {
-      // Get the moderator's information to fetch their nickname
-      const moderator = await db.collection("Players").findOne({
-        discordId: session.user.id,
-      });
+    const moderator = await db.collection("Players").findOne({
+      discordId: sanitizeString(session.user.id, 50),
+    });
 
-      const moderatorNickname = moderator?.discordNickname || session.user.name;
+    const moderatorNickname = sanitizeString(
+      moderator?.discordNickname || session.user.name || "",
+      100
+    );
 
-      // Try to find the player first to confirm they exist
-      const playerExists = await db.collection("Players").findOne({
-        _id: new ObjectId(params.id),
-      });
+    const playerExists = await db.collection("Players").findOne({
+      _id: new ObjectId(playerId),
+    });
 
       if (!playerExists) {
         return NextResponse.json(
@@ -96,19 +122,17 @@ export async function POST(
         );
       }
 
-      // Create the ban object with proper typing
       const banRecord: BanRecord = {
-        reason: ban.reason || "No reason provided",
-        ruleId: ban.ruleId || null,
-        moderatorId: session.user.id,
-        moderatorName: session.user.name,
-        moderatorNickname: session.user.nickname,
-        duration: ban.duration,
-        expiry: ban.duration ? new Date(Date.now() + ban.duration) : null,
+        reason: sanitizedReason || "No reason provided",
+        ruleId: sanitizedRuleId || null,
+        moderatorId: sanitizeString(session.user.id, 50),
+        moderatorName: sanitizeString(session.user.name || "", 100),
+        moderatorNickname: sanitizeString(session.user.nickname || "", 100),
+        duration: sanitizeString(duration, 20),
+        expiry: banExpiry,
         timestamp: new Date(),
       };
 
-      // Define the update document
       const updateDoc = {
         $push: { bans: banRecord },
         $set: {
@@ -118,24 +142,24 @@ export async function POST(
         },
       };
 
-      // Cast to unknown first, then to UpdateFilter<Document>
       const typedUpdateDoc = updateDoc as unknown as UpdateFilter<Document>;
 
       const result = await db
         .collection("Players")
-        .updateOne({ _id: new ObjectId(params.id) }, typedUpdateDoc);
+        .updateOne({ _id: new ObjectId(playerId) }, typedUpdateDoc);
 
-      // Create a record in the moderation logs collection
       await createModerationLog({
-        playerId: params.id,
-        moderatorId: session.user.id,
-        playerName:
-          playerExists.discordNickname || playerExists.discordUsername,
+        playerId: playerId,
+        moderatorId: sanitizeString(session.user.id, 50),
+        playerName: sanitizeString(
+          playerExists.discordNickname || playerExists.discordUsername || "",
+          100
+        ),
         moderatorName: moderatorNickname,
         action: "ban",
-        reason: ban.reason || "No reason provided",
-        ruleId: ban.ruleId || null,
-        duration: duration || "24h",
+        reason: sanitizedReason || "No reason provided",
+        ruleId: sanitizedRuleId || null,
+        duration: sanitizeString(duration, 20) || "24h",
         expiry: banExpiry,
         timestamp: new Date(),
       });
@@ -147,25 +171,15 @@ export async function POST(
         );
       }
 
-      return NextResponse.json({ success: true, ban });
-    } catch (dbError) {
-      console.error("Database error:", dbError);
-      return NextResponse.json(
-        {
-          error: "Database operation failed",
-          details: dbError instanceof Error ? dbError.message : String(dbError),
-        },
-        { status: 500 }
-      );
-    }
-  } catch (error) {
-    console.error("Error banning player:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to ban player",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
-  }
+      revalidatePath("/admin/players");
+      revalidatePath(`/admin/players/${playerId}`);
+
+      return NextResponse.json({ success: true, ban: { reason: sanitizedReason, ruleId: sanitizedRuleId, duration } });
 }
+
+export const POST = withApiSecurity(postBanPlayerHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/admin/players"],
+});

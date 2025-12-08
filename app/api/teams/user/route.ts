@@ -3,47 +3,51 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAllTeamCollectionNames } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { db } = await connectToDatabase();
-
-    // Find team where user is either a member or captain - search across all collections
-    const allCollections = getAllTeamCollectionNames();
-    let team = null;
-    for (const collectionName of allCollections) {
-      team = await db.collection(collectionName).findOne({
-        $or: [
-          { "members.discordId": session.user.id },
-          { "captain.discordId": session.user.id },
-        ],
-      });
-      if (team) break;
-    }
-
-    return NextResponse.json({
-      team: team
-        ? {
-            id: team._id.toString(),
-            name: team.name,
-            tag: team.tag,
-            memberCount: team.members?.length || 0,
-            isCaptain: team.captain?.discordId === session.user.id,
-          }
-        : null,
-    });
-  } catch (error) {
-    console.error("Error fetching user team:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user team" },
-      { status: 500 }
-    );
+async function getUserTeamHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const userId = sanitizeString(session.user.id, 50);
+  const { db } = await connectToDatabase();
+
+  const allCollections = getAllTeamCollectionNames();
+  let team = null;
+  for (const collectionName of allCollections) {
+    team = await db.collection(collectionName).findOne({
+      $or: [
+        { "members.discordId": userId },
+        { "captain.discordId": userId },
+      ],
+    });
+    if (team) break;
+  }
+
+  const response = NextResponse.json({
+    team: team
+      ? {
+          id: team._id.toString(),
+          name: sanitizeString(team.name || "", 100),
+          tag: sanitizeString(team.tag || "", 10),
+          memberCount: team.members?.length || 0,
+          isCaptain: team.captain?.discordId === userId,
+        }
+      : null,
+  });
+  response.headers.set(
+    "Cache-Control",
+    "private, no-cache, no-store, must-revalidate"
+  );
+  return response;
 }
+
+export const GET = withApiSecurity(getUserTeamHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

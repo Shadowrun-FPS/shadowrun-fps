@@ -101,6 +101,9 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showTransferCaptainDialog, setShowTransferCaptainDialog] =
     useState(false);
+  const [showLeaveTeamDialog, setShowLeaveTeamDialog] = useState(false);
+  const [showCancelJoinRequestDialog, setShowCancelJoinRequestDialog] =
+    useState(false);
   const router = useRouter();
   const fetchTeamRef = useRef(false);
   const checkUserTeamRef = useRef(false);
@@ -780,6 +783,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                               alt={team.captain.discordNickname}
                               width={56}
                               height={56}
+                              loading="lazy"
                               className="object-cover w-full h-full"
                             />
                           ) : (
@@ -836,6 +840,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                     alt={member.discordNickname}
                                     width={48}
                                     height={48}
+                                    loading="lazy"
                                     className="object-cover w-full h-full"
                                   />
                                 ) : (
@@ -925,6 +930,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                                       alt={member.discordNickname}
                                       width={44}
                                       height={44}
+                                      loading="lazy"
                                       className="object-cover w-full h-full"
                                     />
                                   ) : (
@@ -996,50 +1002,7 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     </p>
                     <Button
                       variant="destructive"
-                      onClick={async () => {
-                        if (
-                          !confirm("Are you sure you want to leave this team?")
-                        ) {
-                          return;
-                        }
-
-                        setIsSubmitting(true);
-                        try {
-                          const response = await fetch(
-                            `/api/teams/${team._id}/leave`,
-                            {
-                              method: "POST",
-                            }
-                          );
-
-                          if (!response.ok) {
-                            const data = await response.json();
-                            throw new Error(
-                              data.error || "Failed to leave team"
-                            );
-                          }
-
-                          toast({
-                            title: "Success",
-                            description: "You have left the team",
-                            duration: 2000,
-                          });
-
-                          // Navigate back to teams page
-                          window.location.href = "/tournaments/teams";
-                        } catch (error: any) {
-                          console.error("Error leaving team:", error);
-                          toast({
-                            title: "Error",
-                            description:
-                              error.message || "Failed to leave team",
-                            variant: "destructive",
-                            duration: 2000,
-                          });
-                        } finally {
-                          setIsSubmitting(false);
-                        }
-                      }}
+                      onClick={() => setShowLeaveTeamDialog(true)}
                       disabled={isSubmitting}
                       className="w-full h-10 sm:h-11 sm:w-auto"
                     >
@@ -1320,54 +1283,9 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                             <Button
                               variant="outline"
                               className="w-full h-10 border-red-500/50 hover:bg-red-500/10 hover:border-red-500 sm:h-11 sm:w-auto"
-                              onClick={async () => {
-                                if (
-                                  !confirm(
-                                    "Are you sure you want to cancel your join request?"
-                                  )
-                                ) {
-                                  return;
-                                }
-
-                                setIsSubmitting(true);
-                                try {
-                                  const response = await fetch(
-                                    `/api/teams/${team._id}/cancel-join-request`,
-                                    {
-                                      method: "POST",
-                                    }
-                                  );
-
-                                  if (!response.ok) {
-                                    const data = await response.json();
-                                    throw new Error(
-                                      data.error ||
-                                        "Failed to cancel join request"
-                                    );
-                                  }
-
-                                  setHasPendingRequest(false);
-                                  toast({
-                                    title: "Success",
-                                    description: "Join request cancelled",
-                                    duration: 2000,
-                                  });
-                                } catch (error: any) {
-                                  console.error(
-                                    "Error cancelling join request:",
-                                    error
-                                  );
-                                  toast({
-                                    title: "Error",
-                                    description:
-                                      error.message ||
-                                      "Failed to cancel join request",
-                                    variant: "destructive",
-                                  });
-                                } finally {
-                                  setIsSubmitting(false);
-                                }
-                              }}
+                              onClick={() =>
+                                setShowCancelJoinRequestDialog(true)
+                              }
                               disabled={isSubmitting}
                             >
                               {isSubmitting ? (
@@ -1602,6 +1520,149 @@ export default function TeamPage({ params }: { params: { teamId: string } }) {
                     <UserMinus className="mr-2 w-4 h-4" />
                     Remove Member
                   </>
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Leave Team Confirmation Dialog */}
+        <AlertDialog
+          open={showLeaveTeamDialog}
+          onOpenChange={setShowLeaveTeamDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Leave Team</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to leave this team? You&apos;ll need to be
+                invited again to rejoin.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSubmitting}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (isSubmitting) return;
+                  setIsSubmitting(true);
+                  try {
+                    const response = await fetch(
+                      `/api/teams/${team?._id}/leave`,
+                      {
+                        method: "POST",
+                      }
+                    );
+
+                    if (!response.ok) {
+                      const data = await response.json();
+                      throw new Error(data.error || "Failed to leave team");
+                    }
+
+                    toast({
+                      title: "Success",
+                      description: "You have left the team",
+                      duration: 2000,
+                    });
+
+                    router.refresh();
+                    window.location.href = "/tournaments/teams";
+                  } catch (error: any) {
+                    if (process.env.NODE_ENV === "development") {
+                      console.error("Error leaving team:", error);
+                    }
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to leave team",
+                      variant: "destructive",
+                      duration: 2000,
+                    });
+                  } finally {
+                    setIsSubmitting(false);
+                    setShowLeaveTeamDialog(false);
+                  }
+                }}
+                disabled={isSubmitting}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Leaving...
+                  </>
+                ) : (
+                  "Leave Team"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Cancel Join Request Confirmation Dialog */}
+        <AlertDialog
+          open={showCancelJoinRequestDialog}
+          onOpenChange={setShowCancelJoinRequestDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Join Request</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to cancel your join request?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isSubmitting}>No</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (isSubmitting) return;
+                  setIsSubmitting(true);
+                  try {
+                    const response = await fetch(
+                      `/api/teams/${team?._id}/cancel-join-request`,
+                      {
+                        method: "POST",
+                      }
+                    );
+
+                    if (!response.ok) {
+                      const data = await response.json();
+                      throw new Error(
+                        data.error || "Failed to cancel join request"
+                      );
+                    }
+
+                    setHasPendingRequest(false);
+                    toast({
+                      title: "Success",
+                      description: "Join request cancelled",
+                      duration: 2000,
+                    });
+                    router.refresh();
+                  } catch (error: any) {
+                    if (process.env.NODE_ENV === "development") {
+                      console.error("Error cancelling join request:", error);
+                    }
+                    toast({
+                      title: "Error",
+                      description:
+                        error.message || "Failed to cancel join request",
+                      variant: "destructive",
+                    });
+                  } finally {
+                    setIsSubmitting(false);
+                    setShowCancelJoinRequestDialog(false);
+                  }
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  "Yes, Cancel"
                 )}
               </AlertDialogAction>
             </AlertDialogFooter>

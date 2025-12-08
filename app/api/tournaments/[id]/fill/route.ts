@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, rateLimiters, getClientIdentifier, sanitizeString } from "@/lib/security";
+import { revalidatePath } from "next/cache";
 
 // POST endpoint to fill a tournament with random teams (testing only)
 export async function POST(
@@ -11,9 +13,17 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    console.log("Fill route hit with ID:", params.id);
-
+    // Rate limiting
     const session = await getServerSession(authOptions);
+    const identifier = getClientIdentifier(request, session?.user?.id);
+    if (!rateLimiters.admin.isAllowed(identifier)) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
+    safeLog.log("Fill route hit with ID:", params.id);
 
     // Check authentication and admin permission
     if (!session || !session.user) {
@@ -85,7 +95,7 @@ export async function POST(
     // Take the maximum number of teams needed
     const teams = teamsWithEnoughMembers.slice(0, maxTeams);
 
-    console.log(
+    safeLog.log(
       `Found ${teamsWithEnoughMembers.length} teams with ${teamSize} or more members, using ${teams.length}`
     );
 
@@ -222,14 +232,18 @@ export async function POST(
       }
     );
 
+    // Revalidate tournament pages
+    revalidatePath(`/tournaments/${id}`);
+    revalidatePath("/tournaments");
+
     return NextResponse.json({
       success: true,
       message: `Tournament filled with ${teams.length} random teams`,
     });
   } catch (error) {
-    console.error("Error filling tournament:", error);
+    safeLog.error("Error filling tournament:", error);
     return NextResponse.json(
-      { error: "Failed to fill tournament" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

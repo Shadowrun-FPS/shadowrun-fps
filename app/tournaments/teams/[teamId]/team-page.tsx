@@ -28,6 +28,17 @@ import {
 } from "@/components/ui/select";
 import { ObjectId } from "mongodb";
 import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 interface TeamInvite {
   _id: ObjectId | string;
@@ -45,6 +56,7 @@ interface TeamPageProps {
 export default function TeamPage({ team }: TeamPageProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [invites, setInvites] = useState<TeamInviteResponse[]>([]);
   const [teamDetails, setTeamDetails] = useState({
@@ -56,6 +68,14 @@ export default function TeamPage({ team }: TeamPageProps) {
     undefined
   );
   const [showChallengeDialog, setShowChallengeDialog] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [showTransferCaptainDialog, setShowTransferCaptainDialog] =
+    useState(false);
+  const [showDeleteTeamDialog, setShowDeleteTeamDialog] = useState(false);
+  const [showLeaveTeamDialog, setShowLeaveTeamDialog] = useState(false);
 
   // Check if current user is the team captain
   const isCaptain = session?.user?.id === team.captain.discordId;
@@ -105,11 +125,11 @@ export default function TeamPage({ team }: TeamPageProps) {
       return;
     }
 
-    if (
-      !confirm(`Are you sure you want to remove ${memberName} from the team?`)
-    ) {
-      return;
-    }
+    setMemberToRemove({ id: memberId, name: memberName });
+  };
+
+  const confirmRemoveMember = async () => {
+    if (!memberToRemove || isLoading) return;
 
     setIsLoading(true);
     try {
@@ -118,7 +138,7 @@ export default function TeamPage({ team }: TeamPageProps) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ memberId }),
+        body: JSON.stringify({ memberId: memberToRemove.id }),
       });
 
       if (!response.ok) {
@@ -128,13 +148,15 @@ export default function TeamPage({ team }: TeamPageProps) {
 
       toast({
         title: "Member Removed",
-        description: `${memberName} has been removed from the team`,
+        description: `${memberToRemove.name} has been removed from the team`,
       });
 
-      // Reload the page to reflect changes
+      router.refresh();
       window.location.reload();
     } catch (error: any) {
-      console.error("Error removing member:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error removing member:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to remove team member",
@@ -142,6 +164,7 @@ export default function TeamPage({ team }: TeamPageProps) {
       });
     } finally {
       setIsLoading(false);
+      setMemberToRemove(null);
     }
   };
 
@@ -225,18 +248,15 @@ export default function TeamPage({ team }: TeamPageProps) {
       return;
     }
 
-    if (
-      !confirm(
-        "Are you sure you want to transfer team captaincy? This cannot be undone."
-      )
-    ) {
-      return;
-    }
+    setNewCaptainId(newCaptainId);
+    setShowTransferCaptainDialog(true);
+  };
+
+  const confirmTransferCaptain = async () => {
+    if (!newCaptainId || isLoading) return;
 
     setIsLoading(true);
     try {
-      console.log("Transferring captain role to:", newCaptainId);
-
       const response = await fetch(
         `/api/teams/${team._id.toString()}/transfer-captain`,
         {
@@ -258,10 +278,12 @@ export default function TeamPage({ team }: TeamPageProps) {
         description: "Captain role transferred successfully",
       });
 
-      // Reload the page to reflect changes
+      router.refresh();
       window.location.reload();
     } catch (error: any) {
-      console.error("Error transferring captain:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error transferring captain:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to transfer captain role",
@@ -269,6 +291,8 @@ export default function TeamPage({ team }: TeamPageProps) {
       });
     } finally {
       setIsLoading(false);
+      setShowTransferCaptainDialog(false);
+      setNewCaptainId(undefined);
     }
   };
 
@@ -302,14 +326,11 @@ export default function TeamPage({ team }: TeamPageProps) {
       return;
     }
 
-    // Confirm deletion
-    if (
-      !confirm(
-        "Are you sure you want to permanently delete this team? This action cannot be undone."
-      )
-    ) {
-      return;
-    }
+    setShowDeleteTeamDialog(true);
+  };
+
+  const confirmDeleteTeam = async () => {
+    if (isLoading) return;
 
     setIsLoading(true);
     try {
@@ -327,10 +348,13 @@ export default function TeamPage({ team }: TeamPageProps) {
         description: "Your team has been permanently deleted",
       });
 
+      router.refresh();
       // Redirect to teams page
       window.location.href = "/tournaments/teams";
     } catch (error: any) {
-      console.error("Error deleting team:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting team:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to delete team",
@@ -338,6 +362,7 @@ export default function TeamPage({ team }: TeamPageProps) {
       });
     } finally {
       setIsLoading(false);
+      setShowDeleteTeamDialog(false);
     }
   };
 
@@ -829,57 +854,180 @@ export default function TeamPage({ team }: TeamPageProps) {
               </p>
               <Button
                 variant="destructive"
-                onClick={async () => {
-                  if (!confirm("Are you sure you want to leave this team?")) {
-                    return;
-                  }
-
-                  setIsLoading(true);
-                  try {
-                    const response = await fetch(
-                      `/api/teams/${team._id}/leave`,
-                      {
-                        method: "POST",
-                      }
-                    );
-
-                    if (!response.ok) {
-                      const data = await response.json();
-                      throw new Error(data.error || "Failed to leave team");
-                    }
-
-                    toast({
-                      title: "Success",
-                      description: "You have left the team",
-                    });
-
-                    // Navigate back to teams page
-                    window.location.href = "/tournaments/teams";
-                  } catch (error: any) {
-                    console.error("Error leaving team:", error);
-                    toast({
-                      title: "Error",
-                      description: error.message || "Failed to leave team",
-                      variant: "destructive",
-                    });
-                  } finally {
-                    setIsLoading(false);
-                  }
-                }}
+                onClick={() => setShowLeaveTeamDialog(true)}
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Leaving...
-                  </>
-                ) : (
-                  "Leave Team"
-                )}
+                Leave Team
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
+
+      {/* Remove Member Confirmation Dialog */}
+      <AlertDialog
+        open={!!memberToRemove}
+        onOpenChange={(open) => !open && setMemberToRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove {memberToRemove?.name} from the
+              team?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmRemoveMember}
+              disabled={isLoading}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Transfer Captain Confirmation Dialog */}
+      <AlertDialog
+        open={showTransferCaptainDialog}
+        onOpenChange={setShowTransferCaptainDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Transfer Captaincy</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to transfer team captaincy? This cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmTransferCaptain}
+              disabled={isLoading}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Transferring...
+                </>
+              ) : (
+                "Transfer"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Team Confirmation Dialog */}
+      <AlertDialog
+        open={showDeleteTeamDialog}
+        onOpenChange={setShowDeleteTeamDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Team</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this team? This action
+              cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteTeam}
+              disabled={isLoading}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Leave Team Confirmation Dialog */}
+      <AlertDialog
+        open={showLeaveTeamDialog}
+        onOpenChange={setShowLeaveTeamDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave Team</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to leave this team? You&apos;ll need to be
+              invited again to rejoin.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (isLoading) return;
+                setIsLoading(true);
+                try {
+                  const response = await fetch(`/api/teams/${team._id}/leave`, {
+                    method: "POST",
+                  });
+
+                  if (!response.ok) {
+                    const data = await response.json();
+                    throw new Error(data.error || "Failed to leave team");
+                  }
+
+                  toast({
+                    title: "Success",
+                    description: "You have left the team",
+                  });
+
+                  router.refresh();
+                  window.location.href = "/tournaments/teams";
+                } catch (error: any) {
+                  if (process.env.NODE_ENV === "development") {
+                    console.error("Error leaving team:", error);
+                  }
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to leave team",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setIsLoading(false);
+                  setShowLeaveTeamDialog(false);
+                }
+              }}
+              disabled={isLoading}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Leaving...
+                </>
+              ) : (
+                "Leave Team"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

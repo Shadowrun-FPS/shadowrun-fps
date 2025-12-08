@@ -3,36 +3,38 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postAcceptHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
+  const scrimmageId = sanitizeString(params.id, 50);
+  const { db } = await connectToDatabase();
 
-    // Get the scrimmage - try by ObjectId first, then by scrimmageId
-    let scrimmage = null;
-    if (ObjectId.isValid(params.id)) {
-      try {
-        scrimmage = await db.collection("Scrimmages").findOne({
-          _id: new ObjectId(params.id),
-        });
-      } catch (error) {
-        // Invalid ObjectId format, continue to next method
-      }
-    }
-
-    if (!scrimmage) {
+  let scrimmage = null;
+  if (ObjectId.isValid(scrimmageId)) {
+    try {
       scrimmage = await db.collection("Scrimmages").findOne({
-        scrimmageId: params.id,
+        _id: new ObjectId(scrimmageId),
       });
+    } catch (error) {
+      // Invalid ObjectId format, continue to next method
     }
+  }
+
+  if (!scrimmage) {
+    scrimmage = await db.collection("Scrimmages").findOne({
+      scrimmageId: scrimmageId,
+    });
+  }
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -117,10 +119,9 @@ export async function POST(
       );
     }
 
-    // Update the scrimmage status to accepted
     const updateQuery = scrimmage._id 
       ? { _id: scrimmage._id }
-      : { scrimmageId: params.id };
+      : { scrimmageId: scrimmageId };
 
     await db.collection("Scrimmages").updateOne(
       updateQuery,
@@ -145,9 +146,7 @@ export async function POST(
         userId: challengerCaptainId,
         type: "scrimmage_accepted",
         title: "Scrimmage Challenge Accepted",
-        message: `${
-          scrimmage.challengedTeam?.name
-        } has accepted your scrimmage challenge for ${new Date(
+        message: `${sanitizeString(scrimmage.challengedTeam?.name || "", 100)} has accepted your scrimmage challenge for ${new Date(
           scrimmage.proposedDate
         ).toLocaleDateString()}.`,
         scrimmageId: scrimmage.scrimmageId || scrimmage._id.toString(),
@@ -162,11 +161,14 @@ export async function POST(
       });
     }
 
+    revalidatePath("/scrimmages");
+    revalidatePath("/tournaments/scrimmages");
+
     return NextResponse.json(updatedScrimmage);
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to accept scrimmage" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postAcceptHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages", "/tournaments/scrimmages"],
+});

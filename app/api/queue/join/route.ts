@@ -3,62 +3,62 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { isPlayerBanned } from "@/lib/ban-utils";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(request: NextRequest) {
+async function postQueueJoinHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session || !session.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let body;
   try {
-    const session = await getServerSession(authOptions);
+    body = await request.json();
+  } catch (e) {
+    body = {};
+  }
 
-    if (!session || !session.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const validation = validateBody(body, {
+    queueId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    // Parse body only once at the beginning
-    let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      body = {};
-    }
-
-    // Get queue ID from the request body
-    const queueId = body.queueId;
-    console.log("[QUEUE-JOIN] Request:", { queueId, userId: session.user.id });
-
-    // Check if player is banned using the centralized utility
-    const banStatus = await isPlayerBanned(session.user.id);
-
-    if (banStatus.isBanned) {
-      console.log("[QUEUE-JOIN] Rejected - player is banned:", session.user.id);
-      return NextResponse.json(
-        {
-          error: "Unable to join queue",
-          message: banStatus.message,
-        },
-        { status: 403 }
-      );
-    }
-
-    // Player is not banned, proceed with queue join logic
-    console.log("[QUEUE-JOIN] Player allowed to join queue:", {
-      discordId: session.user.id,
-      queueId,
-    });
-
-    // Queue join logic goes here
-    // ...
-
-    return NextResponse.json({
-      success: true,
-      message: "Joined queue successfully",
-    });
-  } catch (error) {
-    console.error("[QUEUE-JOIN] Error:", error);
+  if (!validation.valid) {
     return NextResponse.json(
-      {
-        error: "Internal server error",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
     );
   }
+
+  const { queueId } = validation.data! as { queueId: string };
+  const sanitizedQueueId = sanitizeString(queueId, 50);
+  const userId = sanitizeString(session.user.id, 50);
+
+  const banStatus = await isPlayerBanned(userId);
+
+  if (banStatus.isBanned) {
+    return NextResponse.json(
+      {
+        error: "Unable to join queue",
+        message: banStatus.message,
+      },
+      { status: 403 }
+    );
+  }
+
+  revalidatePath("/matches/queues");
+  revalidatePath("/admin/queues");
+
+  return NextResponse.json({
+    success: true,
+    message: "Joined queue successfully",
+  });
 }
+
+export const POST = withApiSecurity(postQueueJoinHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

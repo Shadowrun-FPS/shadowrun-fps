@@ -1,28 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic"; // Mark as dynamic route
 
-export async function GET(request: NextRequest) {
-  try {
-    // Use searchParams instead of URL
-    const name = request.nextUrl.searchParams.get("name");
+async function getPlayerByNameHandler(request: NextRequest) {
+  const nameParam = request.nextUrl.searchParams.get("name");
+  const name = nameParam ? sanitizeString(nameParam, 100) : "";
 
-    if (!name) {
-      return NextResponse.json(
-        { error: "Missing player name" },
-        { status: 400 }
-      );
-    }
+  if (!name) {
+    return NextResponse.json(
+      { error: "Missing player name" },
+      { status: 400 }
+    );
+  }
 
     // Connect to both databases
     const client = await clientPromise;
     const webDb = client.db("ShadowrunWeb");
     const db2 = client.db("ShadowrunDB2");
 
-    // Find by username (case insensitive)
+    const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const webPlayer = await webDb.collection("Players").findOne({
-      discordUsername: { $regex: new RegExp(`^${name}$`, "i") },
+      discordUsername: { $regex: new RegExp(`^${escapedName}$`, "i") },
     });
 
     if (!webPlayer) {
@@ -69,12 +70,16 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(player);
-  } catch (error) {
-    console.error("Error fetching player:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch player data" },
-      { status: 500 }
+    const response = NextResponse.json(player);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=1800"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getPlayerByNameHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 300,
+});

@@ -2,6 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InviteMemberDialog } from "./invite-member-dialog";
@@ -14,12 +15,13 @@ interface TeamManagementProps {
 export function TeamManagement({ team }: TeamManagementProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   const isCaptain = session?.user?.id === team.captain.discordId;
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!isCaptain) return;
+    if (!isCaptain || isLoading) return; // Prevent duplicate submissions
 
     setIsLoading(true);
     try {
@@ -39,8 +41,7 @@ export function TeamManagement({ team }: TeamManagementProps) {
         description: "Team member has been removed successfully",
       });
 
-      // Refresh the page to show updated team
-      window.location.reload();
+      router.refresh();
     } catch (error) {
       toast({
         title: "Error",
@@ -68,6 +69,8 @@ export function TeamManagement({ team }: TeamManagementProps) {
       return;
     }
 
+    if (isLoading) return; // Prevent duplicate submissions
+
     // Confirm deletion
     if (
       !confirm(
@@ -90,6 +93,7 @@ export function TeamManagement({ team }: TeamManagementProps) {
         description: "Your team has been permanently deleted",
       });
 
+      router.refresh();
       // Redirect to teams page
       window.location.href = "/tournaments/teams";
     } catch (error) {

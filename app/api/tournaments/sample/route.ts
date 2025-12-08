@@ -1,28 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(request: NextRequest) {
-  try {
-    const { db } = await connectToDatabase();
+export const dynamic = "force-dynamic";
 
-    // Find a tournament with matches
-    const tournament = await db.collection("tournaments").findOne({
-      "tournamentMatches.0": { $exists: true },
-    });
+async function getSampleTournamentHandler(request: NextRequest) {
+  const { db } = await connectToDatabase();
 
-    if (!tournament) {
-      return NextResponse.json(
-        { error: "No tournaments with matches found" },
-        { status: 404 }
-      );
-    }
+  const tournament = await db.collection("tournaments").findOne({
+    "tournamentMatches.0": { $exists: true },
+  });
 
-    return NextResponse.json(tournament);
-  } catch (error) {
-    console.error("Error fetching sample tournament:", error);
+  if (!tournament) {
     return NextResponse.json(
-      { error: "Failed to fetch sample tournament" },
-      { status: 500 }
+      { error: "No tournaments with matches found" },
+      { status: 404 }
     );
   }
+
+  const response = NextResponse.json(tournament);
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=60, stale-while-revalidate=300"
+  );
+  return response;
 }
+
+export const GET = withApiSecurity(getSampleTournamentHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 60,
+});

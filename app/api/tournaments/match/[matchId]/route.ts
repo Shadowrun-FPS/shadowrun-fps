@@ -3,48 +3,49 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getTournamentMatchHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const { matchId } = params;
+  const matchId = sanitizeString(params.matchId, 100);
 
-    const { db } = await connectToDatabase();
+  const { db } = await connectToDatabase();
 
-    // Find the tournament containing this match
-    const tournament = await db
-      .collection("Tournaments")
-      .findOne(
-        { "tournamentMatches.tournamentMatchId": matchId },
-        { projection: { tournamentMatches: 1, name: 1 } }
-      );
-
-    if (!tournament) {
-      console.log(`No tournament found with match ID: ${matchId}`);
-      return NextResponse.json({ error: "Match not found" }, { status: 404 });
-    }
-
-    // Find the specific match in the tournament
-    const match = tournament.tournamentMatches.find(
-      (m: any) => m.tournamentMatchId === matchId
+  const tournament = await db
+    .collection("Tournaments")
+    .findOne(
+      { "tournamentMatches.tournamentMatchId": matchId },
+      { projection: { tournamentMatches: 1, name: 1 } }
     );
 
-    if (!match) {
-      console.log(`Match ${matchId} not found in tournament`);
-      return NextResponse.json({ error: "Match not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      match,
-      tournamentName: tournament.name,
-    });
-  } catch (error) {
-    console.error("Error fetching match:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch match" },
-      { status: 500 }
-    );
+  if (!tournament) {
+    return NextResponse.json({ error: "Match not found" }, { status: 404 });
   }
+
+  const match = tournament.tournamentMatches.find(
+    (m: any) => m.tournamentMatchId === matchId
+  );
+
+  if (!match) {
+    return NextResponse.json({ error: "Match not found" }, { status: 404 });
+  }
+
+  const response = NextResponse.json({
+    match,
+    tournamentName: tournament.name,
+  });
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=300, stale-while-revalidate=1800"
+  );
+  return response;
 }
+
+export const GET = withApiSecurity(getTournamentMatchHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 300,
+});

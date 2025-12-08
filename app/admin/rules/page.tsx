@@ -253,7 +253,26 @@ export default function RulesPage() {
                 <CardContent className="px-4 sm:px-6 pt-0 pb-4 sm:pb-6">
                   <div
                     className="prose-sm prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base"
-                    dangerouslySetInnerHTML={{ __html: rule.description }}
+                    dangerouslySetInnerHTML={{ 
+                      __html: (() => {
+                        // Client-side HTML sanitization
+                        const escapeHtml = (str: string) => {
+                          const map: Record<string, string> = {
+                            "&": "&amp;",
+                            "<": "&lt;",
+                            ">": "&gt;",
+                            '"': "&quot;",
+                            "'": "&#039;",
+                          };
+                          return str.replace(/[&<>"']/g, (m) => map[m]);
+                        };
+                        let sanitized = escapeHtml(rule.description);
+                        sanitized = sanitized
+                          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+                          .replace(/\*(.*?)\*/g, "<em>$1</em>");
+                        return sanitized;
+                      })()
+                    }}
                   />
                 </CardContent>
               )}
