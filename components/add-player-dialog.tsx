@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, ChangeEvent, FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,7 @@ export function AddPlayerDialog({
   onOpenChange,
   onComplete,
 }: AddPlayerDialogProps) {
+  const router = useRouter();
   const { toast } = useToast();
 
   // Update state types
@@ -87,6 +89,7 @@ export function AddPlayerDialog({
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return; // Prevent duplicate submissions
     setIsSubmitting(true);
 
     try {
@@ -94,7 +97,9 @@ export function AddPlayerDialog({
       const parsedData = playerSchema.parse(formData);
 
       // Here you would implement the actual player creation logic
-      console.log("Creating player:", parsedData);
+      if (process.env.NODE_ENV === "development") {
+        console.log("Creating player:", parsedData);
+      }
 
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -109,18 +114,17 @@ export function AddPlayerDialog({
       setErrors({});
       onOpenChange(false);
 
-      // You would typically refresh the player list here
+      // Refresh the page to show updated data
+      router.refresh();
 
       if (onComplete) {
         onComplete();
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        // Create a properly typed error object
         const formattedErrors: FormErrors = {};
 
         error.errors.forEach((err) => {
-          // Handle the case where the path might be a string or number
           const field = err.path[0];
           if (typeof field === "string") {
             formattedErrors[field] = err.message;
@@ -129,8 +133,10 @@ export function AddPlayerDialog({
 
         setErrors(formattedErrors);
       } else {
-        // Handle other errors
-        console.error("Error creating player:", error);
+        // Only log errors in development
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error creating player:", error);
+        }
         setErrors({ form: "An unexpected error occurred. Please try again." });
       }
     } finally {

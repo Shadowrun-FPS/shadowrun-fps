@@ -1,53 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 
-export async function GET(request: NextRequest) {
-  try {
-    // Extract matchId from search params
-    const searchParams = request.nextUrl.searchParams;
-    const matchId = searchParams.get("id");
+async function getTournamentMatchHandler(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const matchIdParam = searchParams.get("id");
 
-    console.log("Direct API route receiving match ID:", matchId);
-
-    if (
-      !matchId ||
-      matchId === "[matchId]" ||
-      matchId === "%5BmatchId%5D" ||
-      matchId === "%255BmatchId%255D"
-    ) {
-      console.error("Invalid match ID format:", matchId);
-      return NextResponse.json(
-        { error: "Invalid match ID format" },
-        { status: 400 }
-      );
-    }
-
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Extract the tournament ID from the match ID (everything before -R1-M1)
-    const tournamentId = matchId.split("-R")[0];
-    console.log("Extracted tournament ID:", tournamentId);
-
-    // Find the tournament first
-    const tournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(tournamentId),
-    });
-
-    if (!tournament) {
-      console.log("Tournament not found with ID:", tournamentId);
-      return NextResponse.json(
-        { error: "Tournament not found" },
-        { status: 404 }
-      );
-    }
-
-    console.log("Found tournament:", tournament.name);
-    console.log(
-      "Tournament has matches:",
-      tournament.tournamentMatches?.length || 0
+  if (!matchIdParam) {
+    return NextResponse.json(
+      { error: "Match ID is required" },
+      { status: 400 }
     );
+  }
+
+  const matchId = sanitizeString(matchIdParam, 200);
+
+  if (
+    matchId === "[matchId]" ||
+    matchId === "%5BmatchId%5D" ||
+    matchId === "%255BmatchId%255D"
+  ) {
+    safeLog.warn("Invalid match ID format", { matchId });
+    return NextResponse.json(
+      { error: "Invalid match ID format" },
+      { status: 400 }
+    );
+  }
+
+  const client = await clientPromise;
+  const db = client.db();
+
+  const tournamentId = matchId.split("-R")[0];
+  if (!ObjectId.isValid(tournamentId)) {
+    safeLog.warn("Invalid tournament ID extracted from match ID", {
+      matchId,
+      tournamentId,
+    });
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
+
+  const tournament = await db.collection("Tournaments").findOne({
+    _id: new ObjectId(tournamentId),
+  });
+
+  if (!tournament) {
+    safeLog.warn("Tournament not found", { tournamentId });
+    return NextResponse.json(
+      { error: "Tournament not found" },
+      { status: 404 }
+    );
+  }
+
+  safeLog.log("Found tournament match", {
+    tournamentId,
+    tournamentName: tournament.name,
+    matchCount: tournament.tournamentMatches?.length || 0,
+  });
 
     // Find the specific match within the tournament
     if (
@@ -66,12 +79,13 @@ export async function GET(request: NextRequest) {
     );
 
     if (!match) {
-      console.log(
-        "Match not found in tournament, available matches:",
-        tournament.tournamentMatches.map(
+      safeLog.warn("Match not found in tournament", {
+        matchId,
+        tournamentId,
+        availableMatches: tournament.tournamentMatches.map(
           (m: { tournamentMatchId: string }) => m.tournamentMatchId
-        )
-      );
+        ),
+      });
 
       return NextResponse.json(
         {
@@ -83,8 +97,6 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-
-    console.log("Match found:", match.tournamentMatchId);
 
     // Enhance with additional team data if needed - search across all collections
     const { findTeamAcrossCollections } = await import("@/lib/team-collections");
@@ -122,40 +134,43 @@ export async function GET(request: NextRequest) {
       _id: tournament._id.toString(),
     };
 
-    return NextResponse.json(match);
-  } catch (error) {
-    console.error("Error in direct tournament match endpoint:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch match data", details: String(error) },
-      { status: 500 }
+    const response = NextResponse.json(match);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=30, stale-while-revalidate=60"
     );
-  }
+    return response;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { matchId } = body;
+export const GET = withApiSecurity(getTournamentMatchHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 30,
+});
 
-    if (!matchId) {
-      return NextResponse.json(
-        { error: "Match ID is required" },
-        { status: 400 }
-      );
-    }
+async function postTournamentMatchHandler(request: NextRequest) {
+  const body = await request.json();
+  const validation = validateBody(body, {
+    matchId: { type: "string", required: true, maxLength: 200 },
+  });
 
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Similar logic to GET but handles the POST-specific operations
-    // ...
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error in POST tournament match endpoint:", error);
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "Failed to process request", details: String(error) },
-      { status: 500 }
+      { error: validation.errors?.join(", ") || "Match ID is required" },
+      { status: 400 }
     );
   }
+
+  const { matchId } = validation.data! as { matchId: string };
+  const sanitizedMatchId = sanitizeString(matchId, 200);
+
+  const client = await clientPromise;
+  const db = client.db();
+
+  return NextResponse.json({ success: true });
 }
+
+export const POST = withApiSecurity(postTournamentMatchHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

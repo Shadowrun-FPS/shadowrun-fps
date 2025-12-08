@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const gameType = req.nextUrl.searchParams.get("gameType");
-    const eloTier = req.nextUrl.searchParams.get("eloTier");
+async function getWaitTimeHandler(req: NextRequest) {
+  const gameTypeParam = req.nextUrl.searchParams.get("gameType");
+  const eloTierParam = req.nextUrl.searchParams.get("eloTier");
+
+  const gameType = gameTypeParam ? sanitizeString(gameTypeParam, 50) : null;
+  const eloTier = eloTierParam ? sanitizeString(eloTierParam, 50) : null;
 
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -56,12 +60,16 @@ export async function GET(req: NextRequest) {
     const estimatedWaitTime =
       (averageWaitTime * remainingPlayers) / queueFullSize;
 
-    return NextResponse.json({ estimatedWaitTime });
-  } catch (error) {
-    console.error("Failed to calculate wait time:", error);
-    return NextResponse.json(
-      { error: "Failed to calculate wait time" },
-      { status: 500 }
+    const response = NextResponse.json({ estimatedWaitTime });
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getWaitTimeHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 60,
+});

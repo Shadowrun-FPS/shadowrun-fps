@@ -4,19 +4,28 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postCancelInviteHandler(
   req: NextRequest,
   { params }: { params: { inviteId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const inviteId = params.inviteId;
+  const inviteId = sanitizeString(params.inviteId, 50);
+  if (!ObjectId.isValid(inviteId)) {
+    return NextResponse.json(
+      { error: "Invalid invite ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Get the invite
     const invite = await db.collection("TeamInvites").findOne({
@@ -50,22 +59,23 @@ export async function POST(
         { $set: { status: "cancelled" } }
       );
 
-    // Delete any associated notifications
     await db.collection("Notifications").deleteMany({
       "metadata.inviteId": inviteId,
       type: "team_invite",
-      userId: invite.inviteeId,
+      userId: sanitizeString(invite.inviteeId, 50),
     });
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${invite.teamId.toString()}`);
 
     return NextResponse.json({
       success: true,
       message: "Invite cancelled successfully",
     });
-  } catch (error) {
-    console.error("Error cancelling team invite:", error);
-    return NextResponse.json(
-      { error: "Failed to cancel invite" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postCancelInviteHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

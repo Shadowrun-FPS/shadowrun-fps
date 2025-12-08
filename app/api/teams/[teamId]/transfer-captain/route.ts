@@ -6,6 +6,9 @@ import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface TeamMember {
   discordId: string;
@@ -14,37 +17,43 @@ interface TeamMember {
   role?: string;
 }
 
-export async function POST(
+async function postTransferCaptainHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to transfer captaincy" },
-        { status: 401 }
-      );
-    }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to transfer captaincy" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
-    const { newCaptainId } = await req.json();
-    const teamId = params.teamId;
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
 
-    console.log("Transfer captain request details:", {
-      teamId,
-      sessionUser: session.user,
-      currentUserId: session.user.id,
-      newCaptainId,
-    });
+  const client = await clientPromise;
+  const db = client.db();
+  
+  const body = await req.json();
+  const validation = validateBody(body, {
+    newCaptainId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    if (!teamId || !newCaptainId) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { newCaptainId } = validation.data! as { newCaptainId: string };
+  const sanitizedNewCaptainId = sanitizeString(newCaptainId, 50);
 
     // Find team across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -54,44 +63,18 @@ export async function POST(
     const team = teamResult.team;
     const collectionName = teamResult.collectionName;
 
-    console.log("Full team object:", JSON.stringify(team, null, 2));
-
     const currentUserId = session.user.id;
-    const currentUserName = session.user.name;
-    const currentUserNickname = session.user.nickname;
-
-    console.log("CAPTAIN DEBUGGING:", {
-      currentUserId,
-      currentUserName,
-      currentUserNickname,
-      session,
-      teamMembers: team.members,
-      teamCaptain: team.captain,
-      teamCaptainDiscordId: team.captain?.discordId,
-    });
 
     const currentUserMember = team.members.find(
-      (m: TeamMember) =>
-        m.discordId === currentUserId ||
-        m.discordNickname === currentUserName ||
-        m.discordUsername === currentUserName
+      (m: TeamMember) => m.discordId === currentUserId
     );
 
-    console.log("Current user member:", currentUserMember);
-
-    const EMERGENCY_MODE = true;
-
-    let isCaptain =
-      EMERGENCY_MODE ||
+    const isCaptain =
       [SECURITY_CONFIG.DEVELOPER_ID, "418256816812015627"].includes(
         currentUserId
       ) ||
       currentUserMember?.role === "captain" ||
-      team.captain?.discordId === currentUserId ||
-      team.captain?.discordNickname === currentUserName ||
-      team.captain?.discordNickname === currentUserNickname;
-
-    console.log("Is captain:", isCaptain);
+      team.captain?.discordId === currentUserId;
 
     if (!isCaptain) {
       return NextResponse.json(
@@ -99,11 +82,7 @@ export async function POST(
           error: "Only the team captain can transfer ownership",
           details: {
             userId: currentUserId,
-            userName: currentUserName,
-            userNickname: currentUserNickname,
-            userMember: currentUserMember,
             captainId: team.captain?.discordId,
-            captainName: team.captain?.discordNickname,
           },
         },
         { status: 403 }
@@ -111,7 +90,7 @@ export async function POST(
     }
 
     const newCaptainMember = team.members.find(
-      (member: any) => member.discordId === newCaptainId
+      (member: any) => member.discordId === sanitizedNewCaptainId
     );
 
     if (!newCaptainMember) {
@@ -126,13 +105,13 @@ export async function POST(
       {
         $set: {
           captain: {
-            discordId: newCaptainId,
-            discordNickname: newCaptainMember.discordNickname,
-            discordProfilePicture: newCaptainMember.discordProfilePicture,
+            discordId: sanitizedNewCaptainId,
+            discordNickname: sanitizeString(newCaptainMember.discordNickname || "", 100),
+            discordProfilePicture: newCaptainMember.discordProfilePicture || "",
           },
           members: team.members.map((member: any) => ({
             ...member,
-            role: member.discordId === newCaptainId ? "captain" : "member",
+            role: member.discordId === sanitizedNewCaptainId ? "captain" : "member",
           })),
         },
       }
@@ -146,10 +125,10 @@ export async function POST(
     }
 
     await db.collection("Notifications").insertOne({
-      userId: newCaptainId,
+      userId: sanitizedNewCaptainId,
       type: "team_captain_transfer",
       title: "You are now a Team Captain",
-      message: `You have been made the captain of team "${team.name}"`,
+      message: `You have been made the captain of team "${sanitizeString(team.name, 100)}"`,
       read: false,
       createdAt: new Date(),
       discordUsername:
@@ -160,23 +139,25 @@ export async function POST(
           ?.discordNickname || "Unknown",
       metadata: {
         teamId: teamId,
-        teamName: team.name,
+        teamName: sanitizeString(team.name, 100),
         previousCaptainId: session.user.id,
-        previousCaptainName: session.user.name || "Unknown",
+        previousCaptainName: sanitizeString(session.user.name || "Unknown", 100),
       },
     });
 
     await recalculateTeamElo(teamId);
 
+    revalidatePath(`/teams/${teamId}`);
+    revalidatePath("/teams");
+
     return NextResponse.json({
       success: true,
       message: "Team captain transferred successfully",
     });
-  } catch (error) {
-    console.error("Error transferring captaincy:", error);
-    return NextResponse.json(
-      { error: "Failed to transfer team captaincy" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTransferCaptainHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

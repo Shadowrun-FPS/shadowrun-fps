@@ -3,38 +3,49 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postMatchScoresHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check authentication
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to submit scores" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to submit scores" },
+      { status: 401 }
+    );
+  }
 
-    const { matchId } = params;
-    const { mapIndex, teamAScore, teamBScore, submittedBy } =
-      await request.json();
+  const matchId = sanitizeString(params.matchId, 200);
+  const body = await request.json();
+  const validation = validateBody(body, {
+    mapIndex: { type: "number", required: true, min: 0 },
+    teamAScore: { type: "number", required: true, min: 0, max: 6 },
+    teamBScore: { type: "number", required: true, min: 0, max: 6 },
+    submittedBy: {
+      type: "string",
+      required: true,
+      pattern: /^(teamA|teamB)$/,
+    },
+  });
 
-    // Validate inputs
-    if (
-      mapIndex === undefined ||
-      typeof teamAScore !== "number" ||
-      typeof teamBScore !== "number" ||
-      !submittedBy
-    ) {
-      return NextResponse.json(
-        { error: "Invalid input data" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input data" },
+      { status: 400 }
+    );
+  }
+
+  const { mapIndex, teamAScore, teamBScore, submittedBy } = validation.data! as {
+    mapIndex: number;
+    teamAScore: number;
+    teamBScore: number;
+    submittedBy: string;
+  };
 
     const client = await clientPromise;
     const db = client.db();
@@ -48,8 +59,7 @@ export async function POST(
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    // Check if user is part of the submitting team
-    const userId = session.user.id;
+    const userId = sanitizeString(session.user.id, 50);
     const isTeamAMember = match.teamA?.members?.some(
       (m: any) => m.discordId === userId
     );
@@ -148,15 +158,17 @@ export async function POST(
       }
     );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
+
     return NextResponse.json({
       success: true,
       message: "Scores submitted successfully",
     });
-  } catch (error) {
-    console.error("Error submitting scores:", error);
-    return NextResponse.json(
-      { error: "Failed to submit scores" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postMatchScoresHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

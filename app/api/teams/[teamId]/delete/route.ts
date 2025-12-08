@@ -4,22 +4,31 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function DELETE(
+async function deleteTeamHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
 
-    // Get the team - search across all collections
-    const teamResult = await findTeamAcrossCollections(db, params.teamId);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const teamResult = await findTeamAcrossCollections(db, teamId);
     if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
@@ -52,12 +61,11 @@ export async function DELETE(
     const gamesPlayed = wins + losses;
     const hasHistory = wins > 0 || losses > 0 || tournamentWins > 0;
 
-    // Cancel all pending scrimmages involving this team
     const pendingScrimmages = await db.collection("Scrimmages").find({
       status: "pending",
       $or: [
-        { challengerTeamId: params.teamId },
-        { challengedTeamId: params.teamId },
+        { challengerTeamId: teamId },
+        { challengedTeamId: teamId },
       ],
     }).toArray();
 
@@ -67,22 +75,21 @@ export async function DELETE(
         {
           status: "pending",
           $or: [
-            { challengerTeamId: params.teamId },
-            { challengedTeamId: params.teamId },
+            { challengerTeamId: teamId },
+            { challengedTeamId: teamId },
           ],
         },
         {
           $set: {
             status: "cancelled",
             updatedAt: new Date(),
-            cancellationReason: `Team "${team.name}" was deleted`,
+            cancellationReason: `Team "${sanitizeString(team.name, 100)}" was deleted`,
           },
         }
       );
 
-      // Notify the other team's captain about cancelled scrimmages
       for (const scrimmage of pendingScrimmages) {
-        const otherTeamId = scrimmage.challengerTeamId === params.teamId 
+        const otherTeamId = scrimmage.challengerTeamId === teamId 
           ? scrimmage.challengedTeamId 
           : scrimmage.challengerTeamId;
         
@@ -92,13 +99,13 @@ export async function DELETE(
             userId: otherTeamResult.team.captain.discordId,
             type: "scrimmage_cancelled",
             title: "Scrimmage Cancelled",
-            message: `The scrimmage with "${team.name}" has been cancelled because the team was deleted.`,
+            message: `The scrimmage with "${sanitizeString(team.name, 100)}" has been cancelled because the team was deleted.`,
             read: false,
             createdAt: new Date(),
             metadata: {
               scrimmageId: scrimmage._id.toString(),
-              cancelledTeamId: params.teamId,
-              cancelledTeamName: team.name,
+              cancelledTeamId: teamId,
+              cancelledTeamName: sanitizeString(team.name, 100),
             },
           });
         }
@@ -107,12 +114,11 @@ export async function DELETE(
 
     // If team has history, archive it instead of deleting
     if (hasHistory) {
-      // Create archived team record with minimal information
       const archivedTeam = {
-        originalTeamId: params.teamId,
+        originalTeamId: teamId,
         originalCollection: collectionName,
-        name: team.name,
-        tag: team.tag,
+        name: sanitizeString(team.name, 100),
+        tag: sanitizeString(team.tag || "", 10),
         teamSize: team.teamSize || 4,
         description: team.description || "",
         // Stats
@@ -142,21 +148,21 @@ export async function DELETE(
       // Store in ArchivedTeams collection
       await db.collection("ArchivedTeams").insertOne(archivedTeam);
 
-      // Delete the team from active collection
       await db.collection(collectionName).deleteOne({
-        _id: new ObjectId(params.teamId),
+        _id: new ObjectId(teamId),
       });
     } else {
-      // No history, just delete normally
       await db.collection(collectionName).deleteOne({
-        _id: new ObjectId(params.teamId),
+        _id: new ObjectId(teamId),
       });
     }
 
-    // Delete all related invites
     await db.collection("TeamInvites").deleteMany({
-      teamId: params.teamId,
+      teamId: teamId,
     });
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
 
     return NextResponse.json({ 
       success: true,
@@ -165,11 +171,10 @@ export async function DELETE(
         ? "Team has been archived due to its history" 
         : "Team has been deleted",
     });
-  } catch (error) {
-    console.error("Error deleting team:", error);
-    return NextResponse.json(
-      { error: "Failed to delete team" },
-      { status: 500 }
-    );
-  }
 }
+
+export const DELETE = withApiSecurity(deleteTeamHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

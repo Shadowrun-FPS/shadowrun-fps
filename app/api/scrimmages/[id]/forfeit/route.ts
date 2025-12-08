@@ -3,36 +3,38 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postForfeitScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
+  const id = sanitizeString(params.id, 100);
+  const { db } = await connectToDatabase();
 
-    // Try to find the scrimmage by _id first
-    let scrimmage = null;
+  let scrimmage = null;
+  if (ObjectId.isValid(id)) {
     try {
       scrimmage = await db.collection("Scrimmages").findOne({
-        _id: new ObjectId(params.id),
+        _id: new ObjectId(id),
       });
     } catch (error) {
-      // If ObjectId conversion fails, it's not a valid ObjectId
-      console.log("Not a valid ObjectId, trying scrimmageId");
+      safeLog.log("Not a valid ObjectId, trying scrimmageId");
     }
+  }
 
-    // If not found by _id, try to find by scrimmageId
-    if (!scrimmage) {
-      scrimmage = await db.collection("Scrimmages").findOne({
-        scrimmageId: params.id,
-      });
-    }
+  if (!scrimmage) {
+    scrimmage = await db.collection("Scrimmages").findOne({
+      scrimmageId: id,
+    });
+  }
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -95,12 +97,14 @@ export async function POST(
       _id: scrimmage._id,
     });
 
+    revalidatePath("/scrimmages");
+    revalidatePath(`/scrimmages/${id}`);
+
     return NextResponse.json(updatedScrimmage);
-  } catch (error) {
-    console.error("Error forfeiting match:", error);
-    return NextResponse.json(
-      { error: "Failed to forfeit match" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postForfeitScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages"],
+});

@@ -46,6 +46,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { ScrimmageCardSkeleton } from "@/components/loading-skeleton";
 
 interface MapSelection {
   id: string;
@@ -130,7 +131,9 @@ export default function ScrimmagesPage() {
         }
       }
     } catch (error) {
-      console.error("Error fetching scrimmages:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching scrimmages:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to fetch scrimmages",
@@ -653,9 +656,10 @@ export default function ScrimmagesPage() {
 
                 <TabsContent value="pending" className="mt-6 px-4 sm:px-6 pb-6">
                   {loading ? (
-                    <div className="flex flex-col justify-center items-center py-16">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading scrimmages...</p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {[1, 2, 3].map((i) => (
+                        <ScrimmageCardSkeleton key={i} />
+                      ))}
                     </div>
                   ) : !session?.user ? (
                     <Card className="border-2">
@@ -719,9 +723,10 @@ export default function ScrimmagesPage() {
 
                 <TabsContent value="upcoming" className="mt-6 px-4 sm:px-6 pb-6">
                   {loading ? (
-                    <div className="flex flex-col justify-center items-center py-16">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading scrimmages...</p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {[1, 2, 3].map((i) => (
+                        <ScrimmageCardSkeleton key={i} />
+                      ))}
                     </div>
                   ) : upcomingScrimmages.length === 0 ? (
                     <Card className="border-2">
@@ -894,9 +899,10 @@ export default function ScrimmagesPage() {
 
                 <TabsContent value="completed" className="mt-6 px-4 sm:px-6 pb-6">
                   {loading ? (
-                    <div className="flex flex-col justify-center items-center py-16">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                      <p className="text-sm text-muted-foreground">Loading scrimmages...</p>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      {[1, 2, 3].map((i) => (
+                        <ScrimmageCardSkeleton key={i} />
+                      ))}
                     </div>
                   ) : completedScrimmages.length === 0 ? (
                     <Card className="border-2">

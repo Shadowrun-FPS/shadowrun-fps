@@ -4,58 +4,71 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function postRemovePlayerHandler(
   req: NextRequest,
   { params }: { params: { queueId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to remove a player" },
-        { status: 401 }
-      );
-    }
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be signed in to remove a player" },
+      { status: 401 }
+    );
+  }
 
-    // Check if user is admin or moderator
-    const isAdminOrMod =
-      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-      (session.user.roles &&
-        (session.user.roles.includes("admin") ||
-          session.user.roles.includes("moderator")));
+  const isAdminOrMod =
+    session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
+    (session.user.roles &&
+      (session.user.roles.includes("admin") ||
+        session.user.roles.includes("moderator")));
 
-    if (!isAdminOrMod) {
-      return NextResponse.json(
-        { error: "You don't have permission to remove players" },
-        { status: 403 }
-      );
-    }
+  if (!isAdminOrMod) {
+    return NextResponse.json(
+      { error: "You don't have permission to remove players" },
+      { status: 403 }
+    );
+  }
 
-    const { playerId } = await req.json();
+  const queueId = sanitizeString(params.queueId, 50);
+  if (!ObjectId.isValid(queueId)) {
+    return NextResponse.json(
+      { error: "Invalid queue ID format" },
+      { status: 400 }
+    );
+  }
 
-    if (!playerId) {
-      return NextResponse.json(
-        { error: "Player ID is required" },
-        { status: 400 }
-      );
-    }
+  const body = await req.json();
+  const validation = validateBody(body, {
+    playerId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    // Remove player from queue
-    const result = await db
-      .collection("Queues")
-      .updateOne({ _id: new ObjectId(params.queueId) }, {
-        $pull: {
-          players: { discordId: playerId },
-        },
-      } as any);
+  const { playerId } = validation.data! as { playerId: string };
+  const sanitizedPlayerId = sanitizeString(playerId, 50);
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const result = await db
+    .collection("Queues")
+    .updateOne({ _id: new ObjectId(queueId) }, {
+      $pull: {
+        players: { discordId: sanitizedPlayerId },
+      },
+    } as any);
 
     if (result.modifiedCount === 0) {
       return NextResponse.json(
@@ -64,15 +77,18 @@ export async function POST(
       );
     }
 
+    revalidatePath("/matches/queues");
+    revalidatePath("/admin/queues");
+
     return NextResponse.json({
       success: true,
       message: "Player removed successfully",
     });
-  } catch (error) {
-    console.error("Error removing player:", error);
-    return NextResponse.json(
-      { error: "Failed to remove player" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRemovePlayerHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

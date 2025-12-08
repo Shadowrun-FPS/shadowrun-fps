@@ -1,17 +1,18 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+async function getQueuesEventsHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -57,14 +58,12 @@ export async function GET(req: NextRequest) {
                 .toArray();
               controller.enqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
             } catch (error) {
-              console.error("Error sending queue update:", error);
-              // Don't close on error, just log it
+              safeLog.error("Error sending queue update:", error);
             }
           });
 
-          // Handle change stream errors
           changeStream.on("error", (error) => {
-            console.error("Change stream error:", error);
+            safeLog.error("Change stream error:", error);
             // Try to send error notification to client
             try {
               controller.enqueue(
@@ -100,7 +99,7 @@ export async function GET(req: NextRequest) {
             cleanup();
           });
         } catch (error) {
-          console.error("Error in SSE stream start:", error);
+          safeLog.error("Error in SSE stream start:", error);
           cleanup();
           try {
             controller.close();
@@ -111,18 +110,19 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-transform",
-        "Connection": "keep-alive",
-        "X-Accel-Buffering": "no", // Disable nginx buffering
-        "Access-Control-Allow-Origin": "*", // Allow CORS if needed
-        "Access-Control-Allow-Credentials": "true",
-      },
-    });
-  } catch (error) {
-    console.error("SSE connection error:", error);
-    return new Response("Internal Server Error", { status: 500 });
-  }
+  return new NextResponse(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Credentials": "true",
+    },
+  });
 }
+
+export const GET = withApiSecurity(getQueuesEventsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

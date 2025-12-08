@@ -1,25 +1,25 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { ChangeStream, Document } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+async function getMatchesEventsHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
 
-    // Create change stream for Matches collection
-    const changeStream = db
-      .collection("Matches")
-      .watch() as ChangeStream<Document>;
+  const changeStream = db
+    .collection("Matches")
+    .watch() as ChangeStream<Document>;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -44,18 +44,17 @@ export async function GET(req: NextRequest) {
               }
             }
           } catch (error) {
-            console.error("Error processing change:", error);
+            safeLog.error("Error processing change:", error);
           }
         });
 
-        // Send heartbeat every 30 seconds
         const heartbeat = setInterval(() => {
           try {
             controller.enqueue(
               `data: ${JSON.stringify({ type: "heartbeat" })}\n\n`
             );
           } catch (error) {
-            console.error("Error sending heartbeat:", error);
+            safeLog.error("Error sending heartbeat:", error);
             clearInterval(heartbeat);
           }
         }, 30000);
@@ -68,15 +67,16 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
-    });
-  } catch (error) {
-    console.error("SSE connection error:", error);
-    return new Response("Internal Server Error", { status: 500 });
-  }
+  return new NextResponse(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
 }
+
+export const GET = withApiSecurity(getMatchesEventsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

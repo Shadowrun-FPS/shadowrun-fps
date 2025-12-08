@@ -3,19 +3,28 @@ import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function DELETE(
+async function deleteNotificationHandler(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const id = params.id;
+  const id = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid notification ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Find the notification first to verify ownership
     const notification = await db.collection("Notifications").findOne({
@@ -50,11 +59,13 @@ export async function DELETE(
       );
     }
 
+    revalidatePath("/notifications");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to delete notification" },
-      { status: 500 }
-    );
-  }
 }
+
+export const DELETE = withApiSecurity(deleteNotificationHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/notifications"],
+});

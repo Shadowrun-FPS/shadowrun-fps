@@ -112,6 +112,7 @@ function PlayerAvatar({ src, alt }: { src: string | null; alt: string }) {
       alt={alt}
       fill
       className="object-cover"
+      loading="lazy"
       onError={() => {
         setImgSrc("https://cdn.discordapp.com/embed/avatars/0.png");
       }}
@@ -650,6 +651,7 @@ function LeaderboardContent() {
                                 src={`/rankedicons/${rank.name.toLowerCase()}.png`}
                                 alt={rank.name}
                                 fill
+                                loading="lazy"
                                 className="object-contain"
                               />
                             </div>

@@ -5,42 +5,40 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { canManageTournament } from "@/lib/tournament-permissions";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// POST endpoint to pre-seed a tournament bracket
-export async function POST(
+async function postPreseedTournamentHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check authentication and admin permission
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to perform this action" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to perform this action" },
+      { status: 401 }
+    );
+  }
 
-    // Check if user is admin
-    const client = await clientPromise;
-    const db = client.db();
+  const tournamentId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(tournamentId)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
 
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
+  const client = await clientPromise;
+  const db = client.db();
 
-    const { id } = params;
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
+  const user = await db.collection("Users").findOne({
+    discordId: sanitizeString(session.user.id, 50),
+  });
 
-    // Get tournament with teams
     const tournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(id),
+      _id: new ObjectId(tournamentId),
     });
 
     if (!tournament) {
@@ -162,9 +160,13 @@ export async function POST(
         !teamB ||
         usedTeamIds.has(teamA._id) ||
         usedTeamIds.has(teamB._id) ||
-        teamA._id === teamB._id // Prevent same team from being matched with itself
+        teamA._id === teamB._id
       ) {
-        console.log("Skipping match creation - invalid team pairing");
+        safeLog.warn("Skipping match creation - invalid team pairing", {
+          tournamentId,
+          teamA: teamA?._id,
+          teamB: teamB?._id,
+        });
         continue;
       }
 
@@ -193,7 +195,7 @@ export async function POST(
     // etc.
     firstRound.matches.forEach((match, index) => {
       // Add matchId that can be referenced before tournament is launched
-      match.matchId = `${id}-r1-m${index + 1}`;
+      match.matchId = `${tournamentId}-r1-m${index + 1}`;
 
       // Assign seeds correctly: teamA is from higher position in sorted array (lower index = higher ELO = lower seed number)
       // teamB is from lower position in sorted array (higher index = lower ELO = higher seed number)
@@ -318,22 +320,6 @@ export async function POST(
     // Extract ObjectIds from registeredTeams and add them to teams array
     const registeredTeamIds = validTeams.map((team: any) => new ObjectId(team._id));
 
-    // Update tournament with seeded brackets and teams array
-    await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(id) },
-      {
-        $set: {
-          brackets: {
-            rounds,
-            ...(tournament.format === "double_elimination" && { losersRounds }),
-          },
-          teams: registeredTeamIds, // Add all registeredTeams ObjectIds to teams array
-          updatedAt: new Date(),
-        },
-      }
-    );
-
-    // Check if user can manage this tournament (admin, creator, or co-host)
     const userRoles = user?.roles || [];
     if (!canManageTournament(session.user.id, userRoles, tournament as any)) {
       return NextResponse.json(
@@ -345,15 +331,31 @@ export async function POST(
       );
     }
 
+    await db.collection("Tournaments").updateOne(
+      { _id: new ObjectId(tournamentId) },
+      {
+        $set: {
+          brackets: {
+            rounds,
+            ...(tournament.format === "double_elimination" && { losersRounds }),
+          },
+          teams: registeredTeamIds,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${tournamentId}`);
+
     return NextResponse.json({
       success: true,
       message: "Tournament bracket has been pre-seeded",
     });
-  } catch (error) {
-    console.error("Error pre-seeding tournament:", error);
-    return NextResponse.json(
-      { error: "Failed to pre-seed tournament" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postPreseedTournamentHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

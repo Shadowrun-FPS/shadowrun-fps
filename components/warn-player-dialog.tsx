@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 import {
   Dialog,
@@ -69,6 +70,7 @@ export function WarnPlayerDialog({
   playerId,
   onWarningComplete,
 }: WarnPlayerDialogProps) {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,10 +134,16 @@ export function WarnPlayerDialog({
         }`,
       });
 
+      // Refresh the page to show updated data
+      router.refresh();
+
       onWarningComplete();
       handleOpenChange(false);
     } catch (error) {
-      console.error("Error warning player:", error);
+      // Only log errors in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error warning player:", error);
+      }
       setError(
         error instanceof Error ? error.message : "Failed to warn player"
       );

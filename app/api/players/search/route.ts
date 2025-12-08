@@ -2,34 +2,36 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to search players" },
-        { status: 401 }
-      );
-    }
+async function getSearchPlayersHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to search players" },
+      { status: 401 }
+    );
+  }
 
-    const searchParams = req.nextUrl.searchParams;
-    const term = searchParams.get("term");
-    const includeTeamInfo = searchParams.get("includeTeamInfo") === "true";
+  const searchParams = req.nextUrl.searchParams;
+  const termParam = searchParams.get("term");
+  const term = termParam ? sanitizeString(termParam, 100) : "";
+  const includeTeamInfo = searchParams.get("includeTeamInfo") === "true";
 
-    if (!term) {
-      return NextResponse.json(
-        { error: "Search term is required" },
-        { status: 400 }
-      );
-    }
+  if (!term) {
+    return NextResponse.json(
+      { error: "Search term is required" },
+      { status: 400 }
+    );
+  }
 
-    const { db } = await connectToDatabase();
+  const { db } = await connectToDatabase();
 
-    // Find players that match the search term
-    const searchRegex = new RegExp(term, "i");
+  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const searchRegex = new RegExp(escapedTerm, "i");
 
     const players = await db
       .collection("Players")
@@ -105,14 +107,17 @@ export async function GET(req: NextRequest) {
       }));
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       players: playersWithTeamInfo,
     });
-  } catch (error) {
-    console.error("Error searching players:", error);
-    return NextResponse.json(
-      { error: "Failed to search players" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getSearchPlayersHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

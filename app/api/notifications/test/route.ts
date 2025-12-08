@@ -26,10 +26,11 @@ export async function GET() {
       notifications: allNotifications,
     });
   } catch (error) {
-    console.error("Error in test endpoint:", error);
+    const { safeLog } = await import("@/lib/security");
+    safeLog.error("Error in test endpoint:", error);
     return NextResponse.json(
       {
-        error: String(error),
+        error: "Internal server error",
       },
       { status: 500 }
     );

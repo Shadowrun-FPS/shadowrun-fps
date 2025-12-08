@@ -6,35 +6,49 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { canManageTournament } from "@/lib/tournament-permissions";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postUnregisterHandler(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { teamId } = await req.json();
+  const tournamentId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(tournamentId)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID format" },
+      { status: 400 }
+    );
+  }
 
-    if (!teamId) {
-      return NextResponse.json(
-        { error: "Team ID is required" },
-        { status: 400 }
-      );
-    }
+  const body = await req.json();
+  const validation = validateBody(body, {
+    teamId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    const tournamentId = params.id;
-    if (!tournamentId) {
-      return NextResponse.json(
-        { error: "Tournament ID is required" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    console.log(`Unregistering team ${teamId} from tournament ${tournamentId}`);
+  const validationData = validation.data! as { teamId: string };
+  const { teamId } = validationData;
+  const sanitizedTeamId = sanitizeString(teamId, 50);
+
+  if (!ObjectId.isValid(sanitizedTeamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
 
     const { db } = await connectToDatabase();
 
@@ -71,9 +85,8 @@ export async function POST(
       tournament as any
     );
 
-    // Check if the team is registered
     const isTeamRegistered = tournament.registeredTeams.some(
-      (team: any) => team._id.toString() === teamId || team._id === teamId
+      (team: any) => team._id.toString() === sanitizedTeamId || team._id === sanitizedTeamId
     );
 
     if (!isTeamRegistered) {
@@ -83,9 +96,8 @@ export async function POST(
       );
     }
 
-    // If not admin or tournament manager, check if user is the team captain
     if (!isAdmin && !isTournamentManager) {
-      const teamResult = await findTeamAcrossCollections(db, teamId);
+      const teamResult = await findTeamAcrossCollections(db, sanitizedTeamId);
       if (!teamResult || teamResult.team.captain.discordId !== session.user.id) {
         return NextResponse.json(
           { error: "You must be the team captain, admin, or tournament co-host to unregister" },
@@ -99,12 +111,11 @@ export async function POST(
       (match: any) => match.teamA || match.teamB
     );
 
-    // Update the tournament document to remove the team
     const result = await db.collection("Tournaments").updateOne(
       { _id: new ObjectId(tournamentId) },
       {
         $pull: {
-          registeredTeams: { _id: teamId } as any,
+          registeredTeams: { _id: sanitizedTeamId } as any,
         },
       }
     );
@@ -137,16 +148,18 @@ export async function POST(
       );
     }
 
+    revalidatePath(`/tournaments/${tournamentId}`);
+    revalidatePath("/tournaments");
+
     return NextResponse.json({
       success: true,
       message: "Team unregistered successfully" + (isSeeded ? ". Tournament seeding has been automatically removed." : ""),
       unseeded: isSeeded,
     });
-  } catch (error) {
-    console.error("Error unregistering team:", error);
-    return NextResponse.json(
-      { error: "Failed to unregister team" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postUnregisterHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

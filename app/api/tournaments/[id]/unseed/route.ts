@@ -4,43 +4,41 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// POST endpoint to remove seeding from a tournament bracket
-export async function POST(
+async function postUnseedTournamentHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check authentication and admin permission
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to perform this action" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to perform this action" },
+      { status: 401 }
+    );
+  }
 
-    // Check if user is admin
-    const client = await clientPromise;
-    const db = client.db();
+  const tournamentId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(tournamentId)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
 
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
+  const client = await clientPromise;
+  const db = client.db();
 
-    const { id } = params;
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
+  const user = await db.collection("Users").findOne({
+    discordId: sanitizeString(session.user.id, 50),
+  });
 
-    // Get tournament with teams
-    const tournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(id),
-    });
+  const tournament = await db.collection("Tournaments").findOne({
+    _id: new ObjectId(tournamentId),
+  });
 
     if (!tournament) {
       return NextResponse.json(
@@ -79,28 +77,28 @@ export async function POST(
       },
     ];
 
-    // Update tournament to remove seeding and clear teams array
-    // (teams array is only populated during seeding)
     await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(tournamentId) },
       {
         $set: {
           "brackets.rounds": emptyRounds,
-          teams: [], // Clear teams array since seeding is removed
+          teams: [],
           updatedAt: new Date(),
         },
       }
     );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${tournamentId}`);
+
     return NextResponse.json({
       success: true,
       message: "Tournament seeding has been removed",
     });
-  } catch (error) {
-    console.error("Error removing tournament seeding:", error);
-    return NextResponse.json(
-      { error: "Failed to remove tournament seeding" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postUnseedTournamentHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  revalidatePaths: ["/tournaments"],
+});

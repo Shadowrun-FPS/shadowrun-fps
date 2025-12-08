@@ -7,6 +7,9 @@ import { Session } from "next-auth";
 import { sendDirectMessage } from "@/lib/discord-bot";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { notifyQueueReady, getGuildId } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -109,23 +112,29 @@ async function createMatch(db: any, queue: any) {
   return match;
 }
 
-export async function POST(
+async function postJoinHandler(
   req: NextRequest,
   { params }: { params: { queueId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const queueId = sanitizeString(params.queueId, 50);
+  if (!ObjectId.isValid(queueId)) {
+    return NextResponse.json(
+      { error: "Invalid queue ID format" },
+      { status: 400 }
+    );
+  }
 
-    // Get queue and player info
-    const queue = await db.collection("Queues").findOne({
-      _id: new ObjectId(params.queueId),
-    });
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const queue = await db.collection("Queues").findOne({
+    _id: new ObjectId(queueId),
+  });
 
     if (!queue) {
       return NextResponse.json({ error: "Queue not found" }, { status: 404 });
@@ -201,11 +210,15 @@ export async function POST(
     };
 
     const result = await db.collection<Queue>("Queues").updateOne(
-      { _id: new ObjectId(params.queueId) },
+      { _id: new ObjectId(queueId) },
       {
         $push: {
-          players: newPlayer,
-        } as any, // Type assertion needed due to MongoDB types limitation
+          players: {
+            ...newPlayer,
+            discordUsername: sanitizeString(newPlayer.discordUsername, 100),
+            discordNickname: sanitizeString(newPlayer.discordNickname, 100),
+          },
+        } as any,
       }
     );
 
@@ -235,7 +248,7 @@ export async function POST(
       // Change streams will act as fallback if API fails (with duplicate prevention)
       try {
         const guildId = getGuildId();
-        await notifyQueueReady(updatedQueue.queueId || params.queueId, guildId);
+        await notifyQueueReady(updatedQueue.queueId || queueId, guildId);
       } catch (error) {
         // Don't throw - change stream will catch it as fallback with duplicate prevention
       }
@@ -256,12 +269,14 @@ export async function POST(
       }
     }
 
+    revalidatePath("/matches/queues");
+    revalidatePath("/admin/queues");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to join queue:", error);
-    return NextResponse.json(
-      { error: "Failed to join queue" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postJoinHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

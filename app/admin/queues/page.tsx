@@ -954,6 +954,7 @@ export default function AdminQueuesPage() {
                           alt={map.name}
                           fill
                           className="object-cover"
+                          loading="lazy"
                           unoptimized
                         />
                       </div>

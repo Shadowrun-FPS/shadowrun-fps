@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ interface CreateTeamFormProps {
 export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTeamFormProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -58,6 +60,7 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return; // Prevent duplicate submissions
     if (!session?.user) {
       toast({
         title: "Authentication Required",
@@ -128,13 +131,12 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
       setFormData({ name: "", description: "", tag: "", teamSize: 4 });
       setValidationErrors({ name: false, tag: false, description: false });
 
+      router.refresh();
+
       // Call onClose if provided (for Sheet context)
       if (onClose) {
         onClose();
       }
-
-      // Optionally refresh the teams list
-      window.location.reload();
 
       // Call the onSuccess callback if provided
       if (onSuccess) {

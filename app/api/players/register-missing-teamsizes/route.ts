@@ -2,28 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+async function postRegisterMissingTeamSizesHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to register" },
-        { status: 401 }
-      );
-    }
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be signed in to register" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const userId = sanitizeString(session.user.id, 50);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
 
-    // Check if player exists
-    const player = await db.collection("Players").findOne({
-      discordId: session.user.id,
-    });
+  const player = await db.collection("Players").findOne({
+    discordId: userId,
+  });
 
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
@@ -59,23 +60,24 @@ export async function POST(req: NextRequest) {
       losses: 0,
     }));
 
-    // Add new stats to the player's stats array
     await db
       .collection("Players")
-      .updateOne({ discordId: session.user.id }, {
+      .updateOne({ discordId: userId }, {
         $push: { stats: { $each: newStats } },
       } as any);
+
+    revalidatePath("/players");
+    revalidatePath(`/players/${userId}`);
 
     return NextResponse.json({
       success: true,
       message: "Successfully registered for missing team sizes",
       registeredSizes: missingTeamSizes,
     });
-  } catch (error) {
-    console.error("Error registering for missing team sizes:", error);
-    return NextResponse.json(
-      { error: "Failed to register for missing team sizes" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRegisterMissingTeamSizesHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/players"],
+});

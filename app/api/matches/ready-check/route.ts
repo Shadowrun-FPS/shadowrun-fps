@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
 import { sendDiscordWebhook } from "@/lib/discord";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface Player {
   discordId: string;
@@ -23,15 +26,35 @@ interface Match extends WithId<Document> {
   };
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const { matchId } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+async function postReadyCheckHandler(req: NextRequest) {
+  const body = await req.json();
+  const validation = validateBody(body, {
+    matchId: { type: "string", required: true, maxLength: 100 },
+  });
 
-    const match = await db.collection<Match>("Matches").findOne({
-      _id: new ObjectId(matchId),
-    });
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { matchId } = validation.data! as { matchId: string };
+  const sanitizedMatchId = sanitizeString(matchId, 100);
+
+  if (!ObjectId.isValid(sanitizedMatchId)) {
+    return NextResponse.json(
+      { error: "Invalid match ID" },
+      { status: 400 }
+    );
+  }
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const match = await db.collection<Match>("Matches").findOne({
+    _id: new ObjectId(sanitizedMatchId),
+  });
 
     if (!match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -41,26 +64,27 @@ export async function POST(req: NextRequest) {
       (p) => p.discordId
     );
 
-    // Start ready check
-    await db.collection("Matches").updateOne(
-      { _id: new ObjectId(matchId) },
-      {
-        $set: {
-          readyCheck: {
-            status: "pending",
-            readyPlayers: [],
-            startedAt: new Date(),
-          },
+  await db.collection("Matches").updateOne(
+    { _id: new ObjectId(sanitizedMatchId) },
+    {
+      $set: {
+        readyCheck: {
+          status: "pending",
+          readyPlayers: [],
+          startedAt: new Date(),
         },
-      }
-    );
+      },
+    }
+  );
 
-    return NextResponse.json({ success: true, players: allPlayers });
-  } catch (error) {
-    console.error("Failed to start ready check:", error);
-    return NextResponse.json(
-      { error: "Failed to start ready check" },
-      { status: 500 }
-    );
-  }
+  revalidatePath("/matches");
+  revalidatePath(`/matches/${sanitizedMatchId}`);
+
+  return NextResponse.json({ success: true, players: allPlayers });
 }
+
+export const POST = withApiSecurity(postReadyCheckHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches"],
+});

@@ -4,40 +4,56 @@ import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
 import { isAdmin } from "@/lib/admin";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
-  try {
-    // Move all top-level await inside this function
-    const session = await getServerSession(authOptions);
+async function postCreateMatchHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to create a match" },
-        { status: 401 }
-      );
-    }
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be signed in to create a match" },
+      { status: 401 }
+    );
+  }
 
-    // Check if user has admin permissions
-    if (!isAdmin(session.user.id)) {
-      return NextResponse.json(
-        { error: "You don't have permission to create matches" },
-        { status: 403 }
-      );
-    }
+  if (!isAdmin(session.user.id)) {
+    return NextResponse.json(
+      { error: "You don't have permission to create matches" },
+      { status: 403 }
+    );
+  }
 
-    // Parse the request body
-    const data = await req.json();
+  const body = await req.json();
+  const validation = validateBody(body, {
+    team1: { type: "array", required: true },
+    team2: { type: "array", required: true },
+    maps: { type: "array", required: true },
+    teamSize: { type: "number", required: false, min: 2, max: 5 },
+    eloTier: { type: "string", required: false, maxLength: 50 },
+    type: { type: "string", required: false, maxLength: 50 },
+    firstPick: { type: "number", required: false, min: 1, max: 2 },
+  });
 
-    // Validate required fields
-    if (!data.team1 || !data.team2 || !data.maps) {
-      return NextResponse.json(
-        { error: "Missing required fields: team1, team2, maps" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const data = validation.data! as {
+    team1: any[];
+    team2: any[];
+    maps: any[];
+    teamSize?: number;
+    eloTier?: string;
+    type?: string;
+    firstPick?: number;
+  };
 
     // Validate team sizes
     const team1Size = data.team1.length;
@@ -97,15 +113,15 @@ export async function POST(req: NextRequest) {
         discordNickname: session.user.nickname || session.user.name || "",
       },
       maps: data.maps.map((map: any) => ({
-        mapName: map.mapName || map.name,
-        gameMode: map.gameMode || "Attrition",
+        mapName: sanitizeString(map.mapName || map.name || "", 100),
+        gameMode: sanitizeString(map.gameMode || "Attrition", 50),
         selected: false,
       })),
       team1: data.team1.map((player: any) => ({
-        discordId: player.discordId,
-        discordUsername: player.discordUsername,
-        discordNickname: player.discordNickname || player.discordUsername,
-        discordProfilePicture: player.discordProfilePicture,
+        discordId: sanitizeString(player.discordId || "", 50),
+        discordUsername: sanitizeString(player.discordUsername || "", 100),
+        discordNickname: sanitizeString(player.discordNickname || player.discordUsername || "", 100),
+        discordProfilePicture: player.discordProfilePicture || null,
         initialElo: player.elo || 1500,
         elo: player.elo || 1500,
         eloChange: 0,
@@ -113,10 +129,10 @@ export async function POST(req: NextRequest) {
         isReady: false,
       })),
       team2: data.team2.map((player: any) => ({
-        discordId: player.discordId,
-        discordUsername: player.discordUsername,
-        discordNickname: player.discordNickname || player.discordUsername,
-        discordProfilePicture: player.discordProfilePicture,
+        discordId: sanitizeString(player.discordId || "", 50),
+        discordUsername: sanitizeString(player.discordUsername || "", 100),
+        discordNickname: sanitizeString(player.discordNickname || player.discordUsername || "", 100),
+        discordProfilePicture: player.discordProfilePicture || null,
         initialElo: player.elo || 1500,
         elo: player.elo || 1500,
         eloChange: 0,
@@ -126,19 +142,21 @@ export async function POST(req: NextRequest) {
       eloDifference: 0, // This will be calculated later
     };
 
-    // Insert the match into the database
     await db.collection("Matches").insertOne(match);
+
+    revalidatePath("/matches");
+    revalidatePath(`/matches/${matchId}`);
 
     return NextResponse.json({
       success: true,
       message: "Match created successfully",
       matchId,
     });
-  } catch (error) {
-    console.error("Error creating match:", error);
-    return NextResponse.json(
-      { error: "Failed to create match" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postCreateMatchHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/matches"],
+});

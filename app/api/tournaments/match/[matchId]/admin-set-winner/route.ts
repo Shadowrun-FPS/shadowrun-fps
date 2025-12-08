@@ -4,35 +4,40 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postAdminSetWinnerHandler(
   request: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    // Validate admin permissions
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Check if user is an admin
-    if (
-      !session.user.isAdmin &&
-      session.user.id !== SECURITY_CONFIG.DEVELOPER_ID
-    ) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+  if (
+    !session.user.isAdmin &&
+    session.user.id !== SECURITY_CONFIG.DEVELOPER_ID
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-    const { matchId } = params;
-    const { winningTeam } = await request.json();
+  const matchId = sanitizeString(params.matchId, 100);
+  const body = await request.json();
+  const validation = validateBody(body, {
+    winningTeam: { type: "number", required: true, min: 1, max: 2 },
+  });
 
-    if (typeof winningTeam !== "number" || ![1, 2].includes(winningTeam)) {
-      return NextResponse.json(
-        { error: "Invalid winner. Must be 1 (Team A) or 2 (Team B)" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid winner. Must be 1 (Team A) or 2 (Team B)" },
+      { status: 400 }
+    );
+  }
+
+  const { winningTeam } = validation.data! as { winningTeam: number };
 
     const { db } = await connectToDatabase();
 
@@ -205,7 +210,10 @@ export async function POST(
       );
 
       if (!fullTeamData) {
-        console.error("Could not find full team data for advancing team");
+        safeLog.error("Could not find full team data for advancing team", {
+          matchId,
+          winningTeamData,
+        });
         return NextResponse.json(
           { error: "Team data not found" },
           { status: 500 }
@@ -221,13 +229,14 @@ export async function POST(
 
         if (losingTeamFullData) {
           // Create losers rounds if they don't exist
-          if (
-            !updatedTournament.brackets.losersRounds ||
-            updatedTournament.brackets.losersRounds.length === 0
-          ) {
-            console.log(
-              "Creating losers bracket rounds for double elimination tournament"
-            );
+            if (
+              !updatedTournament.brackets.losersRounds ||
+              updatedTournament.brackets.losersRounds.length === 0
+            ) {
+              safeLog.log(
+                "Creating losers bracket rounds for double elimination tournament",
+                { tournamentId: tournament._id.toString() }
+              );
 
             // Calculate base round count (winners bracket rounds before Grand Finals)
             // Total rounds includes Grand Finals and Decisive Match, so subtract 2
@@ -461,8 +470,12 @@ export async function POST(
                 },
               }
             );
-            console.log(
-              `Losers bracket champion ${fullTeamData.name} advanced to Grand Finals (WR4)`
+            safeLog.log(
+              "Losers bracket champion advanced to Grand Finals",
+              {
+                tournamentId: tournament._id.toString(),
+                teamName: fullTeamData.name,
+              }
             );
           }
         }
@@ -492,8 +505,12 @@ export async function POST(
                 },
               }
             );
-            console.log(
-              `Winners bracket champion ${fullTeamData.name} advanced to Grand Finals (WR4)`
+            safeLog.log(
+              "Winners bracket champion advanced to Grand Finals",
+              {
+                tournamentId: tournament._id.toString(),
+                teamName: fullTeamData.name,
+              }
             );
           }
         }
@@ -510,8 +527,13 @@ export async function POST(
 
         // If all matches in this round are completed, create matches for the next round
         if (allMatchesCompleted && bracketRounds && bracketRounds[nextRound]) {
-          console.log(
-            `All matches in Round ${roundNum} are completed. Creating next round matches.`
+          safeLog.log(
+            "All matches in round completed, creating next round matches",
+            {
+              tournamentId: tournament._id.toString(),
+              roundNum,
+              nextRound,
+            }
           );
 
           // Get all matches in the next round from the bracket (use correct bracket)
@@ -555,7 +577,9 @@ export async function POST(
             .findOne({ _id: tournament._id });
 
           if (!latestTournament) {
-            console.error("Could not find latest tournament data");
+            safeLog.error("Could not find latest tournament data", {
+              tournamentId: tournament._id.toString(),
+            });
             return NextResponse.json(
               { error: "Tournament data not found" },
               { status: 500 }
@@ -678,9 +702,12 @@ export async function POST(
                 : losersBracketChampion;
 
             if (grandFinalsMatch.winner === "teamA") {
-              // Winners bracket champion won Grand Finals → Tournament complete
-              console.log(
-                `Winners bracket champion ${winnersBracketChampion?.name} won Grand Finals - Tournament complete!`
+              safeLog.log(
+                "Winners bracket champion won Grand Finals - Tournament complete",
+                {
+                  tournamentId: tournament._id.toString(),
+                  winnerName: winnersBracketChampion?.name,
+                }
               );
 
               // Calculate team standings and complete tournament
@@ -734,9 +761,12 @@ export async function POST(
                 );
               }
             } else {
-              // Losers bracket champion won Grand Finals → Create Decisive Match
-              console.log(
-                `Losers bracket champion ${losersBracketChampion?.name} won Grand Finals - Decisive Match needed!`
+              safeLog.log(
+                "Losers bracket champion won Grand Finals - Decisive Match needed",
+                {
+                  tournamentId: tournament._id.toString(),
+                  winnerName: losersBracketChampion?.name,
+                }
               );
 
               // Create Decisive Match with both teams
@@ -827,7 +857,9 @@ export async function POST(
                   }
                 );
 
-                console.log("Decisive Match (WR5) created");
+                safeLog.log("Decisive Match (WR5) created", {
+                  tournamentId: tournament._id.toString(),
+                });
               }
             }
           }
@@ -870,8 +902,12 @@ export async function POST(
                 ? decisiveMatch.teamA
                 : decisiveMatch.teamB;
 
-            console.log(
-              `Decisive Match winner ${tournamentWinner?.name} is the Tournament Champion!`
+            safeLog.log(
+              "Decisive Match winner is Tournament Champion",
+              {
+                tournamentId: tournament._id.toString(),
+                winnerName: tournamentWinner?.name,
+              }
             );
 
             // Calculate team standings and complete tournament
@@ -935,8 +971,12 @@ export async function POST(
       const isFinalRound = nextRound >= tournament.brackets.rounds.length;
 
       if (isFinalRound || roundNum === tournament.brackets.rounds.length - 1) {
-        console.log(
-          "This appears to be the final round match. Checking for tournament completion..."
+        safeLog.log(
+          "Final round match detected, checking for tournament completion",
+          {
+            tournamentId: tournament._id.toString(),
+            roundNum,
+          }
         );
 
         // Get the full tournament to check all matches
@@ -945,7 +985,9 @@ export async function POST(
           .findOne({ _id: tournament._id });
 
         if (!fullTournament) {
-          console.error("Could not find tournament data for completion check");
+          safeLog.error("Could not find tournament data for completion check", {
+            tournamentId: tournament._id.toString(),
+          });
           return NextResponse.json(
             { error: "Tournament data not found" },
             { status: 500 }
@@ -963,8 +1005,11 @@ export async function POST(
         ].matches.every((m: any) => m.status === "completed");
 
         if (allMatchesCompleted && finalRoundComplete) {
-          console.log(
-            "All tournament matches completed. Finalizing tournament..."
+          safeLog.log(
+            "All tournament matches completed, finalizing tournament",
+            {
+              tournamentId: tournament._id.toString(),
+            }
           );
 
           // Get the winning team from the final match
@@ -973,7 +1018,9 @@ export async function POST(
           );
 
           if (!finalMatch) {
-            console.error("Could not find final match");
+            safeLog.error("Could not find final match", {
+              tournamentId: tournament._id.toString(),
+            });
             return NextResponse.json(
               { error: "Final match data not found" },
               { status: 500 }
@@ -1015,10 +1062,10 @@ export async function POST(
           // Convert Map to array for MongoDB
           const teamStandings = Array.from(teamRecords.values());
 
-          console.log(
-            "Generated team standings:",
-            JSON.stringify(teamStandings, null, 2)
-          );
+          safeLog.log("Generated team standings", {
+            tournamentId: tournament._id.toString(),
+            teamCount: teamStandings.length,
+          });
 
           // Update tournament status to completed and set winner
           await db.collection("Tournaments").updateOne(
@@ -1033,9 +1080,10 @@ export async function POST(
             }
           );
 
-          console.log(
-            `Tournament completed with ${tournamentWinner.name} as winner`
-          );
+          safeLog.log("Tournament completed", {
+            tournamentId: tournament._id.toString(),
+            winnerName: tournamentWinner.name,
+          });
 
           // Get the finalists (top 2 teams)
           const finalists = [tournamentWinner];
@@ -1122,26 +1170,29 @@ export async function POST(
               );
             }
 
-            console.log(
-              `Updated team ${team.name} with ${placement}${
-                placement === 1 ? "st" : placement === 2 ? "nd" : "rd"
-              } place finish`
-            );
+            safeLog.log("Updated team with tournament placement", {
+              teamId: team._id.toString(),
+              teamName: team.name,
+              placement,
+            });
           }
         }
       }
     }
+
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/match/${matchId}`);
 
     return NextResponse.json({
       success: true,
       message: "Match winner set successfully",
       winningTeam: winningTeam === 1 ? match.teamA?.name : match.teamB?.name,
     });
-  } catch (error) {
-    console.error("Error setting match winner:", error);
-    return NextResponse.json(
-      { error: "Failed to set match winner" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postAdminSetWinnerHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});

@@ -3,14 +3,22 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { ObjectId } from "mongodb";
 import { getAllTeamCollectionNames } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getTeamByTagHandler(
   req: NextRequest,
   { params }: { params: { tag: string } }
 ) {
-  try {
-    const { db } = await connectToDatabase();
-    const tag = params.tag;
+  const tag = sanitizeString(params.tag, 10);
+  if (!tag) {
+    return NextResponse.json(
+      { error: "Team tag is required" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Find the team by tag - search across all collections
     const allCollections = getAllTeamCollectionNames();
@@ -32,8 +40,7 @@ export async function GET(
         // Update team object with fresh ELO
         team.teamElo = updatedElo;
       } catch (error) {
-        // Silently fail - don't block team data if ELO calculation fails
-        console.error("Failed to auto-calculate team ELO:", error);
+        safeLog.error("Failed to auto-calculate team ELO:", error);
       }
     }
 
@@ -43,12 +50,16 @@ export async function GET(
       _id: team._id.toString(),
     };
 
-    return NextResponse.json(teamWithStringId);
-  } catch (error) {
-    console.error("Error fetching team by tag:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch team" },
-      { status: 500 }
+    const response = NextResponse.json(teamWithStringId);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=1800"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getTeamByTagHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 300,
+});

@@ -4,40 +4,37 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// POST endpoint to clear all teams from a tournament (testing only)
-export async function POST(
+async function postClearTournamentHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    console.log("Clear route hit with ID:", params.id);
+  const session = await getServerSession(authOptions);
 
-    const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to perform this action" },
+      { status: 401 }
+    );
+  }
 
-    // Check authentication and admin permission
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to perform this action" },
-        { status: 401 }
-      );
-    }
+  const id = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
 
-    // Check if user is admin
-    const client = await clientPromise;
-    const db = client.db();
+  const client = await clientPromise;
+  const db = client.db();
 
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
-
-    const { id } = params;
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
+  const user = await db.collection("Users").findOne({
+    discordId: session.user.id,
+  });
 
     // Add tournament fetch to clear endpoint
     const tournament = await db.collection("Tournaments").findOne({
@@ -83,15 +80,18 @@ export async function POST(
       }
     );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${id}`);
+
     return NextResponse.json({
       success: true,
       message: "All teams removed from tournament",
     });
-  } catch (error) {
-    console.error("Error clearing tournament teams:", error);
-    return NextResponse.json(
-      { error: "Failed to clear tournament teams" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postClearTournamentHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});

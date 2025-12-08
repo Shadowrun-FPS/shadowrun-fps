@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -21,6 +22,7 @@ export function TransferCaptainForm({
   teamId,
   members = [],
 }: TransferCaptainFormProps) {
+  const router = useRouter();
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -48,27 +50,15 @@ export function TransferCaptainForm({
 
   // Now we can safely use eligibleMembers in the useEffect
   useEffect(() => {
-    // Debug the members array to see what data we're getting
-    console.log("Transfer Captain Form - Received members:", members);
-    console.log("Eligible members:", eligibleMembers);
-
-    // Log each member for debugging
-    if (Array.isArray(members)) {
-      members.forEach((m, i) => {
-        if (m) {
-          console.log("Member check:", {
-            index: i,
-            id: m.discordId,
-            role: m.role,
-            isEligible:
-              m?.discordId && m?.role !== "captain" && m?.role !== "Captain",
-          });
-        }
-      });
+    // Debug logging only in development
+    if (process.env.NODE_ENV === "development") {
+      console.log("Transfer Captain Form - Received members:", members);
+      console.log("Eligible members:", eligibleMembers);
     }
   }, [eligibleMembers, members]);
 
   const handleTransfer = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     if (!selectedMemberId) {
       toast({
         title: "No member selected",
@@ -80,8 +70,6 @@ export function TransferCaptainForm({
 
     setIsLoading(true);
     try {
-      console.log("Transferring captain to:", selectedMemberId);
-
       const response = await fetch(`/api/teams/${teamId}/transfer-captain`, {
         method: "POST",
         headers: {
@@ -100,10 +88,11 @@ export function TransferCaptainForm({
         description: "You have successfully transferred the captain role.",
       });
 
-      // Refresh the page to reflect changes
-      window.location.reload();
+      router.refresh();
     } catch (error: any) {
-      console.error("Error transferring captain:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error transferring captain:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to transfer captain role.",

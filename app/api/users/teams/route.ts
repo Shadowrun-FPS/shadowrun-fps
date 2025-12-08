@@ -3,27 +3,28 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { getAllTeamCollectionNames } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 // Add this line to mark route as dynamic
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+async function getUserTeamsHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to view your teams" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to view your teams" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
+  const userId = sanitizeString(session.user.id, 50);
+  const client = await clientPromise;
+  const db = client.db();
 
-    // Check if we should return all teams (captain + member) or just captain teams
-    const { searchParams } = new URL(request.url);
-    const includeAll = searchParams.get("all") === "true";
+  const { searchParams } = new URL(request.url);
+  const includeAll = searchParams.get("all") === "true";
 
     const allCollections = getAllTeamCollectionNames();
     const captainTeams: any[] = [];
@@ -35,10 +36,10 @@ export async function GET(request: NextRequest) {
         allCollections.map(async (collectionName) => {
           const [captain, member] = await Promise.all([
             db.collection(collectionName).find({
-              "captain.discordId": session.user.id,
+              "captain.discordId": userId,
             }).toArray(),
             db.collection(collectionName).find({
-              "members.discordId": session.user.id,
+              "members.discordId": userId,
             }).toArray(),
           ]);
           captainTeams.push(...captain);
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
         const teams = await db
           .collection(collectionName)
           .find({
-            "captain.discordId": session.user.id,
+            "captain.discordId": userId,
           })
           .toArray();
         captainTeams.push(...teams);
@@ -83,14 +84,17 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       teams: formattedCaptainTeams,
     });
-  } catch (error) {
-    console.error("Error fetching user teams:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch teams" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getUserTeamsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

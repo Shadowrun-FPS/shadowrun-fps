@@ -2,19 +2,47 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { calculateElo } from "@/lib/elo";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function PUT(
+async function putUpdateMatchHandler(
   req: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const { status, scores, playerStats } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const matchId = sanitizeString(params.matchId, 100);
+  if (!ObjectId.isValid(matchId)) {
+    return NextResponse.json(
+      { error: "Invalid match ID" },
+      { status: 400 }
+    );
+  }
 
-    // Update match status and scores
-    const result = await db.collection("Matches").findOneAndUpdate(
-      { _id: new ObjectId(params.matchId) },
+  const body = await req.json();
+  const validation = validateBody(body, {
+    status: { type: "string", required: true, maxLength: 50 },
+    scores: { type: "object", required: false },
+    playerStats: { type: "object", required: false },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { status, scores, playerStats } = validation.data! as {
+    status: string;
+    scores?: any;
+    playerStats?: any;
+  };
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const result = await db.collection("Matches").findOneAndUpdate(
+    { _id: new ObjectId(matchId) },
       {
         $set: {
           status,
@@ -84,12 +112,14 @@ export async function PUT(
       }
     }
 
+    revalidatePath("/matches");
+    revalidatePath(`/matches/${matchId}`);
+
     return NextResponse.json(match);
-  } catch (error) {
-    console.error("Failed to update match:", error);
-    return NextResponse.json(
-      { error: "Failed to update match" },
-      { status: 500 }
-    );
-  }
 }
+
+export const PUT = withApiSecurity(putUpdateMatchHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches"],
+});

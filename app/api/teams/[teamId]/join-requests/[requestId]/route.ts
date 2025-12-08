@@ -6,21 +6,30 @@ import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// Get the status of a join request
-export async function GET(
+async function getJoinRequestStatusHandler(
   req: NextRequest,
   { params }: { params: { teamId: string; requestId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
-    const requestId = params.requestId;
+  const teamId = sanitizeString(params.teamId, 50);
+  const requestId = sanitizeString(params.requestId, 50);
+
+  if (!ObjectId.isValid(teamId) || !ObjectId.isValid(requestId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID or request ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Get the join request
     const joinRequest = await db.collection("TeamJoinRequests").findOne({
@@ -35,40 +44,58 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       status: joinRequest.status || "pending",
     });
-  } catch (error) {
-    console.error("Error getting join request status:", error);
-    return NextResponse.json(
-      { error: "Failed to get join request status" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
 
-// Handle accepting/rejecting join requests
-export async function POST(
+export const GET = withApiSecurity(getJoinRequestStatusHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});
+
+async function postJoinRequestActionHandler(
   req: NextRequest,
   { params }: { params: { teamId: string; requestId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { action } = await req.json();
-    if (!action || !["accept", "reject"].includes(action)) {
-      return NextResponse.json(
-        { error: "Invalid action. Must be 'accept' or 'reject'" },
-        { status: 400 }
-      );
-    }
+  const teamId = sanitizeString(params.teamId, 50);
+  const requestId = sanitizeString(params.requestId, 50);
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
-    const requestId = params.requestId;
+  if (!ObjectId.isValid(teamId) || !ObjectId.isValid(requestId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID or request ID" },
+      { status: 400 }
+    );
+  }
+
+  const body = await req.json();
+  const validation = validateBody(body, {
+    action: {
+      type: "string",
+      required: true,
+      pattern: /^(accept|reject)$/,
+    },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid action. Must be 'accept' or 'reject'" },
+      { status: 400 }
+    );
+  }
+
+  const { action } = validation.data! as { action: string };
+  const { db } = await connectToDatabase();
 
     // Verify user is team captain - search across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -200,12 +227,11 @@ export async function POST(
         }
       );
 
-      // Create the new member object
       const newMember = {
-        discordId: joinRequest.userId,
-        discordNickname: joinRequest.userNickname || joinRequest.userName,
-        discordUsername: joinRequest.userName,
-        discordProfilePicture: joinRequest.userAvatar || "",
+        discordId: sanitizeString(joinRequest.userId, 50),
+        discordNickname: sanitizeString(joinRequest.userNickname || joinRequest.userName || "", 100),
+        discordUsername: sanitizeString(joinRequest.userName || "", 100),
+        discordProfilePicture: sanitizeString(joinRequest.userAvatar || "", 255),
         role: "member",
         joinedAt: new Date(),
       };
@@ -218,22 +244,26 @@ export async function POST(
           { $push: { members: newMember } as any }
         );
 
-      // Create notification for the user
       await db.collection("Notifications").insertOne({
-        userId: joinRequest.userId,
+        userId: sanitizeString(joinRequest.userId, 50),
         type: "team_join_accepted",
         title: "Team Join Request Accepted",
-        message: `Your request to join team "${team.name}" has been accepted`,
+        message: sanitizeString(
+          `Your request to join team "${team.name}" has been accepted`,
+          500
+        ),
         read: false,
         createdAt: new Date(),
         metadata: {
-          teamId: teamId,
-          teamName: team.name,
+          teamId,
+          teamName: sanitizeString(team.name || "", 100),
         },
       });
 
-      // Recalculate the team's ELO
       const updatedElo = await recalculateTeamElo(teamId);
+
+      revalidatePath("/teams");
+      revalidatePath(`/teams/${teamId}`);
 
       return NextResponse.json({
         success: true,
@@ -242,19 +272,24 @@ export async function POST(
         teamElo: updatedElo,
       });
     } else {
-      // Create notification for the rejected user
       await db.collection("Notifications").insertOne({
-        userId: joinRequest.userId,
+        userId: sanitizeString(joinRequest.userId, 50),
         type: "team_join_rejected",
         title: "Team Join Request Rejected",
-        message: `Your request to join team "${team.name}" has been rejected`,
+        message: sanitizeString(
+          `Your request to join team "${team.name}" has been rejected`,
+          500
+        ),
         read: false,
         createdAt: new Date(),
         metadata: {
-          teamId: teamId,
-          teamName: team.name,
+          teamId,
+          teamName: sanitizeString(team.name || "", 100),
         },
       });
+
+      revalidatePath("/teams");
+      revalidatePath(`/teams/${teamId}`);
 
       return NextResponse.json({
         success: true,
@@ -262,11 +297,10 @@ export async function POST(
         message: "Join request rejected",
       });
     }
-  } catch (error) {
-    console.error(`Error ${req.method} join request:`, error);
-    return NextResponse.json(
-      { error: "Failed to process join request" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postJoinRequestActionHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

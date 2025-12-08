@@ -4,6 +4,9 @@ import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { emitMatchUpdate } from "@/lib/socket";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -118,7 +121,7 @@ async function reinsertWinnersIntoQueue(
       }
     });
 
-    console.log(
+    safeLog.log(
       "Current ELO values for winners:",
       Array.from(playerEloMap.entries()).reduce<Record<string, number>>(
         (obj, [key, value]) => {
@@ -152,11 +155,11 @@ async function reinsertWinnersIntoQueue(
         { $push: { players: { $each: playersToAdd } } }
       );
 
-    console.log(
+    safeLog.log(
       `${playersToAdd.length} winners reinserted into queue ${match.queueId}`
     );
   } catch (error) {
-    console.error("Error reinserting winners:", error);
+    safeLog.error("Error reinserting winners:", error);
   }
 }
 
@@ -217,8 +220,7 @@ function calculateImprovedElo(
     kFactor * (actualOutcome - expectedOutcome) * performanceFactor
   );
 
-  // Add logging to understand the calculation
-  console.log(`ELO Change Calculation for player with ${playerElo} ELO:`, {
+  safeLog.log(`ELO Change Calculation for player with ${playerElo} ELO:`, {
     opposingTeamAvgElo,
     expectedOutcome: expectedOutcome.toFixed(4),
     actualOutcome,
@@ -231,18 +233,33 @@ function calculateImprovedElo(
   return eloChange;
 }
 
-export async function POST(
+async function postScoreMatchHandler(
   req: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const data = (await req.json()) as ScoreSubmission;
-    const { mapIndex, team1Score, team2Score, submittingTeam } = data;
+  const matchId = sanitizeString(params.matchId, 100);
+
+  const body = await req.json();
+  const validation = validateBody(body, {
+    mapIndex: { type: "number", required: true, min: 0, max: 10 },
+    team1Score: { type: "number", required: true, min: 0, max: 6 },
+    team2Score: { type: "number", required: true, min: 0, max: 6 },
+    submittingTeam: { type: "number", required: true, min: 1, max: 2 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { mapIndex, team1Score, team2Score, submittingTeam } = validation.data! as ScoreSubmission;
 
     // Validate scores before processing
     const scoreError = validateRoundScores(team1Score, team2Score);
@@ -253,9 +270,8 @@ export async function POST(
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
-    // Find the match
     const match = await db.collection("Matches").findOne({
-      matchId: params.matchId,
+      matchId,
     });
 
     if (!match) {
@@ -436,9 +452,8 @@ export async function POST(
           };
         });
 
-        // Update match document with final scores, winner, and ELO changes
         await db.collection("Matches").updateOne(
-          { matchId: params.matchId },
+          { matchId },
           {
             $set: {
               mapScores,
@@ -478,7 +493,7 @@ export async function POST(
               .findOne({ discordId: player.discordId });
 
             if (!playerDoc || !playerDoc.stats) {
-              console.error(
+              safeLog.error(
                 `Player ${player.discordId} not found or has no stats array`
               );
               return null;
@@ -491,10 +506,10 @@ export async function POST(
             );
 
             if (statsIndex === -1) {
-              console.error(
+              safeLog.error(
                 `Could not find stats object with teamSize ${match.teamSize} for player ${player.discordId}`
               );
-              console.log("Available stats:", playerDoc.stats);
+              safeLog.log("Available stats:", playerDoc.stats);
               return null;
             }
 
@@ -517,13 +532,12 @@ export async function POST(
         // Handle Winners Stay
         await reinsertWinnersIntoQueue(db, match, matchWinner);
       } catch (error) {
-        console.error("Error completing match:", error);
+        safeLog.error("Error completing match:", error);
         throw error;
       }
     } else {
-      // Just update map scores if match isn't complete
       const result = await db.collection("Matches").updateOne(
-        { matchId: params.matchId },
+        { matchId },
         {
           $set: {
             mapScores,
@@ -533,9 +547,8 @@ export async function POST(
       );
     }
 
-    // Get updated match data
     const updatedMatch = await db.collection("Matches").findOne({
-      matchId: params.matchId,
+      matchId,
     });
 
     // Emit match update event with specific status
@@ -552,15 +565,17 @@ export async function POST(
       };
 
       emitMatchUpdate(eventData);
-      console.log("Emitted match update:", eventData);
+      safeLog.log("Emitted match update:", eventData);
     }
 
+    revalidatePath("/matches");
+    revalidatePath(`/matches/${matchId}`);
+
     return NextResponse.json({ success: true, match: updatedMatch });
-  } catch (error) {
-    console.error("Error submitting score:", error);
-    return NextResponse.json(
-      { error: "Failed to submit score" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postScoreMatchHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches"],
+});

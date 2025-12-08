@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, rateLimiters, getClientIdentifier, sanitizeString } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 // Add this line to mark route as dynamic
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const teamSize = Number(searchParams.get("teamSize") || "4");
-    const page = Number(searchParams.get("page") || "1");
-    const limit = Number(searchParams.get("limit") || "10");
-    const search = searchParams.get("search") || "";
-    const sortField = searchParams.get("sortField") || "elo";
-    const sortDirection = searchParams.get("sortDirection") || "desc";
-    const skip = (page - 1) * limit;
+async function getLeaderboardHandler(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const teamSize = Math.max(2, Math.min(5, Number(sanitizeString(searchParams.get("teamSize") || "4", 10)) || 4));
+  const page = Math.max(1, Number(sanitizeString(searchParams.get("page") || "1", 10)) || 1);
+  const limit = Math.min(100, Math.max(1, Number(sanitizeString(searchParams.get("limit") || "10", 10)) || 10));
+  const search = sanitizeString(searchParams.get("search") || "", 100);
+  const sortField = sanitizeString(searchParams.get("sortField") || "elo", 50);
+  const sortDirection = sanitizeString(searchParams.get("sortDirection") || "desc", 10);
+  const skip = (page - 1) * limit;
 
     // Calculate date 3 months ago for activity filtering
     const threeMonthsAgo = new Date();
@@ -371,11 +373,10 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-  } catch (error) {
-    console.error("Error fetching leaderboard:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch leaderboard data" },
-      { status: 500 }
-    );
-  }
 }
+
+export const GET = withApiSecurity(getLeaderboardHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 120,
+});

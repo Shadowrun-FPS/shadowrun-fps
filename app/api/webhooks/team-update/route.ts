@@ -2,22 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(req: NextRequest) {
-  try {
-    const { db } = await connectToDatabase();
-    const { teamId, action } = await req.json();
+async function postTeamUpdateHandler(req: NextRequest) {
+  const { db } = await connectToDatabase();
+  const body = await req.json();
+  const validation = validateBody(body, {
+    teamId: { type: "string", required: true, maxLength: 50 },
+    action: { type: "string", required: true, maxLength: 50 },
+  });
 
-    // Validate ObjectId
-    if (!ObjectId.isValid(teamId)) {
-      return NextResponse.json(
-        { error: "Invalid team ID format" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    // Find the team - search across all collections
-    const teamResult = await findTeamAcrossCollections(db, teamId);
+  const { teamId, action } = validation.data! as {
+    teamId: string;
+    action: string;
+  };
+
+  const sanitizedTeamId = sanitizeString(teamId, 50);
+  if (!ObjectId.isValid(sanitizedTeamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
+
+    const teamResult = await findTeamAcrossCollections(db, sanitizedTeamId);
     if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
@@ -56,7 +73,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Update each member's ELO in the team document
     const updatedMembers = team.members.map((member: any) => {
       const currentElo = playerEloMap.get(member.discordId);
       if (currentElo) {
@@ -68,17 +84,19 @@ export async function POST(req: NextRequest) {
       return member;
     });
 
-    // Calculate the total team ELO
     const totalElo = updatedMembers.reduce((sum: number, member: any) => {
       return sum + (member.elo || 0);
     }, 0);
 
-    console.log(`Member ELOs:`, memberElos);
-    console.log(`Total team ELO: ${totalElo}`);
+    safeLog.log("Team ELO updated", {
+      teamId: sanitizedTeamId,
+      action: sanitizeString(action, 50),
+      totalElo,
+      memberCount: memberElos.length,
+    });
 
-    // Update the team document with updated members and team ELO
     await db.collection(collectionName).updateOne(
-      { _id: new ObjectId(teamId) },
+      { _id: new ObjectId(sanitizedTeamId) },
       {
         $set: {
           members: updatedMembers,
@@ -87,16 +105,17 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${sanitizedTeamId}`);
+
     return NextResponse.json({
       success: true,
       teamElo: totalElo,
-      message: `Team ELO updated successfully after ${action}`,
+      message: `Team ELO updated successfully after ${sanitizeString(action, 50)}`,
     });
-  } catch (error) {
-    console.error("Error updating team ELO:", error);
-    return NextResponse.json(
-      { error: "Failed to update team ELO" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTeamUpdateHandler, {
+  rateLimiter: "api",
+  revalidatePaths: ["/teams"],
+});

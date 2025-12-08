@@ -2,19 +2,47 @@ import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { updatePlayerStats } from "@/lib/match-helpers";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postConfirmMatchHandler(
   req: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const { confirmerId, confirm } = await req.json();
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const matchId = sanitizeString(params.matchId, 100);
+  if (!ObjectId.isValid(matchId)) {
+    return NextResponse.json(
+      { error: "Invalid match ID" },
+      { status: 400 }
+    );
+  }
 
-    const match = await db.collection("Matches").findOne({
-      _id: new ObjectId(params.matchId),
-    });
+  const body = await req.json();
+  const validation = validateBody(body, {
+    confirmerId: { type: "string", required: true, maxLength: 50 },
+    confirm: { type: "boolean", required: true },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { confirmerId, confirm } = validation.data! as {
+    confirmerId: string;
+    confirm: boolean;
+  };
+
+  const sanitizedConfirmerId = sanitizeString(confirmerId, 50);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const match = await db.collection("Matches").findOne({
+    _id: new ObjectId(matchId),
+  });
 
     if (!match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -24,48 +52,47 @@ export async function POST(
     const isTeam1 = match.team1Players.includes(match.submittedBy);
     const opposingTeam = isTeam1 ? match.team2Players : match.team1Players;
 
-    if (!opposingTeam.includes(confirmerId)) {
-      return NextResponse.json(
-        { error: "Only opposing team members can confirm results" },
-        { status: 403 }
-      );
-    }
-
-    if (confirm) {
-      // Update match status and process results
-      await db.collection("Matches").updateOne(
-        { _id: new ObjectId(params.matchId) },
-        {
-          $set: {
-            status: "confirmed",
-            confirmedBy: confirmerId,
-            confirmedAt: new Date(),
-          },
-        }
-      );
-
-      // Update player stats and ELO - cast match to correct type
-      await updatePlayerStats(db, match as any); // Using any here since we know the structure matches
-    } else {
-      // Mark match as disputed
-      await db.collection("Matches").updateOne(
-        { _id: new ObjectId(params.matchId) },
-        {
-          $set: {
-            status: "disputed",
-            disputedBy: confirmerId,
-            disputedAt: new Date(),
-          },
-        }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to confirm match:", error);
+  if (!opposingTeam.includes(sanitizedConfirmerId)) {
     return NextResponse.json(
-      { error: "Failed to confirm match" },
-      { status: 500 }
+      { error: "Only opposing team members can confirm results" },
+      { status: 403 }
     );
   }
+
+  if (confirm) {
+    await db.collection("Matches").updateOne(
+      { _id: new ObjectId(matchId) },
+      {
+        $set: {
+          status: "confirmed",
+          confirmedBy: sanitizedConfirmerId,
+          confirmedAt: new Date(),
+        },
+      }
+    );
+
+    await updatePlayerStats(db, match as any);
+  } else {
+    await db.collection("Matches").updateOne(
+      { _id: new ObjectId(matchId) },
+      {
+        $set: {
+          status: "disputed",
+          disputedBy: sanitizedConfirmerId,
+          disputedAt: new Date(),
+        },
+      }
+    );
+  }
+
+  revalidatePath("/matches");
+  revalidatePath(`/matches/${matchId}`);
+
+  return NextResponse.json({ success: true });
 }
+
+export const POST = withApiSecurity(postConfirmMatchHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches"],
+});

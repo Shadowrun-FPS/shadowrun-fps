@@ -4,29 +4,38 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getFindJoinRequestHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "User ID is required" },
-        { status: 400 }
-      );
-    }
+  const { searchParams } = new URL(req.url);
+  const userIdParam = searchParams.get("userId");
+  const userId = userIdParam ? sanitizeString(userIdParam, 50) : null;
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  if (!userId) {
+    return NextResponse.json(
+      { error: "User ID is required" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Verify team captain - search across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -52,14 +61,17 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       requestId: joinRequest._id.toString(),
     });
-  } catch (error) {
-    console.error("Error finding join request:", error);
-    return NextResponse.json(
-      { error: "Failed to find join request" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getFindJoinRequestHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

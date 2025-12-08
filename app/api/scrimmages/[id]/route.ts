@@ -4,20 +4,22 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function GET(
+async function getScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const { db } = await connectToDatabase();
-    const session = await getServerSession(authOptions);
+  const { db } = await connectToDatabase();
+  const session = await getServerSession(authOptions);
 
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const scrimmageId = params.id;
+  const scrimmageId = sanitizeString(params.id, 100);
 
     // Try to find the scrimmage by _id first, then by scrimmageId field
     let scrimmage = null;
@@ -91,40 +93,42 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(scrimmage);
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: "Failed to fetch scrimmage details",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
+    const response = NextResponse.json(scrimmage);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=1800"
     );
-  }
+    return response;
 }
 
-export async function DELETE(
+export const GET = withApiSecurity(getScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  cacheable: true,
+  cacheMaxAge: 300,
+});
+
+async function deleteScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const isAdmin = session.user.roles?.includes("admin");
-    const isSpecificUser = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+  const isAdmin = session.user.roles?.includes("admin");
+  const isSpecificUser = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 
-    if (!isAdmin && !isSpecificUser) {
-      return NextResponse.json(
-        { error: "You are not authorized to delete scrimmages" },
-        { status: 403 }
-      );
-    }
+  if (!isAdmin && !isSpecificUser) {
+    return NextResponse.json(
+      { error: "You are not authorized to delete scrimmages" },
+      { status: 403 }
+    );
+  }
 
-    const { db } = await connectToDatabase();
-    const scrimmageId = params.id;
+  const { db } = await connectToDatabase();
+  const scrimmageId = sanitizeString(params.id, 100);
 
     let result;
     try {
@@ -145,11 +149,15 @@ export async function DELETE(
       );
     }
 
+    revalidatePath("/scrimmages");
+    revalidatePath(`/scrimmages/${scrimmageId}`);
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to delete scrimmage" },
-      { status: 500 }
-    );
-  }
 }
+
+export const DELETE = withApiSecurity(deleteScrimmageHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/scrimmages"],
+});

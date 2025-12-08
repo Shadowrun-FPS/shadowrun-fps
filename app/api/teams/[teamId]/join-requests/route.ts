@@ -3,21 +3,30 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(
+async function getJoinRequestsHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId") || session.user.id;
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
+
+  const { searchParams } = new URL(req.url);
+  const userIdParam = searchParams.get("userId");
+  const userId = userIdParam ? sanitizeString(userIdParam, 50) : session.user.id;
+  const { db } = await connectToDatabase();
 
     // Check for any pending requests
     const pendingRequest = await db.collection("TeamJoinRequests").findOne({
@@ -26,14 +35,17 @@ export async function GET(
       status: "pending",
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       hasPendingRequest: !!pendingRequest,
     });
-  } catch (error) {
-    console.error("Error checking join requests:", error);
-    return NextResponse.json(
-      { error: "Failed to check join requests" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getJoinRequestsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

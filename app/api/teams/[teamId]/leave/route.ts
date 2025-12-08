@@ -7,21 +7,29 @@ import type { UpdateFilter } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
 import { notifyTeamMemberChange, notifyScrimmageCancellation, getGuildId } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postLeaveHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    // Get the current user session
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const userId = session.user.id;
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
+
+  const userId = session.user.id;
+  const { db } = await connectToDatabase();
 
     // Check that the team exists - search across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -169,15 +177,16 @@ export async function POST(
       // Don't fail the request if notification fails
     }
 
-    // UPDATED: Use the recalculateTeamElo function to update the team's ELO
     await recalculateTeamElo(teamId);
 
+    revalidatePath(`/teams/${teamId}`);
+    revalidatePath("/teams");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error leaving team:", error);
-    return NextResponse.json(
-      { error: "Failed to leave team" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postLeaveHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

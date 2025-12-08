@@ -4,28 +4,31 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postJoinRequestHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
-    const currentUserId = session.user.id;
-    const currentUserName = session.user.name || "Unknown";
-    const currentUserImage = session.user.image || "";
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
 
-    console.log("Team join request:", {
-      teamId,
-      currentUserId,
-      currentUserName,
-    });
+  const { db } = await connectToDatabase();
+  const currentUserId = session.user.id;
+  const currentUserName = sanitizeString(session.user.name || "Unknown", 100);
+  const currentUserImage = session.user.image || "";
 
     // Get the team across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -66,17 +69,18 @@ export async function POST(
       discordId: currentUserId,
     });
 
-    // Create the join request with player reference and team size
     await db.collection("TeamJoinRequests").insertOne({
-      teamId: teamId,
-      teamName: team.name,
-      teamSize: teamSize, // Store team size for conflict checking
-      userId: currentUserId,
+      teamId,
+      teamName: sanitizeString(team.name || "", 100),
+      teamSize,
+      userId: sanitizeString(currentUserId, 50),
       userName: currentUserName,
-      userImage: currentUserImage,
-      userNickname:
+      userImage: currentUserImage || null,
+      userNickname: sanitizeString(
         player?.discordNickname || session.user.nickname || currentUserName,
-      playerId: player?._id ? player._id.toString() : null, // Reference to player document
+        100
+      ),
+      playerId: player?._id ? player._id.toString() : null,
       status: "pending",
       createdAt: new Date(),
     });
@@ -95,35 +99,39 @@ export async function POST(
       );
     }
 
-    // Now use the ID safely since we've confirmed joinRequest is not null
     await db.collection("Notifications").insertOne({
-      userId: team.captain.discordId,
+      userId: sanitizeString(team.captain.discordId, 50),
       type: "team_join_request",
       title: "Team Join Request",
-      message: `${currentUserName} has requested to join your team "${team.name}"`,
+      message: sanitizeString(
+        `${currentUserName} has requested to join your team "${team.name}"`,
+        500
+      ),
       read: false,
       createdAt: new Date(),
-      discordUsername: team.captain.discordUsername || "Unknown",
-      discordNickname: team.captain.discordNickname || "Unknown",
+      discordUsername: sanitizeString(team.captain.discordUsername || "Unknown", 100),
+      discordNickname: sanitizeString(team.captain.discordNickname || "Unknown", 100),
       metadata: {
-        teamId: teamId,
-        teamName: team.name,
-        userId: currentUserId,
+        teamId,
+        teamName: sanitizeString(team.name || "", 100),
+        userId: sanitizeString(currentUserId, 50),
         userName: currentUserName,
-        userAvatar: currentUserImage,
+        userAvatar: currentUserImage || null,
         requestId: joinRequest._id.toString(),
       },
     });
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
 
     return NextResponse.json({
       success: true,
       message: "Join request sent successfully",
     });
-  } catch (error) {
-    console.error("Error creating team join request:", error);
-    return NextResponse.json(
-      { error: "Failed to request to join the team" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postJoinRequestHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Add these type interfaces at the top of the file
 interface PlayerStat {
@@ -19,31 +22,29 @@ interface Player {
   // Add other properties that exist in your player object
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+async function postFixTournamentTeamsHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to perform this action" },
-        { status: 401 }
-      );
-    }
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to perform this action" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
+  const client = await clientPromise;
+  const db = client.db();
 
-    // Check if user is admin
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
+  const user = await db.collection("Users").findOne({
+    discordId: sanitizeString(session.user.id, 50),
+  });
 
-    if (!user?.roles?.includes("admin")) {
-      return NextResponse.json(
-        { error: "You must be an administrator to perform this action" },
-        { status: 403 }
-      );
-    }
+  if (!user?.roles?.includes("admin")) {
+    return NextResponse.json(
+      { error: "You must be an administrator to perform this action" },
+      { status: 403 }
+    );
+  }
 
     // Get all tournaments
     const tournaments = await db.collection("Tournaments").find({}).toArray();
@@ -153,15 +154,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    revalidatePath("/tournaments");
+    revalidatePath("/admin/tournaments");
+
     return NextResponse.json({
       success: true,
       message: `Fixed data for ${updatedCount} tournaments`,
     });
-  } catch (error) {
-    console.error("Error fixing tournament teams:", error);
-    return NextResponse.json(
-      { error: "Failed to fix tournament teams data" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postFixTournamentTeamsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments", "/admin/tournaments"],
+});

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
@@ -13,9 +14,11 @@ interface ReadyCheckProps {
 export function ReadyCheck({ matchId, playerId }: ReadyCheckProps) {
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
 
   const handleReadyCheck = async () => {
+    if (isLoading || isReady) return; // Prevent duplicate submissions
     setIsLoading(true);
     try {
       const response = await fetch("/api/matches/ready-check", {
@@ -38,11 +41,13 @@ export function ReadyCheck({ matchId, playerId }: ReadyCheckProps) {
           title: "Match Starting",
           description: "All players are ready. The match will begin shortly.",
         });
+        router.refresh();
       } else {
         toast({
           title: "Ready Status Updated",
           description: "Waiting for other players...",
         });
+        router.refresh();
       }
     } catch (error) {
       toast({

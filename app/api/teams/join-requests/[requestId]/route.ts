@@ -6,6 +6,9 @@ import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
 import { findTeamAcrossCollections, getTeamCollectionName, getAllTeamCollectionNames } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Helper function to get a join request by ID
 async function getJoinRequest(db: any, requestId: string) {
@@ -14,28 +17,44 @@ async function getJoinRequest(db: any, requestId: string) {
   });
 }
 
-// Handle both accept and reject with the same endpoint
-export async function PATCH(
+async function patchJoinRequestHandler(
   req: NextRequest,
   { params }: { params: { requestId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { action } = await req.json(); // action should be 'accept' or 'reject'
+  const requestId = sanitizeString(params.requestId, 50);
+  if (!ObjectId.isValid(requestId)) {
+    return NextResponse.json(
+      { error: "Invalid request ID format" },
+      { status: 400 }
+    );
+  }
 
-    if (action !== "accept" && action !== "reject") {
-      return NextResponse.json(
-        { error: "Invalid action. Must be 'accept' or 'reject'" },
-        { status: 400 }
-      );
-    }
+  const { db } = await connectToDatabase();
+  const body = await req.json();
+  const validation = validateBody(body, {
+    action: { type: "string", required: true, maxLength: 10 },
+  });
 
-    const { db } = await connectToDatabase();
-    const requestId = params.requestId;
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { action } = validation.data! as { action: string };
+
+  if (action !== "accept" && action !== "reject") {
+    return NextResponse.json(
+      { error: "Invalid action. Must be 'accept' or 'reject'" },
+      { status: 400 }
+    );
+  }
 
     // Get the join request
     const joinRequest = await getJoinRequest(db, requestId);
@@ -108,7 +127,7 @@ export async function PATCH(
           userId: joinRequest.userId,
           type: "team_join_rejected",
           title: "Join Request Cannot Be Accepted",
-          message: `Your request to join "${team.name}" cannot be accepted because you are already a member of a ${teamSize}-person team "${existingTeamOfSameSize.name}".`,
+          message: `Your request to join "${sanitizeString(team.name, 100)}" cannot be accepted because you are already a member of a ${teamSize}-person team "${sanitizeString(existingTeamOfSameSize.name, 100)}".`,
           read: false,
           createdAt: new Date(),
           metadata: {
@@ -122,7 +141,7 @@ export async function PATCH(
           userId: team.captain.discordId,
           type: "team_join_request",
           title: "Join Request Auto-Rejected",
-          message: `The join request from ${joinRequest.userNickname || joinRequest.userName} was automatically rejected because they are already in a ${teamSize}-person team.`,
+          message: `The join request from ${sanitizeString(joinRequest.userNickname || joinRequest.userName || "", 100)} was automatically rejected because they are already in a ${teamSize}-person team.`,
           read: false,
           createdAt: new Date(),
           metadata: {
@@ -188,7 +207,7 @@ export async function PATCH(
         userId: joinRequest.userId,
         type: "team_member_joined",
         title: "Join Request Accepted",
-        message: `Your request to join ${team.name} has been accepted!`,
+        message: `Your request to join ${sanitizeString(team.name, 100)} has been accepted!`,
         read: false,
         createdAt: new Date(),
         metadata: {
@@ -205,7 +224,7 @@ export async function PATCH(
         userId: joinRequest.userId,
         type: "team_invite",
         title: "Join Request Rejected",
-        message: `Your request to join ${team.name} was not accepted.`,
+        message: `Your request to join ${sanitizeString(team.name, 100)} was not accepted.`,
         read: false,
         createdAt: new Date(),
         metadata: {
@@ -215,6 +234,9 @@ export async function PATCH(
       });
     }
 
+    revalidatePath("/teams");
+    revalidatePath("/notifications");
+
     return NextResponse.json({
       success: true,
       message:
@@ -222,11 +244,10 @@ export async function PATCH(
           ? "Join request accepted successfully"
           : "Join request rejected successfully",
     });
-  } catch (error) {
-    console.error(`Error ${req.method} join request:`, error);
-    return NextResponse.json(
-      { error: "Failed to process join request" },
-      { status: 500 }
-    );
-  }
 }
+
+export const PATCH = withApiSecurity(patchJoinRequestHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams", "/notifications"],
+});

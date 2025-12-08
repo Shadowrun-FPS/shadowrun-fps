@@ -3,20 +3,27 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postUndoSeedingHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated and admin
-    if (!session?.user || !session.user.roles?.includes("admin")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user || !session.user.roles?.includes("admin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const tournamentId = params.id;
+  const tournamentId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(tournamentId)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
 
     const client = await clientPromise;
     const db = client.db();
@@ -53,15 +60,18 @@ export async function POST(
         { $set: { tournamentMatches: updatedMatches } }
       );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${tournamentId}`);
+
     return NextResponse.json({
       success: true,
       message: "Teams unseeded successfully",
     });
-  } catch (error) {
-    console.error("Error unseeding teams:", error);
-    return NextResponse.json(
-      { error: "Failed to unseed teams", details: String(error) },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postUndoSeedingHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});

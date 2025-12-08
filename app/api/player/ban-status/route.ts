@@ -2,24 +2,23 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+async function getBanStatusHandler() {
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Connect to database
-    const { db } = await connectToDatabase();
+  const userId = sanitizeString(session.user.id, 50);
+  const { db } = await connectToDatabase();
 
-    // Find player by Discord ID
-    const player = await db.collection("Players").findOne({
-      discordId: session.user.id,
-    });
+  const player = await db.collection("Players").findOne({
+    discordId: userId,
+  });
 
     if (!player) {
       // If player doesn't exist, they can't be banned
@@ -39,19 +38,27 @@ export async function GET() {
         banReason = sortedBans[0].reason || banReason;
       }
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         isBanned: true,
-        banReason,
+        banReason: sanitizeString(banReason, 500),
         banExpiry: player.banExpiry,
       });
+      response.headers.set(
+        "Cache-Control",
+        "private, no-cache, no-store, must-revalidate"
+      );
+      return response;
     }
 
-    return NextResponse.json({ isBanned: false });
-  } catch (error) {
-    console.error("Error checking ban status:", error);
-    return NextResponse.json(
-      { error: "Failed to check ban status" },
-      { status: 500 }
+    const response = NextResponse.json({ isBanned: false });
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getBanStatusHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

@@ -3,27 +3,36 @@ import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postResendScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json(
-        { error: "You must be signed in to resend a challenge" },
-        { status: 401 }
-      );
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json(
+      { error: "You must be signed in to resend a challenge" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
+  const id = sanitizeString(params.id, 100);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid scrimmage ID" },
+      { status: 400 }
+    );
+  }
 
-    // Get the scrimmage
-    const scrimmage = await db.collection("scrimmages").findOne({
-      _id: new ObjectId(params.id),
-    });
+  const client = await clientPromise;
+  const db = client.db();
+
+  const scrimmage = await db.collection("scrimmages").findOne({
+    _id: new ObjectId(id),
+  });
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -51,23 +60,24 @@ export async function POST(
       );
     }
 
-    // Update the scrimmage status back to pending
-    await db
-      .collection("scrimmages")
-      .updateOne(
-        { _id: new ObjectId(params.id) },
-        { $set: { status: "pending", updatedAt: new Date() } }
-      );
+  await db
+    .collection("scrimmages")
+    .updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status: "pending", updatedAt: new Date() } }
+    );
 
-    return NextResponse.json(
-      { message: "Challenge resent successfully" },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error resending challenge:", error);
-    return NextResponse.json(
-      { error: "Failed to resend challenge" },
-      { status: 500 }
-    );
-  }
+  revalidatePath("/scrimmages");
+  revalidatePath(`/scrimmages/${id}`);
+
+  return NextResponse.json(
+    { message: "Challenge resent successfully" },
+    { status: 200 }
+  );
 }
+
+export const POST = withApiSecurity(postResendScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages"],
+});

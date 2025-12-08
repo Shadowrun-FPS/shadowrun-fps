@@ -821,6 +821,7 @@ export default function MatchDetailPage() {
                         fill
                         className="object-cover"
                         priority={index === 0}
+                        loading={index === 0 ? undefined : "lazy"}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 33vw, 33vw"
                         unoptimized
                       />

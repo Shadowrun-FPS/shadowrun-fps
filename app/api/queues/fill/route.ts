@@ -5,110 +5,85 @@ import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: NextRequest) {
-  try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+async function postFillHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    // Get all players with their profile pictures
-    const players = await db.collection("Players").find({}).toArray();
+  if (!session?.user || !isAdmin(session.user.id)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Log a sample player to verify the data structure
-    console.log(
-      "Sample player from Players collection:",
-      players.find((p) => p.discordId === SECURITY_CONFIG.DEVELOPER_ID)
-    );
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
 
-    // Get all queues
-    const queues = await db.collection("Queues").find({}).toArray();
+  const players = await db.collection("Players").find({}).toArray();
 
-    // Update each queue with random players
-    const updatePromises = queues.map(async (queue) => {
-      // Get random players that match the ELO tier
-      const eligiblePlayers = players.filter((player) => {
-        const playerElo = player.stats?.[queue.teamSize]?.elo || 1500;
-        const [minElo, maxElo] = queue.eloTier.split("-").map(Number);
-        return playerElo >= minElo && playerElo <= maxElo;
+  // Get all queues
+  const queues = await db.collection("Queues").find({}).toArray();
+
+  // Update each queue with random players
+  const updatePromises = queues.map(async (queue) => {
+    // Get random players that match the ELO tier
+    const eligiblePlayers = players.filter((player) => {
+      const playerElo = player.stats?.[queue.teamSize]?.elo || 1500;
+      const [minElo, maxElo] = queue.eloTier.split("-").map(Number);
+      return playerElo >= minElo && playerElo <= maxElo;
+    });
+
+    const selectedPlayers = eligiblePlayers
+      .sort(() => Math.random() - 0.5)
+      .slice(0, queue.teamSize * 2)
+      .map((player) => {
+        // Find the player's ELO for this team size
+        const playerElo =
+          player.stats?.find(
+            (s: { teamSize: number }) => s.teamSize === queue.teamSize
+          )?.elo || 1500;
+
+        return {
+          discordId: player.discordId,
+          discordUsername: sanitizeString(player.discordUsername || "", 100),
+          discordNickname: sanitizeString(
+            player.discordNickname || player.discordUsername || "",
+            100
+          ),
+          discordProfilePicture: player.discordProfilePicture || null,
+          elo: playerElo,
+          initialElo: playerElo,
+          joinedAt: Date.now(),
+        };
       });
 
-      // Log eligible players to verify data
-      console.log(
-        "Eligible players with their profile pictures:",
-        eligiblePlayers.map((p) => ({
-          discordId: p.discordId,
-          discordProfilePicture: p.discordProfilePicture,
-        }))
-      );
+    await db
+      .collection("Queues")
+      .updateOne({ _id: queue._id }, { $set: { players: selectedPlayers } });
 
-      // Randomly select players up to max size
-      const selectedPlayers = eligiblePlayers
-        .sort(() => Math.random() - 0.5)
-        .slice(0, queue.teamSize * 2)
-        .map((player) => {
-          // Log individual player data during mapping
-          console.log("Mapping player data:", {
-            id: player.discordId,
-            profilePic: player.discordProfilePicture,
-          });
+    return updatedQueues;
+  });
 
-          // Find the player's ELO for this team size
-          const playerElo =
-            player.stats?.find(
-              (s: { teamSize: number }) => s.teamSize === queue.teamSize
-            )?.elo || 1500;
+  await Promise.all(updatePromises);
 
-          return {
-            discordId: player.discordId,
-            discordUsername: player.discordUsername,
-            discordNickname: player.discordNickname || player.discordUsername,
-            discordProfilePicture: player.discordProfilePicture || null,
-            elo: playerElo,
-            initialElo: playerElo,
-            joinedAt: Date.now(),
-          };
-        });
+  // Get updated queues to return
+  const updatedQueues = await db.collection("Queues").find({}).toArray();
 
-      // Log selected players before updating queue
-      console.log(
-        "Selected players before queue update:",
-        selectedPlayers.map((p) => ({
-          discordId: p.discordId,
-          discordProfilePicture: p.discordProfilePicture,
-        }))
-      );
+  revalidatePath("/matches/queues");
+  revalidatePath("/admin/queues");
 
-      // Update queue with selected players
-      await db
-        .collection("Queues")
-        .updateOne({ _id: queue._id }, { $set: { players: selectedPlayers } });
-
-      // Verify the update
-      const updatedQueue = await db
-        .collection("Queues")
-        .findOne({ _id: queue._id });
-      console.log("Queue after update:", updatedQueue);
-
-      return updatedQueue;
-    });
-
-    await Promise.all(updatePromises);
-
-    // Get updated queues to return
-    const updatedQueues = await db.collection("Queues").find({}).toArray();
-
-    return NextResponse.json({
-      success: true,
-      message: "Queue filled successfully",
-      queues: updatedQueues,
-    });
-  } catch (error) {
-    console.error("Error filling queue:", error);
-    return NextResponse.json(
-      { error: "Failed to fill queue" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    message: "Queue filled successfully",
+    queues: updatedQueues,
+  });
 }
+
+export const POST = withApiSecurity(postFillHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

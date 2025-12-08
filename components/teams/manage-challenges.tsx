@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -48,6 +49,7 @@ interface Challenge {
 }
 
 export function ManageChallenges({ teamId }: { teamId: string }) {
+  const router = useRouter();
   const { data: session } = useSession();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -115,9 +117,12 @@ export function ManageChallenges({ teamId }: { teamId: string }) {
         description: "The challenge has been cancelled successfully.",
       });
 
+      router.refresh();
       setCancelDialogOpen(false);
     } catch (error) {
-      console.error("Error cancelling challenge:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error cancelling challenge:", error);
+      }
       toast({
         title: "Error",
         description: (error as Error).message || "Failed to cancel challenge",

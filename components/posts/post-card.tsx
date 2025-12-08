@@ -114,7 +114,8 @@ export function PostCard({ post }: { post: Post }) {
                 alt={post.title || "Post image"}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                priority
+                priority={false}
+                loading="lazy"
                 className="object-cover transition-transform duration-700 group-hover:scale-110"
                 onError={() => setImageError(true)}
                 style={{ objectPosition: "center center" }}

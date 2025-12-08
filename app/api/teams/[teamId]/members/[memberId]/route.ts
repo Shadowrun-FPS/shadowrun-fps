@@ -7,6 +7,9 @@ import {
 } from "@/lib/team-helpers";
 import clientPromise from "@/lib/mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface TeamMember {
   discordId: string;
@@ -19,21 +22,30 @@ interface Team extends WithId<Document> {
   members: TeamMember[];
 }
 
-export async function DELETE(
+async function deleteTeamMemberHandler(
   req: NextRequest,
   { params }: { params: { teamId: string; memberId: string } }
 ) {
-  try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const teamId = sanitizeString(params.teamId, 50);
+  const memberId = sanitizeString(params.memberId, 50);
 
-    const result = await db
-      .collection<Team>("Teams")
-      .findOneAndUpdate(
-        { _id: new ObjectId(params.teamId) },
-        { $pull: { members: { discordId: params.memberId } } as any },
-        { returnDocument: "after" }
-      );
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const result = await db
+    .collection<Team>("Teams")
+    .findOneAndUpdate(
+      { _id: new ObjectId(teamId) },
+      { $pull: { members: { discordId: memberId } } as any },
+      { returnDocument: "after" }
+    );
 
     if (!result) {
       return NextResponse.json(
@@ -47,19 +59,20 @@ export async function DELETE(
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
 
-    // After removing member, update team ELO
-    const updatedElo = await recalculateTeamElo(params.teamId);
+  const updatedElo = await recalculateTeamElo(teamId);
 
-    return NextResponse.json({
-      success: true,
-      message: "Member removed",
-      teamElo: updatedElo,
-    });
-  } catch (error) {
-    console.error("Failed to remove team member:", error);
-    return NextResponse.json(
-      { error: "Failed to remove team member" },
-      { status: 500 }
-    );
-  }
+  revalidatePath("/teams");
+  revalidatePath(`/teams/${teamId}`);
+
+  return NextResponse.json({
+    success: true,
+    message: "Member removed",
+    teamElo: updatedElo,
+  });
 }
+
+export const DELETE = withApiSecurity(deleteTeamMemberHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

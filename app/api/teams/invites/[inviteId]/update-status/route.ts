@@ -3,6 +3,9 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { findTeamAcrossCollections } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 /**
  * API endpoint for Discord bot to update invite status
@@ -11,36 +14,49 @@ import { findTeamAcrossCollections } from "@/lib/team-collections";
  * POST /api/teams/invites/[inviteId]/update-status
  * Body: { status: "accepted" | "rejected", inviteeId: string }
  */
-export async function POST(
+async function postUpdateInviteStatusHandler(
   req: NextRequest,
   { params }: { params: Promise<{ inviteId: string }> | { inviteId: string } }
 ) {
-  try {
-    const { db } = await connectToDatabase();
-    const resolvedParams = await Promise.resolve(params);
-    const { inviteId } = resolvedParams;
-    
-    const { status, inviteeId } = await req.json();
+  const { db } = await connectToDatabase();
+  const resolvedParams = await Promise.resolve(params);
+  const inviteId = sanitizeString(resolvedParams.inviteId, 50);
 
-    if (!["accepted", "rejected"].includes(status)) {
-      return NextResponse.json(
-        { error: "Invalid status. Must be 'accepted' or 'rejected'" },
-        { status: 400 }
-      );
-    }
+  if (!ObjectId.isValid(inviteId)) {
+    return NextResponse.json(
+      { error: "Invalid invite ID" },
+      { status: 400 }
+    );
+  }
 
-    if (!inviteeId) {
-      return NextResponse.json(
-        { error: "inviteeId is required" },
-        { status: 400 }
-      );
-    }
+  const body = await req.json();
+  const validation = validateBody(body, {
+    status: {
+      type: "string",
+      required: true,
+      pattern: /^(accepted|rejected)$/,
+    },
+    inviteeId: { type: "string", required: true, maxLength: 50 },
+  });
 
-    // Find the invite
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { status, inviteeId } = validation.data! as {
+    status: string;
+    inviteeId: string;
+  };
+
+  const sanitizedInviteeId = sanitizeString(inviteeId, 50);
+
     const invite = await db.collection("TeamInvites").findOne({
       _id: new ObjectId(inviteId),
-      inviteeId: inviteeId,
-      status: "pending", // Only update if still pending
+      inviteeId: sanitizedInviteeId,
+      status: "pending",
     });
 
     if (!invite) {
@@ -50,92 +66,99 @@ export async function POST(
       );
     }
 
-    // Update the invite status
     await db.collection("TeamInvites").updateOne(
       { _id: new ObjectId(inviteId) },
       { 
         $set: { 
-          status: status,
+          status: sanitizeString(status, 20),
           updatedAt: new Date(),
         } 
       }
     );
 
-    // If accepted, also cancel all other pending invites for this user
     if (status === "accepted") {
       await db.collection("TeamInvites").updateMany(
         {
-          inviteeId: inviteeId,
+          inviteeId: sanitizedInviteeId,
           status: "pending",
           _id: { $ne: new ObjectId(inviteId) },
         },
         { $set: { status: "cancelled" } }
       );
 
-      // Get player info for notification
       const player = await db.collection("Players").findOne({
-        discordId: inviteeId,
+        discordId: sanitizedInviteeId,
       });
 
-      const playerName = player?.discordNickname || player?.discordUsername || "Unknown";
+      const playerName = sanitizeString(
+        player?.discordNickname || player?.discordUsername || "Unknown",
+        100
+      );
 
-      // Create notification for team captain
       await db.collection("Notifications").insertOne({
-        userId: invite.inviterId,
+        userId: sanitizeString(invite.inviterId, 50),
         type: "invite_accepted",
         title: "Team Invite Accepted",
-        message: `${playerName} has accepted your invitation to join team "${invite.teamName}"`,
+        message: sanitizeString(
+          `${playerName} has accepted your invitation to join team "${invite.teamName}"`,
+          500
+        ),
         read: false,
         createdAt: new Date(),
         metadata: {
-          teamId: invite.teamId.toString(),
-          teamName: invite.teamName,
-          inviteeId: inviteeId,
+          teamId: sanitizeString(invite.teamId.toString(), 50),
+          teamName: sanitizeString(invite.teamName || "", 100),
+          inviteeId: sanitizedInviteeId,
           inviteeName: playerName,
         },
       });
 
-      // Recalculate team ELO if member was added (bot should have already added them)
       try {
         await recalculateTeamElo(invite.teamId.toString());
       } catch (eloError) {
-        console.error("Error recalculating team ELO after invite acceptance:", eloError);
-        // Don't fail the request
+        safeLog.error("Error recalculating team ELO after invite acceptance:", eloError);
       }
     } else if (status === "rejected") {
-      // Create notification for team captain
       const player = await db.collection("Players").findOne({
-        discordId: inviteeId,
+        discordId: sanitizedInviteeId,
       });
 
-      const playerName = player?.discordNickname || player?.discordUsername || "Unknown";
+      const playerName = sanitizeString(
+        player?.discordNickname || player?.discordUsername || "Unknown",
+        100
+      );
 
       await db.collection("Notifications").insertOne({
-        userId: invite.inviterId,
+        userId: sanitizeString(invite.inviterId, 50),
         type: "invite_rejected",
         title: "Team Invite Rejected",
-        message: `${playerName} has rejected your invitation to join team "${invite.teamName}"`,
+        message: sanitizeString(
+          `${playerName} has rejected your invitation to join team "${invite.teamName}"`,
+          500
+        ),
         read: false,
         createdAt: new Date(),
         metadata: {
-          teamId: invite.teamId.toString(),
-          teamName: invite.teamName,
-          inviteeId: inviteeId,
+          teamId: sanitizeString(invite.teamId.toString(), 50),
+          teamName: sanitizeString(invite.teamName || "", 100),
+          inviteeId: sanitizedInviteeId,
           inviteeName: playerName,
         },
       });
     }
 
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${invite.teamId.toString()}`);
+
     return NextResponse.json({
       success: true,
       message: `Invite status updated to ${status}`,
     });
-  } catch (error) {
-    console.error("Error updating invite status:", error);
-    return NextResponse.json(
-      { error: "Failed to update invite status" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postUpdateInviteStatusHandler, {
+  rateLimiter: "api",
+  requireAuth: false,
+  revalidatePaths: ["/teams"],
+});
 

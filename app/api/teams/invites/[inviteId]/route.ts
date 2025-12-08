@@ -4,20 +4,28 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// Inside the PUT handler for accepting team invites
-export async function PUT(
+async function putAcceptInviteHandler(
   req: NextRequest,
   { params }: { params: { inviteId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const inviteId = params.inviteId;
+  const inviteId = sanitizeString(params.inviteId, 50);
+  if (!ObjectId.isValid(inviteId)) {
+    return NextResponse.json(
+      { error: "Invalid invite ID" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
 
     // Find the invite
     const invite = await db.collection("TeamInvites").findOne({
@@ -35,16 +43,18 @@ export async function PUT(
     // Recalculate the team's ELO
     const updatedElo = await recalculateTeamElo(teamId);
 
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
+
     return NextResponse.json({
       success: true,
       message: "Invite accepted",
       teamElo: updatedElo,
     });
-  } catch (error) {
-    console.error("Error accepting team invite:", error);
-    return NextResponse.json(
-      { error: "Failed to accept team invite" },
-      { status: 500 }
-    );
-  }
 }
+
+export const PUT = withApiSecurity(putAcceptInviteHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

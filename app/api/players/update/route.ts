@@ -7,6 +7,9 @@ import {
   updatePlayerGuildNickname,
 } from "@/lib/discord-helpers";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface ExtendedSession {
   user: {
@@ -19,7 +22,7 @@ interface ExtendedSession {
   expires: string;
 }
 
-export async function POST(req: NextRequest) {
+async function postUpdatePlayerHandler(req: NextRequest) {
   try {
     const session = (await getServerSession(
       authOptions
@@ -29,14 +32,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("Player update API called for user:", session.user.id);
-    console.log("Session nickname:", session.user.nickname);
-    console.log("Session name:", session.user.name);
+    safeLog.log("Player update API called for user:", session.user.id);
 
     if (session.user.id === SECURITY_CONFIG.DEVELOPER_ID) {
       const nickname =
-        session.user.nickname || session.user.name || "Developer";
-      console.log(`Developer account: using nickname ${nickname}`);
+        sanitizeString(session.user.nickname || session.user.name || "Developer", 100);
+      safeLog.log(`Developer account: using nickname ${nickname}`);
 
       await updatePlayerGuildNickname(session.user.id, nickname);
 
@@ -50,10 +51,10 @@ export async function POST(req: NextRequest) {
     const accessToken = session.accessToken;
 
     if (!accessToken) {
-      console.log("No access token available for user", session.user.id);
+      safeLog.log("No access token available for user", session.user.id);
 
-      const fallbackName = session.user.nickname || session.user.name || "User";
-      console.log(`No access token: using fallback name ${fallbackName}`);
+      const fallbackName = sanitizeString(session.user.nickname || session.user.name || "User", 100);
+      safeLog.log(`No access token: using fallback name ${fallbackName}`);
 
       await updatePlayerGuildNickname(session.user.id, fallbackName);
 
@@ -68,11 +69,13 @@ export async function POST(req: NextRequest) {
       const guildData = await getGuildData(accessToken);
 
       if (!guildData) {
-        console.log("Failed to get guild data for user", session.user.id);
+        safeLog.log("Failed to get guild data for user", session.user.id);
 
-        const fallbackName =
-          session.user.nickname || session.user.name || "User";
-        console.log(`No guild data: using fallback name ${fallbackName}`);
+        const fallbackName = sanitizeString(
+          session.user.nickname || session.user.name || "User",
+          100
+        );
+        safeLog.log(`No guild data: using fallback name ${fallbackName}`);
 
         await updatePlayerGuildNickname(session.user.id, fallbackName);
 
@@ -83,10 +86,12 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const guildNickname =
-        guildData.nick || session.user.nickname || session.user.name;
+      const guildNickname = sanitizeString(
+        guildData.nick || session.user.nickname || session.user.name || "User",
+        100
+      );
 
-      console.log(
+      safeLog.log(
         `Using guild nickname: ${guildNickname} for user ${session.user.id}`
       );
 
@@ -102,13 +107,16 @@ export async function POST(req: NextRequest) {
           : "username",
       });
     } catch (error) {
-      console.error("Error getting guild data:", error);
+      safeLog.error("Error getting guild data:", error);
 
-      const fallbackName = session.user.nickname || session.user.name || "User";
-      console.log(`API error: using fallback name ${fallbackName}`);
+      const fallbackName = sanitizeString(session.user.nickname || session.user.name || "User", 100);
+      safeLog.log(`API error: using fallback name ${fallbackName}`);
 
       await updatePlayerGuildNickname(session.user.id, fallbackName);
 
+      revalidatePath("/players");
+      revalidatePath(`/players/${session.user.id}`);
+      
       return NextResponse.json({
         success: true,
         message: "Updated with session nickname due to Discord API error",
@@ -116,10 +124,16 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("Error updating player:", error);
+    safeLog.error("Error updating player:", error);
     return NextResponse.json(
       { error: "Failed to update player" },
       { status: 500 }
     );
   }
 }
+
+export const POST = withApiSecurity(postUpdatePlayerHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/players"],
+});

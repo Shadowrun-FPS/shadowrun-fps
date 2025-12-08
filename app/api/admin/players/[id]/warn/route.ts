@@ -5,72 +5,100 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { createModerationLog } from "@/lib/moderation";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postWarnPlayerHandler(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  try {
-    // Get user session
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!isAuthorizedAdmin(session)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!isAuthorizedAdmin(session)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // At this point, session is guaranteed to be non-null due to isAuthorizedAdmin check
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    // Parse the request body
-    const warning = await req.json();
+  const playerId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(playerId)) {
+    return NextResponse.json(
+      { error: "Invalid player ID" },
+      { status: 400 }
+    );
+  }
 
-    // Connect to database
+  const warning = await req.json();
+  const validation = validateBody(warning, {
+    reason: { type: "string", required: true, maxLength: 1000 },
+    ruleId: { type: "string", required: false, maxLength: 50 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { reason, ruleId } = validation.data! as {
+    reason: string;
+    ruleId?: string;
+  };
+
+  const sanitizedReason = sanitizeString(reason, 1000);
+  const sanitizedRuleId = ruleId ? sanitizeString(ruleId, 50) : null;
+
     const { db } = await connectToDatabase();
 
-    // Get the moderator's information to fetch their nickname
     const moderator = await db.collection("Players").findOne({
-      discordId: session.user.id,
+      discordId: sanitizeString(session.user.id, 50),
     });
 
-    // Get the player's information to fetch their nickname
     const player = await db.collection("Players").findOne({
-      _id: new ObjectId(params.id),
+      _id: new ObjectId(playerId),
     });
 
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    const moderatorNickname = moderator?.discordNickname || session.user.name;
-    const playerNickname = player.discordNickname || player.discordUsername;
+    const moderatorNickname = sanitizeString(
+      moderator?.discordNickname || session.user.name || "",
+      100
+    );
+    const playerNickname = sanitizeString(
+      player.discordNickname || player.discordUsername || "",
+      100
+    );
 
-    // Add warning to player
     const result = await db.collection("Players").updateOne(
-      { _id: new ObjectId(params.id) },
+      { _id: new ObjectId(playerId) },
       {
         $push: {
           warnings: {
-            ...warning,
-            moderatorId: session.user.id,
-            moderatorName: session.user.name,
+            reason: sanitizedReason,
+            ruleId: sanitizedRuleId,
+            moderatorId: sanitizeString(session.user.id, 50),
+            moderatorName: sanitizeString(session.user.name || "", 100),
             moderatorNickname: moderatorNickname,
             timestamp: new Date(),
           },
         },
-      }
+      } as any
     );
 
-    // Create a record in the moderation logs collection
     await createModerationLog({
-      playerId: params.id,
-      moderatorId: session.user.id,
+      playerId: playerId,
+      moderatorId: sanitizeString(session.user.id, 50),
       playerName: playerNickname,
       moderatorName: moderatorNickname,
       action: "warn",
-      reason: warning.reason,
-      ruleId: warning.ruleId,
+      reason: sanitizedReason,
+      ruleId: sanitizedRuleId || null,
       timestamp: new Date(),
     });
 
@@ -81,12 +109,18 @@ export async function POST(
       );
     }
 
-    return NextResponse.json({ success: true, warning });
-  } catch (error) {
-    console.error("Error adding warning to player:", error);
-    return NextResponse.json(
-      { error: "Failed to add warning to player" },
-      { status: 500 }
-    );
-  }
+    revalidatePath("/admin/players");
+    revalidatePath(`/admin/players/${playerId}`);
+
+    return NextResponse.json({
+      success: true,
+      warning: { reason: sanitizedReason, ruleId: sanitizedRuleId },
+    });
 }
+
+export const POST = withApiSecurity(postWarnPlayerHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/admin/players"],
+});

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 // Helper function to recalculate team ELO for a specific tournament team size
 async function recalculateTeamEloForTournament(
@@ -110,16 +112,15 @@ interface TeamMember {
   elo?: number;
 }
 
-export async function GET(
+async function getTournamentHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const { id } = params;
+  const id = sanitizeString(params.id, 50);
 
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-    }
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+  }
 
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -157,11 +158,10 @@ export async function GET(
                 db2
               );
             } catch (error) {
-              console.error(
+              safeLog.error(
                 `Error recalculating ELO for team ${team._id}:`,
                 error
               );
-              // Fallback to stored ELO if recalculation fails
               freshTeamElo =
                 typeof team.teamElo === "number" ? team.teamElo : 0;
             }
@@ -228,12 +228,16 @@ export async function GET(
       registeredTeams: tournament.registeredTeams,
     };
 
-    return NextResponse.json(formattedTournament);
-  } catch (error) {
-    console.error("Error fetching tournament:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch tournament data" },
-      { status: 500 }
+    const response = NextResponse.json(formattedTournament);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=1800"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getTournamentHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 300,
+});

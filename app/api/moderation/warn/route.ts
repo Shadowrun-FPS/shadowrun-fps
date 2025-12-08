@@ -4,10 +4,21 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, rateLimiters, getClientIdentifier, sanitizeString } from "@/lib/security";
+import { revalidatePath } from "next/cache";
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting
     const session = await getServerSession(authOptions);
+    const identifier = getClientIdentifier(request, session?.user?.id);
+    if (!rateLimiters.admin.isAllowed(identifier)) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -24,11 +35,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { playerId, playerName, reason, ruleId } = await request.json();
+    const body = await request.json();
+    const playerId = sanitizeString(body.playerId || "", 50);
+    const playerName = sanitizeString(body.playerName || "", 100);
+    const reason = sanitizeString(body.reason || "", 1000);
+    const ruleId = body.ruleId ? sanitizeString(String(body.ruleId), 50) : null;
 
+    // Validate required fields
     if (!playerId || !reason) {
       return NextResponse.json(
         { error: "Player ID and reason are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate ObjectId format
+    if (!ObjectId.isValid(playerId)) {
+      return NextResponse.json(
+        { error: "Invalid player ID format" },
         { status: 400 }
       );
     }
@@ -49,21 +73,26 @@ export async function POST(request: NextRequest) {
     const warningLog = {
       playerId: new ObjectId(playerId),
       moderatorId: session.user.id,
-      playerName, // Use the provided player name
-      moderatorName, // Use the moderator's name
+      playerName: sanitizeString(playerName, 100),
+      moderatorName: sanitizeString(moderatorName, 100),
       action: "warn",
-      reason,
-      ruleId: ruleId || null,
+      reason: sanitizeString(reason, 1000),
+      ruleId: ruleId && ObjectId.isValid(ruleId) ? new ObjectId(ruleId) : null,
       timestamp: new Date(),
     };
 
     await db.collection("moderation_logs").insertOne(warningLog);
 
+    // Revalidate relevant paths
+    revalidatePath("/admin/moderation");
+    revalidatePath("/moderation-log");
+    revalidatePath(`/player/${playerId}`);
+
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error warning player:", error);
+    safeLog.error("Error warning player:", error);
     return NextResponse.json(
-      { error: "Failed to warn player" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

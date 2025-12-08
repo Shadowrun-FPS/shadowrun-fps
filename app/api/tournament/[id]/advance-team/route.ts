@@ -3,34 +3,52 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postAdvanceTeamHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated and admin
-    if (!session?.user || !session.user.roles?.includes("admin")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user || !session.user.roles?.includes("admin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const tournamentId = params.id;
-    const body = await request.json();
-    const { matchId, winnerId } = body;
+  const tournamentId = sanitizeString(params.id, 50);
+  if (!ObjectId.isValid(tournamentId)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
 
-    if (!matchId || !winnerId) {
-      return NextResponse.json(
-        { error: "Match ID and winner ID are required" },
-        { status: 400 }
-      );
-    }
+  const body = await request.json();
+  const validation = validateBody(body, {
+    matchId: { type: "string", required: true, maxLength: 100 },
+    winnerId: { type: "string", required: true, maxLength: 50 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Match ID and winner ID are required" },
+      { status: 400 }
+    );
+  }
+
+  const { matchId, winnerId } = validation.data! as {
+    matchId: string;
+    winnerId: string;
+  };
+
+  const sanitizedMatchId = sanitizeString(matchId, 100);
+  const sanitizedWinnerId = sanitizeString(winnerId, 50);
 
     const client = await clientPromise;
     const db = client.db();
 
-    // Find the tournament
     const tournament = await db.collection("Tournaments").findOne({
       _id: new ObjectId(tournamentId),
     });
@@ -42,9 +60,8 @@ export async function POST(
       );
     }
 
-    // Find the match in the tournament
     const match = tournament.tournamentMatches.find(
-      (m: any) => m.tournamentMatchId === matchId
+      (m: any) => m.tournamentMatchId === sanitizedMatchId
     );
 
     if (!match) {
@@ -54,8 +71,7 @@ export async function POST(
       );
     }
 
-    // Determine if the winner is teamA or teamB
-    const winnerTeam = match.teamA._id === winnerId ? "teamA" : "teamB";
+    const winnerTeam = match.teamA._id === sanitizedWinnerId ? "teamA" : "teamB";
 
     // Update the match with the winner
     match.status = "completed";
@@ -92,7 +108,6 @@ export async function POST(
       }
     }
 
-    // Update the tournament
     await db
       .collection("Tournaments")
       .updateOne(
@@ -100,15 +115,18 @@ export async function POST(
         { $set: { tournamentMatches: tournament.tournamentMatches } }
       );
 
+    revalidatePath("/tournaments");
+    revalidatePath(`/tournaments/${tournamentId}`);
+
     return NextResponse.json({
       success: true,
       message: "Team advanced successfully",
     });
-  } catch (error) {
-    console.error("Error advancing team:", error);
-    return NextResponse.json(
-      { error: "Failed to advance team", details: String(error) },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postAdvanceTeamHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});

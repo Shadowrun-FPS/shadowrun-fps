@@ -4,46 +4,73 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { ObjectId } from "mongodb";
 import { notifyScrimmageResponse, getGuildId } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function PATCH(
+async function patchRespondHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be logged in" },
-        { status: 401 }
-      );
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be logged in" },
+      { status: 401 }
+    );
+  }
+
+  const scrimmageId = sanitizeString(params.id, 50);
+  const client = await clientPromise;
+  const db = client.db();
+
+  const body = await request.json();
+  const validation = validateBody(body, {
+    response: { type: "string", required: true, maxLength: 20 },
+    counterProposedDate: { type: "string", required: false },
+    message: { type: "string", required: false, maxLength: 500 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { response, counterProposedDate, message } = validation.data! as {
+    response: string;
+    counterProposedDate?: string;
+    message?: string;
+  };
+
+  if (!["accept", "reject", "counter"].includes(response)) {
+    return NextResponse.json(
+      { error: "Invalid response type" },
+      { status: 400 }
+    );
+  }
+
+  if (response === "counter" && !counterProposedDate) {
+    return NextResponse.json(
+      { error: "Counter proposal requires a date" },
+      { status: 400 }
+    );
+  }
+
+    let scrimmage = null;
+    if (ObjectId.isValid(scrimmageId)) {
+      scrimmage = await db.collection("Scrimmages").findOne({
+        _id: new ObjectId(scrimmageId),
+      });
     }
-
-    const client = await clientPromise;
-    const db = client.db();
-
-    const scrimmageId = params.id;
-    const { response, counterProposedDate, message } = await request.json();
-
-    // Validate inputs
-    if (!response || !["accept", "reject", "counter"].includes(response)) {
-      return NextResponse.json(
-        { error: "Invalid response type" },
-        { status: 400 }
-      );
+    
+    if (!scrimmage) {
+      scrimmage = await db.collection("Scrimmages").findOne({
+        scrimmageId: scrimmageId,
+      });
     }
-
-    if (response === "counter" && !counterProposedDate) {
-      return NextResponse.json(
-        { error: "Counter proposal requires a date" },
-        { status: 400 }
-      );
-    }
-
-    // Get the scrimmage
-    const scrimmage = await db.collection("Scrimmages").findOne({
-      _id: new ObjectId(scrimmageId),
-    });
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -71,10 +98,9 @@ export async function PATCH(
       );
     }
 
-    // Update scrimmage based on response
     let updateData: any = {
       updatedAt: new Date(),
-      responseMessage: message || undefined,
+      responseMessage: message ? sanitizeString(message, 500) : undefined,
     };
 
     if (response === "accept") {
@@ -82,6 +108,12 @@ export async function PATCH(
     } else if (response === "reject") {
       updateData.status = "rejected";
     } else if (response === "counter") {
+      if (!counterProposedDate) {
+        return NextResponse.json(
+          { error: "Counter proposal requires a date" },
+          { status: 400 }
+        );
+      }
       updateData.status = "counterProposal";
       updateData.counterProposedDate = new Date(counterProposedDate);
     }
@@ -108,7 +140,7 @@ export async function PATCH(
         (member: { discordId: string }) => ({
           userId: member.discordId,
           type: "scrimmage_response",
-          message: `${challengedTeam.name} has ${responseText} your scrimmage challenge`,
+          message: `${sanitizeString(challengedTeam.name, 100)} has ${responseText} your scrimmage challenge`,
           data: {
             scrimmageId: scrimmageId,
             challengedTeamId: challengedTeam._id.toString(),
@@ -132,27 +164,29 @@ export async function PATCH(
         await notifyScrimmageResponse(
           scrimmageId,
           scrimmage.challengerTeamId.toString(),
-          challengedTeam.name,
-          response,
+          sanitizeString(challengedTeam.name, 100),
+          response as "accept" | "reject" | "counter",
           memberIds,
           updateData.counterProposedDate || undefined,
           updateData.responseMessage,
           guildId
         );
       } catch (error) {
-        // Don't throw - change stream will catch it as fallback with duplicate prevention
+        safeLog.error("Failed to send Discord notification:", error);
       }
     }
+
+    revalidatePath("/scrimmages");
+    revalidatePath("/tournaments/scrimmages");
 
     return NextResponse.json({
       success: true,
       message: "Response sent successfully",
     });
-  } catch (error) {
-    console.error("Error responding to scrimmage challenge:", error);
-    return NextResponse.json(
-      { error: "Failed to respond to challenge" },
-      { status: 500 }
-    );
-  }
 }
+
+export const PATCH = withApiSecurity(patchRespondHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages", "/tournaments/scrimmages"],
+});

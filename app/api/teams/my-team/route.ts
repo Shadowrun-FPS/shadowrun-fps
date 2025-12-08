@@ -3,12 +3,22 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { getAllTeamCollectionNames } from "@/lib/team-collections";
+import { safeLog, rateLimiters, getClientIdentifier } from "@/lib/security";
 
 // Add this line to mark the route as dynamic
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {
+    // Rate limiting
+    const identifier = getClientIdentifier(req);
+    if (!rateLimiters.api.isAllowed(identifier)) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429 }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -39,15 +49,22 @@ export async function GET(req: NextRequest) {
       if (team) break; // Found a team, stop searching
     }
 
-    return NextResponse.json({
-      team: team || null,
-      isTeamMember: !!team,
-      isCaptain: team ? team.captain?.discordId === userId : false,
-    });
-  } catch (error) {
-    console.error("Error retrieving user's team:", error);
     return NextResponse.json(
-      { error: "Failed to retrieve user's team" },
+      {
+        team: team || null,
+        isTeamMember: !!team,
+        isCaptain: team ? team.captain?.discordId === userId : false,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-cache, no-store, must-revalidate",
+        },
+      }
+    );
+  } catch (error) {
+    safeLog.error("Error retrieving user's team:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Check, X, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,6 +21,7 @@ export function TeamJoinRequest({
   notification,
   onActionComplete,
 }: TeamJoinRequestProps) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [actionTaken, setActionTaken] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
@@ -93,7 +95,9 @@ export function TeamJoinRequest({
           return null;
         })
         .catch((error) => {
-          console.error("Error checking join request status:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Error checking join request status:", error);
+          }
           return null;
         })
         .finally(() => {
@@ -131,6 +135,7 @@ export function TeamJoinRequest({
   }, [notification.metadata?.requestId, notification.metadata?.teamId, notification.metadata?.status]);
 
   const handleAction = async (action: "accept" | "reject") => {
+    if (loading) return; // Prevent duplicate submissions
     if (!notification.metadata?.requestId) {
       // If there's no requestId in metadata, we need to find the request first
       try {
@@ -194,12 +199,14 @@ export function TeamJoinRequest({
             : "Join request declined",
       });
 
-      // Mark notification as read automatically
       await markAsRead(notification._id);
 
+      router.refresh();
       onActionComplete();
     } catch (error: any) {
-      console.error(`Error ${action}ing join request:`, error);
+      if (process.env.NODE_ENV === "development") {
+        console.error(`Error ${action}ing join request:`, error);
+      }
       toast({
         title: "Error",
         description: error.message || `Failed to ${action} request`,

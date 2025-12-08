@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface TeamMember {
   discordId: string;
@@ -19,31 +22,28 @@ interface Team extends WithId<Document> {
   members: TeamMember[];
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+async function postSeedTeamHandler(req: NextRequest) {
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
 
-    // Create sample members
-    const newMembers: TeamMember[] = [
-      {
-        discordId: "123456789",
-        discordUsername: "Player1",
-        discordNickname: "Pro Player 1",
-        elo: { "4v4": 1500 },
-        role: "captain",
-        joinedAt: new Date(),
-      },
-      {
-        discordId: "987654321",
-        discordUsername: "Player2",
-        discordNickname: "Pro Player 2",
-        elo: { "4v4": 1600 },
-        role: "member",
-        joinedAt: new Date(),
-      },
-      // Add more sample members as needed
-    ];
+  const newMembers: TeamMember[] = [
+    {
+      discordId: sanitizeString("123456789", 50),
+      discordUsername: sanitizeString("Player1", 100),
+      discordNickname: sanitizeString("Pro Player 1", 100),
+      elo: { "4v4": 1500 },
+      role: "captain",
+      joinedAt: new Date(),
+    },
+    {
+      discordId: sanitizeString("987654321", 50),
+      discordUsername: sanitizeString("Player2", 100),
+      discordNickname: sanitizeString("Pro Player 2", 100),
+      elo: { "4v4": 1600 },
+      role: "member",
+      joinedAt: new Date(),
+    },
+  ];
 
     // Create team with members
     const result = await db.collection<Team>("Teams").findOneAndUpdate(
@@ -68,9 +68,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    revalidatePath("/teams");
+
     return NextResponse.json(result.value);
-  } catch (error) {
-    console.error("Failed to seed team:", error);
-    return NextResponse.json({ error: "Failed to seed team" }, { status: 500 });
-  }
 }
+
+export const POST = withApiSecurity(postSeedTeamHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/teams"],
+});

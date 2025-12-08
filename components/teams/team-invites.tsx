@@ -1,11 +1,22 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Mail, Trash2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TeamInvite {
   inviterNickname: string;
@@ -28,6 +39,8 @@ export function TeamInvites({
 }) {
   const [invites, setInvites] = useState<TeamInvite[]>([]);
   const [isClearing, setIsClearing] = useState(false);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
 
   const fetchInvites = useCallback(async () => {
@@ -36,7 +49,9 @@ export function TeamInvites({
       const data = await response.json();
       setInvites(data.invites || []);
     } catch (error) {
-      console.error("Failed to fetch team invites:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to fetch team invites:", error);
+      }
     }
   }, [teamId]);
 
@@ -60,14 +75,11 @@ export function TeamInvites({
   };
 
   const handleClearAllInvites = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to clear all invites? This cannot be undone."
-      )
-    ) {
-      return;
-    }
+    setShowClearDialog(true);
+  };
 
+  const confirmClearInvites = async () => {
+    if (isClearing) return; // Prevent duplicate submissions
     setIsClearing(true);
     try {
       const response = await fetch(`/api/teams/${teamId}/invites/clear`, {
@@ -83,7 +95,11 @@ export function TeamInvites({
         title: "Invites Cleared",
         description: "All invites have been cleared successfully",
       });
+      router.refresh();
     } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error clearing invites:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to clear invites",
@@ -91,6 +107,7 @@ export function TeamInvites({
       });
     } finally {
       setIsClearing(false);
+      setShowClearDialog(false);
     }
   };
 
@@ -138,6 +155,29 @@ export function TeamInvites({
           )}
         </div>
       </CardContent>
+
+      {/* Clear All Invites Confirmation Dialog */}
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Invites</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear all invites? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isClearing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmClearInvites}
+              disabled={isClearing}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isClearing ? "Clearing..." : "Clear All"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

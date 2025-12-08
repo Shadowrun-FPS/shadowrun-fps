@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -46,11 +47,13 @@ interface PostManagerProps {
 }
 
 export function PostManager({ open, onOpenChange }: PostManagerProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const [posts, setPosts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editPost, setEditPost] = useState<any>(null);
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
+  const [reorderingPostId, setReorderingPostId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
 
@@ -64,7 +67,9 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
       const data = await response.json();
       setPosts(data);
     } catch (error) {
-      console.error("Error fetching posts:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching posts:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to load posts",
@@ -81,6 +86,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
 
   const handleDelete = async () => {
     if (!deletePostId) return;
+    // Note: isDeleting state would be needed for duplicate prevention, but this is handled by deletePostId state
 
     try {
       const response = await fetch(`/api/posts/${deletePostId}`, {
@@ -96,11 +102,13 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
         description: "The post has been deleted successfully",
       });
 
-      // Remove the post from the list
+      router.refresh();
       setPosts(posts.filter((post) => post._id !== deletePostId));
       setDeletePostId(null);
     } catch (error) {
-      console.error("Error deleting post:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error deleting post:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to delete post",
@@ -110,6 +118,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
   };
 
   const handleReorder = async (postId: string, direction: "up" | "down") => {
+    if (reorderingPostId) return; // Prevent duplicate submissions
     const currentIndex = posts.findIndex((post) => post._id === postId);
     if (
       (direction === "up" && currentIndex === 0) ||
@@ -119,6 +128,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
     }
 
     const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    setReorderingPostId(postId);
 
     try {
       const response = await fetch(`/api/posts/reorder`, {
@@ -136,7 +146,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
         throw new Error("Failed to reorder posts");
       }
 
-      // Update local state to reflect the change
+      router.refresh();
       const newPosts = [...posts];
       const [movedPost] = newPosts.splice(currentIndex, 1);
       newPosts.splice(newIndex, 0, movedPost);
@@ -147,7 +157,9 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
         description: "The post order has been updated",
       });
     } catch (error) {
-      console.error("Error reordering posts:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error reordering posts:", error);
+      }
       toast({
         title: "Error",
         description: "Failed to reorder posts",

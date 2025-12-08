@@ -3,38 +3,61 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postScoreScrimmageHandler(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { mapIndex, teamAScore, teamBScore, submittingTeam } =
-      await request.json();
+  const id = sanitizeString(params.id, 100);
+  if (!ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid scrimmage ID" },
+      { status: 400 }
+    );
+  }
 
-    if (
-      typeof mapIndex !== "number" ||
-      typeof teamAScore !== "number" ||
-      typeof teamBScore !== "number" ||
-      !["teamA", "teamB"].includes(submittingTeam)
-    ) {
-      return NextResponse.json(
-        { error: "Invalid request data" },
-        { status: 400 }
-      );
-    }
+  const body = await request.json();
+  const validation = validateBody(body, {
+    mapIndex: { type: "number", required: true, min: 0, max: 10 },
+    teamAScore: { type: "number", required: true, min: 0, max: 6 },
+    teamBScore: { type: "number", required: true, min: 0, max: 6 },
+    submittingTeam: { type: "string", required: true, maxLength: 10 },
+  });
 
-    const { db } = await connectToDatabase();
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    // Get the scrimmage
-    const scrimmage = await db.collection("scrimmages").findOne({
-      _id: new ObjectId(params.id),
-    });
+  const { mapIndex, teamAScore, teamBScore, submittingTeam } = validation.data! as {
+    mapIndex: number;
+    teamAScore: number;
+    teamBScore: number;
+    submittingTeam: string;
+  };
+
+  if (!["teamA", "teamB"].includes(submittingTeam)) {
+    return NextResponse.json(
+      { error: "submittingTeam must be 'teamA' or 'teamB'" },
+      { status: 400 }
+    );
+  }
+
+  const { db } = await connectToDatabase();
+
+  const scrimmage = await db.collection("scrimmages").findOne({
+    _id: new ObjectId(id),
+  });
 
     if (!scrimmage) {
       return NextResponse.json(
@@ -214,12 +237,14 @@ export async function POST(
       _id: new ObjectId(params.id),
     });
 
+    revalidatePath("/scrimmages");
+    revalidatePath(`/scrimmages/${id}`);
+
     return NextResponse.json(finalScrimmage);
-  } catch (error) {
-    console.error("Error submitting scores:", error);
-    return NextResponse.json(
-      { error: "Failed to submit scores" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postScoreScrimmageHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages"],
+});

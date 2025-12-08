@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
 interface TeamInviteCardProps {
@@ -31,9 +32,11 @@ export function TeamInviteCard({
   onAction,
 }: TeamInviteCardProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const { markAsRead } = useNotifications();
 
   const handleAccept = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -61,6 +64,7 @@ export function TeamInviteCard({
 
       // Mark notification as handled
       onAction(notification._id, "accepted");
+      router.refresh();
     } catch (error) {
       toast({
         title: "Error",
@@ -74,6 +78,7 @@ export function TeamInviteCard({
   };
 
   const handleReject = async () => {
+    if (isLoading) return; // Prevent duplicate submissions
     setIsLoading(true);
     try {
       const response = await fetch(
@@ -101,6 +106,7 @@ export function TeamInviteCard({
 
       // Mark notification as handled
       onAction(notification._id, "rejected");
+      router.refresh();
     } catch (error) {
       toast({
         title: "Error",

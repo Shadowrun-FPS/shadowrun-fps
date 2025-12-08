@@ -6,21 +6,29 @@ import { ObjectId, UpdateFilter, Document } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { ensurePlayerEloForAllTeamSizes } from "@/lib/ensure-player-elo";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postAcceptHandler(
   req: NextRequest,
   { params }: { params: { inviteId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to accept an invite" },
-        { status: 401 }
-      );
-    }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return NextResponse.json(
+      { error: "You must be logged in to accept an invite" },
+      { status: 401 }
+    );
+  }
 
-    const inviteId = params.inviteId;
+  const inviteId = sanitizeString(params.inviteId, 50);
+  if (!ObjectId.isValid(inviteId)) {
+    return NextResponse.json(
+      { error: "Invalid invite ID format" },
+      { status: 400 }
+    );
+  }
     const client = await clientPromise;
     const db = client.db();
 
@@ -66,8 +74,11 @@ export async function POST(
       }
     );
 
-    // If force parameter is not provided and user is in a team of the same size, return error with team info
-    const { force } = await req.json().catch(() => ({ force: false }));
+    const body = await req.json().catch(() => ({}));
+    const validation = validateBody(body, {
+      force: { type: "boolean", required: false },
+    });
+    const force = validation.data?.force || false;
 
     if (existingTeamOfSameSize && !force) {
       return NextResponse.json(
@@ -111,9 +122,7 @@ export async function POST(
           userId: oldTeam.captain.discordId,
           type: "team_member_left",
           title: "Member Left Team",
-          message: `${
-            session.user.nickname || session.user.name
-          } has left your team to join another team.`,
+          message: `${sanitizeString(session.user.nickname || session.user.name || "", 100)} has left your team to join another team.`,
           read: false,
           createdAt: new Date(),
           metadata: {
@@ -173,9 +182,7 @@ export async function POST(
         userId: team.captain.discordId,
         type: "team_invite_accepted",
         title: "Team Invite Accepted",
-        message: `${
-          session.user.nickname || session.user.name
-        } has joined your team`,
+        message: `${sanitizeString(session.user.nickname || session.user.name || "", 100)} has joined your team`,
         read: false,
         createdAt: new Date(),
         metadata: {
@@ -187,18 +194,20 @@ export async function POST(
       });
     }
 
-    // UPDATED: Recalculate team ELO with the new member
     await recalculateTeamElo(invite.teamId.toString());
+
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${invite.teamId.toString()}`);
+    revalidatePath("/notifications");
 
     return NextResponse.json({
       success: true,
       message: "You have successfully joined the team",
     });
-  } catch (error) {
-    console.error("Error accepting team invite:", error);
-    return NextResponse.json(
-      { error: "Failed to accept team invite" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postAcceptHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams", "/notifications"],
+});

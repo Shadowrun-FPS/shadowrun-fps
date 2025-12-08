@@ -2,35 +2,48 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function postStatusMatchHandler(
   req: NextRequest,
   { params }: { params: { matchId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { status } = await req.json();
+  const matchId = sanitizeString(params.matchId, 100);
 
-    // Validate status
-    if (!status || !["draft", "in_progress", "completed"].includes(status)) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-    }
+  const body = await req.json();
+  const validation = validateBody(body, {
+    status: { type: "string", required: true, maxLength: 50 },
+  });
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    // Get the match
-    const match = await db.collection("Matches").findOne({
-      matchId: params.matchId,
-    });
+  const { status } = validation.data! as { status: string };
+
+  if (!["draft", "in_progress", "completed"].includes(status)) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const match = await db.collection("Matches").findOne({
+    matchId,
+  });
 
     if (!match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
@@ -48,20 +61,21 @@ export async function POST(
       );
     }
 
-    // Update the match status
     await db
       .collection("Matches")
-      .updateOne({ matchId: params.matchId }, { $set: { status } });
+      .updateOne({ matchId }, { $set: { status } });
+
+    revalidatePath("/matches");
+    revalidatePath(`/matches/${matchId}`);
 
     return NextResponse.json({
       success: true,
       message: "Match status updated successfully",
     });
-  } catch (error) {
-    console.error("Error updating match status:", error);
-    return NextResponse.json(
-      { error: "Failed to update match status" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postStatusMatchHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches"],
+});

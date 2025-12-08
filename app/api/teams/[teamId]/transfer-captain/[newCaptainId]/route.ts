@@ -4,22 +4,33 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { authOptions } from "@/lib/auth";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postTransferCaptainHandler(
   req: NextRequest,
   { params }: { params: { teamId: string; newCaptainId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const teamId = sanitizeString(params.teamId, 50);
+  const newCaptainId = sanitizeString(params.newCaptainId, 50);
 
-    // Get team - search across all collections
-    const teamResult = await findTeamAcrossCollections(db, params.teamId);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID" },
+      { status: 400 }
+    );
+  }
+
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const teamResult = await findTeamAcrossCollections(db, teamId);
     if (!teamResult) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
     }
@@ -34,9 +45,8 @@ export async function POST(
       );
     }
 
-    // Get new captain details
     const newCaptain = team.members.find(
-      (m: any) => m.discordId === params.newCaptainId
+      (m: any) => m.discordId === newCaptainId
     );
 
     if (!newCaptain) {
@@ -53,15 +63,14 @@ export async function POST(
       );
     }
 
-    // Update team captain and member roles
     await db.collection(collectionName).updateOne(
-      { _id: new ObjectId(params.teamId) },
+      { _id: new ObjectId(teamId) },
       {
         $set: {
           captain: {
-            discordId: newCaptain.discordId,
-            discordUsername: newCaptain.discordUsername,
-            discordNickname: newCaptain.discordNickname,
+            discordId: sanitizeString(newCaptain.discordId, 50),
+            discordUsername: sanitizeString(newCaptain.discordUsername || "", 100),
+            discordNickname: sanitizeString(newCaptain.discordNickname || "", 100),
           },
           "members.$[oldCaptain].role": "member",
           "members.$[newCaptain].role": "captain",
@@ -69,18 +78,20 @@ export async function POST(
       },
       {
         arrayFilters: [
-          { "oldCaptain.discordId": session.user.id },
-          { "newCaptain.discordId": params.newCaptainId },
+          { "oldCaptain.discordId": sanitizeString(session.user.id, 50) },
+          { "newCaptain.discordId": newCaptainId },
         ],
       }
     );
 
+    revalidatePath("/teams");
+    revalidatePath(`/teams/${teamId}`);
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to transfer captain:", error);
-    return NextResponse.json(
-      { error: "Failed to transfer captain" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postTransferCaptainHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

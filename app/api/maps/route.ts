@@ -1,26 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(request: NextRequest) {
-  try {
-    const client = await clientPromise;
-    const db = client.db();
+export const dynamic = "force-dynamic";
 
-    // Get all maps from the database
-    const maps = await db.collection("Maps").find({}).toArray();
+async function getMapsHandler(request: NextRequest) {
+  const client = await clientPromise;
+  const db = client.db();
 
-    // Transform MongoDB _id to string
-    const transformedMaps = maps.map((map) => ({
-      ...map,
-      _id: map._id.toString(),
-    }));
+  const maps = await db.collection("Maps").find({}).toArray();
 
-    return NextResponse.json(transformedMaps);
-  } catch (error) {
-    console.error("Error fetching maps:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch maps" },
-      { status: 500 }
-    );
-  }
+  const transformedMaps = maps.map((map) => ({
+    ...map,
+    _id: map._id.toString(),
+  }));
+
+  const response = NextResponse.json(transformedMaps);
+  response.headers.set(
+    "Cache-Control",
+    "public, s-maxage=3600, stale-while-revalidate=86400"
+  );
+  return response;
 }
+
+export const GET = withApiSecurity(getMapsHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 3600,
+});

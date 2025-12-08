@@ -6,27 +6,43 @@ import { ObjectId } from "mongodb";
 import { recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { findTeamAcrossCollections, getTeamCollectionName } from "@/lib/team-collections";
 import { notifyTeamMemberChange, notifyScrimmageCancellation, getGuildId } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(
+async function postRemoveMemberHandler(
   req: NextRequest,
   { params }: { params: { teamId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { memberId } = await req.json();
-    if (!memberId) {
-      return NextResponse.json(
-        { error: "Member ID is required" },
-        { status: 400 }
-      );
-    }
+  const teamId = sanitizeString(params.teamId, 50);
+  if (!ObjectId.isValid(teamId)) {
+    return NextResponse.json(
+      { error: "Invalid team ID format" },
+      { status: 400 }
+    );
+  }
 
-    const { db } = await connectToDatabase();
-    const teamId = params.teamId;
+  const body = await req.json();
+  const validation = validateBody(body, {
+    memberId: { type: "string", required: true, maxLength: 50 },
+  });
+
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
+
+  const { memberId } = validation.data! as { memberId: string };
+  const sanitizedMemberId = sanitizeString(memberId, 50);
+
+  const { db } = await connectToDatabase();
 
     // Verify the user is the team captain - search across all collections
     const teamResult = await findTeamAcrossCollections(db, teamId);
@@ -39,9 +55,8 @@ export async function POST(
     const team = teamResult.team;
     const collectionName = teamResult.collectionName;
 
-    // Check if the member exists in the team and get their info
     const memberToRemove = team.members.find(
-      (m: any) => m.discordId === memberId
+      (m: any) => m.discordId === sanitizedMemberId
     );
     if (!memberToRemove) {
       return NextResponse.json(
@@ -50,8 +65,7 @@ export async function POST(
       );
     }
 
-    // Prevent removing yourself as captain through this endpoint
-    if (memberId === session.user.id) {
+    if (sanitizedMemberId === session.user.id) {
       return NextResponse.json(
         {
           error:
@@ -61,9 +75,8 @@ export async function POST(
       );
     }
 
-    // Remove the member from the team
     await db.collection(collectionName).updateOne({ _id: new ObjectId(teamId) }, {
-      $pull: { members: { discordId: memberId } },
+      $pull: { members: { discordId: sanitizedMemberId } },
     } as any);
 
     // Get updated team to check member count
@@ -96,7 +109,7 @@ export async function POST(
             $set: {
               status: "cancelled",
               updatedAt: new Date(),
-              cancellationReason: `Team "${team.name}" no longer has enough members (${memberCount}/${teamSize})`,
+              cancellationReason: `Team "${sanitizeString(team.name, 100)}" no longer has enough members (${memberCount}/${teamSize})`,
             },
           }
         );
@@ -113,7 +126,7 @@ export async function POST(
               userId: otherTeamResult.team.captain.discordId,
               type: "scrimmage_cancelled",
               title: "Scrimmage Cancelled",
-              message: `The scrimmage with "${team.name}" has been cancelled because the team no longer has enough members.`,
+              message: `The scrimmage with "${sanitizeString(team.name, 100)}" has been cancelled because the team no longer has enough members.`,
               read: false,
               createdAt: new Date(),
               metadata: {
@@ -127,11 +140,11 @@ export async function POST(
             // Change streams will act as fallback if API fails (with duplicate prevention)
             try {
               const guildId = getGuildId();
-              const cancellationReason = `Team "${team.name}" no longer has enough members (${memberCount}/${teamSize})`;
+              const cancellationReason = `Team "${sanitizeString(team.name, 100)}" no longer has enough members (${memberCount}/${teamSize})`;
               await notifyScrimmageCancellation(
                 scrimmage.scrimmageId || scrimmage._id.toString(),
                 teamId,
-                team.name,
+                sanitizeString(team.name, 100),
                 otherTeamResult.team.captain.discordId,
                 cancellationReason,
                 guildId
@@ -144,12 +157,11 @@ export async function POST(
       }
     }
 
-    // Create notification for the removed member
     await db.collection("Notifications").insertOne({
-      userId: memberId,
+      userId: sanitizedMemberId,
       type: "team_removed",
       title: "Removed from Team",
-      message: `You have been removed from the team "${team.name}" by the team captain.`,
+      message: `You have been removed from the team "${sanitizeString(team.name, 100)}" by the team captain.`,
       read: false,
       createdAt: new Date(),
       metadata: {
@@ -167,28 +179,29 @@ export async function POST(
         teamId,
         "removed",
         {
-          discordId: memberId,
-          discordUsername: memberToRemove.discordUsername || "Unknown",
-          discordNickname: memberToRemove.discordNickname || memberToRemove.discordUsername || "Unknown",
+          discordId: sanitizedMemberId,
+          discordUsername: sanitizeString(memberToRemove.discordUsername || "Unknown", 100),
+          discordNickname: sanitizeString(memberToRemove.discordNickname || memberToRemove.discordUsername || "Unknown", 100),
         },
         teamSize,
-        captainName
-      ).catch(() => {
-        // Don't fail the request if notification fails
+        sanitizeString(captainName, 100)
+      ).catch((err) => {
+        safeLog.error("Failed to send Discord notification:", err);
       });
     } catch (error) {
-      // Don't fail the request if notification fails
+      safeLog.error("Error sending Discord notification:", error);
     }
 
-    // UPDATED: Use the recalculateTeamElo function to update the team's ELO
     await recalculateTeamElo(teamId);
 
+    revalidatePath(`/teams/${teamId}`);
+    revalidatePath("/teams");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error removing team member:", error);
-    return NextResponse.json(
-      { error: "Failed to remove team member" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postRemoveMemberHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/teams"],
+});

@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId, Document, WithId, Filter, UpdateFilter } from "mongodb";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 interface QueuePlayer {
   discordId: string;
@@ -21,22 +24,28 @@ interface Queue extends WithId<Document> {
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function postLeaveHandler(
   req: NextRequest,
   { params }: { params: { queueId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
+  const session = await getServerSession(authOptions);
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const queueId = sanitizeString(params.queueId, 50);
+  if (!ObjectId.isValid(queueId)) {
+    return NextResponse.json(
+      { error: "Invalid queue ID format" },
+      { status: 400 }
+    );
+  }
 
-    // Remove player from queue using proper typing
-    const filter: Filter<Queue> = { _id: new ObjectId(params.queueId) };
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
+
+  const filter: Filter<Queue> = { _id: new ObjectId(queueId) };
     const update = {
       $pull: {
         players: { discordId: session.user.id },
@@ -62,12 +71,14 @@ export async function POST(
       global.io.emit("queues:update", updatedQueues);
     }
 
+    revalidatePath("/matches/queues");
+    revalidatePath("/admin/queues");
+
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error leaving queue:", error);
-    return NextResponse.json(
-      { error: "Failed to leave queue" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postLeaveHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

@@ -4,49 +4,64 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
+async function postCreateHandler(req: Request) {
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to create a queue" },
-        { status: 401 }
-      );
-    }
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be signed in to create a queue" },
+      { status: 401 }
+    );
+  }
 
-    const isAdmin =
-      session.user.id === SECURITY_CONFIG.DEVELOPER_ID || session.user.isAdmin;
+  const isAdmin =
+    session.user.id === SECURITY_CONFIG.DEVELOPER_ID || session.user.isAdmin;
 
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "You don't have permission to create queues" },
-        { status: 403 }
-      );
-    }
+  if (!isAdmin) {
+    return NextResponse.json(
+      { error: "You don't have permission to create queues" },
+      { status: 403 }
+    );
+  }
 
-    const { db } = await connectToDatabase();
-    const data = await req.json();
+  const { db } = await connectToDatabase();
+  const data = await req.json();
 
-    // Validate required fields
-    const { teamSize, eloTier, minElo, maxElo, gameType, status } = data;
+  const validation = validateBody(data, {
+    teamSize: { type: "number", required: true, min: 1, max: 8 },
+    eloTier: { type: "string", required: true, maxLength: 50 },
+    minElo: { type: "number", required: true, min: 0, max: 10000 },
+    maxElo: { type: "number", required: true, min: 0, max: 10000 },
+    gameType: { type: "string", required: false, maxLength: 50 },
+    status: { type: "string", required: false, maxLength: 50 },
+  });
 
-    if (!teamSize || !eloTier || minElo === undefined || maxElo === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    // Validate ELO range
-    if (minElo >= maxElo) {
-      return NextResponse.json(
-        { error: "Min ELO must be less than Max ELO" },
-        { status: 400 }
-      );
-    }
+  const { teamSize, eloTier, minElo, maxElo, gameType, status } = validation.data! as {
+    teamSize: number;
+    eloTier: string;
+    minElo: number;
+    maxElo: number;
+    gameType?: string;
+    status?: string;
+  };
+
+  if (minElo >= maxElo) {
+    return NextResponse.json(
+      { error: "Min ELO must be less than Max ELO" },
+      { status: 400 }
+    );
+  }
 
     // Fetch all ranked maps to set as default mapPool
     const rankedMaps = await db
@@ -78,21 +93,20 @@ export async function POST(req: Request) {
       }
     }
 
-    // Create queue document
     const queueData = {
       queueId: uuidv4(),
-      gameType: gameType || "ranked",
+      gameType: sanitizeString(gameType || "ranked", 50),
       teamSize,
       players: [],
-      eloTier,
+      eloTier: sanitizeString(eloTier, 50),
       minElo,
       maxElo,
-      status: status || "active",
-      mapPool: defaultMapPool, // Set default mapPool with all ranked maps
+      status: sanitizeString(status || "active", 50),
+      mapPool: defaultMapPool,
       createdAt: new Date(),
       createdBy: {
         discordId: session.user.id,
-        discordNickname: session.user.name || "Unknown",
+        discordNickname: sanitizeString(session.user.name || "Unknown", 100),
       },
     };
 
@@ -101,15 +115,18 @@ export async function POST(req: Request) {
     // Emit event to notify clients about the new queue
     // This would typically be handled by your real-time system
 
+    revalidatePath("/matches/queues");
+    revalidatePath("/admin/queues");
+
     return NextResponse.json(
       { success: true, queueId: queueData.queueId, _id: result.insertedId },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("Error creating queue:", error);
-    return NextResponse.json(
-      { error: "Failed to create queue" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postCreateHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/matches/queues", "/admin/queues"],
+});

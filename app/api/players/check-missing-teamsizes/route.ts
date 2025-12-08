@@ -2,28 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+async function getCheckMissingTeamSizesHandler(req: NextRequest) {
+  const session = await getServerSession(authOptions);
 
-    // Check if user is authenticated
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "You must be signed in to check registration" },
-        { status: 401 }
-      );
-    }
+  if (!session?.user) {
+    return NextResponse.json(
+      { error: "You must be signed in to check registration" },
+      { status: 401 }
+    );
+  }
 
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
+  const userId = sanitizeString(session.user.id, 50);
+  const client = await clientPromise;
+  const db = client.db("ShadowrunWeb");
 
-    // Check if player exists
-    const player = await db.collection("Players").findOne({
-      discordId: session.user.id,
-    });
+  const player = await db.collection("Players").findOne({
+    discordId: userId,
+  });
 
     if (!player) {
       return NextResponse.json(
@@ -43,16 +43,19 @@ export async function GET(req: NextRequest) {
       (size) => !existingTeamSizes.includes(size)
     );
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       hasPlayer: true,
       missingTeamSizes: missingTeamSizes,
       has4v4: existingTeamSizes.includes(4),
     });
-  } catch (error) {
-    console.error("Error checking player registration:", error);
-    return NextResponse.json(
-      { error: "Failed to check registration status" },
-      { status: 500 }
+    response.headers.set(
+      "Cache-Control",
+      "private, no-cache, no-store, must-revalidate"
     );
-  }
+    return response;
 }
+
+export const GET = withApiSecurity(getCheckMissingTeamSizesHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});

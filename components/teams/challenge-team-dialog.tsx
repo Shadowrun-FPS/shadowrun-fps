@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -107,6 +108,7 @@ export function ChallengeTeamDialog({
   disabled,
 }: ChallengeTeamDialogProps) {
   const { data: session } = useSession();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [timeOption, setTimeOption] = useState("evening");
@@ -325,6 +327,7 @@ export function ChallengeTeamDialog({
 
   // Handle form submission
   const handleSubmit = async () => {
+    if (isSubmitting) return; // Prevent duplicate submissions
     try {
       setIsSubmitting(true);
 
@@ -410,8 +413,11 @@ export function ChallengeTeamDialog({
         title: "Challenge sent",
         description: `Your challenge has been sent to ${team.name}.`,
       });
+      router.refresh();
     } catch (error: any) {
-      console.error("Error sending challenge:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error sending challenge:", error);
+      }
       toast({
         title: "Error",
         description: error.message || "Failed to send challenge",

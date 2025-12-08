@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useSession } from "next-auth/react";
 import { Shield, User, UserX, Ban } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export type EloTier = "low" | "medium" | "high";
 export type TeamSize = "1v1" | "2v2" | "4v4" | "5v5";
@@ -190,6 +191,7 @@ export function QueuePlayerRow({
 
 export default function QueueSystem() {
   const { toast } = useToast();
+  const router = useRouter();
   const { addMatch } = useMatchStore();
   const [activeTeamSize, setActiveTeamSize] = useState<TeamSize>("4v4");
   const [currentTier, setCurrentTier] = useState<EloTier>("medium");
@@ -637,7 +639,8 @@ export default function QueueSystem() {
             });
 
             // Redirect to match page
-            window.location.href = `/match/${matchId}`;
+            router.push(`/match/${matchId}`);
+            router.refresh();
           }, 1000);
         }
 
@@ -655,7 +658,7 @@ export default function QueueSystem() {
         [queueKey]: !prev[queueKey],
       }));
     },
-    [isUserQueued, addMatch, toast]
+    [isUserQueued, addMatch, toast, router]
   );
 
   const simulateQueue = useCallback(

@@ -64,7 +64,11 @@ export function NotificationsDropdown() {
     setOpen(false);
   };
 
+  const [isAccepting, setIsAccepting] = useState(false);
+
   const handleAcceptTeamInvite = async (notification: any) => {
+    if (isAccepting) return;
+    setIsAccepting(true);
     try {
       const response = await fetch(
         `/api/teams/${notification.metadata?.teamId}/accept-invite`,
@@ -81,19 +85,28 @@ export function NotificationsDropdown() {
       });
 
       await markAsRead(notification._id);
+      router.refresh();
       router.push(`/teams/${notification.metadata?.teamId}`);
       setOpen(false);
     } catch (error) {
-      console.error("Error accepting team invite:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error accepting team invite:", error);
+      }
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to accept team invite",
       });
+    } finally {
+      setIsAccepting(false);
     }
   };
 
+  const [isDeclining, setIsDeclining] = useState(false);
+
   const handleDeclineTeamInvite = async (notification: any) => {
+    if (isDeclining) return;
+    setIsDeclining(true);
     try {
       const response = await fetch(
         `/api/teams/${notification.metadata?.teamId}/decline-invite`,
@@ -109,13 +122,18 @@ export function NotificationsDropdown() {
       });
 
       await markAsRead(notification._id);
+      router.refresh();
     } catch (error) {
-      console.error("Error declining team invite:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error declining team invite:", error);
+      }
       toast({
         variant: "destructive",
         title: "Error",
         description: "Failed to decline team invite",
       });
+    } finally {
+      setIsDeclining(false);
     }
   };
 

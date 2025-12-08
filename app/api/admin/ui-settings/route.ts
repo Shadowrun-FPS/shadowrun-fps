@@ -2,59 +2,88 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function PATCH(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
+async function patchUISettingsHandler(req: Request) {
+  const session = await getServerSession(authOptions);
 
-    // Verify admin access
-    if (!session?.user?.roles?.includes("admin")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  if (!session?.user?.roles?.includes("admin")) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { component, settings } = await req.json();
+  const body = await req.json();
+  const validation = validateBody(body, {
+    component: { type: "string", required: true, maxLength: 100 },
+    settings: { type: "object", required: true },
+  });
 
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Update UI settings
-    await db
-      .collection("ui_settings")
-      .updateOne({ component }, { $set: { settings } }, { upsert: true });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Error updating UI settings:", error);
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "Failed to update settings" },
-      { status: 500 }
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
     );
   }
+
+  const { component, settings } = validation.data! as {
+    component: string;
+    settings: Record<string, any>;
+  };
+
+  const sanitizedComponent = sanitizeString(component, 100);
+
+  const client = await clientPromise;
+  const db = client.db();
+
+  await db
+    .collection("ui_settings")
+    .updateOne(
+      { component: sanitizedComponent },
+      { $set: { settings } },
+      { upsert: true }
+    );
+
+  revalidatePath("/admin");
+  return NextResponse.json({ success: true });
 }
 
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const component = searchParams.get("component");
+async function getUISettingsHandler(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const componentParam = searchParams.get("component");
 
-    if (!component) {
-      return NextResponse.json(
-        { error: "Component parameter required" },
-        { status: 400 }
-      );
-    }
-
-    const client = await clientPromise;
-    const db = client.db();
-
-    const settings = await db.collection("ui_settings").findOne({ component });
-
-    return NextResponse.json(settings?.settings || {});
-  } catch (error) {
-    console.error("Error fetching UI settings:", error);
+  if (!componentParam) {
     return NextResponse.json(
-      { error: "Failed to fetch settings" },
-      { status: 500 }
+      { error: "Component parameter required" },
+      { status: 400 }
     );
   }
+
+  const component = sanitizeString(componentParam, 100);
+
+  const client = await clientPromise;
+  const db = client.db();
+
+  const settings = await db.collection("ui_settings").findOne({ component });
+
+  const response = NextResponse.json(settings?.settings || {});
+  response.headers.set(
+    "Cache-Control",
+    "private, s-maxage=60, stale-while-revalidate=120"
+  );
+  return response;
 }
+
+export const PATCH = withApiSecurity(patchUISettingsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/admin"],
+});
+
+export const GET = withApiSecurity(getUISettingsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  cacheable: true,
+  cacheMaxAge: 60,
+});

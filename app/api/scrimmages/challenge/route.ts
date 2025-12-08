@@ -6,42 +6,48 @@ import { ObjectId } from "mongodb";
 import { v4 as uuidv4 } from "uuid";
 import { getAllTeamCollectionNames, findTeamAcrossCollections } from "@/lib/team-collections";
 import { notifyScrimmageChallenge, getGuildId } from "@/lib/discord-bot-api";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+async function postChallengeHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const data = await request.json();
+  const { db } = await connectToDatabase();
+  const data = await request.json();
 
-    // Validate required fields
-    if (!data.challengedTeamId) {
-      return NextResponse.json(
-        { error: "Missing required fields: challengedTeamId" },
-        { status: 400 }
-      );
-    }
+  const validation = validateBody(data, {
+    challengedTeamId: { type: "string", required: true, maxLength: 50 },
+    proposedDate: { type: "string", required: true },
+    selectedMaps: { type: "array", required: true },
+    message: { type: "string", required: false, maxLength: 500 },
+  });
 
-    if (!data.proposedDate) {
-      return NextResponse.json(
-        { error: "Missing required fields: proposedDate" },
-        { status: 400 }
-      );
-    }
+  if (!validation.valid) {
+    return NextResponse.json(
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
+    );
+  }
 
-    if (
-      !data.selectedMaps ||
-      !Array.isArray(data.selectedMaps) ||
-      data.selectedMaps.length === 0
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields: selectedMaps" },
-        { status: 400 }
-      );
-    }
+  const { challengedTeamId, proposedDate, selectedMaps, message } = validation.data! as {
+    challengedTeamId: string;
+    proposedDate: string;
+    selectedMaps: any[];
+    message?: string;
+  };
+
+  if (!Array.isArray(selectedMaps) || selectedMaps.length === 0) {
+    return NextResponse.json(
+      { error: "selectedMaps must be a non-empty array" },
+      { status: 400 }
+    );
+  }
+
+  const sanitizedChallengedTeamId = sanitizeString(challengedTeamId, 50);
 
     // Get the user's team - search across all collections
     const allCollections = getAllTeamCollectionNames();
@@ -60,8 +66,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the challenged team
-    const challengedTeamResult = await findTeamAcrossCollections(db, data.challengedTeamId);
+    const challengedTeamResult = await findTeamAcrossCollections(db, sanitizedChallengedTeamId);
     if (!challengedTeamResult) {
       return NextResponse.json(
         { error: "Challenged team not found" },
@@ -105,17 +110,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ensure the gameMode is properly stored
-    const mapsWithGameMode = data.selectedMaps.map((map: any) => ({
+    const mapsWithGameMode = selectedMaps.map((map: any) => ({
       ...map,
-      gameMode: map.gameMode || "Attrition", // Use the gameMode with a fallback
+      name: sanitizeString(map.name || "", 100),
+      gameMode: sanitizeString(map.gameMode || "Attrition", 50),
     }));
 
     // Create the scrimmage
     const scrimmage = {
       scrimmageId: uuidv4(),
       challengerTeamId: userTeam._id.toString(),
-      challengedTeamId: data.challengedTeamId,
+      challengedTeamId: sanitizedChallengedTeamId,
       teamSize: userTeamSize, // Store the team size for the scrimmage
       challengerTeam: {
         _id: userTeam._id,
@@ -163,9 +168,9 @@ export async function POST(request: NextRequest) {
           })
         ),
       },
-      proposedDate: new Date(data.proposedDate),
+      proposedDate: new Date(proposedDate),
       selectedMaps: mapsWithGameMode,
-      message: data.message || "",
+      message: message ? sanitizeString(message, 500) : "",
       status: "pending",
       createdAt: new Date(),
       createdBy: session.user.id,
@@ -179,7 +184,7 @@ export async function POST(request: NextRequest) {
         userId: challengedTeam.captain.discordId,
         type: "scrimmage_challenge",
         title: "New Scrimmage Challenge",
-        message: `${userTeam.name} has challenged your team to a scrimmage.`,
+        message: `${sanitizeString(userTeam.name, 100)} has challenged your team to a scrimmage.`,
         scrimmageId: scrimmage.scrimmageId,
         createdAt: new Date(),
         read: false,
@@ -207,14 +212,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    revalidatePath("/scrimmages");
+    revalidatePath("/tournaments/scrimmages");
+
     return NextResponse.json({
       success: true,
       scrimmageId: scrimmage.scrimmageId,
     });
-  } catch (error) {
-    return NextResponse.json(
-      { error: "Failed to create scrimmage challenge" },
-      { status: 500 }
-    );
-  }
 }
+
+export const POST = withApiSecurity(postChallengeHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+  revalidatePaths: ["/scrimmages", "/tournaments/scrimmages"],
+});

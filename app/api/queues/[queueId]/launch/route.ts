@@ -6,6 +6,9 @@ import { authOptions } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
 import { isAdmin } from "@/lib/admin";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // Add the QueuePlayer interface at the top of the file
 interface QueuePlayer {
@@ -108,7 +111,7 @@ function generateCombinations<T>(array: T[], k: number): T[][] {
   return result;
 }
 
-export async function POST(
+async function postLaunchHandler(
   req: NextRequest,
   { params }: { params: { queueId: string } }
 ) {
@@ -132,14 +135,8 @@ export async function POST(
           session.user.roles.includes("founder") ||
           session.user.roles.includes("GM")));
 
-    // Add debug logging
-    console.log("Session data in launch route:", {
-      user: session.user,
-      userId: session.user.id,
-    });
-
     if (!isAdmin(session.user.id)) {
-      console.log("Admin check failed in launch route:", {
+      safeLog.warn("Admin check failed in launch route:", {
         userId: session.user.id,
       });
       return NextResponse.json(
@@ -194,8 +191,7 @@ export async function POST(
     // Generate a unique match ID
     const matchId = uuidv4();
 
-    // Add this before creating the match document
-    console.log("Queue data:", {
+    safeLog.log("Queue data:", {
       queueId: params.queueId,
       teamSize: queue.teamSize,
       playerCount: queue.players.length,
@@ -445,10 +441,17 @@ export async function POST(
       matchId,
     });
   } catch (error) {
-    console.error("Error launching match:", error);
+    safeLog.error("Error launching match:", error);
     return NextResponse.json(
-      { error: "Failed to launch match" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
+
+export const POST = withApiSecurity(postLaunchHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/matches/queues", "/matches"],
+});

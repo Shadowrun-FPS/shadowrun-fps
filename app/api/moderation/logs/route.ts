@@ -5,16 +5,18 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { getDiscordUserInfoBatch } from "@/lib/discord-user-info";
+import { safeLog, sanitizeString } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-// Fetch moderation logs
-export async function GET(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type"); // 'all', 'warnings', 'bans', 'active', etc.
-    const limit = Number(searchParams.get("limit") || "50");
-    const skip = Number(searchParams.get("skip") || "0");
-    const search = searchParams.get("search") || "";
+async function getModerationLogsHandler(request: Request) {
+  const session = await getServerSession(authOptions);
+  const { searchParams } = new URL(request.url);
+  const type = sanitizeString(searchParams.get("type") || "all", 50);
+  const limit = Math.min(100, Math.max(1, Number(sanitizeString(searchParams.get("limit") || "50", 10)) || 50));
+  const skip = Math.max(0, Number(sanitizeString(searchParams.get("skip") || "0", 10)) || 0);
+  const search = sanitizeString(searchParams.get("search") || "", 100);
 
     const client = await clientPromise;
     const db = client.db();
@@ -38,12 +40,13 @@ export async function GET(request: Request) {
       }
     }
 
-    // Add search filter if provided
+    // Add search filter if provided (sanitize regex)
     if (search) {
+      const sanitizedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       query.$or = [
-        { playerName: { $regex: search, $options: "i" } },
-        { reason: { $regex: search, $options: "i" } },
-        { moderatorName: { $regex: search, $options: "i" } },
+        { playerName: { $regex: sanitizedSearch, $options: "i" } },
+        { reason: { $regex: sanitizedSearch, $options: "i" } },
+        { moderatorName: { $regex: sanitizedSearch, $options: "i" } },
       ];
     }
 
@@ -224,71 +227,92 @@ export async function GET(request: Request) {
       };
     });
 
-    return NextResponse.json({
-      logs: updatedLogs,
-      total,
-      stats: isAdmin ? stats : undefined,
-    });
-  } catch (error) {
-    console.error("Failed to fetch moderation logs:", error);
     return NextResponse.json(
-      { error: "Failed to fetch moderation logs" },
-      { status: 500 }
+      {
+        logs: updatedLogs,
+        total,
+        stats: isAdmin ? stats : undefined,
+      },
+      {
+        headers: {
+          "Cache-Control": "private, no-cache, no-store, must-revalidate",
+        },
+      }
     );
-  }
 }
 
-// Create a new moderation log entry
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession(authOptions);
+export const GET = withApiSecurity(getModerationLogsHandler, {
+  rateLimiter: "api",
+  requireAuth: true,
+});
 
-    // Check if user has permission to create moderation logs
-    if (
-      !session?.user?.roles?.includes("admin") &&
-      !session?.user?.roles?.includes("moderator")
-    ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-    }
+async function postModerationLogsHandler(request: Request) {
+  const session = await getServerSession(authOptions);
 
-    const body = await request.json();
-    const {
-      type,
-      playerId,
-      playerName,
-      reason,
-      duration,
-      active = true,
-    } = body;
+  if (
+    !session?.user?.roles?.includes("admin") &&
+    !session?.user?.roles?.includes("moderator")
+  ) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+  }
 
-    const client = await clientPromise;
-    const db = client.db();
-    const collection = db.collection("moderation_logs");
+  const body = await request.json();
+  const validation = validateBody(body, {
+    type: { type: "string", required: true },
+    playerId: { type: "string", required: true, maxLength: 50 },
+    playerName: { type: "string", required: true, maxLength: 100 },
+    reason: { type: "string", required: true, maxLength: 1000 },
+    duration: { type: "string", required: false, maxLength: 50 },
+    active: { type: "boolean", required: false },
+  });
 
-    const newLog = {
-      type,
-      playerId,
-      playerName,
-      reason,
-      duration,
-      active,
-      moderatorId: session.user.id,
-      moderatorName: session.user.name,
-      timestamp: new Date(),
-      hasDispute: false,
-    };
-
-    const result = await collection.insertOne(newLog);
-
-    return NextResponse.json({
-      success: true,
-      id: result.insertedId,
-    });
-  } catch (error) {
-    console.error("Failed to create moderation log:", error);
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "Failed to create moderation log" },
-      { status: 500 }
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
     );
   }
+
+  const validationData = validation.data! as {
+    type: string;
+    playerId: string;
+    playerName: string;
+    reason: string;
+    duration?: string;
+    active?: boolean;
+  };
+  const { type, playerId, playerName, reason, duration, active = true } = validationData;
+
+  const client = await clientPromise;
+  const db = client.db();
+  const collection = db.collection("moderation_logs");
+
+  const newLog = {
+    type: sanitizeString(type, 50),
+    playerId: sanitizeString(playerId, 50),
+    playerName: sanitizeString(playerName, 100),
+    reason: sanitizeString(reason, 1000),
+    duration: duration ? sanitizeString(duration, 50) : undefined,
+    active,
+    moderatorId: session.user.id,
+    moderatorName: sanitizeString(session.user.name || "", 100),
+    timestamp: new Date(),
+    hasDispute: false,
+  };
+
+  const result = await collection.insertOne(newLog);
+
+  revalidatePath("/moderation-log");
+  revalidatePath("/admin/moderation");
+
+  return NextResponse.json({
+    success: true,
+    id: result.insertedId,
+  });
 }
+
+export const POST = withApiSecurity(postModerationLogsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  revalidatePaths: ["/moderation-log", "/admin/moderation"],
+});

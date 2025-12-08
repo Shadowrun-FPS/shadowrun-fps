@@ -7,165 +7,170 @@ import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { safeLog, rateLimiters, getClientIdentifier } from "@/lib/security";
+import { cachedQuery } from "@/lib/query-cache";
+import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
-export async function GET(request: NextRequest) {
-  try {
-    const client = await clientPromise;
-    const db = client.db();
+async function getTournamentsHandler(request: NextRequest) {
+  const client = await clientPromise;
+  const db = client.db();
 
-    const tournaments = await db
-      .collection("Tournaments")
-      .find({})
-      .sort({ startDate: -1 })
-      .toArray();
+  const result = await cachedQuery(
+    "tournaments:all",
+    async () => {
+      const tournaments = await db
+        .collection("Tournaments")
+        .find({})
+        .sort({ startDate: -1 })
+        .toArray();
 
-    // Convert ObjectId to string
-    const formattedTournaments = tournaments.map((tournament) => ({
-      ...tournament,
-      _id: tournament._id.toString(),
-    }));
+      return tournaments.map((tournament) => ({
+        ...tournament,
+        _id: tournament._id.toString(),
+      }));
+    },
+    2 * 60 * 1000 // Cache for 2 minutes
+  );
 
-    return NextResponse.json(formattedTournaments);
-  } catch (error) {
-    console.error("Error fetching tournaments:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch tournaments" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(result, {
+    headers: {
+      "Cache-Control": "public, s-maxage=120, stale-while-revalidate=600",
+    },
+  });
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export const GET = withApiSecurity(getTournamentsHandler, {
+  rateLimiter: "api",
+  cacheable: true,
+  cacheMaxAge: 120,
+});
 
-    // Check if user is an admin
-    // Use the isAdmin property from the session
-    if (!session.user.isAdmin) {
-      // Special case for your account specifically
-      if (session.user.id !== SECURITY_CONFIG.DEVELOPER_ID) {
-        return NextResponse.json(
-          { error: "Only administrators can create tournaments" },
-          { status: 403 }
-        );
-      }
-    }
+async function postTournamentsHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
-    const { db } = await connectToDatabase();
-    const data = await request.json();
-
-    // Validate required fields
-    const requiredFields = ["name", "format", "teamSize", "maxTeams"];
-    for (const field of requiredFields) {
-      if (!data[field]) {
-        return NextResponse.json(
-          { error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Create the tournament
-    const tournamentData = {
-      ...data,
-      status: "upcoming",
-      createdAt: new Date(),
-      createdBy: {
-        userId: session.user.id,
-        name: session.user.name,
-      },
-      teams: [],
-      brackets: {
-        rounds: [],
-      },
-      coHosts: data.coHosts || [], // Include co-hosts if provided
-    };
-
-    // If double elimination format, add losers bracket
-    if (data.format === "double_elimination") {
-      tournamentData.brackets.losersRounds = [];
-    }
-
-    const result = await db.collection("Tournaments").insertOne(tournamentData);
-
-    return NextResponse.json({
-      success: true,
-      tournamentId: result.insertedId,
-      message: "Tournament created successfully",
-    });
-  } catch (error) {
-    console.error("Error creating tournament:", error);
+  if (!session.user.isAdmin && session.user.id !== SECURITY_CONFIG.DEVELOPER_ID) {
     return NextResponse.json(
-      { error: "Failed to create tournament" },
-      { status: 500 }
+      { error: "Only administrators can create tournaments" },
+      { status: 403 }
     );
   }
-}
 
-// DELETE a tournament
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
+  const { db } = await connectToDatabase();
+  const body = await request.json();
 
-    // Check if user is authenticated
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "You must be logged in to delete a tournament" },
-        { status: 401 }
-      );
-    }
+  const validation = validateBody(body, {
+    name: { type: "string", required: true, maxLength: 200 },
+    format: { type: "string", required: true },
+    teamSize: { type: "number", required: true, min: 2, max: 5 },
+    maxTeams: { type: "number", required: true, min: 2, max: 128 },
+  });
 
-    // Check if user is admin
-    const client = await clientPromise;
-    const db = client.db();
-
-    const user = await db.collection("Users").findOne({
-      discordId: session.user.id,
-    });
-
-    const isAdmin = user?.roles?.includes("admin") || false;
-
-    // If not admin, forbid access
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: "Only administrators can delete tournaments" },
-        { status: 403 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id || !ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid tournament ID" },
-        { status: 400 }
-      );
-    }
-
-    const result = await db.collection("Tournaments").deleteOne({
-      _id: new ObjectId(id),
-    });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json(
-        { error: "Tournament not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Tournament successfully deleted",
-    });
-  } catch (error) {
-    console.error("Error deleting tournament:", error);
+  if (!validation.valid) {
     return NextResponse.json(
-      { error: "Failed to delete tournament" },
-      { status: 500 }
+      { error: validation.errors?.join(", ") || "Invalid input" },
+      { status: 400 }
     );
   }
+
+  const data = validation.data!;
+
+  const tournamentData = {
+    ...data,
+    status: "upcoming",
+    createdAt: new Date(),
+    createdBy: {
+      userId: session.user.id,
+      name: session.user.name,
+    },
+    teams: [],
+    brackets: {
+      rounds: [],
+    },
+    coHosts: body.coHosts || [],
+  };
+
+  if (data.format === "double_elimination") {
+    (tournamentData.brackets as any).losersRounds = [];
+  }
+
+  const result = await db.collection("Tournaments").insertOne(tournamentData);
+
+  revalidatePath("/tournaments");
+  revalidatePath(`/tournaments/${result.insertedId.toString()}`);
+
+  return NextResponse.json({
+    success: true,
+    tournamentId: result.insertedId,
+    message: "Tournament created successfully",
+  });
 }
+
+export const POST = withApiSecurity(postTournamentsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});
+
+async function deleteTournamentsHandler(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const client = await clientPromise;
+  const db = client.db();
+
+  const user = await db.collection("Users").findOne({
+    discordId: session.user.id,
+  });
+
+  const isAdmin = user?.roles?.includes("admin") || session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
+
+  if (!isAdmin) {
+    return NextResponse.json(
+      { error: "Only administrators can delete tournaments" },
+      { status: 403 }
+    );
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id || !ObjectId.isValid(id)) {
+    return NextResponse.json(
+      { error: "Invalid tournament ID" },
+      { status: 400 }
+    );
+  }
+
+  const result = await db.collection("Tournaments").deleteOne({
+    _id: new ObjectId(id),
+  });
+
+  if (result.deletedCount === 0) {
+    return NextResponse.json(
+      { error: "Tournament not found" },
+      { status: 404 }
+    );
+  }
+
+  revalidatePath("/tournaments");
+  revalidatePath(`/tournaments/${id}`);
+
+  return NextResponse.json({
+    success: true,
+    message: "Tournament successfully deleted",
+  });
+}
+
+export const DELETE = withApiSecurity(deleteTournamentsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/tournaments"],
+});
