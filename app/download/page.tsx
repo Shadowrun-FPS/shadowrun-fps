@@ -55,32 +55,22 @@ export default function DownloadPage() {
   useEffect(() => {
     const fetchVersionInfo = async () => {
       try {
-        const response = await fetch(
-          "http://157.245.214.234/launcher/latest.yml"
-        );
-        const text = await response.text();
+        // Use our API proxy to avoid CORS issues
+        const response = await fetch("/api/launcher/version", {
+          cache: "no-store",
+        });
 
-        // Parse YAML manually (simple key: value parsing)
-        const lines = text.split("\n");
-        const versionLine = lines.find((line) => line.startsWith("version:"));
-        const pathLine = lines.find((line) => line.startsWith("path:"));
-        const sizeLine = lines.find((line) => line.startsWith("  size:"));
-        const dateLine = lines.find((line) => line.startsWith("releaseDate:"));
-
-        if (versionLine && pathLine) {
-          setVersionInfo({
-            version: versionLine.split(":")[1].trim(),
-            path: pathLine.split(":")[1].trim(),
-            size: sizeLine ? parseInt(sizeLine.split(":")[1].trim()) : 0,
-            releaseDate: dateLine
-              ? dateLine.split(": ")[1].replace(/'/g, "").trim()
-              : "",
-          });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const versionInfo = await response.json();
+
+        console.log("Fetched version info:", versionInfo);
+
+        setVersionInfo(versionInfo);
       } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Failed to fetch version info:", error);
-        }
+        console.error("Failed to fetch version info:", error);
         // Fallback to default version
         setVersionInfo({
           version: "0.9.4",
