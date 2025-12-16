@@ -7,7 +7,7 @@ import { Navbar } from "./navbar";
 
 export function Header() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
+    <header className="w-full border-b border-border/40 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="flex items-center h-14 sm:h-16 max-w-screen-2xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         {/* Logo - Left side */}
         <div className="flex-shrink-0 mr-4 sm:mr-6">
