@@ -9,37 +9,6 @@ Welcome to the Shadowrun FPS Website project! This is a comprehensive site for a
 - **Community Engagement**: Forums, blogs, and social media integration to keep the community active and involved.
 - **Ranked Matchmaking System**: Compete against other players, track your stats, and see who tops the leaderboards.
 
-## Getting Started
-
-Follow these steps to get the development server up and running:
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Shadowrun-FPS/shadowrun-fps.git
-   ```
-2. **Navigate to the project directory:**
-   ```bash
-   cd shadowrun-fps
-   ```
-3. **Install dependencies:**
-   ```bash
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   ```
-4. **Run the development server:**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
 ## Learn More about Next.js
 
 If you're interested in contributing or simply want to learn more about Next.js, here are some valuable resources:

@@ -148,7 +148,7 @@ export default function DownloadPage() {
               </p>
             )}
             <p className="mb-6 text-muted-foreground">
-              Full NSIS installer with automatic update capabilities. One-click
+              Full NSIS installer with automatic update capabilities. Easy
               installation for Shadowrun FPS.
             </p>
 
@@ -171,37 +171,7 @@ export default function DownloadPage() {
                 className="relative"
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
-              >
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="overflow-hidden relative group"
-                  asChild
-                >
-                  <Link
-                    href="https://github.com/3MERGx/shadowrun-launcher"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="View Source on GitHub (opens in new window)"
-                  >
-                    <span className="flex relative z-10 items-center">
-                      <Github className="mr-2 w-5 h-5" />
-                      View Source on GitHub
-                    </span>
-                  </Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-4 text-center">
-              <Link
-                href="https://github.com/3MERGx/shadowrun-launcher/releases"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline"
-              >
-                View Full Changelog →
-              </Link>
+              ></div>
             </div>
           </div>
 
@@ -270,19 +240,17 @@ export default function DownloadPage() {
               <ol className="space-y-3 list-decimal list-inside text-muted-foreground">
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">Prerequisites:</strong>{" "}
-                  Install the{" "}
                   <a
-                    href="https://dotnet.microsoft.com/download/dotnet/9.0"
+                    href="https://dotnet.microsoft.com/download/dotnet/6.0"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-primary hover:underline"
-                    aria-label=".NET Desktop Runtime 9.0 (opens in new window)"
+                    aria-label=".NET Desktop Runtime 6.0 (opens in new window)"
                   >
-                    .NET Desktop Runtime 9.0
-                  </a>{" "}
-                  (required for the launcher to run) from Microsoft&apos;s
-                  official website.
+                    .NET Desktop Runtime 6.0
+                  </a>
                 </li>
+
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">
                     Download the Installer:
@@ -305,11 +273,15 @@ export default function DownloadPage() {
                   automatically download the required game files.
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
+                  <strong className="text-foreground">
+                    Press Activate Game:
+                  </strong>{" "}
+                  Once file downloads are complete, press &quot;Activate
+                  Game&quot;.
+                </li>
+                <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">Launch & Sign In:</strong>{" "}
-                  Launch the game and sign into your Xbox account in GFWL. When
-                  you reach the activation code screen, return to the launcher
-                  and press &quot;Activate Game&quot;. The key will
-                  automatically be entered into the activation code field.
+                  Launch the game and sign into your Xbox account in GFWL.
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">Finish & Play:</strong>{" "}
@@ -317,26 +289,11 @@ export default function DownloadPage() {
                   Restart the game and you&apos;re ready to play!
                 </li>
               </ol>
-            </div>
-
-            {/* Portable Version Note */}
-            <div className="flex items-start p-4 mb-4 rounded-lg border bg-blue-500/10 border-blue-500/30">
-              <Info className="flex-shrink-0 mt-1 mr-3 text-blue-500" />
+              <br />
               <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">
-                  Prefer not to install?
-                </strong>{" "}
-                A portable version is also available that requires no
-                installation - simply download and run. Visit our{" "}
-                <a
-                  href="https://github.com/3MERGx/shadowrun-launcher/releases"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
-                >
-                  GitHub releases page
-                </a>{" "}
-                for the portable version.
+                <strong>Note:</strong> Due to how our activation works,
+                activation may break at any time. If this happens, just press
+                Activate Game again.
               </p>
             </div>
 
@@ -347,12 +304,12 @@ export default function DownloadPage() {
               </h3>
               <ul className="space-y-1 text-sm text-muted-foreground">
                 <li>
-                  <strong className="text-foreground">OS:</strong> Windows 10/11
+                  <strong className="text-foreground">OS:</strong> Windows 7
                   (64-bit)
                 </li>
                 <li>
                   <strong className="text-foreground">Requirements:</strong>{" "}
-                  .NET Desktop Runtime 9.0
+                  .NET Desktop Runtime 6.0 (auto-installed)
                 </li>
                 <li>
                   <strong className="text-foreground">
@@ -388,8 +345,8 @@ export default function DownloadPage() {
 
             <div className="mb-4">
               <VirusTotalWidget
-                fileUrl="https://www.virustotal.com/gui/url/5c3783fa496b5e468c580cf7cf30820a107451aea22ff7eaae68513a6ca00432/detection"
-                fileName="ShadowrunLauncher.zip"
+                fileUrl="https://www.virustotal.com/gui/file/5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd?nocache=1"
+                fileName="Shadowrun FPS Launcher Setup.exe"
               />
             </div>
 
@@ -407,11 +364,15 @@ export default function DownloadPage() {
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-background/50">
                 <span className="text-muted-foreground">File:</span>
-                <span className="font-semibold">ShadowrunLauncher.zip</span>
+                <span className="font-semibold">
+                  Shadowrun FPS Launcher Setup.exe
+                </span>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-background/50">
-                <span className="text-muted-foreground">Size (Zipped):</span>
-                <span className="font-semibold">~5.2 MB</span>
+                <span className="text-muted-foreground">SHA256:</span>
+                <span className="font-mono text-xs break-all">
+                  5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd
+                </span>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-background/50">
                 <span className="text-muted-foreground">Digitally Signed:</span>
