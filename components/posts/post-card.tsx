@@ -41,16 +41,33 @@ export function PostCard({ post }: { post: Post }) {
 
   // Format date safely - check multiple possible date field names
   const formatDate = () => {
-    // Check various possible date fields
-    const dateValue =
-      post.datePublished || post.date || post.createdAt || post.publishedAt;
+    // Prioritize datePublished over date field
+    // Check various possible date fields in order of preference
+    const dateValue = post.datePublished || post.date || post.createdAt || post.publishedAt;
 
     if (!dateValue) return "No date";
 
     try {
-      // Try to parse the date - it could be a string or already a Date object
-      const date =
-        typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+      let date: Date;
+      
+      // Check if it's already a Date object using Object.prototype.toString
+      if (dateValue && typeof dateValue === "object" && Object.prototype.toString.call(dateValue) === "[object Date]") {
+        // Already a Date object
+        date = dateValue as Date;
+      } else if (typeof dateValue === "string") {
+        // Handle different string formats
+        // Check if it's in MM-DD-YYYY format (e.g., "10-17-2023")
+        const mmddyyyyMatch = dateValue.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+        if (mmddyyyyMatch) {
+          const [, month, day, year] = mmddyyyyMatch;
+          date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          // Try standard Date parsing (ISO, etc.)
+          date = new Date(dateValue);
+        }
+      } else {
+        date = new Date(dateValue as string | number);
+      }
 
       // Check if date is valid before formatting
       if (isNaN(date.getTime())) {
@@ -65,10 +82,22 @@ export function PostCard({ post }: { post: Post }) {
   };
 
   // Update the getImageUrl function to ensure it always returns a string
+  // Normalize local image URLs to start with / if they don't already
   const getImageUrl = () => {
-    return (
-      post.imageUrl || post.image || post.thumbnail || post.featuredImage || ""
-    );
+    const url = post.imageUrl || post.image || post.thumbnail || post.featuredImage || "";
+    if (!url) return "";
+    
+    // If it's already an external URL, return as-is
+    if (url.startsWith("http://") || url.startsWith("https://")) {
+      return url;
+    }
+    
+    // If it's a local path and doesn't start with /, add it
+    if (url && !url.startsWith("/")) {
+      return `/${url}`;
+    }
+    
+    return url;
   };
 
   // Update the getLink function to not return a fallback "#"
@@ -107,7 +136,7 @@ export function PostCard({ post }: { post: Post }) {
     <CardWrapper>
       <Card className="flex flex-col h-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 shadow-md hover:shadow-xl bg-card">
         <div className="relative w-full h-48 sm:h-56 overflow-hidden group">
-          {hasImage ? (
+          {hasImage && !imageError ? (
             <>
               <Image
                 src={getImageUrl()}
@@ -133,9 +162,15 @@ export function PostCard({ post }: { post: Post }) {
               )}
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center w-full h-full text-muted-foreground bg-gradient-to-br from-muted/50 to-muted/30">
-              <ImageIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-2 opacity-50" />
-              <span className="text-xs sm:text-sm">No image available</span>
+            <div className="relative w-full h-full">
+              <Image
+                src="/shadowrun_invite_banner.png"
+                alt="Shadowrun FPS Banner"
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                className="object-cover"
+                unoptimized={false}
+              />
             </div>
           )}
 

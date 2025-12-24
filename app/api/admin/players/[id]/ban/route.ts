@@ -138,7 +138,7 @@ async function postBanPlayerHandler(
         $set: {
           isBanned: true,
           banExpiry: banExpiry,
-          updatedAt: new Date(),
+          // Don't update updatedAt - it's used for "Last Active" timestamp
         },
       };
 

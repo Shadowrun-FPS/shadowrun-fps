@@ -6,6 +6,8 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
+import { queryCache } from "@/lib/query-cache";
+import { revalidatePath } from "next/cache";
 
 // Helper function to check if user is admin
 async function isUserAdmin(userId: string) {
@@ -23,7 +25,7 @@ async function isUserAdmin(userId: string) {
   return hasAdminRole(user.roles || []);
 }
 
-// POST reorder posts
+// POST reorder posts - supports both single and bulk reordering
 export const POST = withErrorHandling(async (req: NextRequest) => {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -42,46 +44,108 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  const { postId, newIndex } = await req.json();
+  const body = await req.json();
 
-  if (!postId || typeof newIndex !== "number") {
-    throw createError.badRequest("Post ID and new index are required");
+  // Support both bulk reordering (array of posts) and single reordering (backward compatibility)
+  if (Array.isArray(body.posts)) {
+    // Bulk reordering
+    const { posts: reorderedPosts } = body;
+
+    if (!Array.isArray(reorderedPosts) || reorderedPosts.length === 0) {
+      throw createError.badRequest("Posts array is required and must not be empty");
+    }
+
+    // Validate all posts have _id and order
+    for (const post of reorderedPosts) {
+      if (!post._id || typeof post.order !== "number") {
+        throw createError.badRequest("Each post must have _id and order");
+      }
+      if (!ObjectId.isValid(post._id)) {
+        throw createError.badRequest(`Invalid post ID: ${post._id}`);
+      }
+    }
+
+    // Batch update all posts using bulkWrite
+    const bulkOps = reorderedPosts.map((post) => ({
+      updateOne: {
+        filter: { _id: new ObjectId(post._id) },
+        update: {
+          $set: {
+            order: post.order,
+            updatedAt: new Date(),
+          },
+        },
+      },
+    }));
+
+    const result = await db.collection("Posts").bulkWrite(bulkOps);
+
+    // Invalidate cache and revalidate paths
+    queryCache.invalidate("posts:all");
+    revalidatePath("/");
+    revalidatePath("/docs");
+    revalidatePath("/docs/events");
+
+    secureLogger.info("Posts bulk reordered successfully", {
+      postCount: reorderedPosts.length,
+      modifiedCount: result.modifiedCount,
+      adminId: session.user.id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully updated order for ${result.modifiedCount} posts`,
+      modifiedCount: result.modifiedCount,
+    });
+  } else {
+    // Single reordering (backward compatibility)
+    const { postId, newIndex } = body;
+
+    if (!postId || typeof newIndex !== "number") {
+      throw createError.badRequest("Post ID and new index are required");
+    }
+
+    // Get all posts sorted by date then order (matching the display sort)
+    const posts = await db
+      .collection("Posts")
+      .find({})
+      .sort({ date: 1, order: 1, datePublished: 1 })
+      .toArray();
+
+    // Find the post to move
+    const currentIndex = posts.findIndex(
+      (post) => post._id.toString() === postId
+    );
+    if (currentIndex === -1) {
+      throw createError.notFound("Post not found");
+    }
+
+    // Reorder the posts
+    const [movedPost] = posts.splice(currentIndex, 1);
+    posts.splice(newIndex, 0, movedPost);
+
+    // Update all post orders
+    const bulkOps = posts.map((post, index) => ({
+      updateOne: {
+        filter: { _id: post._id },
+        update: { $set: { order: index, updatedAt: new Date() } },
+      },
+    }));
+
+    await db.collection("Posts").bulkWrite(bulkOps);
+
+    // Invalidate cache and revalidate paths
+    queryCache.invalidate("posts:all");
+    revalidatePath("/");
+    revalidatePath("/docs");
+    revalidatePath("/docs/events");
+
+    secureLogger.info("Post reordered successfully", {
+      postId,
+      newIndex,
+      adminId: session.user.id,
+    });
+
+    return NextResponse.json({ success: true });
   }
-
-  // Get all posts sorted by order
-  const posts = await db
-    .collection("Posts")
-    .find({})
-    .sort({ order: 1 })
-    .toArray();
-
-  // Find the post to move
-  const currentIndex = posts.findIndex(
-    (post) => post._id.toString() === postId
-  );
-  if (currentIndex === -1) {
-    throw createError.notFound("Post not found");
-  }
-
-  // Reorder the posts
-  const [movedPost] = posts.splice(currentIndex, 1);
-  posts.splice(newIndex, 0, movedPost);
-
-  // Update all post orders
-  const bulkOps = posts.map((post, index) => ({
-    updateOne: {
-      filter: { _id: post._id },
-      update: { $set: { order: index } },
-    },
-  }));
-
-  await db.collection("Posts").bulkWrite(bulkOps);
-
-  secureLogger.info("Posts reordered successfully", {
-    postId,
-    newIndex,
-    adminId: session.user.id,
-  });
-
-  return NextResponse.json({ success: true });
 });

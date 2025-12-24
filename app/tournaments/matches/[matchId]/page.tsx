@@ -491,8 +491,11 @@ export default function TournamentMatchPage() {
     }
 
     const pollInterval = setInterval(() => {
-      fetchMatchData();
-    }, 3000); // Poll every 3 seconds
+      // Only poll if page is visible
+      if (!document.hidden) {
+        fetchMatchData();
+      }
+    }, 10000); // Poll every 10 seconds (increased from 3 seconds to reduce rate limiting)
 
     return () => clearInterval(pollInterval);
   }, [match, fetchMatchData]);

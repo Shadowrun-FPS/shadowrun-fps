@@ -33,18 +33,44 @@ export default function QueuesTab() {
 
   useEffect(() => {
     const fetchQueues = async () => {
+      // Only fetch if page is visible (save resources when tab is in background)
+      if (document.hidden) return;
+      
       try {
         const response = await fetch(`/api/queues?gameType=${activeGameType}`);
+        if (!response.ok) {
+          // If rate limited, skip this fetch
+          if (response.status === 429) {
+            return;
+          }
+          throw new Error("Failed to fetch queues");
+        }
         const data = await response.json();
         setQueues(data);
       } catch (error) {
-        console.error("Failed to fetch queues:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to fetch queues:", error);
+        }
       }
     };
 
     fetchQueues();
-    const interval = setInterval(fetchQueues, 5000);
-    return () => clearInterval(interval);
+    // Increased from 5 seconds to 15 seconds to reduce API calls
+    const interval = setInterval(fetchQueues, 15000);
+    
+    // Stop polling when tab is hidden, resume when visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchQueues(); // Fetch immediately when tab becomes visible
+      }
+    };
+    
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [activeGameType]);
 
   const handleJoinQueue = async (queue: Queue) => {

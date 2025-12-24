@@ -7,7 +7,7 @@ import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
 import { safeLog, sanitizeString } from "@/lib/security";
-import { cachedQuery } from "@/lib/query-cache";
+import { cachedQuery, queryCache } from "@/lib/query-cache";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
 
@@ -38,7 +38,7 @@ async function getPostsHandler(req: NextRequest) {
       return await db
         .collection("Posts")
         .find({})
-        .sort({ order: 1, date: -1 })
+        .sort({ order: 1, date: 1, datePublished: 1 })
         .toArray();
     },
     5 * 60 * 1000 // Cache for 5 minutes
@@ -111,6 +111,20 @@ async function postPostsHandler(req: NextRequest) {
   const newOrder =
     highestOrder.length > 0 ? (highestOrder[0].order || 0) + 1 : 0;
 
+  // Parse date from body if provided, otherwise use current date
+  let postDate = new Date();
+  if (body.date) {
+    try {
+      postDate = new Date(body.date);
+      // If date is invalid, fall back to current date
+      if (isNaN(postDate.getTime())) {
+        postDate = new Date();
+      }
+    } catch {
+      postDate = new Date();
+    }
+  }
+
   const post = {
     title: sanitizeString(title, 200),
     description: description ? sanitizeString(description, 5000) : "",
@@ -119,7 +133,8 @@ async function postPostsHandler(req: NextRequest) {
     link: link ? sanitizeString(link, 500) : "",
     authorId: authorId || session.user.id,
     author: author || session.user.name || "",
-    datePublished: new Date().toISOString(),
+    date: postDate,
+    datePublished: postDate.toISOString(),
     published: true,
     order: newOrder,
   };
@@ -131,8 +146,12 @@ async function postPostsHandler(req: NextRequest) {
     authorId: session.user.id,
   });
 
+  // Invalidate cache
+  queryCache.invalidate("posts:all");
+
   revalidatePath("/");
   revalidatePath("/docs");
+  revalidatePath("/docs/events");
 
   return NextResponse.json({
     success: true,
@@ -185,6 +204,19 @@ async function putPostsHandler(req: NextRequest) {
   if (updateData.author) sanitizedUpdate.author = sanitizeString(updateData.author, 100);
   if (updateData.order !== undefined) sanitizedUpdate.order = updateData.order;
   if (updateData.published !== undefined) sanitizedUpdate.published = updateData.published;
+  
+  // Handle date update
+  if (updateData.date) {
+    try {
+      const postDate = new Date(updateData.date);
+      if (!isNaN(postDate.getTime())) {
+        sanitizedUpdate.date = postDate;
+        sanitizedUpdate.datePublished = postDate.toISOString();
+      }
+    } catch {
+      // Invalid date, skip update
+    }
+  }
 
   await db.collection("Posts").updateOne(
     { _id: new ObjectId(_id) },

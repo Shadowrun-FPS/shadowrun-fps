@@ -44,9 +44,13 @@ async function patchQueueDetailsHandler(
   const body = await req.json();
   const validation = validateBody(body, {
     gameType: { type: "string", required: true, maxLength: 50 },
-    eloTier: { type: "string", required: true, maxLength: 50 },
+    teamSize: { type: "number", required: false, min: 1, max: 8 },
+    eloTier: { type: "string", required: false, maxLength: 50 },
     minElo: { type: "number", required: false, min: 0, max: 10000 },
     maxElo: { type: "number", required: false, min: 0, max: 10000 },
+    requiredRoles: { type: "array", required: false },
+    customQueueChannel: { type: "string", required: false, maxLength: 50 },
+    customMatchChannel: { type: "string", required: false, maxLength: 50 },
   });
 
   if (!validation.valid) {
@@ -56,11 +60,24 @@ async function patchQueueDetailsHandler(
     );
   }
 
-  const { gameType, eloTier, minElo, maxElo } = validation.data! as {
+  const {
+    gameType,
+    teamSize,
+    eloTier,
+    minElo,
+    maxElo,
+    requiredRoles,
+    customQueueChannel,
+    customMatchChannel,
+  } = validation.data! as {
     gameType: string;
-    eloTier: string;
+    teamSize?: number;
+    eloTier?: string;
     minElo?: number;
     maxElo?: number;
+    requiredRoles?: string[];
+    customQueueChannel?: string;
+    customMatchChannel?: string;
   };
 
     if (minElo !== undefined && maxElo !== undefined) {
@@ -86,15 +103,44 @@ async function patchQueueDetailsHandler(
     const updateData: any = {
       $set: {
         gameType,
-        eloTier,
+        updatedAt: new Date(),
       },
     };
 
+    if (teamSize !== undefined) {
+      updateData.$set.teamSize = teamSize;
+    }
+    if (eloTier !== undefined) {
+      updateData.$set.eloTier = eloTier;
+    } else {
+      updateData.$unset = { eloTier: "" };
+    }
     if (minElo !== undefined) {
       updateData.$set.minElo = minElo;
     }
     if (maxElo !== undefined) {
       updateData.$set.maxElo = maxElo;
+    }
+    if (requiredRoles !== undefined) {
+      updateData.$set.requiredRoles = Array.isArray(requiredRoles)
+        ? requiredRoles
+        : [];
+    }
+    if (customQueueChannel !== undefined) {
+      if (customQueueChannel) {
+        updateData.$set.customQueueChannel = customQueueChannel;
+      } else {
+        if (!updateData.$unset) updateData.$unset = {};
+        updateData.$unset.customQueueChannel = "";
+      }
+    }
+    if (customMatchChannel !== undefined) {
+      if (customMatchChannel) {
+        updateData.$set.customMatchChannel = customMatchChannel;
+      } else {
+        if (!updateData.$unset) updateData.$unset = {};
+        updateData.$unset.customMatchChannel = "";
+      }
     }
 
     await db.collection("Queues").updateOne(

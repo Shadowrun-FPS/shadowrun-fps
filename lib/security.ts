@@ -165,14 +165,14 @@ class RateLimiter {
 
 // Create rate limiters for different endpoints
 export const rateLimiters = {
-  // General API endpoints: 10 requests per minute
-  api: new RateLimiter(60000, 10),
-  // Auth endpoints: 5 requests per minute
-  auth: new RateLimiter(60000, 5),
+  // General API endpoints: 30 requests per minute (increased to handle polling)
+  api: new RateLimiter(60000, 30),
+  // Auth endpoints: 10 requests per minute
+  auth: new RateLimiter(60000, 10),
   // Upload endpoints: 5 requests per minute
   upload: new RateLimiter(60000, 5),
-  // Admin endpoints: 20 requests per minute
-  admin: new RateLimiter(60000, 20),
+  // Admin endpoints: 40 requests per minute
+  admin: new RateLimiter(60000, 40),
 };
 
 // Cleanup rate limiters every 5 minutes

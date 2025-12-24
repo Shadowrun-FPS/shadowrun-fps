@@ -126,7 +126,7 @@ interface Queue {
 
 // Create queue form schema
 const createQueueSchema = z.object({
-  teamSize: z.enum(["1", "2", "4", "5"]),
+  teamSize: z.enum(["1", "2", "4", "5", "8"]),
   eloTier: z.enum(["low", "mid", "high"]),
   minElo: z.coerce.number().min(0).max(5000),
   maxElo: z.coerce.number().min(0).max(5000),
@@ -139,8 +139,12 @@ export default function QueuesPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [joiningQueue, setJoiningQueue] = useState<string | null>(null);
   const [leavingQueue, setLeavingQueue] = useState<string | null>(null);
-  const [pendingOperations, setPendingOperations] = useState<Set<string>>(new Set());
-  const [lastActionTime, setLastActionTime] = useState<Record<string, number>>({});
+  const [pendingOperations, setPendingOperations] = useState<Set<string>>(
+    new Set()
+  );
+  const [lastActionTime, setLastActionTime] = useState<Record<string, number>>(
+    {}
+  );
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreatingQueue, setIsCreatingQueue] = useState(false);
   const [playerToRemove, setPlayerToRemove] = useState<{
@@ -167,9 +171,13 @@ export default function QueuesPage() {
   // Manage Maps state
   const [maps, setMaps] = useState<any[]>([]);
   const [originalMaps, setOriginalMaps] = useState<any[]>([]);
-  const [selectedMaps, setSelectedMaps] = useState<Record<string, string[]>>({});
+  const [selectedMaps, setSelectedMaps] = useState<Record<string, string[]>>(
+    {}
+  );
   const [managingMapsQueue, setManagingMapsQueue] = useState<any | null>(null);
-  const [mapsDialogOpen, setMapsDialogOpen] = useState<Record<string, boolean>>({});
+  const [mapsDialogOpen, setMapsDialogOpen] = useState<Record<string, boolean>>(
+    {}
+  );
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
   // Create queue form
@@ -215,7 +223,12 @@ export default function QueuesPage() {
     const isAdminUser = session.user.isAdmin;
 
     return isDeveloper || isAdminUser || hasAdminRoleCheck;
-  }, [session?.user?.id, session?.user?.isAdmin, session?.user?.roles, userRoles]);
+  }, [
+    session?.user?.id,
+    session?.user?.isAdmin,
+    session?.user?.roles,
+    userRoles,
+  ]);
 
   // Update the isAdmin function to also check for moderator role
   const isAdminOrMod = () => {
@@ -267,7 +280,9 @@ export default function QueuesPage() {
               ...map,
               _id: `${map._id}-small`,
               name: `${map.name} (Small)`,
-              src: `/maps/map_${map.name.toLowerCase().replace(/\s+/g, "")}.png`,
+              src: `/maps/map_${map.name
+                .toLowerCase()
+                .replace(/\s+/g, "")}.png`,
             });
           }
         }
@@ -279,11 +294,19 @@ export default function QueuesPage() {
 
     // Check if user can manage maps
     const roles = userRoles.length > 0 ? userRoles : session?.user?.roles || [];
-    const isDeveloper = session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID || session?.user?.id === "238329746671271936";
+    const isDeveloper =
+      session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      session?.user?.id === "238329746671271936";
     const hasModeratorRole = roles.includes(SECURITY_CONFIG.ROLES.MODERATOR);
     const hasAdminRole = roles.includes(SECURITY_CONFIG.ROLES.ADMIN);
     const hasFounderRole = roles.includes(SECURITY_CONFIG.ROLES.FOUNDER);
-    const canManage = isDeveloper || isAdmin() || hasModeratorRole || hasAdminRole || hasFounderRole || session?.user?.isAdmin;
+    const canManage =
+      isDeveloper ||
+      isAdmin() ||
+      hasModeratorRole ||
+      hasAdminRole ||
+      hasFounderRole ||
+      session?.user?.isAdmin;
 
     if (canManage) {
       fetchMaps();
@@ -301,14 +324,14 @@ export default function QueuesPage() {
     let isSSEConnected = false;
     const maxReconnectAttempts = 5; // Reduced since we have polling fallback
     const baseReconnectDelay = 2000; // Start with 2 seconds
-    const pollingIntervalMs = 10000; // Poll every 10 seconds as fallback
+    const pollingIntervalMs = 20000; // Poll every 20 seconds as fallback (increased to reduce rate limiting)
     const heartbeatTimeoutMs = 30000; // If no heartbeat for 30s, assume SSE is dead
 
     // Polling function - fetches queues via regular API
     const pollQueues = async () => {
       // Only poll if page is visible (save resources when tab is in background)
       if (document.hidden) return;
-      
+
       try {
         const response = await fetch("/api/queues");
         if (!response.ok) throw new Error("Failed to fetch queues");
@@ -322,7 +345,7 @@ export default function QueuesPage() {
     // Start polling fallback
     const startPolling = () => {
       if (isPollingActive) return; // Already polling
-      
+
       isPollingActive = true;
       // Poll immediately, then at intervals
       pollQueues();
@@ -345,13 +368,19 @@ export default function QueuesPage() {
       if (heartbeatCheckInterval) {
         clearInterval(heartbeatCheckInterval);
       }
-      
+
       heartbeatCheckInterval = setInterval(() => {
         const timeSinceLastHeartbeat = Date.now() - lastHeartbeat;
-        
+
         // If no heartbeat for too long and SSE claims to be connected, start polling
-        if (timeSinceLastHeartbeat > heartbeatTimeoutMs && isSSEConnected && !isPollingActive) {
-          console.log("SSE appears dead (no heartbeat), starting polling fallback");
+        if (
+          timeSinceLastHeartbeat > heartbeatTimeoutMs &&
+          isSSEConnected &&
+          !isPollingActive
+        ) {
+          console.log(
+            "SSE appears dead (no heartbeat), starting polling fallback"
+          );
           isSSEConnected = false;
           startPolling();
         }
@@ -411,7 +440,7 @@ export default function QueuesPage() {
         eventSource.onerror = (error) => {
           // Mark SSE as disconnected
           isSSEConnected = false;
-          
+
           // Close the connection
           if (eventSource) {
             eventSource.close();
@@ -429,7 +458,7 @@ export default function QueuesPage() {
               baseReconnectDelay * Math.pow(2, reconnectAttempts),
               30000 // Max 30 seconds
             );
-            
+
             reconnectAttempts++;
             reconnectTimeout = setTimeout(() => {
               connectSSE();
@@ -447,7 +476,7 @@ export default function QueuesPage() {
         if (reconnectAttempts >= 2 && !isPollingActive) {
           startPolling();
         }
-        
+
         if (reconnectAttempts < maxReconnectAttempts) {
           const delay = Math.min(
             baseReconnectDelay * Math.pow(2, reconnectAttempts),
@@ -1060,12 +1089,14 @@ export default function QueuesPage() {
   }, [session?.user]);
 
   // Update the useEffect that calls checkUserRegistration to also call checkMissingTeamSizes
+  // Only check when page is visible to reduce API calls
   useEffect(() => {
-    if (session?.user) {
+    if (session?.user && !document.hidden) {
       checkUserRegistration();
       checkMissingTeamSizes();
     }
-  }, [session, checkUserRegistration, checkMissingTeamSizes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, checkUserRegistration, checkMissingTeamSizes]); // Only depend on user ID, not entire session object
 
   // Add function to handle registering missing team sizes
   const handleRegisterMissingTeamSizes = async () => {
@@ -1160,11 +1191,13 @@ export default function QueuesPage() {
   const canManageMaps = () => {
     if (!session?.user) return false;
     const roles = userRoles || session.user.roles || [];
-    const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID || session.user.id === "238329746671271936";
+    const isDeveloper =
+      session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      session.user.id === "238329746671271936";
     const hasModeratorRole = roles.includes(SECURITY_CONFIG.ROLES.MODERATOR);
     const hasAdminRole = roles.includes(SECURITY_CONFIG.ROLES.ADMIN);
     const hasFounderRole = roles.includes(SECURITY_CONFIG.ROLES.FOUNDER);
-    
+
     return (
       isDeveloper ||
       isAdmin() ||
@@ -1209,11 +1242,16 @@ export default function QueuesPage() {
       // Fetch the latest queue data to ensure we have the current mapPool
       const fetchQueueData = async () => {
         try {
-          const response = await fetch(`/api/admin/queues/${managingMapsQueue._id}/map-pool`);
+          const response = await fetch(
+            `/api/admin/queues/${managingMapsQueue._id}/map-pool`
+          );
           if (response.ok) {
             const queueData = await response.json();
-            const currentQueue = { ...managingMapsQueue, mapPool: queueData.mapPool };
-            
+            const currentQueue = {
+              ...managingMapsQueue,
+              mapPool: queueData.mapPool,
+            };
+
             // Always re-initialize selected maps from queue mapPool
             // This ensures the UI reflects the current database state
             if (
@@ -1245,7 +1283,10 @@ export default function QueuesPage() {
                 ...prev,
                 [managingMapsQueue._id]: Array.from(new Set(variantIds)),
               }));
-            } else if (!currentQueue.mapPool || currentQueue.mapPool.length === 0) {
+            } else if (
+              !currentQueue.mapPool ||
+              currentQueue.mapPool.length === 0
+            ) {
               // If no map pool, initialize with empty selection (not all maps)
               setSelectedMaps((prev) => ({
                 ...prev,
@@ -1256,7 +1297,10 @@ export default function QueuesPage() {
         } catch (error) {
           console.error("Error fetching queue map pool:", error);
           // Fallback to using the queue object's mapPool if available
-          if (managingMapsQueue.mapPool && Array.isArray(managingMapsQueue.mapPool)) {
+          if (
+            managingMapsQueue.mapPool &&
+            Array.isArray(managingMapsQueue.mapPool)
+          ) {
             const variantIds: string[] = [];
             managingMapsQueue.mapPool.forEach((mapItem: any) => {
               if (typeof mapItem === "string") {
@@ -1454,7 +1498,7 @@ export default function QueuesPage() {
     // Then check for hash
     const hashTab = window.location.hash.replace("#", "");
 
-    if (hashTab && ["1v1", "2v2", "4v4", "5v5"].includes(hashTab)) {
+    if (hashTab && ["1v1", "2v2", "4v4", "5v5", "8v8"].includes(hashTab)) {
       setActiveTab(hashTab);
     }
   }, []);
@@ -1550,6 +1594,7 @@ export default function QueuesPage() {
                                 <SelectItem value="2">2v2</SelectItem>
                                 <SelectItem value="4">4v4</SelectItem>
                                 <SelectItem value="5">5v5</SelectItem>
+                                <SelectItem value="8">8v8</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -1732,6 +1777,7 @@ export default function QueuesPage() {
                     {activeTab === "5v5" && "5v5 Queues"}
                     {activeTab === "2v2" && "2v2 Queues"}
                     {activeTab === "1v1" && "1v1 Queues"}
+                    {activeTab === "8v8" && "8v8 Queues"}
                     <ChevronDown className="ml-2 w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -1748,6 +1794,9 @@ export default function QueuesPage() {
                   <DropdownMenuItem onClick={() => setActiveTab("1v1")}>
                     1v1 Queues
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setActiveTab("8v8")}>
+                    8v8 Queues
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -1758,6 +1807,7 @@ export default function QueuesPage() {
                     if (activeTab === "5v5") return queue.teamSize === 5;
                     if (activeTab === "2v2") return queue.teamSize === 2;
                     if (activeTab === "1v1") return queue.teamSize === 1;
+                    if (activeTab === "8v8") return queue.teamSize === 8;
                     return false;
                   })
                   .map((queue) => (
@@ -1873,7 +1923,7 @@ export default function QueuesPage() {
                                     )
                                   )
                                 ) : (
-                                  <div className="col-span-2 py-8 text-center">
+                                  <div className="col-span-2 py-6 text-center">
                                     <Users className="mx-auto mb-2 w-8 h-8 text-muted-foreground/50" />
                                     <p className="text-sm text-muted-foreground">
                                       No players in queue
@@ -2048,10 +2098,10 @@ export default function QueuesPage() {
                                         handleFillQueue(queue._id, true)
                                       }
                                       disabled={
-                                    joiningQueue === queue._id ||
-                                    leavingQueue === queue._id ||
-                                    pendingOperations.has(queue._id)
-                                  }
+                                        joiningQueue === queue._id ||
+                                        leavingQueue === queue._id ||
+                                        pendingOperations.has(queue._id)
+                                      }
                                       className="w-full"
                                     >
                                       Fill Queue
@@ -2150,7 +2200,7 @@ export default function QueuesPage() {
               onValueChange={handleTabChange}
               className="mt-6 w-full sm:mt-8"
             >
-              <TabsList className="grid grid-cols-4 p-1 mb-6 w-full h-auto border-2 sm:mb-8 bg-muted/50">
+              <TabsList className="grid grid-cols-5 p-1 mb-6 w-full h-auto border-2 sm:mb-8 bg-muted/50">
                 <TabsTrigger
                   value="1v1"
                   onClick={() => handleTabChange("1v1")}
@@ -2180,9 +2230,16 @@ export default function QueuesPage() {
                 >
                   5v5
                 </TabsTrigger>
+                <TabsTrigger
+                  value="8v8"
+                  onClick={() => handleTabChange("8v8")}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all font-semibold"
+                >
+                  8v8
+                </TabsTrigger>
               </TabsList>
 
-              {["4v4", "5v5", "2v2", "1v1"].map((size) => (
+              {["4v4", "5v5", "2v2", "1v1", "8v8"].map((size) => (
                 <TabsContent key={size} value={size}>
                   <div className="grid gap-4 sm:gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {Array.isArray(queues) ? (
@@ -2312,7 +2369,7 @@ export default function QueuesPage() {
                                           </div>
                                         ))
                                       ) : (
-                                        <div className="col-span-2 py-8 text-center">
+                                        <div className="col-span-2 text-center">
                                           <Users className="mx-auto mb-2 w-8 h-8 text-muted-foreground/50" />
                                           <p className="text-sm text-muted-foreground">
                                             No players in queue

@@ -454,7 +454,7 @@ export function PlayerList() {
         </DropdownMenu>
       </div>
 
-      <div className="w-full space-y-3 sm:space-y-4 overflow-x-hidden md:hidden">
+      <div className="w-full space-y-3 sm:space-y-4 overflow-x-hidden lg:hidden">
         {paginatedPlayers.map((player) => (
           <Card key={player._id} className="w-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
             <CardContent className="p-4 sm:p-6">
@@ -567,7 +567,7 @@ export function PlayerList() {
         {renderPagination()}
       </div>
 
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden overflow-x-auto lg:block">
         <div className="inline-block min-w-full align-middle">
           <div className="overflow-hidden rounded-lg border-2">
             <Table>

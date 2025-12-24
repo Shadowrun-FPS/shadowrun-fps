@@ -30,7 +30,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         <div className="fixed top-0 left-0 right-0 z-50">
           <PlayerTrackerBanner />
         </div>
-        {/* Header - Fixed below banner (banner is ~42-48px tall) */}
+        {/* Header - Fixed directly below banner with no gap */}
         <div className="fixed top-[48px] sm:top-[50px] left-0 right-0 z-40">
           <Header />
         </div>

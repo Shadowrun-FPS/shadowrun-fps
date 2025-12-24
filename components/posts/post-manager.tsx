@@ -56,6 +56,8 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
   const [reorderingPostId, setReorderingPostId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
@@ -117,28 +119,24 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
     }
   };
 
-  const handleReorder = async (postId: string, direction: "up" | "down") => {
+  const handleBulkReorder = async (newOrderedPosts: any[]) => {
     if (reorderingPostId) return; // Prevent duplicate submissions
-    const currentIndex = posts.findIndex((post) => post._id === postId);
-    if (
-      (direction === "up" && currentIndex === 0) ||
-      (direction === "down" && currentIndex === posts.length - 1)
-    ) {
-      return; // Can't move further in this direction
-    }
-
-    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
-    setReorderingPostId(postId);
+    setReorderingPostId("bulk"); // Use a special value for bulk operations
 
     try {
+      // Prepare the bulk reorder payload
+      const reorderedPayload = newOrderedPosts.map((post, index) => ({
+        _id: post._id,
+        order: index,
+      }));
+
       const response = await fetch(`/api/posts/reorder`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          postId,
-          newIndex,
+          posts: reorderedPayload,
         }),
       });
 
@@ -146,15 +144,31 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
         throw new Error("Failed to reorder posts");
       }
 
-      router.refresh();
-      const newPosts = [...posts];
-      const [movedPost] = newPosts.splice(currentIndex, 1);
-      newPosts.splice(newIndex, 0, movedPost);
-      setPosts(newPosts);
+      // Update order values in the new array to match the new positions
+      const updatedPosts = newOrderedPosts.map((post, index) => ({
+        ...post,
+        order: index,
+      }));
+
+      // Optimistically update the UI immediately with correct order values
+      // This ensures the UI updates instantly before the server response
+      setPosts(updatedPosts);
+
+      // Refresh from server to ensure consistency
+      // This will update with the actual server state after the reorder completes
+      try {
+        await fetchPosts();
+      } catch (error) {
+        // If refresh fails, the optimistic update is still in place
+        // The user will see the reordered list even if the refresh fails
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error refreshing posts after reorder:", error);
+        }
+      }
 
       toast({
-        title: "Posts reordered",
-        description: "The post order has been updated",
+        title: "✓ Posts reordered",
+        description: "The post order has been saved successfully",
       });
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
@@ -165,16 +179,126 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
         description: "Failed to reorder posts",
         variant: "destructive",
       });
+      // Revert on error
+      await fetchPosts();
+    } finally {
+      setReorderingPostId(null); // Clear the reordering state
     }
+  };
+
+  const handleReorder = async (postId: string, direction: "up" | "down") => {
+    if (reorderingPostId) return; // Prevent duplicate submissions
+    
+    // Sort all posts by order field (not by date) for reordering operations
+    const orderSortedPosts = [...posts].sort((a, b) => {
+      const orderA = a.order ?? 0;
+      const orderB = b.order ?? 0;
+      return orderA - orderB;
+    });
+    
+    const currentIndex = orderSortedPosts.findIndex((post) => post._id === postId);
+    if (currentIndex === -1) return;
+    
+    if (
+      (direction === "up" && currentIndex === 0) ||
+      (direction === "down" && currentIndex === orderSortedPosts.length - 1)
+    ) {
+      return; // Can't move further in this direction
+    }
+
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    
+    // Create new ordered array based on order field
+    const newPosts = [...orderSortedPosts];
+    const [movedPost] = newPosts.splice(currentIndex, 1);
+    newPosts.splice(newIndex, 0, movedPost);
+
+    // Use bulk reorder
+    await handleBulkReorder(newPosts);
+  };
+
+  // Drag and drop handlers
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    setDragOverIndex(null);
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    // Sort posts by order field first (not by date) for reordering operations
+    const orderSortedPosts = [...posts].sort((a, b) => {
+      const orderA = a.order ?? 0;
+      const orderB = b.order ?? 0;
+      return orderA - orderB;
+    });
+
+    // Get the actual post index from filtered posts, but find in order-sorted array
+    const draggedPost = filteredPosts[draggedIndex];
+    const actualDraggedIndex = orderSortedPosts.findIndex((p) => p._id === draggedPost._id);
+    const dropPost = filteredPosts[dropIndex];
+    const actualDropIndex = orderSortedPosts.findIndex((p) => p._id === dropPost._id);
+
+    if (actualDraggedIndex === -1 || actualDropIndex === -1) {
+      setDraggedIndex(null);
+      return;
+    }
+
+    // Create new ordered array based on order field
+    const newPosts = [...orderSortedPosts];
+    const [movedPost] = newPosts.splice(actualDraggedIndex, 1);
+    newPosts.splice(actualDropIndex, 0, movedPost);
+
+    setDraggedIndex(null);
+
+    // Use bulk reorder
+    await handleBulkReorder(newPosts);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const formatDate = (dateValue: string | Date | undefined) => {
     if (!dateValue) return "No date";
 
     try {
-      // Try to parse the date - it could be a string or already a Date object
-      const date =
-        typeof dateValue === "string" ? new Date(dateValue) : dateValue;
+      let date: Date;
+      
+      if (dateValue instanceof Date) {
+        // Already a Date object
+        date = dateValue;
+      } else if (typeof dateValue === "string") {
+        // Handle different string formats
+        // Check if it's in MM-DD-YYYY format (e.g., "10-17-2023")
+        const mmddyyyyMatch = dateValue.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+        if (mmddyyyyMatch) {
+          const [, month, day, year] = mmddyyyyMatch;
+          date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        } else {
+          // Try standard Date parsing (ISO, etc.)
+          date = new Date(dateValue);
+        }
+      } else {
+        date = new Date(dateValue);
+      }
 
       // Check if date is valid before formatting
       if (isNaN(date.getTime())) {
@@ -188,8 +312,9 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
     }
   };
 
-  // Filter posts based on search and type
-  const filteredPosts = posts.filter((post) => {
+  // Filter and sort posts by order (not by date) for the manage modal
+  const filteredPosts = posts
+    .filter((post) => {
     const matchesSearch =
       !searchQuery ||
       post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -199,6 +324,12 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
     const matchesType = filterType === "all" || post.type === filterType;
     
     return matchesSearch && matchesType;
+    })
+    .sort((a, b) => {
+      // Sort by order field first (for manual ordering)
+      const orderA = a.order ?? 0;
+      const orderB = b.order ?? 0;
+      return orderA - orderB;
   });
 
   // Get unique post types for filter
@@ -229,7 +360,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                     Manage Posts
                   </DialogTitle>
                   <DialogDescription className="mt-1 text-xs break-words sm:text-sm text-muted-foreground">
-                    Edit, delete, or reorder your community posts
+                    Drag to reorder • Click arrows to move • Edit or delete posts
                   </DialogDescription>
                 </div>
               </div>
@@ -329,19 +460,37 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                 ) : (
                   <div className="space-y-2 min-[375px]:space-y-2.5 sm:space-y-3 md:space-y-4">
                     {filteredPosts.map((post, index) => {
-                      const originalIndex = posts.findIndex((p) => p._id === post._id);
+                      // filteredPosts is already sorted by order, so index matches order position
+                      // Use the post's order field as the source of truth for display
+                      const displayOrder = post.order ?? index;
+                      const originalIndex = index;
+                      const isDragging = draggedIndex === index;
+                      const isDragOver = dragOverIndex === index;
                       return (
                       <Card
                         key={post._id}
-                        className="border-2 hover:border-primary/50 transition-all duration-200 hover:shadow-md active:scale-[0.98] touch-manipulation w-full max-w-full overflow-hidden"
+                        draggable
+                        onDragStart={() => handleDragStart(index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
+                        className={cn(
+                          "border-2 transition-all duration-200 touch-manipulation w-full max-w-full overflow-hidden",
+                          !isDragging && "hover:border-primary/50 hover:shadow-md",
+                          isDragging && "opacity-40 scale-95 shadow-2xl border-primary rotate-1",
+                          isDragOver && "border-primary border-2 shadow-lg scale-[1.02] bg-primary/5"
+                        )}
                       >
                         <CardContent className="p-2.5 min-[375px]:p-3 sm:p-4 md:p-5 lg:p-6 w-full max-w-full overflow-hidden">
                           <div className="flex flex-col gap-2.5 min-[375px]:gap-3 sm:gap-4 md:gap-5 w-full max-w-full">
                             {/* Post Info */}
                             <div className="flex-1 min-w-0 space-y-1.5 min-[375px]:space-y-2 sm:space-y-2.5 w-full max-w-full overflow-hidden">
                               <div className="flex flex-col min-[375px]:flex-row min-[375px]:flex-wrap items-start min-[375px]:items-center gap-1.5 min-[375px]:gap-2 sm:gap-2.5 w-full max-w-full">
-                                <div className="flex items-center gap-2 flex-1 min-w-0 w-full max-w-full">
-                                  <GripVertical className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
+                                <div className="flex items-center gap-2 flex-1 min-w-0 w-full max-w-full group/drag">
+                                  <div className="flex-shrink-0 p-1 -ml-1 rounded hover:bg-muted/50 transition-colors" title="Drag to reorder">
+                                    <GripVertical className="w-4 h-4 text-muted-foreground/50 group-hover/drag:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors" />
+                                  </div>
                                   <h3 className="font-semibold text-xs min-[375px]:text-sm sm:text-base md:text-lg lg:text-xl break-words flex-1 min-w-0 overflow-hidden">
                                     {post.title}
                                   </h3>
@@ -360,7 +509,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                                     {post.type}
                                   </Badge>
                                   <span className="text-[10px] min-[375px]:text-xs sm:text-sm text-muted-foreground font-medium px-1.5 min-[375px]:px-2 py-0.5 rounded bg-muted/50">
-                                    #{originalIndex + 1}
+                                    #{displayOrder + 1}
                                   </span>
                                 </div>
                               </div>
@@ -376,8 +525,8 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                                 </span>
                                 <span className="truncate max-w-[45%] min-[375px]:max-w-none">
                                   {formatDate(
+                                    post.datePublished ||
                                     post.date ||
-                                      post.datePublished ||
                                       post.createdAt ||
                                       post.publishedAt
                                   )}
@@ -431,11 +580,15 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                                   variant="ghost"
                                   size="icon"
                                   onClick={() => handleReorder(post._id, "up")}
-                                  disabled={originalIndex === 0}
+                                  disabled={originalIndex === 0 || originalIndex === -1 || reorderingPostId !== null}
                                   className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
-                                  title="Move up"
+                                  title={originalIndex === 0 ? "Already at top" : "Move up (Shift + ↑)"}
                                 >
+                                  {reorderingPostId !== null ? (
+                                    <Loader2 className="w-4 h-4 sm:h-5 sm:w-5 animate-spin" />
+                                  ) : (
                                   <ArrowUp className="w-4 h-4 sm:h-5 sm:w-5" />
+                                  )}
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -443,11 +596,15 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                                   onClick={() =>
                                     handleReorder(post._id, "down")
                                   }
-                                  disabled={originalIndex === posts.length - 1}
+                                  disabled={originalIndex === posts.length - 1 || originalIndex === -1 || reorderingPostId !== null}
                                   className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
-                                  title="Move down"
+                                  title={originalIndex === posts.length - 1 ? "Already at bottom" : "Move down (Shift + ↓)"}
                                 >
+                                  {reorderingPostId !== null ? (
+                                    <Loader2 className="w-4 h-4 sm:h-5 sm:w-5 animate-spin" />
+                                  ) : (
                                   <ArrowDown className="w-4 h-4 sm:h-5 sm:w-5" />
+                                  )}
                                 </Button>
                               </div>
                             </div>
