@@ -14,9 +14,11 @@ export function PlayerUpdater() {
   const [guildNickname, setGuildNickname] = useState<string | null>(null);
   const pathname = usePathname();
 
-  // Fetch guild nickname if available
+  // Fetch guild nickname if available (only once per session)
   useEffect(() => {
     if (!session?.user?.id) return;
+    // Only fetch if page is visible
+    if (document.hidden) return;
 
     const fetchGuildNickname = async () => {
       try {
@@ -27,6 +29,9 @@ export function PlayerUpdater() {
         if (response.ok) {
           const data = await response.json();
           setGuildNickname(data.guildNickname || null);
+        } else if (response.status === 429) {
+          // Rate limited, skip this fetch
+          return;
         }
       } catch (error) {
         // Silently handle errors
@@ -44,10 +49,13 @@ export function PlayerUpdater() {
     const userId = session.user.id;
     const timeSinceLastUpdate = currentTime - updateTimeRef.current;
 
+    // Only update if page is visible and enough time has passed
+    if (document.hidden) return;
+    
     const shouldUpdate =
       lastUpdateRef.current !== userId ||
       timeSinceLastUpdate > 1800000 || // 30 minutes
-      (timeSinceLastUpdate > 300000 && pathname); // 5 minutes + navigation
+      (timeSinceLastUpdate > 600000 && pathname); // 10 minutes + navigation (increased from 5)
 
     if (shouldUpdate) {
       const updatePlayerData = async () => {

@@ -270,8 +270,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     fetchNotifications();
 
-    // Increase polling interval to 90 seconds to reduce API calls
-    const interval = setInterval(fetchNotifications, 90000);
+    // Increase polling interval to 120 seconds (2 minutes) to reduce API calls
+    const interval = setInterval(() => {
+      // Only fetch if page is visible
+      if (!document.hidden) {
+        fetchNotifications();
+      }
+    }, 120000);
     return () => clearInterval(interval);
   }, [session?.user?.id]); // Only recreate interval when user ID changes, not on every session object change
 

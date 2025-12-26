@@ -14,6 +14,10 @@ import {
   Edit,
   Ban,
   Settings,
+  Search,
+  Trash2,
+  Copy,
+  Hash,
 } from "lucide-react";
 import {
   Card,
@@ -57,6 +61,10 @@ interface Queue {
   mapPool?: string[] | null;
   minElo?: number;
   maxElo?: number;
+  requiredRoles?: string[];
+  customQueueChannel?: string;
+  customMatchChannel?: string;
+  bannedPlayers?: string[];
 }
 
 interface Map {
@@ -100,9 +108,32 @@ export default function AdminQueuesPage() {
   );
   const [queueName, setQueueName] = useState("");
   const [queueTier, setQueueTier] = useState("");
+  const [teamSize, setTeamSize] = useState("");
   const [minElo, setMinElo] = useState("");
   const [maxElo, setMaxElo] = useState("");
+  const [requiredRoles, setRequiredRoles] = useState<string[]>([]);
+  const [customQueueChannel, setCustomQueueChannel] = useState("");
+  const [customMatchChannel, setCustomMatchChannel] = useState("");
   const [savingDetails, setSavingDetails] = useState(false);
+  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
+  const [channels, setChannels] = useState<
+    { id: string; name: string; type: number }[]
+  >([]);
+  const [roleSearch, setRoleSearch] = useState("");
+  const [bannedPlayersDialogOpen, setBannedPlayersDialogOpen] = useState<
+    Record<string, boolean>
+  >({});
+  const [managingBannedPlayersQueue, setManagingBannedPlayersQueue] =
+    useState<Queue | null>(null);
+  const [bannedPlayers, setBannedPlayers] = useState<string[]>([]);
+  const [bannedPlayersInfo, setBannedPlayersInfo] = useState<
+    Record<string, { discordNickname?: string; discordUsername?: string }>
+  >({});
+  const [playerSearch, setPlayerSearch] = useState("");
+  const [searchResults, setSearchResults] = useState<
+    { discordId: string; discordNickname?: string; discordUsername?: string }[]
+  >([]);
+  const [savingBannedPlayers, setSavingBannedPlayers] = useState(false);
 
   // Check authorization
   useEffect(() => {
@@ -126,6 +157,31 @@ export default function AdminQueuesPage() {
       }
     }
   }, [status, session, router]);
+
+  // Fetch roles and channels
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [rolesRes, channelsRes] = await Promise.all([
+          fetch("/api/discord/roles"),
+          fetch("/api/discord/channels"),
+        ]);
+        if (rolesRes.ok) {
+          const rolesData = await rolesRes.json();
+          setRoles(rolesData.roles || []);
+        }
+        if (channelsRes.ok) {
+          const channelsData = await channelsRes.json();
+          setChannels(channelsData.channels || []);
+        }
+      } catch (error) {
+        console.error("Error fetching roles/channels:", error);
+      }
+    };
+    if (status === "authenticated") {
+      fetchData();
+    }
+  }, [status]);
 
   // Fetch queues and maps
   useEffect(() => {
@@ -501,7 +557,8 @@ export default function AdminQueuesPage() {
     }
   };
 
-  const getEloTierBadge = (tier: string) => {
+  const getEloTierBadge = (tier?: string) => {
+    if (!tier) return null;
     const colors: Record<string, string> = {
       low: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
       mid: "bg-orange-500/20 text-orange-400 border-orange-500/50",
@@ -613,7 +670,7 @@ export default function AdminQueuesPage() {
                               const totalSelected = selected.length;
                               // Total available variants = all maps with variants
                               const totalAvailable = maps.length;
-                              return `${totalSelected} out of ${totalAvailable}`;
+                              return `${totalSelected} out of ${totalAvailable} maps`;
                             })()}
                           </p>
                           {queue.minElo !== undefined &&
@@ -623,6 +680,80 @@ export default function AdminQueuesPage() {
                                 {queue.maxElo.toLocaleString()}
                               </p>
                             )}
+                          {queue.requiredRoles &&
+                            queue.requiredRoles.length > 0 && (
+                              <div className="mt-2">
+                                <p className="mb-1">Required Roles:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {queue.requiredRoles.map((roleId) => {
+                                    const role = roles.find(
+                                      (r) => r.id === roleId
+                                    );
+                                    return role ? (
+                                      <Badge key={roleId} variant="secondary">
+                                        {role.name}
+                                      </Badge>
+                                    ) : null;
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          {queue.customQueueChannel && (
+                            <div className="flex gap-2 items-center mt-2">
+                              <Hash className="w-4 h-4 text-blue-400" />
+                              <span className="text-blue-400">
+                                Queue Channel:{" "}
+                                {channels.find(
+                                  (c) => c.id === queue.customQueueChannel
+                                )?.name || queue.customQueueChannel}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="p-0 w-6 h-6"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    queue.customQueueChannel || ""
+                                  );
+                                  toast({
+                                    title: "Copied",
+                                    description:
+                                      "Channel ID copied to clipboard",
+                                  });
+                                }}
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
+                          {queue.customMatchChannel && (
+                            <div className="flex gap-2 items-center mt-2">
+                              <Hash className="w-4 h-4 text-blue-400" />
+                              <span className="text-blue-400">
+                                Match Channel:{" "}
+                                {channels.find(
+                                  (c) => c.id === queue.customMatchChannel
+                                )?.name || queue.customMatchChannel}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="p-0 w-6 h-6"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    queue.customMatchChannel || ""
+                                  );
+                                  toast({
+                                    title: "Copied",
+                                    description:
+                                      "Channel ID copied to clipboard",
+                                  });
+                                }}
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex flex-col gap-2">
@@ -634,8 +765,16 @@ export default function AdminQueuesPage() {
                               setEditingQueue(queue);
                               setQueueName(queue.gameType || "");
                               setQueueTier(queue.eloTier || "");
+                              setTeamSize(queue.teamSize?.toString() || "");
                               setMinElo(queue.minElo?.toString() || "");
                               setMaxElo(queue.maxElo?.toString() || "");
+                              setRequiredRoles(queue.requiredRoles || []);
+                              setCustomQueueChannel(
+                                queue.customQueueChannel || ""
+                              );
+                              setCustomMatchChannel(
+                                queue.customMatchChannel || ""
+                              );
                               setEditDialogOpen((prev) => ({
                                 ...prev,
                                 [queue._id]: true,
@@ -664,14 +803,57 @@ export default function AdminQueuesPage() {
                             variant="outline"
                             size="sm"
                             className="w-full"
-                            disabled
-                            title="Coming soon: Manage players for this queue"
+                            onClick={async () => {
+                              setManagingBannedPlayersQueue(queue);
+                              const banned = queue.bannedPlayers || [];
+                              setBannedPlayers(banned);
+                              setPlayerSearch("");
+                              setSearchResults([]);
+
+                              // Fetch player info for banned players
+                              const info: Record<
+                                string,
+                                {
+                                  discordNickname?: string;
+                                  discordUsername?: string;
+                                }
+                              > = {};
+                              for (const discordId of banned) {
+                                try {
+                                  const response = await fetch(
+                                    `/api/players/search?q=${encodeURIComponent(
+                                      discordId
+                                    )}`
+                                  );
+                                  if (response.ok) {
+                                    const data = await response.json();
+                                    const player = data.players?.find(
+                                      (p: any) => p.discordId === discordId
+                                    );
+                                    if (player) {
+                                      info[discordId] = {
+                                        discordNickname: player.discordNickname,
+                                        discordUsername: player.discordUsername,
+                                      };
+                                    }
+                                  }
+                                } catch (error) {
+                                  console.error(
+                                    "Error fetching player info:",
+                                    error
+                                  );
+                                }
+                              }
+                              setBannedPlayersInfo(info);
+
+                              setBannedPlayersDialogOpen((prev) => ({
+                                ...prev,
+                                [queue._id]: true,
+                              }));
+                            }}
                           >
                             <Ban className="mr-2 w-4 h-4" />
                             Manage Players
-                            <Badge variant="secondary" className="ml-2 text-xs">
-                              Soon
-                            </Badge>
                           </Button>
                         </div>
                       </CardContent>
@@ -697,36 +879,48 @@ export default function AdminQueuesPage() {
           }
         }}
       >
-        <DialogContent className="sm:max-w-[500px] p-6">
+        <DialogContent className="sm:max-w-[500px] p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pb-4">
-            <DialogTitle>Edit Queue Details</DialogTitle>
-            <DialogDescription>
-              Update the queue name, tier, and ELO range for{" "}
-              {editingQueue?.gameType} {editingQueue?.eloTier}
-            </DialogDescription>
+            <DialogTitle>Edit Queue</DialogTitle>
+            <DialogDescription>Update queue configuration.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="queueName">Queue Name</Label>
+              <Label htmlFor="gameType">
+                Game Type<span className="text-destructive">*</span>
+              </Label>
               <Input
-                id="queueName"
+                id="gameType"
                 value={queueName}
                 onChange={(e) => setQueueName(e.target.value)}
-                placeholder="e.g., Ranked 4v4"
+                placeholder="e.g., Ranked"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="queueTier">ELO Tier</Label>
-              <Select value={queueTier} onValueChange={setQueueTier}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="mid">Mid</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="teamSize">
+                Team Size<span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="teamSize"
+                type="number"
+                value={teamSize}
+                onChange={(e) => setTeamSize(e.target.value)}
+                placeholder="1"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Supported sizes: 1v1, 2v2, 3v3, 4v4, 5v5, 8v8
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="eloTier">ELO Tier (optional)</Label>
+              <Input
+                id="eloTier"
+                value={queueTier}
+                onChange={(e) => setQueueTier(e.target.value)}
+                placeholder="e.g., mid"
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -736,7 +930,7 @@ export default function AdminQueuesPage() {
                   type="number"
                   value={minElo}
                   onChange={(e) => setMinElo(e.target.value)}
-                  placeholder="800"
+                  placeholder="0"
                 />
               </div>
               <div className="space-y-2">
@@ -746,9 +940,148 @@ export default function AdminQueuesPage() {
                   type="number"
                   value={maxElo}
                   onChange={(e) => setMaxElo(e.target.value)}
-                  placeholder="2500"
+                  placeholder="3000"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Roles Whitelist</Label>
+              <p className="text-xs text-muted-foreground">
+                Only players with at least one of these roles can join this
+                queue
+              </p>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {requiredRoles.map((roleId) => {
+                  const role = roles.find((r) => r.id === roleId);
+                  return (
+                    <Badge key={roleId} variant="secondary" className="gap-1">
+                      {role?.name || roleId}
+                      <button
+                        onClick={() =>
+                          setRequiredRoles(
+                            requiredRoles.filter((id) => id !== roleId)
+                          )
+                        }
+                        className="ml-1 hover:text-destructive"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  );
+                })}
+              </div>
+              <Select
+                value=""
+                onValueChange={(value) => {
+                  if (value && !requiredRoles.includes(value)) {
+                    setRequiredRoles([...requiredRoles, value]);
+                    setRoleSearch("");
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Search roles..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <div className="sticky top-0 z-10 p-2 border-b bg-background">
+                    <Input
+                      placeholder="Search roles..."
+                      value={roleSearch}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setRoleSearch(e.target.value);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {roles
+                      .filter(
+                        (role) =>
+                          !requiredRoles.includes(role.id) &&
+                          role.name
+                            .toLowerCase()
+                            .includes(roleSearch.toLowerCase())
+                      )
+                      .map((role) => (
+                        <SelectItem key={role.id} value={role.id}>
+                          {role.name}
+                        </SelectItem>
+                      ))}
+                    {roles.filter(
+                      (role) =>
+                        !requiredRoles.includes(role.id) &&
+                        role.name
+                          .toLowerCase()
+                          .includes(roleSearch.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-2 py-6 text-sm text-center text-muted-foreground">
+                        No roles found
+                      </div>
+                    )}
+                  </div>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customQueueChannel">
+                Custom Queue Channel (Optional)
+              </Label>
+              <Select
+                value={customQueueChannel || "none"}
+                onValueChange={(value) =>
+                  setCustomQueueChannel(value === "none" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select channel..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Default</SelectItem>
+                  {channels
+                    .filter((channel) => channel.type === 0)
+                    .map((channel) => (
+                      <SelectItem key={channel.id} value={channel.id}>
+                        #{channel.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Override default team-size channel. Leave as &quot;Default&quot;
+                to use default.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customMatchChannel">
+                Custom Match Channel (Optional)
+              </Label>
+              <Select
+                value={customMatchChannel || "none"}
+                onValueChange={(value) =>
+                  setCustomMatchChannel(value === "none" ? "" : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select channel..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Default</SelectItem>
+                  {channels
+                    .filter((channel) => channel.type === 0)
+                    .map((channel) => (
+                      <SelectItem key={channel.id} value={channel.id}>
+                        #{channel.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Post match embeds to this channel instead of default #matches
+                channel. Leave as &quot;Default&quot; to use default.
+              </p>
             </div>
           </div>
           <DialogFooter className="pt-4 border-t">
@@ -781,9 +1114,14 @@ export default function AdminQueuesPage() {
                       },
                       body: JSON.stringify({
                         gameType: queueName,
-                        eloTier: queueTier,
+                        teamSize: teamSize ? parseInt(teamSize) : undefined,
+                        eloTier: queueTier || undefined,
                         minElo: minElo ? parseInt(minElo) : undefined,
                         maxElo: maxElo ? parseInt(maxElo) : undefined,
+                        requiredRoles:
+                          requiredRoles.length > 0 ? requiredRoles : undefined,
+                        customQueueChannel: customQueueChannel || undefined,
+                        customMatchChannel: customMatchChannel || undefined,
                       }),
                     }
                   );
@@ -800,9 +1138,20 @@ export default function AdminQueuesPage() {
                         ? {
                             ...q,
                             gameType: queueName,
-                            eloTier: queueTier,
+                            teamSize: teamSize
+                              ? parseInt(teamSize)
+                              : q.teamSize,
+                            eloTier: queueTier || q.eloTier,
                             minElo: minElo ? parseInt(minElo) : q.minElo,
                             maxElo: maxElo ? parseInt(maxElo) : q.maxElo,
+                            requiredRoles:
+                              requiredRoles.length > 0
+                                ? requiredRoles
+                                : q.requiredRoles,
+                            customQueueChannel:
+                              customQueueChannel || q.customQueueChannel,
+                            customMatchChannel:
+                              customMatchChannel || q.customMatchChannel,
                           }
                         : q
                     )
@@ -851,7 +1200,7 @@ export default function AdminQueuesPage() {
       {/* Manage Maps Dialog */}
       <Dialog
         open={
-          managingMapsQueue
+          managingMapsQueue && managingMapsQueue._id
             ? mapsDialogOpen[managingMapsQueue._id] || false
             : false
         }
@@ -862,7 +1211,7 @@ export default function AdminQueuesPage() {
               [managingMapsQueue._id]: false,
             }));
             setManagingMapsQueue(null);
-          } else if (open && managingMapsQueue) {
+          } else if (open && managingMapsQueue && managingMapsQueue._id) {
             // Ensure selectedMaps is initialized for this queue when modal opens
             // mapPool now contains variant IDs directly
             if (
@@ -908,7 +1257,9 @@ export default function AdminQueuesPage() {
                 size="sm"
                 className="flex-1 text-xs"
                 onClick={() =>
-                  managingMapsQueue && selectAllMaps(managingMapsQueue._id)
+                  managingMapsQueue &&
+                  managingMapsQueue._id &&
+                  selectAllMaps(managingMapsQueue._id)
                 }
               >
                 Select All
@@ -918,7 +1269,9 @@ export default function AdminQueuesPage() {
                 size="sm"
                 className="flex-1 text-xs"
                 onClick={() =>
-                  managingMapsQueue && deselectAllMaps(managingMapsQueue._id)
+                  managingMapsQueue &&
+                  managingMapsQueue._id &&
+                  deselectAllMaps(managingMapsQueue._id)
                 }
               >
                 Deselect All
@@ -927,6 +1280,7 @@ export default function AdminQueuesPage() {
 
             <div className="overflow-y-auto flex-1 pr-2 space-y-2">
               {managingMapsQueue &&
+                managingMapsQueue._id &&
                 maps.map((map) => {
                   const isSelected = (
                     selectedMaps[managingMapsQueue._id] || []
@@ -1007,10 +1361,14 @@ export default function AdminQueuesPage() {
                 }
               }}
               disabled={
-                managingMapsQueue ? saving[managingMapsQueue._id] : false
+                managingMapsQueue && managingMapsQueue._id
+                  ? saving[managingMapsQueue._id]
+                  : false
               }
             >
-              {managingMapsQueue && saving[managingMapsQueue._id] ? (
+              {managingMapsQueue &&
+              managingMapsQueue._id &&
+              saving[managingMapsQueue._id] ? (
                 <>
                   <Loader2 className="mr-2 w-4 h-4 animate-spin" />
                   Saving...
@@ -1019,6 +1377,276 @@ export default function AdminQueuesPage() {
                 <>
                   <Save className="mr-2 w-4 h-4" />
                   Save Map Pool
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Banned Players Dialog */}
+      <Dialog
+        open={
+          managingBannedPlayersQueue && managingBannedPlayersQueue._id
+            ? bannedPlayersDialogOpen[managingBannedPlayersQueue._id] || false
+            : false
+        }
+        onOpenChange={(open) => {
+          if (!open && managingBannedPlayersQueue) {
+            setBannedPlayersDialogOpen((prev) => ({
+              ...prev,
+              [managingBannedPlayersQueue._id]: false,
+            }));
+            setManagingBannedPlayersQueue(null);
+            setBannedPlayers([]);
+            setPlayerSearch("");
+            setSearchResults([]);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px] p-6">
+          <DialogHeader className="pb-4">
+            <DialogTitle>Manage Banned Players</DialogTitle>
+            <DialogDescription>
+              Manage queue-specific bans for{" "}
+              {managingBannedPlayersQueue?.gameType}. These players can still
+              queue in other queues. Bans are based on Discord ID, so they
+              persist even if the player leaves and rejoins.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Search Players</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 w-4 h-4 transform -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by Discord ID or nickname..."
+                  value={playerSearch}
+                  onChange={async (e) => {
+                    const search = e.target.value;
+                    setPlayerSearch(search);
+                    if (search.length >= 3) {
+                      try {
+                        const response = await fetch(
+                          `/api/players/search?q=${encodeURIComponent(search)}`
+                        );
+                        if (response.ok) {
+                          const data = await response.json();
+                          setSearchResults(data.players || []);
+                        }
+                      } catch (error) {
+                        console.error("Error searching players:", error);
+                      }
+                    } else {
+                      setSearchResults([]);
+                    }
+                  }}
+                  className="pl-10"
+                />
+              </div>
+              {searchResults.length > 0 && (
+                <div className="overflow-y-auto max-h-40 rounded-md border">
+                  {searchResults
+                    .filter(
+                      (player) => !bannedPlayers.includes(player.discordId)
+                    )
+                    .map((player) => (
+                      <div
+                        key={player.discordId}
+                        className="flex justify-between items-center p-2 cursor-pointer hover:bg-muted"
+                        onClick={() => {
+                          if (!bannedPlayers.includes(player.discordId)) {
+                            setBannedPlayers([
+                              ...bannedPlayers,
+                              player.discordId,
+                            ]);
+                            setBannedPlayersInfo({
+                              ...bannedPlayersInfo,
+                              [player.discordId]: {
+                                discordNickname: player.discordNickname,
+                                discordUsername: player.discordUsername,
+                              },
+                            });
+                          }
+                          setPlayerSearch("");
+                          setSearchResults([]);
+                        }}
+                      >
+                        <div>
+                          <p className="text-sm font-medium">
+                            {player.discordNickname ||
+                              player.discordUsername ||
+                              player.discordId}
+                          </p>
+                          {player.discordNickname && (
+                            <p className="text-xs text-muted-foreground">
+                              {player.discordId}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!bannedPlayers.includes(player.discordId)) {
+                              setBannedPlayers([
+                                ...bannedPlayers,
+                                player.discordId,
+                              ]);
+                            }
+                            setPlayerSearch("");
+                            setSearchResults([]);
+                          }}
+                        >
+                          Ban
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Banned Players ({bannedPlayers.length})</Label>
+              {bannedPlayers.length === 0 ? (
+                <p className="py-4 text-sm text-center text-muted-foreground">
+                  No players are banned from this queue.
+                </p>
+              ) : (
+                <div className="overflow-y-auto max-h-60 rounded-md border">
+                  {bannedPlayers.map((discordId) => {
+                    const playerInfo = bannedPlayersInfo[discordId];
+                    const displayName =
+                      playerInfo?.discordNickname ||
+                      playerInfo?.discordUsername ||
+                      discordId;
+                    const hasNameInfo =
+                      playerInfo?.discordNickname ||
+                      playerInfo?.discordUsername;
+                    return (
+                      <div
+                        key={discordId}
+                        className="flex justify-between items-center p-2 hover:bg-muted"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {displayName}
+                          </p>
+                          {hasNameInfo && (
+                            <p className="font-mono text-xs truncate text-muted-foreground">
+                              {discordId}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-shrink-0 ml-2"
+                          onClick={() => {
+                            setBannedPlayers(
+                              bannedPlayers.filter((id) => id !== discordId)
+                            );
+                            const newInfo = { ...bannedPlayersInfo };
+                            delete newInfo[discordId];
+                            setBannedPlayersInfo(newInfo);
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 text-destructive" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (managingBannedPlayersQueue) {
+                  setBannedPlayersDialogOpen((prev) => ({
+                    ...prev,
+                    [managingBannedPlayersQueue._id]: false,
+                  }));
+                  setManagingBannedPlayersQueue(null);
+                  setBannedPlayers([]);
+                  setPlayerSearch("");
+                  setSearchResults([]);
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!managingBannedPlayersQueue) return;
+
+                try {
+                  setSavingBannedPlayers(true);
+                  const response = await fetch(
+                    `/api/admin/queues/${managingBannedPlayersQueue._id}/banned-players`,
+                    {
+                      method: "PATCH",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        bannedPlayers: bannedPlayers,
+                      }),
+                    }
+                  );
+
+                  if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || "Failed to update");
+                  }
+
+                  // Update local state
+                  setQueues((prev) =>
+                    prev.map((q) =>
+                      q._id === managingBannedPlayersQueue._id
+                        ? { ...q, bannedPlayers: bannedPlayers }
+                        : q
+                    )
+                  );
+
+                  toast({
+                    title: "Success",
+                    description: "Banned players updated successfully",
+                  });
+
+                  setBannedPlayersDialogOpen((prev) => ({
+                    ...prev,
+                    [managingBannedPlayersQueue._id]: false,
+                  }));
+                  setManagingBannedPlayersQueue(null);
+                  setBannedPlayers([]);
+                  setPlayerSearch("");
+                  setSearchResults([]);
+                } catch (error: any) {
+                  console.error("Error updating banned players:", error);
+                  toast({
+                    title: "Error",
+                    description:
+                      error.message || "Failed to update banned players",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setSavingBannedPlayers(false);
+                }
+              }}
+              disabled={savingBannedPlayers}
+            >
+              {savingBannedPlayers ? (
+                <>
+                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 w-4 h-4" />
+                  Save Changes
                 </>
               )}
             </Button>

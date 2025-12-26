@@ -60,7 +60,7 @@ export function Footer() {
   };
 
   return (
-    <footer className="w-full text-white bg-black">
+    <footer className="relative z-40 w-full text-white bg-black xl:ml-0">
       <div className="py-6 sm:py-8 border-t border-gray-800">
         <div className="responsive-container">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row sm:gap-6">

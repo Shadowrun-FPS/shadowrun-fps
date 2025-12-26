@@ -23,29 +23,44 @@ export default function FeaturedPosts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const baseUrl = window.location.origin;
-        const res = await fetch(`${baseUrl}/api/posts`);
+  const fetchPosts = async () => {
+    try {
+      const baseUrl = window.location.origin;
+      const res = await fetch(`${baseUrl}/api/posts`, {
+        cache: "no-store",
+      });
 
-        if (!res.ok) {
-          throw new Error("Failed to fetch posts");
-        }
-
-        const data = await res.json();
-        setPosts(data);
-      } catch (err) {
-        console.error("Error fetching posts:", err);
-        setError(
-          err instanceof Error ? err.message : "An unknown error occurred"
-        );
-      } finally {
-        setLoading(false);
+      if (!res.ok) {
+        throw new Error("Failed to fetch posts");
       }
+
+      const data = await res.json();
+      setPosts(data);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
+      setError(
+        err instanceof Error ? err.message : "An unknown error occurred"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPosts();
+
+    // Listen for custom event to refetch posts
+    const handlePostUpdate = () => {
+      fetchPosts();
     };
 
-    fetchPosts();
+    window.addEventListener("postCreated", handlePostUpdate);
+    window.addEventListener("postUpdated", handlePostUpdate);
+
+    return () => {
+      window.removeEventListener("postCreated", handlePostUpdate);
+      window.removeEventListener("postUpdated", handlePostUpdate);
+    };
   }, []);
 
   if (loading) {

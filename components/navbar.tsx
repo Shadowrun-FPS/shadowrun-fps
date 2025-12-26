@@ -40,6 +40,7 @@ import {
   Shield,
   ExternalLink,
   ChevronDown,
+  MapPin,
 } from "lucide-react";
 
 interface NavLink {
@@ -50,6 +51,10 @@ interface NavLink {
   feature?: FeatureFlag;
 }
 
+// Feature flag check
+const ENABLE_DOWNLOAD_PAGE =
+  process.env.NEXT_PUBLIC_ENABLE_DOWNLOAD_PAGE === "true";
+
 const DocLinks = [
   {
     title: "Events",
@@ -57,11 +62,21 @@ const DocLinks = [
     description: "Upcoming community events and tournaments",
     icon: <Calendar className="mr-2 w-5 h-5 text-primary" />,
   },
+  ...(ENABLE_DOWNLOAD_PAGE
+    ? [
+        {
+          title: "Download Launcher",
+          href: "/download",
+          description: "Download the Shadowrun FPS Launcher",
+          icon: <Download className="mr-2 w-5 h-5 text-primary" />,
+        },
+      ]
+    : []),
   {
-    title: "Install Guide",
+    title: "Manual Install",
     href: "/docs/install",
     description: "How to install and set up the game",
-    icon: <Download className="mr-2 w-5 h-5 text-primary" />,
+    icon: <Book className="mr-2 w-5 h-5 text-primary" />,
   },
   {
     title: "Troubleshoot",
@@ -165,7 +180,7 @@ export function Navbar() {
   return (
     <nav className="flex flex-1 items-center">
       {/* Mobile Navigation */}
-      <div className="mr-2 lg:hidden sm:mr-4">
+      <div className="mr-2 xl:hidden sm:mr-4">
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetTrigger asChild>
             <Button
@@ -196,7 +211,7 @@ export function Navbar() {
                 </div>
               </div>
             </SheetHeader>
-            <div className="flex-1 overflow-y-auto">
+            <div className="overflow-y-auto flex-1">
               <MobileNav onNavigate={() => setMobileNavOpen(false)} />
             </div>
           </SheetContent>
@@ -204,7 +219,7 @@ export function Navbar() {
       </div>
 
       {/* Desktop Navigation */}
-      <div className="hidden lg:flex lg:items-center lg:gap-1">
+      <div className="hidden xl:flex xl:items-center xl:gap-1">
         {/* Simple Links */}
         <Link
           href="/docs/events"
@@ -219,6 +234,21 @@ export function Navbar() {
           Events
         </Link>
 
+        {ENABLE_DOWNLOAD_PAGE && (
+          <Link
+            href="/download"
+            className={cn(
+              "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              pathname === "/download" &&
+                "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+            )}
+            aria-current={pathname === "/download" ? "page" : undefined}
+          >
+            <Download className="mr-2 w-4 h-4" />
+            Download
+          </Link>
+        )}
+
         <Link
           href="/docs/install"
           className={cn(
@@ -228,8 +258,8 @@ export function Navbar() {
           )}
           aria-current={pathname === "/docs/install" ? "page" : undefined}
         >
-          <Download className="mr-2 w-4 h-4" />
-          Install
+          <Book className="mr-2 w-4 h-4" />
+          Manual Install
         </Link>
 
         <Link
@@ -430,6 +460,11 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       href: "/admin/rules",
       icon: <Book className="mr-2 w-5 h-5 text-primary" />,
     },
+    {
+      title: "Queues",
+      href: "/admin/queues",
+      icon: <MapPin className="mr-2 w-5 h-5 text-primary" />,
+    },
   ];
 
   return (
@@ -449,7 +484,7 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         <span>Home</span>
       </Link>
 
-      <div className="px-4 py-3 mt-2 sm:px-6 border-t border-border/40">
+      <div className="px-4 py-3 mt-2 border-t sm:px-6 border-border/40">
         <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
           Documentation
         </h4>
@@ -461,7 +496,7 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
                 key={link.title}
                 href={link.href}
                 className={cn(
-                  "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                  "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                   isActive
                     ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
                     : "hover:bg-accent/50 text-foreground"
@@ -478,21 +513,20 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       </div>
 
       {showMatchesSection && (
-        <div className="px-4 py-3 sm:px-6 border-t border-border/40">
+        <div className="px-4 py-3 border-t sm:px-6 border-border/40">
           <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
             Matches
           </h4>
           <div className="flex flex-col gap-1">
             {filteredMatchesLinks.map((link) => {
               const isActive =
-                pathname === link.href ||
-                pathname?.startsWith(link.href + "/");
+                pathname === link.href || pathname?.startsWith(link.href + "/");
               return (
                 <Link
                   key={link.title}
                   href={link.href}
                   className={cn(
-                    "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isActive
                       ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
                       : "hover:bg-accent/50 text-foreground"
@@ -510,21 +544,20 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       )}
 
       {showTournamentsSection && (
-        <div className="px-4 py-3 sm:px-6 border-t border-border/40">
+        <div className="px-4 py-3 border-t sm:px-6 border-border/40">
           <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
             Tournaments
           </h4>
           <div className="flex flex-col gap-1">
             {filteredTournamentsLinks.map((link) => {
               const isActive =
-                pathname === link.href ||
-                pathname?.startsWith(link.href + "/");
+                pathname === link.href || pathname?.startsWith(link.href + "/");
               return (
                 <Link
                   key={link.title}
                   href={link.href}
                   className={cn(
-                    "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isActive
                       ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
                       : "hover:bg-accent/50 text-foreground"
@@ -549,14 +582,13 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           <div className="flex flex-col gap-1">
             {adminLinks.map((link) => {
               const isActive =
-                pathname === link.href ||
-                pathname?.startsWith(link.href + "/");
+                pathname === link.href || pathname?.startsWith(link.href + "/");
               return (
                 <Link
                   key={link.title}
                   href={link.href}
                   className={cn(
-                    "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                    "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
                     isActive
                       ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
                       : "hover:bg-accent/50 text-foreground"
@@ -588,7 +620,6 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           </div>
         </div>
       )}
-
     </div>
   );
 }

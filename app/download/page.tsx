@@ -13,11 +13,14 @@ import {
   GamepadIcon,
   Users,
   Trash2,
+  Copy,
+  Check,
 } from "lucide-react";
 import VirusTotalWidget from "@/components/VirusTotalWidget";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { safeLog } from "@/lib/security";
 
 // Feature flag check
 const ENABLE_DOWNLOAD_PAGE =
@@ -32,9 +35,11 @@ interface LauncherVersion {
 
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
-  const [showTooltip, setShowTooltip] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [versionInfo, setVersionInfo] = useState<LauncherVersion | null>(null);
+  const [loadingVersion, setLoadingVersion] = useState(true);
+  const [versionError, setVersionError] = useState<string | null>(null);
+  const [copiedHash, setCopiedHash] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -54,6 +59,8 @@ export default function DownloadPage() {
   // Fetch latest version info
   useEffect(() => {
     const fetchVersionInfo = async () => {
+      setLoadingVersion(true);
+      setVersionError(null);
       try {
         // Use our API proxy to avoid CORS issues
         const response = await fetch("/api/launcher/version", {
@@ -66,11 +73,12 @@ export default function DownloadPage() {
 
         const versionInfo = await response.json();
 
-        console.log("Fetched version info:", versionInfo);
+        safeLog.log("Fetched version info:", versionInfo);
 
         setVersionInfo(versionInfo);
       } catch (error) {
-        console.error("Failed to fetch version info:", error);
+        safeLog.error("Failed to fetch version info:", error);
+        setVersionError("Unable to fetch latest version. Using fallback version.");
         // Fallback to default version
         setVersionInfo({
           version: "0.9.4",
@@ -78,19 +86,38 @@ export default function DownloadPage() {
           size: 83436397,
           releaseDate: new Date().toISOString(),
         });
+      } finally {
+        setLoadingVersion(false);
       }
     };
 
     fetchVersionInfo();
   }, []);
 
+  // Format file size with decimals
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 MB";
+    const mb = bytes / (1024 * 1024);
+    return mb % 1 === 0 ? `${mb} MB` : `${mb.toFixed(1)} MB`;
+  };
+
+  // Copy SHA256 hash to clipboard
+  const copyHash = async () => {
+    const hash = "5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd";
+    try {
+      await navigator.clipboard.writeText(hash);
+      setCopiedHash(true);
+      setTimeout(() => setCopiedHash(false), 2000);
+    } catch (error) {
+      safeLog.error("Failed to copy hash:", error);
+    }
+  };
+
   const handleDownload = () => {
     setDownloading(true);
-    const downloadUrl = versionInfo
-      ? `http://157.245.214.234/launcher/${encodeURIComponent(
-          versionInfo.path
-        )}`
-      : "http://157.245.214.234/launcher/Shadowrun%20FPS%20Launcher%20Setup%200.9.4.exe";
+    // Use our secure HTTPS proxy to avoid mixed content errors
+    const fileName = versionInfo?.path || "Shadowrun FPS Launcher Setup 0.9.4.exe";
+    const downloadUrl = `/api/launcher/download?file=${encodeURIComponent(fileName)}`;
     window.location.href = downloadUrl;
     setTimeout(() => setDownloading(false), 3000);
   };
@@ -126,26 +153,54 @@ export default function DownloadPage() {
           </h1>
 
           <div className="p-6 mb-8 rounded-xl border transition-all duration-300 hover:bg-card/70 bg-card/50 border-border/50">
+            {versionError && (
+              <div className="flex items-start p-3 mb-4 rounded-lg border bg-yellow-500/10 border-yellow-500/30">
+                <AlertCircle className="flex-shrink-0 mt-0.5 mr-2 w-4 h-4 text-yellow-500" />
+                <p className="text-sm text-yellow-500">{versionError}</p>
+              </div>
+            )}
             <h2 className="mb-2 text-2xl font-bold">
-              Latest Version: {versionInfo?.version || "Loading..."}
+              Latest Version:{" "}
+              {loadingVersion ? (
+                <span className="inline-block w-20 h-6 bg-muted animate-pulse rounded" />
+              ) : (
+                versionInfo?.version || "Unknown"
+              )}
             </h2>
             <p className="mb-2 text-sm text-muted-foreground">
-              File: {versionInfo?.path || "Loading..."}
+              File:{" "}
+              {loadingVersion ? (
+                <span className="inline-block w-48 h-4 bg-muted animate-pulse rounded" />
+              ) : (
+                versionInfo?.path || "Unknown"
+              )}
             </p>
             <p className="mb-2 text-sm text-muted-foreground">
-              Size: ~
-              {versionInfo ? Math.ceil(versionInfo.size / 1024 / 1024) : "85"}{" "}
-              MB (installer with auto-update)
+              Size:{" "}
+              {loadingVersion ? (
+                <span className="inline-block w-16 h-4 bg-muted animate-pulse rounded" />
+              ) : versionInfo ? (
+                `${formatFileSize(versionInfo.size)} (installer with auto-update)`
+              ) : (
+                "~85 MB"
+              )}
             </p>
-            {versionInfo?.releaseDate && (
+            {loadingVersion ? (
               <p className="mb-2 text-sm text-muted-foreground">
                 Released:{" "}
-                {new Date(versionInfo.releaseDate).toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
+                <span className="inline-block w-32 h-4 bg-muted animate-pulse rounded" />
               </p>
+            ) : (
+              versionInfo?.releaseDate && (
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Released:{" "}
+                  {new Date(versionInfo.releaseDate).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </p>
+              )
             )}
             <p className="mb-6 text-muted-foreground">
               Full NSIS installer with automatic update capabilities. Easy
@@ -157,21 +212,19 @@ export default function DownloadPage() {
                 size="lg"
                 className="overflow-hidden relative group animate-pulse-slow"
                 onClick={handleDownload}
-                disabled={downloading}
+                disabled={downloading || loadingVersion}
               >
                 <span className="flex relative z-10 items-center">
                   <Download className="mr-2 w-5 h-5" />
-                  {downloading ? "Downloading..." : "Download Launcher"}
+                  {downloading
+                    ? "Downloading..."
+                    : loadingVersion
+                    ? "Loading..."
+                    : "Download Launcher"}
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-primary to-primary/90 group-hover:scale-110" />
                 <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
               </Button>
-
-              <div
-                className="relative"
-                onMouseEnter={() => setShowTooltip(true)}
-                onMouseLeave={() => setShowTooltip(false)}
-              ></div>
             </div>
           </div>
 
@@ -368,11 +421,26 @@ export default function DownloadPage() {
                   Shadowrun FPS Launcher Setup.exe
                 </span>
               </div>
-              <div className="flex justify-between p-3 rounded-lg bg-background/50">
+              <div className="flex items-center justify-between gap-2 p-3 rounded-lg bg-background/50">
                 <span className="text-muted-foreground">SHA256:</span>
-                <span className="font-mono text-xs break-all">
-                  5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd
-                </span>
+                <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+                  <span className="font-mono text-xs break-all text-right">
+                    5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyHash}
+                    className="flex-shrink-0 h-8 w-8 p-0"
+                    aria-label="Copy SHA256 hash"
+                  >
+                    {copiedHash ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div className="flex justify-between p-3 rounded-lg bg-background/50">
                 <span className="text-muted-foreground">Digitally Signed:</span>
@@ -385,3 +453,4 @@ export default function DownloadPage() {
     </div>
   );
 }
+

@@ -32,12 +32,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       if (status === "authenticated" && session?.user) {
         // Check developer ID with hardcoded fallback
         const DEVELOPER_DISCORD_ID = "238329746671271936";
-        const isDeveloper = 
-          session.user.id === SECURITY_CONFIG.DEVELOPER_ID || 
+        const isDeveloper =
+          session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
           session.user.id === DEVELOPER_DISCORD_ID;
-        
+
         let userRoles = session.user.roles || [];
-        
+
         // Always try to fetch roles from API to ensure we have the latest
         try {
           const rolesResponse = await fetch("/api/discord/user-roles");
@@ -48,13 +48,16 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         } catch (error) {
           // Silently handle errors
         }
-        
+
         const userHasAdminRole = hasAdminRole(userRoles);
         const userHasModeratorRole = hasModeratorRole(userRoles);
         const isAdminUser = session.user.isAdmin;
 
         const isAuthorized =
-          isDeveloper || isAdminUser || userHasAdminRole || userHasModeratorRole;
+          isDeveloper ||
+          isAdminUser ||
+          userHasAdminRole ||
+          userHasModeratorRole;
 
         if (!isAuthorized) {
           router.push("/");
@@ -79,21 +82,15 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="min-h-screen bg-background">
-        <div className="flex">
-          {/* Desktop sidebar */}
-          <aside className="hidden lg:block w-72 border-r border-border/40 bg-muted/20 backdrop-blur-sm">
-            <div className="sticky top-0 h-screen overflow-y-auto">
-              <AdminSidebar />
-            </div>
-          </aside>
+      {/* Fixed sidebar - shows on extra large screens only (xl:), mobile menu used up to xl: */}
+      <aside className="hidden xl:block fixed left-0 top-[104px] bottom-0 w-72 overflow-y-auto z-30 border-r border-border/40 bg-muted/20 backdrop-blur-sm">
+        <AdminSidebar />
+      </aside>
 
-          {/* Main content */}
-          <main className="flex-1 min-w-0">
-            <div className="max-w-[1600px] mx-auto">
-              {children}
-            </div>
-          </main>
-        </div>
+      {/* Main content - offset to account for fixed sidebar */}
+      <main className="min-h-screen xl:ml-72">
+        <div className="max-w-[1600px] mx-auto">{children}</div>
+      </main>
     </div>
   );
 }
