@@ -57,9 +57,11 @@ export default function PlayersPage() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch("/api/admin/players");
-        if (response.ok) {
-          const players = await response.json();
+        // ✅ Use deduplication for admin players list
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const players = await deduplicatedFetch<any[]>("/api/admin/players", {
+          ttl: 60000, // Cache for 1 minute
+        });
           const active = players.filter((p: any) => !p.isBanned).length;
           const banned = players.filter((p: any) => p.isBanned).length;
           setStats({
@@ -68,7 +70,6 @@ export default function PlayersPage() {
             banned,
             loading: false,
           });
-        }
       } catch (error) {
         setStats((prev) => ({ ...prev, loading: false }));
       }

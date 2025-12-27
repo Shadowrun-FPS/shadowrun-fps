@@ -22,6 +22,34 @@ import { useNotifications } from "@/contexts/NotificationsContext";
 import { Badge } from "@/components/ui/badge";
 import { isFeatureEnabled } from "@/lib/features";
 import { UserPermissions, UserRoleInfo } from "@/lib/client-config";
+import { deduplicatedFetch } from "@/lib/request-deduplication";
+import { safeLog } from "@/lib/security";
+
+interface UserData {
+  permissions: {
+    isAdmin: boolean;
+    isModerator: boolean;
+    canCreateTournament: boolean;
+    isDeveloper: boolean;
+  };
+  roles: string[];
+  guildNickname: string | null;
+  roleDisplay: Array<{
+    roleId: string;
+    roleName: string;
+    color: string;
+  }>;
+  player: {
+    discordId: string;
+    discordUsername: string;
+    discordNickname?: string;
+    discordProfilePicture?: string;
+  } | null;
+  teams: {
+    captainTeams: any[];
+    memberTeams: any[];
+  };
+}
 
 export default function AccountDropdown() {
   const { data: session, status } = useSession();
@@ -36,7 +64,7 @@ export default function AccountDropdown() {
   const fetchUserDataRef = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
 
-  // Fetch user data when session is available
+  // Fetch user data when session is available - using unified endpoint
   useEffect(() => {
     // Prevent duplicate calls from React StrictMode
     const currentUserId = session?.user?.id ?? null;
@@ -57,130 +85,72 @@ export default function AccountDropdown() {
       if (session?.user) {
         setIsLoading(true);
         try {
-          // Fetch user permissions and role display information
-          const [permissionsResponse, roleDisplayResponse] = await Promise.all([
-            fetch("/api/user/permissions").catch(
-              () => ({ ok: false, status: 429 } as Response)
-            ),
-            fetch("/api/user/role-display").catch(
-              () => ({ ok: false, status: 429 } as Response)
-            ),
-          ]);
+          // ✅ NEW: Single unified API call with deduplication
+          const userData = await deduplicatedFetch<UserData>("/api/user/data", {
+            ttl: 60000, // Cache for 1 minute
+          });
 
-          if (
-            permissionsResponse instanceof Response &&
-            permissionsResponse.ok &&
-            permissionsResponse.status !== 429
-          ) {
-            const permissionsData = await permissionsResponse.json();
-            setUserPermissions(permissionsData);
-          } else if (
-            permissionsResponse instanceof Response &&
-            permissionsResponse.status === 429
-          ) {
-            // Rate limited - skip gracefully
-            console.warn("Rate limited on permissions fetch");
-          }
-
-          if (
-            roleDisplayResponse instanceof Response &&
-            roleDisplayResponse.ok &&
-            roleDisplayResponse.status !== 429
-          ) {
-            const roleDisplayData = await roleDisplayResponse.json();
-            const roles = roleDisplayData.roles || [];
-            setUserRoleDisplay(roles);
-
-            // Set the guild nickname from the API response
-            const nickname =
-              roleDisplayData.guildNickname ||
+          // Set all state from single response
+          setUserPermissions(userData.permissions);
+          // Map roleDisplay to match UserRoleInfo type (id/name instead of roleId/roleName)
+          setUserRoleDisplay(
+            userData.roleDisplay.map((role) => ({
+              id: role.roleId,
+              name: role.roleName,
+              color: role.color,
+            }))
+          );
+          setGuildNickname(
+            userData.guildNickname ||
               session.user.nickname ||
               session.user.name ||
-              null;
-            setGuildNickname(nickname);
-          } else if (
-            roleDisplayResponse instanceof Response &&
-            roleDisplayResponse.status === 429
-          ) {
-            // Rate limited - use fallback
-            console.warn("Rate limited on role display fetch");
-            const fallbackName =
-              session.user.nickname || session.user.name || null;
-            setGuildNickname(fallbackName);
-          } else {
-            // Fallback: Just use session data if role display fails
-            const fallbackName =
-              session.user.nickname || session.user.name || null;
-            setGuildNickname(fallbackName);
+              null
+          );
+          setDiscordUsername(userData.player?.discordUsername || null);
+
+          // Process teams
+          const allTeams: any[] = [];
+          const captainTeamIds = new Set(
+            (userData.teams.captainTeams || []).map(
+              (t: any) => t._id?.toString() || t.id
+            )
+          );
+
+          // Add captain teams
+          if (userData.teams.captainTeams && Array.isArray(userData.teams.captainTeams)) {
+            userData.teams.captainTeams.forEach((team: any) => {
+              const teamId = team._id?.toString() || team.id;
+              allTeams.push({
+                id: teamId,
+                name: team.name,
+                tag: team.tag,
+                isCaptain: true,
+              });
+            });
           }
 
-          // Get the user's Discord username for profile link
-          try {
-            const playerResponse = await fetch(
-              `/api/players/${session.user.id}`
-            );
-            if (playerResponse.ok && playerResponse.status !== 429) {
-              const playerData = await playerResponse.json();
-              setDiscordUsername(playerData.discordUsername || null);
-            } else if (playerResponse.status === 429) {
-              console.warn("Rate limited on player fetch");
-            }
-          } catch (error) {
-            // Skip on error
-          }
-
-          // Fetch all user teams (both as captain and member) in a single API call
-          try {
-            const response = await fetch("/api/users/teams?all=true").catch(
-              () => ({ ok: false, status: 429 } as Response)
-            );
-
-            if (response.ok && response.status !== 429) {
-              const data = await response.json();
-              const allTeams: any[] = [];
-              const captainTeamIds = new Set(
-                (data.captainTeams || []).map((t: any) => t._id?.toString() || t.id)
-              );
-
-              // Add captain teams
-              if (data.captainTeams && Array.isArray(data.captainTeams)) {
-                data.captainTeams.forEach((team: any) => {
-                  const teamId = team._id?.toString() || team.id;
-                  allTeams.push({
-                    id: teamId,
-                    name: team.name,
-                    tag: team.tag,
-                    isCaptain: true,
-                  });
+          // Add member teams (excluding duplicates where user is already captain)
+          if (userData.teams.memberTeams && Array.isArray(userData.teams.memberTeams)) {
+            userData.teams.memberTeams.forEach((team: any) => {
+              const teamId = team._id?.toString() || team.id;
+              if (!captainTeamIds.has(teamId)) {
+                allTeams.push({
+                  id: teamId,
+                  name: team.name,
+                  tag: team.tag,
+                  isCaptain: false,
                 });
               }
-
-              // Add member teams (excluding duplicates where user is already captain)
-              if (data.memberTeams && Array.isArray(data.memberTeams)) {
-                data.memberTeams.forEach((team: any) => {
-                  const teamId = team._id?.toString() || team.id;
-                  if (!captainTeamIds.has(teamId)) {
-                    allTeams.push({
-                      id: teamId,
-                      name: team.name,
-                      tag: team.tag,
-                      isCaptain: false,
-                    });
-                  }
-                });
-              }
-
-              setUserTeams(allTeams);
-            }
-          } catch (error) {
-            // Skip on error
-            console.warn("Error fetching teams:", error);
+            });
           }
+
+          setUserTeams(allTeams);
         } catch (error) {
-          // If API fails, use nickname from session
+          // If API fails, use fallback data from session
           const fallbackName =
             session.user.nickname || session.user.name || null;
           setGuildNickname(fallbackName);
+          safeLog.error("Error fetching user data:", error);
         } finally {
           setIsLoading(false);
         }

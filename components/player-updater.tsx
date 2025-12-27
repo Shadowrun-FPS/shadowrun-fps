@@ -15,6 +15,7 @@ export function PlayerUpdater() {
   const pathname = usePathname();
 
   // Fetch guild nickname if available (only once per session)
+  // ✅ Use unified endpoint or deduplicated fetch to prevent duplicate calls
   useEffect(() => {
     if (!session?.user?.id) return;
     // Only fetch if page is visible
@@ -22,17 +23,27 @@ export function PlayerUpdater() {
 
     const fetchGuildNickname = async () => {
       try {
-        // Try to get the guild-specific nickname if available
-        const response = await fetch(
-          `/api/discord/guild-nickname?userId=${session.user.id}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setGuildNickname(data.guildNickname || null);
-        } else if (response.status === 429) {
-          // Rate limited, skip this fetch
+        // ✅ Try unified endpoint first (includes guild nickname)
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        
+        // Use unified endpoint which already has guild nickname
+        const userData = await deduplicatedFetch<{
+          guildNickname: string | null;
+        }>("/api/user/data", {
+          ttl: 60000, // Cache for 1 minute
+        }).catch(() => null);
+
+        if (userData?.guildNickname !== undefined) {
+          setGuildNickname(userData.guildNickname);
           return;
         }
+
+        // Fallback to dedicated endpoint if unified fails
+        const response = await deduplicatedFetch<{ guildNickname: string | null }>(
+          `/api/discord/guild-nickname?userId=${session.user.id}`,
+          { ttl: 60000 }
+        );
+        setGuildNickname(response.guildNickname || null);
       } catch (error) {
         // Silently handle errors
       }
@@ -48,14 +59,16 @@ export function PlayerUpdater() {
     const currentTime = Date.now();
     const userId = session.user.id;
     const timeSinceLastUpdate = currentTime - updateTimeRef.current;
+    const isFirstLoad = lastUpdateRef.current !== userId;
 
     // Only update if page is visible and enough time has passed
     if (document.hidden) return;
     
+    // ✅ Optimize: On first load, wait a bit to let /api/user/data complete first
+    // Skip immediate refresh on first load - let user/data handle initial display
     const shouldUpdate =
-      lastUpdateRef.current !== userId ||
-      timeSinceLastUpdate > 1800000 || // 30 minutes
-      (timeSinceLastUpdate > 600000 && pathname); // 10 minutes + navigation (increased from 5)
+      (!isFirstLoad && timeSinceLastUpdate > 1800000) || // 30 minutes (not first load)
+      (!isFirstLoad && timeSinceLastUpdate > 600000 && pathname); // 10 minutes + navigation
 
     if (shouldUpdate) {
       const updatePlayerData = async () => {
@@ -87,6 +100,31 @@ export function PlayerUpdater() {
       };
 
       updatePlayerData();
+    } else if (isFirstLoad) {
+      // On first load, just set the refs but don't refresh yet
+      // This prevents the immediate refresh call on page load
+      lastUpdateRef.current = userId;
+      updateTimeRef.current = currentTime;
+      
+      // Schedule a delayed refresh (after 2 minutes) to sync data in background
+      setTimeout(() => {
+        if (lastUpdateRef.current === userId && !document.hidden) {
+          fetch("/api/players/refresh-discord-data", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              nickname:
+                guildNickname || session.user.nickname || session.user.name,
+              updateTeamInfo: true,
+              forceDiscordRefresh: false, // Don't force Discord API call on delayed refresh
+            }),
+          }).catch(() => {
+            // Silently handle errors
+          });
+        }
+      }, 120000); // 2 minutes delay
     }
     // Include pathname in dependencies to trigger updates on navigation
   }, [session?.user?.id, session?.user, guildNickname, pathname]);

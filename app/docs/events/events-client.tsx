@@ -37,11 +37,19 @@ export default function EventsClient() {
     const fetchPermissions = async () => {
       if (session?.user) {
         try {
-          const response = await fetch("/api/user/permissions");
-          if (response.ok) {
-            const permissions = await response.json();
-            setUserPermissions(permissions);
-          }
+          // ✅ Use unified endpoint with deduplication
+          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+          const userData = await deduplicatedFetch<{
+            permissions: {
+              isAdmin: boolean;
+              isModerator: boolean;
+              isDeveloper: boolean;
+              canCreateTournament: boolean;
+            };
+          }>("/api/user/data", {
+            ttl: 60000, // Cache for 1 minute
+          });
+          setUserPermissions(userData.permissions);
         } catch (error) {
           console.error("Error fetching permissions:", error);
         }

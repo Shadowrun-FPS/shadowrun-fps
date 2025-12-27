@@ -141,14 +141,11 @@ export default function ModerationPage() {
     try {
       setLoading(true);
 
-      // Use the correct API endpoint path
-      const response = await fetch("/api/admin/moderation-logs");
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch moderation logs");
-      }
-
-      const data = await response.json();
+      // ✅ Use deduplication for moderation logs
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any[]>("/api/admin/moderation-logs", {
+        ttl: 30000, // Cache for 30 seconds
+      });
       setLogs(data);
 
       // Create a map of player IDs to their latest unban action timestamp

@@ -38,13 +38,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
         let userRoles = session.user.roles || [];
 
-        // Always try to fetch roles from API to ensure we have the latest
+        // ✅ Use unified endpoint with deduplication
         try {
-          const rolesResponse = await fetch("/api/discord/user-roles");
-          if (rolesResponse.ok) {
-            const rolesData = await rolesResponse.json();
-            userRoles = rolesData.roles || [];
-          }
+          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+          const userData = await deduplicatedFetch<{ roles: string[] }>("/api/user/data", {
+            ttl: 60000, // Cache for 1 minute
+          });
+          userRoles = userData.roles || [];
         } catch (error) {
           // Silently handle errors
         }

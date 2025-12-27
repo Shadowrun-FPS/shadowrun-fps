@@ -408,17 +408,23 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   const showMatchesSection = filteredMatchesLinks.length > 0;
   const showTournamentsSection = filteredTournamentsLinks.length > 0;
 
-  // Optimize permission fetching - only fetch once when session is available
+  // Optimize permission fetching - use unified endpoint with deduplication
   useEffect(() => {
     const fetchPermissions = async () => {
       if (session?.user?.id && !userPermissions && !isLoadingPermissions) {
         setIsLoadingPermissions(true);
         try {
-          const response = await fetch("/api/user/permissions");
-          if (response.ok) {
-            const permissions = await response.json();
-            setUserPermissions(permissions);
-          }
+          // ✅ NEW: Use unified endpoint with deduplication
+          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+          const userData = await deduplicatedFetch<{
+            permissions: {
+              isAdmin: boolean;
+              isModerator: boolean;
+              canCreateTournament: boolean;
+              isDeveloper: boolean;
+            };
+          }>("/api/user/data", { ttl: 60000 });
+          setUserPermissions(userData.permissions);
         } catch (error) {
           // Silently handle errors
         } finally {

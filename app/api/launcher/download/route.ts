@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safeLog } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
@@ -14,35 +15,56 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch the file from the HTTP server (server-side, no CORS/mixed content issues)
+    // Validate filename to prevent directory traversal
+    if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+      safeLog.error("Invalid filename attempted:", filename);
+      return NextResponse.json(
+        { error: "Invalid filename" },
+        { status: 400 }
+      );
+    }
+
+    // Build direct download URL
     const fileUrl = `http://157.245.214.234/launcher/${encodeURIComponent(
       filename
     )}`;
 
-    const response = await fetch(fileUrl);
+    // Verify file exists with HEAD request (quick, doesn't download the file)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for verification
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status}`);
+    try {
+      const headResponse = await fetch(fileUrl, {
+        method: "HEAD",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!headResponse.ok) {
+        safeLog.error(`File not found: ${filename} (${headResponse.status})`);
+        return NextResponse.json(
+          { error: "File not found" },
+          { status: 404 }
+        );
+      }
+
+      // File exists, redirect to it directly (much faster than proxying 160MB)
+      safeLog.log(`Redirecting to download: ${filename}`);
+      return NextResponse.redirect(fileUrl, 302);
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === "AbortError") {
+        safeLog.error("File verification timeout");
+        // Still redirect even if verification times out
+        return NextResponse.redirect(fileUrl, 302);
+      }
+      throw fetchError;
     }
-
-    // Stream the file back to the client
-    const fileBuffer = await response.arrayBuffer();
-
-    return new NextResponse(fileBuffer, {
-      status: 200,
-      headers: {
-        "Content-Type":
-          response.headers.get("Content-Type") ||
-          "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": fileBuffer.byteLength.toString(),
-        "Cache-Control": "public, max-age=3600",
-      },
-    });
-  } catch (error) {
-    console.error("Download proxy error:", error);
+  } catch (error: any) {
+    safeLog.error("Download route error:", error);
     return NextResponse.json(
-      { error: "Failed to download file" },
+      { error: "Failed to initiate download. Please try again later." },
       { status: 500 }
     );
   }

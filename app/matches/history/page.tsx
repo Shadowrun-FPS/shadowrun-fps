@@ -183,20 +183,15 @@ export default function MatchHistoryPage() {
       conditionalLog("Fetching from URL:", url);
 
       try {
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
+        // ✅ Use deduplication for match history fetches
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const data = await deduplicatedFetch<{
+          matches: any[];
+          totalPages: number;
+          currentPage: number;
+        }>(url, {
+          ttl: 30000, // Cache for 30 seconds
         });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error("API error response:", errorText);
-          throw new Error(`Error fetching matches: ${response.statusText}`);
-        }
-
-        const data = await response.json();
         conditionalLog("API response data:", data);
 
         setMatches(data.matches || []);
