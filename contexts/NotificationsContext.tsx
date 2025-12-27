@@ -92,30 +92,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-      const response = await fetch("/api/notifications", {
-        signal: controller.signal,
-        cache: "no-store",
+      // ✅ Use deduplicated fetch to prevent duplicate calls
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<Notification[] | {
+        notifications: Notification[];
+        pagination?: any;
+      }>("/api/notifications", {
+        ttl: 5000, // Cache for 5 seconds (notifications change frequently)
       });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          // Rate limited - skip this call gracefully
-          console.warn("Rate limited on notifications fetch");
-          setNotifications([]);
-          setUnreadCount(0);
-          return;
-        }
-        throw new Error(
-          `Failed to fetch notifications: ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
 
       // Handle both old format (array) and new format (object with pagination)
       if (Array.isArray(data)) {

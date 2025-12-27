@@ -260,14 +260,14 @@ export default function MatchDetailPage() {
     setScoreDialog(true);
   };
 
-  // Update the fetchMatchData function
+  // Update the fetchMatchData function - use deduplication
   const fetchMatchData = useCallback(async () => {
     try {
-      const response = await fetch(`/api/matches/${params.matchId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch match: ${response.statusText}`);
-      }
-      const data = await response.json();
+      // ✅ Use deduplication to prevent duplicate calls
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any>(`/api/matches/${params.matchId}`, {
+        ttl: 10000, // Cache for 10 seconds (match data changes frequently)
+      });
       setMatch(data);
       return data; // Return the data for immediate use if needed
     } catch (error) {
@@ -346,9 +346,11 @@ export default function MatchDetailPage() {
       if (!params?.matchId) return;
 
       try {
-        const response = await fetch(`/api/matches/${params.matchId}`);
-        if (!response.ok) throw new Error("Failed to fetch match");
-        const data = await response.json();
+        // ✅ Use deduplication
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const data = await deduplicatedFetch<any>(`/api/matches/${params.matchId}`, {
+          ttl: 10000, // Cache for 10 seconds
+        });
         setMatch(data);
       } catch (error) {
         console.error("Error fetching match:", error);
@@ -391,14 +393,13 @@ export default function MatchDetailPage() {
           );
 
           if (response.ok) {
-            // Refresh match data
-            const refreshResponse = await fetch(
-              `/api/matches/${params.matchId}`
+            // ✅ Refresh match data using deduplication
+            const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+            const refreshedMatch = await deduplicatedFetch<any>(
+              `/api/matches/${params.matchId}`,
+              { ttl: 10000 }
             );
-            if (refreshResponse.ok) {
-              const refreshedMatch = await refreshResponse.json();
-              setMatch(refreshedMatch);
-            }
+            setMatch(refreshedMatch);
           }
         } catch (error) {
           console.error("Failed to update match status:", error);

@@ -198,11 +198,12 @@ export default function QueuesPage() {
     const fetchRoles = async () => {
       if (session?.user?.id) {
         try {
-          const response = await fetch("/api/discord/user-roles");
-          if (response.ok) {
-            const data = await response.json();
-            setUserRoles(data.roles || []);
-          }
+          // ✅ Use unified endpoint with deduplication
+          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+          const userData = await deduplicatedFetch<{ roles: string[] }>("/api/user/data", {
+            ttl: 60000, // Cache for 1 minute
+          });
+          setUserRoles(userData.roles || []);
         } catch (error) {
           // Silently handle errors
         }
@@ -243,12 +244,13 @@ export default function QueuesPage() {
   useEffect(() => {
     if (!session?.user) return;
 
-    // Initial fetch
+    // Initial fetch - use deduplication
     const fetchQueues = async () => {
       try {
-        const response = await fetch("/api/queues");
-        if (!response.ok) throw new Error("Failed to fetch queues");
-        const data = await response.json();
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const data = await deduplicatedFetch<any[]>("/api/queues", {
+          ttl: 10000, // Cache for 10 seconds (queues change frequently)
+        });
         setQueues(data);
       } catch (error) {
         console.error("Error fetching queues:", error);
@@ -333,9 +335,10 @@ export default function QueuesPage() {
       if (document.hidden) return;
 
       try {
-        const response = await fetch("/api/queues");
-        if (!response.ok) throw new Error("Failed to fetch queues");
-        const data = await response.json();
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const data = await deduplicatedFetch<any[]>("/api/queues", {
+          ttl: 10000, // Cache for 10 seconds
+        });
         setQueues(data);
       } catch (error) {
         console.error("Error polling queues:", error);
@@ -1050,53 +1053,41 @@ export default function QueuesPage() {
   // Add a media query hook to detect mobile devices
   const isMobile = useMediaQuery("(max-width: 768px)");
 
-  // Wrap checkUserRegistration with useCallback
-  const checkUserRegistration = useCallback(async () => {
-    if (!session?.user) return;
+  // ✅ Optimize: Combine both checks into parallel calls
+  const checkUserRegistrationAndTeamSizes = useCallback(async () => {
+    if (!session?.user || document.hidden) return;
 
     setIsCheckingRegistration(true);
     try {
-      const response = await fetch(`/api/players/check-registration`);
-      const data = await response.json();
-      setIsRegistered(data.isRegistered);
+      // ✅ Parallelize both calls
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const [registrationData, teamSizesData] = await Promise.all([
+        deduplicatedFetch<{ isRegistered: boolean }>("/api/players/check-registration", {
+          ttl: 30000, // Cache for 30 seconds
+        }).catch(() => ({ isRegistered: false })),
+        deduplicatedFetch<{ missingTeamSizes: number[]; has4v4: boolean }>(
+          "/api/players/check-missing-teamsizes",
+          { ttl: 30000 }
+        ).catch(() => ({ missingTeamSizes: [], has4v4: false })),
+      ]);
+
+      setIsRegistered(registrationData.isRegistered);
+      setMissingTeamSizes(teamSizesData.missingTeamSizes || []);
+      setHas4v4(teamSizesData.has4v4 || false);
     } catch (error) {
-      console.error("Failed to check registration:", error);
+      console.error("Failed to check registration/team sizes:", error);
     } finally {
       setIsCheckingRegistration(false);
     }
   }, [session?.user]);
 
-  // Now the useEffect will work correctly
-  useEffect(() => {
-    if (session?.user) {
-      checkUserRegistration();
-    }
-  }, [session, checkUserRegistration]);
-
-  // Add this function to check for missing team sizes
-  const checkMissingTeamSizes = useCallback(async () => {
-    if (!session?.user) return;
-
-    try {
-      const response = await fetch(`/api/players/check-missing-teamsizes`);
-      const data = await response.json();
-
-      setMissingTeamSizes(data.missingTeamSizes || []);
-      setHas4v4(data.has4v4 || false);
-    } catch (error) {
-      console.error("Failed to check missing team sizes:", error);
-    }
-  }, [session?.user]);
-
-  // Update the useEffect that calls checkUserRegistration to also call checkMissingTeamSizes
   // Only check when page is visible to reduce API calls
   useEffect(() => {
     if (session?.user && !document.hidden) {
-      checkUserRegistration();
-      checkMissingTeamSizes();
+      checkUserRegistrationAndTeamSizes();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, checkUserRegistration, checkMissingTeamSizes]); // Only depend on user ID, not entire session object
+  }, [session?.user?.id, checkUserRegistrationAndTeamSizes]);
 
   // Add function to handle registering missing team sizes
   const handleRegisterMissingTeamSizes = async () => {
@@ -1163,7 +1154,7 @@ export default function QueuesPage() {
       });
 
       // After registering, check for missing team sizes
-      checkMissingTeamSizes();
+      checkUserRegistrationAndTeamSizes();
     } catch (error) {
       toast({
         title: "Registration Failed",

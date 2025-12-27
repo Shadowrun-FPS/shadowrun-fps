@@ -241,18 +241,15 @@ function LeaderboardContent() {
     }
   }, [teamSize, page, search, sortField, sortDirection]);
 
-  // Fetch available team sizes
+  // Fetch available team sizes - use deduplication
   const fetchAvailableTeamSizes = useCallback(async () => {
     try {
-      const response = await fetch(
-        `/api/players/leaderboard?getAvailableTeamSizes=true`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch team sizes");
-      }
-
-      const data = await response.json();
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<{
+        availableTeamSizes: number[];
+      }>("/api/players/leaderboard?getAvailableTeamSizes=true", {
+        ttl: 300000, // Cache for 5 minutes (team sizes don't change often)
+      });
       if (data.availableTeamSizes && data.availableTeamSizes.length > 0) {
         setAvailableTeamSizes(data.availableTeamSizes);
 

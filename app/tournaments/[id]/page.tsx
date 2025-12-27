@@ -395,20 +395,28 @@ export default function TournamentDetailsPage() {
       if (!session?.user?.id) return;
 
       try {
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        
         // For admins/founders/developers/co-hosts, fetch all teams
-        // For regular users, fetch only their teams
+        // For regular users, use unified endpoint which already has teams
         if (isAdmin || isDeveloper || canManage) {
-          const response = await fetch(`/api/teams`);
-          if (response.ok) {
-            const data = await response.json();
-            setUserTeams(data || []);
-          }
+          const data = await deduplicatedFetch<any[]>("/api/teams", {
+            ttl: 60000, // Cache for 1 minute
+          });
+          setUserTeams(data || []);
         } else {
-          const response = await fetch(`/api/users/teams`);
-          if (response.ok) {
-            const data = await response.json();
-            setUserTeams(data.teams || []);
-          }
+          // ✅ Use unified endpoint which already includes teams
+          const userData = await deduplicatedFetch<{
+            teams: { captainTeams: any[]; memberTeams: any[] };
+          }>("/api/user/data", {
+            ttl: 60000,
+          });
+          // Combine captain and member teams
+          const allTeams = [
+            ...(userData.teams.captainTeams || []),
+            ...(userData.teams.memberTeams || []),
+          ];
+          setUserTeams(allTeams);
         }
       } catch (error) {
         console.error("Error fetching teams:", error);
@@ -424,19 +432,25 @@ export default function TournamentDetailsPage() {
     const checkAdminStatus = async () => {
       if (session?.user?.id) {
         try {
-          // Fetch permissions from our API
-          const response = await fetch("/api/user/permissions");
-          if (response.ok) {
-            const data = await response.json();
-            // Admin includes admin role, founder role, and developer
-            setIsAdmin(data.isAdmin || data.isModerator);
+          // ✅ Use unified endpoint with deduplication
+          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+          const userData = await deduplicatedFetch<{
+            permissions: {
+              isAdmin: boolean;
+              isModerator: boolean;
+              isDeveloper: boolean;
+            };
+          }>("/api/user/data", {
+            ttl: 60000, // Cache for 1 minute
+          });
+          // Admin includes admin role, founder role, and developer
+          setIsAdmin(userData.permissions.isAdmin || userData.permissions.isModerator);
 
-            // Set developer status separately for additional permissions
-            setIsDeveloper(
-              data.isDeveloper ||
-                session.user.id === SECURITY_CONFIG.DEVELOPER_ID
-            );
-          }
+          // Set developer status separately for additional permissions
+          setIsDeveloper(
+            userData.permissions.isDeveloper ||
+              session.user.id === SECURITY_CONFIG.DEVELOPER_ID
+          );
         } catch (error) {
           console.error("Error checking permissions:", error);
 

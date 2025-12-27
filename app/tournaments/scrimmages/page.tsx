@@ -114,11 +114,14 @@ export default function ScrimmagesPage() {
   const fetchScrimmages = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/scrimmages");
-      if (!response.ok) {
-        throw new Error("Failed to fetch scrimmages");
-      }
-      const data = await response.json();
+      // ✅ Use deduplication for scrimmages
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<{
+        scrimmages: any[];
+        userTeam?: any;
+      } | any[]>("/api/scrimmages", {
+        ttl: 30000, // Cache for 30 seconds
+      });
       
       // Handle both old format (array) and new format (object with scrimmages and userTeam)
       if (Array.isArray(data)) {
@@ -148,11 +151,32 @@ export default function ScrimmagesPage() {
   const fetchUserTeam = useCallback(async () => {
     if (session?.user?.id && !userTeam) {
       try {
-        const response = await fetch("/api/teams/user-team");
-        if (response.ok) {
-          const data = await response.json();
-          setUserTeam(data.team);
+        // ✅ Use unified endpoint which already has teams, or deduplicated fetch
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        // Try unified endpoint first
+        const userData = await deduplicatedFetch<{
+          teams: { captainTeams: any[]; memberTeams: any[] };
+        }>("/api/user/data", {
+          ttl: 60000,
+        }).catch(() => null);
+
+        if (userData?.teams) {
+          // Use first team from unified endpoint
+          const allTeams = [
+            ...(userData.teams.captainTeams || []),
+            ...(userData.teams.memberTeams || []),
+          ];
+          if (allTeams.length > 0) {
+            setUserTeam(allTeams[0]);
+            return;
+          }
         }
+
+        // Fallback to dedicated endpoint
+        const data = await deduplicatedFetch<{ team: any }>("/api/teams/user-team", {
+          ttl: 60000,
+        });
+        setUserTeam(data.team);
       } catch (error) {
         console.error("Error fetching user team:", error);
       }

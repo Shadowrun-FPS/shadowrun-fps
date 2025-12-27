@@ -39,11 +39,12 @@ export default function FeaturedVideoPage() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const response = await fetch("/api/featured-video");
-      if (response.ok) {
-        const data = await response.json();
-        setSettings(data);
-      }
+      // ✅ Use deduplication for featured video settings
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any>("/api/featured-video", {
+        ttl: 60000, // Cache for 1 minute
+      });
+      setSettings(data);
     } catch (error) {
       console.error("Error fetching settings:", error);
       toast({

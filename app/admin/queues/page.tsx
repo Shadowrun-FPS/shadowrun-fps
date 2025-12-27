@@ -158,22 +158,21 @@ export default function AdminQueuesPage() {
     }
   }, [status, session, router]);
 
-  // Fetch roles and channels
+  // Fetch roles and channels - use deduplication
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [rolesRes, channelsRes] = await Promise.all([
-          fetch("/api/discord/roles"),
-          fetch("/api/discord/channels"),
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const [rolesData, channelsData] = await Promise.all([
+          deduplicatedFetch<{ roles: any[] }>("/api/discord/roles", {
+            ttl: 300000, // Cache for 5 minutes (roles don't change often)
+          }).catch(() => ({ roles: [] })),
+          deduplicatedFetch<{ channels: any[] }>("/api/discord/channels", {
+            ttl: 300000, // Cache for 5 minutes
+          }).catch(() => ({ channels: [] })),
         ]);
-        if (rolesRes.ok) {
-          const rolesData = await rolesRes.json();
-          setRoles(rolesData.roles || []);
-        }
-        if (channelsRes.ok) {
-          const channelsData = await channelsRes.json();
-          setChannels(channelsData.channels || []);
-        }
+        setRoles(rolesData.roles || []);
+        setChannels(channelsData.channels || []);
       } catch (error) {
         console.error("Error fetching roles/channels:", error);
       }
@@ -183,22 +182,20 @@ export default function AdminQueuesPage() {
     }
   }, [status]);
 
-  // Fetch queues and maps
+  // Fetch queues and maps - use deduplication
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [queuesRes, mapsRes] = await Promise.all([
-          fetch("/api/queues"),
-          fetch("/api/maps"),
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const [queuesData, mapsData] = await Promise.all([
+          deduplicatedFetch<any[]>("/api/queues", {
+            ttl: 10000, // Cache for 10 seconds
+          }),
+          deduplicatedFetch<any[]>("/api/maps", {
+            ttl: 60000, // Cache for 1 minute (maps don't change often)
+          }),
         ]);
-
-        if (!queuesRes.ok || !mapsRes.ok) {
-          throw new Error("Failed to fetch data");
-        }
-
-        const queuesData = await queuesRes.json();
-        const mapsData = await mapsRes.json();
 
         // Use all maps (same as scrimmage challenges), not just ranked maps
         // Create map variants (normal and small if applicable) - same logic as scrimmage challenges

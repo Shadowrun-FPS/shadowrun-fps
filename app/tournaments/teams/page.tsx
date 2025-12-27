@@ -212,16 +212,19 @@ export default function TeamsPage() {
   const fetchTeams = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/teams");
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch teams: ${response.statusText}`);
-      }
-
-      const data = await response.json();
+      // ✅ Parallelize teams and tournaments fetch
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const [teamsData, tournamentData] = await Promise.all([
+        deduplicatedFetch<any[]>("/api/teams", {
+          ttl: 60000, // Cache for 1 minute
+        }),
+        deduplicatedFetch<any[]>("/api/tournaments", {
+          ttl: 30000, // Cache for 30 seconds
+        }).catch(() => []),
+      ]);
 
       // Ensure data is an array
-      const teamsArray = Array.isArray(data) ? data : [];
+      const teamsArray = Array.isArray(teamsData) ? teamsData : [];
 
       // Set teams directly if it's already an array
       setTeams(teamsArray);
@@ -238,15 +241,11 @@ export default function TeamsPage() {
         setUserTeams(userTeamsList);
       }
 
-      // Fetch tournaments
-      try {
-        const tournamentResponse = await fetch("/api/tournaments");
-        if (tournamentResponse.ok) {
-          const tournamentData = await tournamentResponse.json();
-          setTournaments(Array.isArray(tournamentData) ? tournamentData : []);
+      // Set tournaments and enhance team data
+      setTournaments(Array.isArray(tournamentData) ? tournamentData : []);
 
-          // Enhance team data with tournament registration information
-          if (Array.isArray(tournamentData) && tournamentData.length > 0) {
+      // Enhance team data with tournament registration information
+      if (Array.isArray(tournamentData) && tournamentData.length > 0) {
             // Create a mapping of team IDs to the tournaments they're registered in
             const teamTournamentMap = new Map();
 
@@ -272,12 +271,10 @@ export default function TeamsPage() {
               tournaments: teamTournamentMap.get(team._id.toString()) || [],
             }));
 
-            setTeams(enhancedTeams);
-          }
-        }
-      } catch (tournamentError) {
-        console.error("Error fetching tournaments:", tournamentError);
-        setTournaments([]);
+        setTeams(enhancedTeams);
+      } else {
+        // No tournaments, just set teams as-is
+        setTeams(teamsArray);
       }
     } catch (error) {
       console.error("Error fetching teams:", error);

@@ -6,11 +6,14 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "kill-port": "scripts\\kill-port.bat"
   },
   "dependencies": {
     "@discordjs/rest": "^2.6.0",
     "@hookform/resolvers": "^3.3.3",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/sdk-node": "^0.208.0",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-alert-dialog": "^1.1.15",
     "@radix-ui/react-avatar": "^1.0.4",
@@ -35,6 +38,7 @@
     "@radix-ui/react-toast": "^1.1.5",
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/nextjs": "^10.32.1",
     "@tiptap/extension-link": "^3.11.0",
     "@tiptap/extension-placeholder": "^3.11.0",
     "@tiptap/extension-typography": "^3.11.0",
@@ -44,10 +48,11 @@
     "@types/node": "20.5.7",
     "@types/react": "18.2.21",
     "@types/react-dom": "18.2.7",
-    "@vercel/analytics": "^1.5.0",
+    "@vercel/analytics": "^1.6.1",
     "@vercel/speed-insights": "^1.0.3",
     "autoprefixer": "10.4.15",
     "axios": "^1.5.0",
+    "bullmq": "^5.66.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^1.1.1",
@@ -58,6 +63,7 @@
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.0.0-rc19",
     "eslint-config-next": "13.4.19",
+    "ioredis": "^5.8.2",
     "leo-profanity": "^1.8.0",
     "lucide-react": "^0.294.0",
     "moment": "^2.29.4",
@@ -87,8 +93,10 @@
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.10",
+    "artillery": "^2.0.27",
     "cross-env": "^10.1.0",
     "eslint": "^8.57.1",
+    "k6": "^0.0.0",
     "tsx": "^4.20.6"
   },
   "overrides": {

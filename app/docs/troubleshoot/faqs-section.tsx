@@ -53,11 +53,18 @@ export function FAQsSection() {
     const fetchPermissions = async () => {
       if (session?.user) {
         try {
-          const response = await fetch("/api/user/permissions");
-          if (response.ok) {
-            const permissions = await response.json();
-            setUserPermissions(permissions);
-          }
+          // ✅ Use unified endpoint with deduplication
+          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+          const userData = await deduplicatedFetch<{
+            permissions: {
+              isAdmin: boolean;
+              isModerator: boolean;
+              isDeveloper: boolean;
+            };
+          }>("/api/user/data", {
+            ttl: 60000, // Cache for 1 minute
+          });
+          setUserPermissions(userData.permissions);
         } catch (error) {
           console.error("Error fetching permissions:", error);
         }
@@ -77,15 +84,15 @@ export function FAQsSection() {
        role === process.env.NEXT_PUBLIC_FOUNDER_ROLE_ID
      ));
 
-  // Fetch FAQs
+  // Fetch FAQs - use deduplication
   useEffect(() => {
     const fetchFAQs = async () => {
       try {
-        const response = await fetch("/api/faqs?category=errors");
-        if (response.ok) {
-          const data = await response.json();
-          setFaqs(data);
-        }
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const data = await deduplicatedFetch<any[]>("/api/faqs?category=errors", {
+          ttl: 300000, // Cache for 5 minutes (FAQs don't change often)
+        });
+        setFaqs(data);
       } catch (error) {
         console.error("Error fetching FAQs:", error);
       } finally {
@@ -139,14 +146,19 @@ export function FAQsSection() {
     setIsDialogOpen(true);
   };
 
-  const handleDialogClose = () => {
+  const handleDialogClose = async () => {
     setIsDialogOpen(false);
     setEditingFaq(null);
-    // Refresh FAQs
-    fetch("/api/faqs?category=errors")
-      .then((res) => res.json())
-      .then((data) => setFaqs(data))
-      .catch(console.error);
+    // ✅ Refresh FAQs using deduplication
+    try {
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any[]>("/api/faqs?category=errors", {
+        ttl: 300000,
+      });
+      setFaqs(data);
+    } catch (error) {
+      console.error("Error refreshing FAQs:", error);
+    }
   };
 
   const handleDragStart = (index: number) => {
@@ -215,11 +227,16 @@ export function FAQsSection() {
         description: "Failed to update FAQ order. Please try again.",
         variant: "destructive",
       });
-      // Revert on error
-      fetch("/api/faqs?category=errors")
-        .then((res) => res.json())
-        .then((data) => setFaqs(data))
-        .catch(console.error);
+      // ✅ Revert on error using deduplication
+      try {
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const data = await deduplicatedFetch<any[]>("/api/faqs?category=errors", {
+          ttl: 300000,
+        });
+        setFaqs(data);
+      } catch (revertError) {
+        console.error("Error reverting FAQs:", revertError);
+      }
     }
   };
 

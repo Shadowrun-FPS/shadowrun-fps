@@ -143,48 +143,50 @@ export default function GuildSettingsPage() {
 
   const fetchMaps = useCallback(async () => {
     try {
-      const response = await fetch("/api/maps");
-      if (response.ok) {
-        const data = await response.json();
-        const allMaps: Map[] = [];
-        const seenIds = new Set<string>();
+      // ✅ Use deduplication for maps
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any[]>("/api/maps", {
+        ttl: 60000, // Cache for 1 minute
+      });
+      
+      const allMaps: Map[] = [];
+      const seenIds = new Set<string>();
 
-        // Get current defaultMapPool to check for small variants
-        const currentPool = settings?.settings?.defaultMapPool || [];
-        const mapsWithSmallVariants = new Set<string>();
+      // Get current defaultMapPool to check for small variants
+      const currentPool = settings?.settings?.defaultMapPool || [];
+      const mapsWithSmallVariants = new Set<string>();
 
-        // Check defaultMapPool for small variants
-        currentPool.forEach((mapId: string) => {
-          if (typeof mapId === "string" && mapId.endsWith(":small")) {
-            const baseId = mapId.replace(":small", "");
-            mapsWithSmallVariants.add(baseId);
-          }
-        });
+      // Check defaultMapPool for small variants
+      currentPool.forEach((mapId: string) => {
+        if (typeof mapId === "string" && mapId.endsWith(":small")) {
+          const baseId = mapId.replace(":small", "");
+          mapsWithSmallVariants.add(baseId);
+        }
+      });
 
-        data.forEach((map: any) => {
-          // Only add if we have a valid _id and haven't seen it before
-          if (map._id && !seenIds.has(map._id)) {
-            seenIds.add(map._id);
-            allMaps.push(map);
+      data.forEach((map: any) => {
+        // Only add if we have a valid _id and haven't seen it before
+        if (map._id && !seenIds.has(map._id)) {
+          seenIds.add(map._id);
+          allMaps.push(map);
 
-            // Create small variant if map has smallOption flag OR if it's in the defaultMapPool with :small
-            if (map.smallOption || mapsWithSmallVariants.has(map._id)) {
-              const smallId = `${map._id}:small`;
-              if (!seenIds.has(smallId)) {
-                seenIds.add(smallId);
-                allMaps.push({
-                  _id: smallId,
-                  name: `${map.name} (Small)`,
-                  src: `/maps/map_${map.name
-                    .toLowerCase()
-                    .replace(/\s+/g, "")}.png`,
-                });
-              }
+          // Create small variant if map has smallOption flag OR if it's in the defaultMapPool with :small
+          if (map.smallOption || mapsWithSmallVariants.has(map._id)) {
+            const smallId = `${map._id}:small`;
+            if (!seenIds.has(smallId)) {
+              seenIds.add(smallId);
+              allMaps.push({
+                _id: smallId,
+                name: `${map.name} (Small)`,
+                src: `/maps/map_${map.name
+                  .toLowerCase()
+                  .replace(/\s+/g, "")}.png`,
+              });
             }
           }
-        });
-        setMaps(allMaps);
-      }
+        }
+      });
+      setMaps(allMaps);
     } catch (error) {
       console.error("Error fetching maps:", error);
     }
@@ -192,9 +194,11 @@ export default function GuildSettingsPage() {
 
   const fetchGuildSettings = useCallback(async () => {
     try {
-      const response = await fetch("/api/admin/guild-settings");
-      if (!response.ok) throw new Error("Failed to fetch guild settings");
-      const data = await response.json();
+      // ✅ Use deduplication for guild settings
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any>("/api/admin/guild-settings", {
+        ttl: 60000, // Cache for 1 minute
+      });
 
       // Initialize missing fields with defaults
       if (!data.settings) {
@@ -251,9 +255,24 @@ export default function GuildSettingsPage() {
   }, [toast]);
 
   useEffect(() => {
-    fetchGuildSettings();
-    fetchDiscordRoles();
-    fetchDiscordChannels();
+    // ✅ Parallelize all fetches
+    const fetchAll = async () => {
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      await Promise.all([
+        fetchGuildSettings(),
+        deduplicatedFetch<{ roles: any[] }>("/api/discord/roles", {
+          ttl: 300000, // Cache for 5 minutes
+        })
+          .then((data) => setRoles(data.roles || []))
+          .catch((error) => console.error("Error fetching Discord roles:", error)),
+        deduplicatedFetch<{ channels: any[] }>("/api/discord/channels", {
+          ttl: 300000, // Cache for 5 minutes
+        })
+          .then((data) => setChannels(data.channels || []))
+          .catch((error) => console.error("Error fetching Discord channels:", error)),
+      ]);
+    };
+    fetchAll();
   }, [fetchGuildSettings]);
 
   // Fetch maps after settings are loaded so we can check for small variants
@@ -263,29 +282,7 @@ export default function GuildSettingsPage() {
     }
   }, [settings, fetchMaps]);
 
-  const fetchDiscordRoles = async () => {
-    try {
-      const response = await fetch("/api/discord/roles");
-      if (response.ok) {
-        const data = await response.json();
-        setRoles(data.roles || []);
-      }
-    } catch (error) {
-      console.error("Error fetching Discord roles:", error);
-    }
-  };
-
-  const fetchDiscordChannels = async () => {
-    try {
-      const response = await fetch("/api/discord/channels");
-      if (response.ok) {
-        const data = await response.json();
-        setChannels(data.channels || []);
-      }
-    } catch (error) {
-      console.error("Error fetching Discord channels:", error);
-    }
-  };
+  // ✅ Removed separate fetch functions - now handled in useEffect with parallelization
 
   const handleSave = async () => {
     if (!settings) return;

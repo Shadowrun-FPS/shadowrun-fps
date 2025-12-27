@@ -101,21 +101,32 @@ function TournamentsOverviewContent() {
   const fetchTournaments = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/tournaments");
-      if (!response.ok) throw new Error("Failed to fetch tournaments");
-      const data = await response.json();
+      // ✅ Use deduplication for tournaments
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const data = await deduplicatedFetch<any[]>("/api/tournaments", {
+        ttl: 30000, // Cache for 30 seconds
+      });
       setTournaments(data);
 
       // Only check permissions if user is authenticated
       if (status === "authenticated") {
-        const userResponse = await fetch("/api/user/permissions");
-        const userData = await userResponse.json();
+        // ✅ Use unified endpoint with deduplication
+        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+        const userData = await deduplicatedFetch<{
+          permissions: {
+            isAdmin: boolean;
+            isModerator: boolean;
+            isDeveloper: boolean;
+          };
+        }>("/api/user/data", {
+          ttl: 60000, // Cache for 1 minute
+        });
 
         // Allow tournament creation for admins, mods, and the developer
         setCanCreateTournament(
-          userData.isAdmin ||
-            userData.isModerator ||
-            userData.isDeveloper ||
+          userData.permissions.isAdmin ||
+            userData.permissions.isModerator ||
+            userData.permissions.isDeveloper ||
             false
         );
       }
