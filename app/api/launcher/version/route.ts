@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { queryCache } from "@/lib/query-cache";
 import { safeLog } from "@/lib/security";
+import { fetchTextFromR2 } from "@/lib/r2-client";
 
 export const dynamic = "force-dynamic";
 
@@ -51,39 +52,17 @@ function parseYamlVersionInfo(text: string): LauncherVersion {
 }
 
 /**
- * Fetch version from remote server
+ * Fetch version from Cloudflare R2
  */
 async function fetchVersionFromServer(): Promise<LauncherVersion> {
-  // Create abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
   try {
-    const response = await fetch(
-      "http://157.245.214.234/launcher/latest.yml",
-      {
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
-        signal: controller.signal,
-      }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const text = await response.text();
+    // Fetch latest.yml from R2
+    // Object key should be "launcher/latest.yml" based on your R2 structure
+    const text = await fetchTextFromR2("launcher/latest.yml");
     return parseYamlVersionInfo(text);
   } catch (error: any) {
-    clearTimeout(timeoutId);
-    if (error.name === "AbortError") {
-      throw new Error("Request timeout");
-    }
-    throw error;
+    safeLog.error("Failed to fetch version from R2:", error);
+    throw new Error(`Failed to fetch version info: ${error.message}`);
   }
 }
 
