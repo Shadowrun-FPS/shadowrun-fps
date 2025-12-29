@@ -3,11 +3,9 @@ import { safeLog } from "@/lib/security";
 import { generatePresignedDownloadUrl } from "@/lib/r2-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // 60 seconds max (Vercel Hobby plan limit) - streaming should be fast
-// Disable caching for large file downloads (Next.js can't cache files > 2MB)
+// No maxDuration needed - we're just redirecting, not streaming
+// Disable caching for download requests
 export const revalidate = 0;
-// Use Node.js runtime to ensure proper streaming
-export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,48 +48,16 @@ export async function GET(request: NextRequest) {
       safeLog.log(`[R2] Generated presigned URL successfully (length: ${presignedUrl.length})`);
       safeLog.log(`[R2] URL starts with: ${presignedUrl.substring(0, 50)}...`);
 
-      // Fetch the file from R2 and stream it through our server
-      // This allows us to set proper Content-Disposition headers that browsers will respect
-      // We stream (don't buffer) to avoid timeout issues
-      const fileResponse = await fetch(presignedUrl, {
-        // Don't follow redirects - we want the actual response
-        redirect: 'manual',
-      });
-
-      if (!fileResponse.ok || !fileResponse.body) {
-        throw new Error(`Failed to fetch file from R2: ${fileResponse.status} ${fileResponse.statusText}`);
-      }
-
-      // Get content type from R2 response or default to application/octet-stream
-      const contentType = fileResponse.headers.get("content-type") || "application/octet-stream";
-      const contentLength = fileResponse.headers.get("content-length");
-
-      // Stream the file with proper Content-Disposition header
-      // This ensures the browser uses the correct filename
-      // Escape quotes in filename and use proper encoding
-      const escapedFilename = filename.replace(/"/g, '\\"');
-      // Use both standard and extended filename formats for maximum compatibility
-      const encodedFilename = encodeURIComponent(filename);
-      const contentDisposition = `attachment; filename="${escapedFilename}"; filename*=UTF-8''${encodedFilename}`;
-      
-      safeLog.log(`[R2] Setting Content-Disposition header: ${contentDisposition}`);
-      safeLog.log(`[R2] Filename being set: ${filename}`);
-      safeLog.log(`[R2] Escaped filename: ${escapedFilename}`);
-      safeLog.log(`[R2] Encoded filename: ${encodedFilename}`);
-      
-      return new NextResponse(fileResponse.body, {
-        headers: {
-          "Content-Type": contentType,
-          "Content-Disposition": contentDisposition,
-          ...(contentLength && { "Content-Length": contentLength }),
-          // Disable caching for large files (Next.js can't cache files > 2MB)
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-          "Pragma": "no-cache",
-          "Expires": "0",
-          // Prevent Next.js from trying to cache this response
-          "X-Content-Type-Options": "nosniff",
-        },
-      });
+      // Redirect directly to presigned URL - this is the modern, professional approach
+      // Benefits:
+      // - No server resources used (R2 handles the download)
+      // - No timeout concerns (60s limit doesn't apply)
+      // - Faster (direct connection to R2)
+      // - Lower cost (no serverless function execution)
+      // - Better scalability
+      // The presigned URL already includes ResponseContentDisposition header
+      // which should set the filename correctly in most browsers
+      return NextResponse.redirect(presignedUrl, 302);
     } catch (error: any) {
       safeLog.error(`[R2] Failed to generate presigned URL for ${objectKey}:`, error);
       safeLog.error(`[R2] Error name: ${error.name}, message: ${error.message}`);
