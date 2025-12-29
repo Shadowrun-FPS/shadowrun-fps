@@ -89,13 +89,18 @@ export default function DownloadPage() {
 
   const handleDownload = () => {
     setDownloading(true);
-    // Use our secure HTTPS proxy to avoid mixed content errors
+    // Use our secure HTTPS API route which redirects to R2 presigned URL
     const fileName =
       versionInfo?.path || "Shadowrun FPS Launcher Setup 0.9.92.exe";
     const downloadUrl = `/api/launcher/download?file=${encodeURIComponent(
       fileName
     )}`;
+
+    // Direct navigation - browser will handle the download
+    // The API route redirects to R2 presigned URL with proper Content-Disposition headers
     window.location.href = downloadUrl;
+
+    // Reset loading state after a delay
     setTimeout(() => setDownloading(false), 3000);
   };
 

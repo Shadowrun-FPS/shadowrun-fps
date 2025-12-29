@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import { useSession } from "next-auth/react";
+import { safeLocalStorageSet } from "@/lib/client-utils";
 
 export interface Notification {
   _id: string;
@@ -67,7 +68,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const syncUnreadCount = (notifs: Notification[]) => {
     const count = notifs.filter((n) => !n.read).length;
     setUnreadCount(count);
-    localStorage.setItem("notificationCount", count.toString());
+    safeLocalStorageSet("notificationCount", count.toString());
     return count;
   };
 
@@ -76,7 +77,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (!session?.user) {
       setNotifications([]);
       setUnreadCount(0);
-      localStorage.setItem("notificationCount", "0");
+      safeLocalStorageSet("notificationCount", "0");
       return;
     }
 
@@ -124,12 +125,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         // Silently handle auth errors - user just isn't logged in
         setNotifications([]);
         setUnreadCount(0);
-        localStorage.setItem("notificationCount", "0");
+        safeLocalStorageSet("notificationCount", "0");
       } else {
         if (process.env.NODE_ENV === "development") {
           setNotifications([]);
           setUnreadCount(0);
-          localStorage.setItem("notificationCount", "0");
+          safeLocalStorageSet("notificationCount", "0");
         } else {
           setError("Failed to load notifications. Please try again later.");
         }
@@ -209,7 +210,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       if (wasUnread) {
         const newCount = unreadCount - 1;
         setUnreadCount(newCount);
-        localStorage.setItem("notificationCount", newCount.toString());
+        safeLocalStorageSet("notificationCount", newCount.toString());
       }
 
       const response = await fetch(`/api/notifications/${id}`, {
@@ -237,7 +238,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
   const resetUnreadCount = () => {
     setUnreadCount(0);
-    localStorage.setItem("notificationCount", "0");
+    safeLocalStorageSet("notificationCount", "0");
   };
 
   useEffect(() => {
@@ -245,12 +246,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (!session?.user) {
       setNotifications([]);
       setUnreadCount(0);
-      localStorage.setItem("notificationCount", "0");
+      safeLocalStorageSet("notificationCount", "0");
       return;
     }
 
     setUnreadCount(0);
-    localStorage.setItem("notificationCount", "0");
+    safeLocalStorageSet("notificationCount", "0");
 
     fetchNotifications();
 

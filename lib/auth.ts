@@ -11,6 +11,7 @@ import {
 } from "./discord-helpers";
 
 import { SECURITY_CONFIG } from "./security-config";
+import { safeLog } from "./security";
 
 // Grant admin access to this specific user regardless of roles
 const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
@@ -247,4 +248,38 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  logger: {
+    error(code, metadata) {
+      // Suppress JWT decryption errors when cookies are blocked
+      // This is expected behavior when users have cookies disabled
+      if (code === "JWT_SESSION_ERROR") {
+        const error = metadata as any;
+        // Check if it's a JWT decryption failure (happens when cookies are blocked)
+        if (
+          error?.name === "JWEDecryptionFailed" ||
+          error?.message?.includes("decryption operation failed") ||
+          (error?.error && error.error.name === "JWEDecryptionFailed")
+        ) {
+          // Silently ignore - this happens when cookies are blocked
+          // NextAuth will handle it gracefully by returning an empty session
+          return;
+        }
+      }
+      
+      // Log other errors normally
+      if (process.env.NODE_ENV === "development") {
+        safeLog.error(`[next-auth][error][${code}]`, metadata);
+      }
+    },
+    warn(code) {
+      if (process.env.NODE_ENV === "development") {
+        safeLog.warn(`[next-auth][warn][${code}]`);
+      }
+    },
+    debug(code, metadata) {
+      if (process.env.NODE_ENV === "development") {
+        safeLog.log(`[next-auth][debug][${code}]`, metadata);
+      }
+    },
+  },
 };
