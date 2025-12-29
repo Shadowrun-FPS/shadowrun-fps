@@ -3,7 +3,7 @@ import { safeLog } from "@/lib/security";
 import { generatePresignedDownloadUrl } from "@/lib/r2-client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 300; // 5 minutes max duration for large file downloads
+export const maxDuration = 60; // 60 seconds max (Vercel Hobby plan limit) - streaming should be fast
 // Disable caching for large file downloads (Next.js can't cache files > 2MB)
 export const revalidate = 0;
 // Use Node.js runtime to ensure proper streaming
