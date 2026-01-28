@@ -15,6 +15,7 @@ export interface Notification {
   userId: string;
   type:
     | "team_invite"
+    | "team_invite_accepted"
     | "moderation"
     | "queue_match"
     | "team_member_joined"
@@ -30,6 +31,7 @@ export interface Notification {
   metadata?: {
     teamId?: string;
     teamName?: string;
+    teamSize?: number;
     matchId?: string;
     moderationId?: string;
     userId?: string;
@@ -48,6 +50,9 @@ interface NotificationsContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
+  bulkMarkAsRead: (ids: string[]) => Promise<void>;
+  bulkDelete: (ids: string[]) => Promise<void>;
+  restoreNotification: (notification: Notification) => void;
   loading: boolean;
   resetUnreadCount: () => void;
   error: string | null;
@@ -158,8 +163,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to mark notification as read");
       }
 
-      // Refresh notifications to ensure UI is in sync with server
-      await fetchNotifications(true);
+      // No need to refetch - optimistic update is sufficient
     } catch (error) {
       // Only log errors in development or for non-auth related issues
       if (
@@ -168,7 +172,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       ) {
         console.error("Error marking notification as read:", error);
       }
-      // Revert optimistic update on error
+      // Revert optimistic update on error by refetching
       await fetchNotifications(true);
     }
   };
@@ -221,8 +225,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         throw new Error("Failed to delete notification");
       }
 
-      // Refresh notifications to ensure UI is in sync with server
-      await fetchNotifications(true);
+      // No need to refetch - optimistic update is sufficient
     } catch (error) {
       // Only log errors in development or for non-auth related issues
       if (
@@ -231,7 +234,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       ) {
         console.error("Error deleting notification:", error);
       }
-      // Revert optimistic update on error
+      // Revert optimistic update on error by refetching
       await fetchNotifications(true);
     }
   };
@@ -239,6 +242,105 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const resetUnreadCount = () => {
     setUnreadCount(0);
     safeLocalStorageSet("notificationCount", "0");
+  };
+
+  const bulkMarkAsRead = async (ids: string[]) => {
+    if (ids.length === 0) return;
+
+    try {
+      // Optimistically update UI
+      const updatedNotifications = notifications.map((n) =>
+        ids.includes(n._id) ? { ...n, read: true } : n
+      );
+      setNotifications(updatedNotifications);
+      syncUnreadCount(updatedNotifications);
+
+      // Make API calls in parallel
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/notifications/${id}/read`, {
+            method: "POST",
+          })
+        )
+      );
+    } catch (error) {
+      if (
+        process.env.NODE_ENV === "development" ||
+        (error instanceof Error && !error.message.includes("Unauthorized"))
+      ) {
+        console.error("Error bulk marking notifications as read:", error);
+      }
+      // Revert optimistic update on error
+      await fetchNotifications(true);
+    }
+  };
+
+  const bulkDelete = async (ids: string[]) => {
+    if (ids.length === 0) return;
+
+    try {
+      // Store notifications for potential undo
+      const deletedNotifications = notifications.filter((n) =>
+        ids.includes(n._id)
+      );
+
+      // Optimistically update UI
+      const updatedNotifications = notifications.filter(
+        (n) => !ids.includes(n._id)
+      );
+      setNotifications(updatedNotifications);
+
+      const unreadDeleted = deletedNotifications.filter((n) => !n.read).length;
+      if (unreadDeleted > 0) {
+        const newCount = Math.max(0, unreadCount - unreadDeleted);
+        setUnreadCount(newCount);
+        safeLocalStorageSet("notificationCount", newCount.toString());
+      }
+
+      // Make API calls in parallel; verify each response so we revert if any fail (e.g. 403)
+      const responses = await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/notifications/${id}`, {
+            method: "DELETE",
+          })
+        )
+      );
+
+      const failed = responses.some((r) => !r.ok);
+      if (failed) {
+        throw new Error("One or more notifications could not be deleted");
+      }
+    } catch (error) {
+      if (
+        process.env.NODE_ENV === "development" ||
+        (error instanceof Error && !error.message.includes("Unauthorized"))
+      ) {
+        console.error("Error bulk deleting notifications:", error);
+      }
+      // Revert optimistic update on error
+      await fetchNotifications(true);
+    }
+  };
+
+  const restoreNotification = (notification: Notification) => {
+    // Add the notification back to the list
+    setNotifications((prev) => {
+      // Check if it already exists (in case of duplicate restore)
+      if (prev.some((n) => n._id === notification._id)) {
+        return prev;
+      }
+      return [...prev, notification].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    });
+
+    // Update unread count if notification was unread
+    if (!notification.read) {
+      const newCount = unreadCount + 1;
+      setUnreadCount(newCount);
+      safeLocalStorageSet("notificationCount", newCount.toString());
+    }
   };
 
   useEffect(() => {
@@ -250,14 +352,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    setUnreadCount(0);
-    safeLocalStorageSet("notificationCount", "0");
-
-    fetchNotifications();
+    // Don't auto-fetch on mount - let components fetch when needed
+    // This reduces unnecessary calls when user isn't viewing notifications
 
     // Increase polling interval to 120 seconds (2 minutes) to reduce API calls
+    // Only poll if page is visible
     const interval = setInterval(() => {
-      // Only fetch if page is visible
       if (!document.hidden) {
         fetchNotifications();
       }
@@ -274,6 +374,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         markAsRead,
         markAllAsRead,
         deleteNotification,
+        bulkMarkAsRead,
+        bulkDelete,
+        restoreNotification,
         loading,
         resetUnreadCount,
         error,

@@ -19,17 +19,23 @@ async function getNotificationsHandler(req: NextRequest) {
   const limit = Math.min(50, Math.max(1, parseInt(sanitizeString(searchParams.get("limit") || "50", 10), 10) || 50));
   const skip = (page - 1) * limit;
 
-  const notifications = await db
+  // Use aggregation with $facet to get both data and count in a single query
+  const result = await db
     .collection("Notifications")
-    .find({ userId: session.user.id })
-    .sort({ createdAt: -1 })
-    .skip(skip)
-    .limit(limit)
+    .aggregate([
+      { $match: { userId: session.user.id } },
+      { $sort: { createdAt: -1 } },
+      {
+        $facet: {
+          notifications: [{ $skip: skip }, { $limit: limit }],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ])
     .toArray();
 
-  const totalCount = await db
-    .collection("Notifications")
-    .countDocuments({ userId: session.user.id });
+  const notifications = result[0]?.notifications || [];
+  const totalCount = result[0]?.totalCount[0]?.count || 0;
 
   return NextResponse.json(
     {

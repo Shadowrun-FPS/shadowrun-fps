@@ -8,9 +8,10 @@ import { revalidatePath } from "next/cache";
 
 async function postConfirmMatchHandler(
   req: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
-  const matchId = sanitizeString(params.matchId, 100);
+  const { matchId: matchIdParam } = await params;
+  const matchId = sanitizeString(matchIdParam, 100);
   if (!ObjectId.isValid(matchId)) {
     return NextResponse.json(
       { error: "Invalid match ID" },

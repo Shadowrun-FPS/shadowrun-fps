@@ -7,9 +7,9 @@ import { FeatureGate } from "@/components/feature-gate";
 export default async function PlayerPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
 
   if (!ObjectId.isValid(id)) {
     return notFound();

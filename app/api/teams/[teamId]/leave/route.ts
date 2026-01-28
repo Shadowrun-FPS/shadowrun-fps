@@ -155,6 +155,8 @@ async function postLeaveHandler(
         teamName: team.name,
         memberName: session.user.name,
         memberId: userId,
+        userName: session.user.name || (memberLeaving as any).discordNickname,
+        userAvatar: (memberLeaving as any).discordProfilePicture || session.user.image || undefined,
       },
     });
 

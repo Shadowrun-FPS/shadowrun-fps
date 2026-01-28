@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { scrimmageId: string };
+  params: Promise<{ scrimmageId: string }>;
 }
 
 // Dynamic metadata generation based on scrimmage ID
@@ -17,25 +17,26 @@ export async function generateMetadata(
   let description = "View details about this scrimmage match";
 
   try {
+    const { scrimmageId } = await params;
     // Connect to database
     const client = await clientPromise;
     const db = client.db();
 
     // Check if scrimmageId is a valid MongoDB ObjectId (24 hex characters)
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(params.scrimmageId);
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(scrimmageId);
     
     // Fetch scrimmage data
     let scrimmage = null;
     if (isObjectId) {
       scrimmage = await db.collection("Scrimmages").findOne({
-        _id: new ObjectId(params.scrimmageId),
+        _id: new ObjectId(scrimmageId),
       });
     }
     
     // If not found by _id or not an ObjectId, try scrimmageId field
     if (!scrimmage) {
       scrimmage = await db.collection("Scrimmages").findOne({
-        scrimmageId: params.scrimmageId,
+        scrimmageId: scrimmageId,
       });
     }
 

@@ -7,10 +7,97 @@ import { Check, X, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useNotifications } from "@/contexts/NotificationsContext";
 
-// Cache for join request status checks to prevent duplicate API calls
-const joinRequestStatusCache = new Map<string, { status: string; timestamp: number }>();
-const CACHE_DURATION = 30000; // 30 seconds
-const pendingChecks = new Map<string, Promise<any>>();
+// Batch fetcher for join request statuses
+class JoinRequestBatchFetcher {
+  private cache = new Map<string, { status: string; timestamp: number }>();
+  private pendingRequests = new Map<string, Array<(status: string) => void>>();
+  private batchTimeout: NodeJS.Timeout | null = null;
+  private readonly CACHE_DURATION = 30000; // 30 seconds
+  private readonly BATCH_DELAY = 100; // Wait 100ms to collect requests
+
+  getCachedStatus(teamId: string, requestId: string): string | null {
+    const key = `${teamId}-${requestId}`;
+    const cached = this.cache.get(key);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+      return cached.status;
+    }
+    return null;
+  }
+
+  async getStatus(teamId: string, requestId: string): Promise<string> {
+    const key = `${teamId}-${requestId}`;
+
+    // Check cache first
+    const cached = this.getCachedStatus(teamId, requestId);
+    if (cached) {
+      return cached;
+    }
+
+    // Add to batch queue
+    return new Promise<string>((resolve) => {
+      if (!this.pendingRequests.has(key)) {
+        this.pendingRequests.set(key, []);
+      }
+      this.pendingRequests.get(key)!.push(resolve);
+
+      // Schedule batch fetch
+      if (!this.batchTimeout) {
+        this.batchTimeout = setTimeout(() => this.executeBatch(), this.BATCH_DELAY);
+      }
+    });
+  }
+
+  private async executeBatch() {
+    this.batchTimeout = null;
+    const requests = Array.from(this.pendingRequests.entries());
+    if (requests.length === 0) return;
+
+    // Clear pending
+    this.pendingRequests.clear();
+
+    const requestData = requests.map(([key]) => {
+      const [teamId, requestId] = key.split("-");
+      return { teamId, requestId };
+    });
+
+    try {
+      const response = await fetch("/api/teams/join-requests/batch-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requests: requestData }),
+      });
+
+      if (response.ok) {
+        const { statuses } = await response.json();
+
+        // Update cache and resolve promises
+        requests.forEach(([key, resolvers]) => {
+          const status = statuses[key] || "pending";
+          this.cache.set(key, { status, timestamp: Date.now() });
+          resolvers.forEach((resolve) => resolve(status));
+        });
+      } else {
+        // On error, resolve with "pending" status
+        requests.forEach(([key, resolvers]) => {
+          resolvers.forEach((resolve) => resolve("pending"));
+        });
+      }
+    } catch (error) {
+      // On error, resolve with "pending" status
+      requests.forEach(([key, resolvers]) => {
+        resolvers.forEach((resolve) => resolve("pending"));
+      });
+    }
+  }
+
+  invalidate(teamId: string, requestId: string) {
+    const key = `${teamId}-${requestId}`;
+    this.cache.delete(key);
+  }
+}
+
+// Global batch fetcher instance
+const batchFetcher = new JoinRequestBatchFetcher();
 
 interface TeamJoinRequestProps {
   notification: any;
@@ -37,102 +124,47 @@ export function TeamJoinRequest({
         return;
       }
 
-      const cacheKey = `${notification.metadata.teamId}-${notification.metadata.requestId}`;
-      
-      // Check cache first (extended cache duration for better efficiency)
-      const cached = joinRequestStatusCache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-        if (cached.status !== "pending") {
-          setActionTaken(true);
-          setActionResult(
-            cached.status === "accepted"
-              ? "Player added to your team"
-              : cached.status === "rejected"
-              ? "Join request declined"
-              : "Join request processed"
-          );
-        }
+      // Skip if already processed in metadata
+      if (
+        notification.metadata?.status === "accepted" ||
+        notification.metadata?.status === "rejected"
+      ) {
         setCheckingStatus(false);
         return;
       }
 
-      // Check if there's already a pending request for this join request
-      if (pendingChecks.has(cacheKey)) {
-        try {
-          const data = await pendingChecks.get(cacheKey);
-          if (data?.status && data.status !== "pending") {
-            setActionTaken(true);
-            setActionResult(
-              data.status === "accepted"
-                ? "Player added to your team"
-                : data.status === "rejected"
-                ? "Join request declined"
-                : "Join request processed"
-            );
-          }
-        } catch (error) {
-          // Ignore errors from shared request
-        } finally {
-          setCheckingStatus(false);
-        }
-        return;
-      }
-
-      // Create new request and share it
-      const requestPromise = fetch(
-        `/api/teams/${notification.metadata.teamId}/join-requests/${notification.metadata.requestId}`
-      )
-        .then(async (response) => {
-          if (response.ok) {
-            const data = await response.json();
-            // Cache the result with longer duration
-            joinRequestStatusCache.set(cacheKey, {
-              status: data.status || "pending",
-              timestamp: Date.now(),
-            });
-            return data;
-          }
-          return null;
-        })
-        .catch((error) => {
-          if (process.env.NODE_ENV === "development") {
-            console.error("Error checking join request status:", error);
-          }
-          return null;
-        })
-        .finally(() => {
-          // Remove from pending checks after a longer delay to prevent rapid re-requests
-          setTimeout(() => pendingChecks.delete(cacheKey), 5000);
-        });
-
-      pendingChecks.set(cacheKey, requestPromise);
-
       try {
-        const data = await requestPromise;
-        if (data?.status && data.status !== "pending") {
+        // Use batch fetcher to get status
+        const status = await batchFetcher.getStatus(
+          notification.metadata.teamId,
+          notification.metadata.requestId
+        );
+
+        if (status !== "pending" && status !== "not_found") {
           setActionTaken(true);
           setActionResult(
-            data.status === "accepted"
+            status === "accepted"
               ? "Player added to your team"
-              : data.status === "rejected"
+              : status === "rejected"
               ? "Join request declined"
               : "Join request processed"
           );
         }
       } catch (error) {
-        // Error already handled in promise
+        if (process.env.NODE_ENV === "development") {
+          console.error("Error checking join request status:", error);
+        }
       } finally {
         setCheckingStatus(false);
       }
     };
 
-    // Only check if status is still pending (avoid unnecessary checks)
-    if (notification.metadata?.status !== "accepted" && notification.metadata?.status !== "rejected") {
-      checkRequestStatus();
-    } else {
-      setCheckingStatus(false);
-    }
-  }, [notification.metadata?.requestId, notification.metadata?.teamId, notification.metadata?.status]);
+    checkRequestStatus();
+  }, [
+    notification.metadata?.requestId,
+    notification.metadata?.teamId,
+    notification.metadata?.status,
+  ]);
 
   const handleAction = async (action: "accept" | "reject") => {
     if (loading) return; // Prevent duplicate submissions
@@ -189,6 +221,12 @@ export function TeamJoinRequest({
         action === "accept"
           ? "Player added to your team"
           : "Join request declined"
+      );
+
+      // Invalidate cache for this join request
+      batchFetcher.invalidate(
+        notification.metadata.teamId,
+        notification.metadata.requestId
       );
 
       toast({

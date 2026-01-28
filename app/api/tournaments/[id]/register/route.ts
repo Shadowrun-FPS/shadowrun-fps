@@ -12,8 +12,9 @@ import { revalidatePath } from "next/cache";
 
 async function postRegisterHandler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: idParam } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session || !session.user) {
@@ -23,7 +24,7 @@ async function postRegisterHandler(
     );
   }
 
-  const id = sanitizeString(params.id, 50);
+  const id = sanitizeString(idParam, 50);
   if (!ObjectId.isValid(id)) {
     return NextResponse.json(
       { error: "Invalid tournament ID" },

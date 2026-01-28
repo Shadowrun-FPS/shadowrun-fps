@@ -6,9 +6,10 @@ import { withApiSecurity } from "@/lib/api-wrapper";
 
 async function getMatchEventsHandler(
   req: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
-  const matchId = sanitizeString(params.matchId, 100);
+  const { matchId: matchIdParam } = await params;
+  const matchId = sanitizeString(matchIdParam, 100);
   if (!ObjectId.isValid(matchId)) {
     return NextResponse.json({ error: "Invalid match ID" }, { status: 400 });
   }

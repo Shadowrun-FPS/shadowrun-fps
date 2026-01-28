@@ -30,12 +30,12 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         <div className="fixed top-0 left-0 right-0 z-50">
           <PlayerTrackerBanner />
         </div>
-        {/* Header - Fixed directly below banner with no gap */}
-        <div className="fixed top-[48px] sm:top-[50px] left-0 right-0 z-40">
+        {/* Header - Slightly overlaps banner to prevent content showing through gap on scroll */}
+        <div className="fixed top-[47px] sm:top-[49px] left-0 right-0 z-40">
           <Header />
         </div>
         {/* Spacer to account for fixed banner + header */}
-        <div className="h-[104px] sm:h-[106px]" />
+        <div className="h-[104px] sm:h-[106px]" aria-hidden />
         <div className="relative flex-1 w-full">
           <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
             {children}

@@ -12,15 +12,16 @@ import { revalidatePath } from "next/cache";
 
 async function getJoinRequestStatusHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string; requestId: string } }
+  { params }: { params: Promise<{ teamId: string; requestId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
-  const requestId = sanitizeString(params.requestId, 50);
+  const { teamId: rawTeamId, requestId: rawRequestId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
+  const requestId = sanitizeString(rawRequestId, 50);
 
   if (!ObjectId.isValid(teamId) || !ObjectId.isValid(requestId)) {
     return NextResponse.json(
@@ -61,15 +62,16 @@ export const GET = withApiSecurity(getJoinRequestStatusHandler, {
 
 async function postJoinRequestActionHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string; requestId: string } }
+  { params }: { params: Promise<{ teamId: string; requestId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
-  const requestId = sanitizeString(params.requestId, 50);
+  const { teamId: rawTeamId, requestId: rawRequestId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
+  const requestId = sanitizeString(rawRequestId, 50);
 
   if (!ObjectId.isValid(teamId) || !ObjectId.isValid(requestId)) {
     return NextResponse.json(

@@ -130,6 +130,8 @@ async function postAcceptHandler(
             teamName: oldTeam.name,
             memberId: session.user.id,
             memberName: session.user.nickname || session.user.name,
+            userName: session.user.nickname || session.user.name,
+            userAvatar: session.user.image || undefined,
           },
         });
       }
@@ -190,6 +192,8 @@ async function postAcceptHandler(
           teamName: team.name,
           memberId: session.user.id,
           memberName: session.user.nickname || session.user.name,
+          userName: session.user.nickname || session.user.name,
+          userAvatar: session.user.image || undefined,
         },
       });
     }

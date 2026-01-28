@@ -34,7 +34,13 @@ const nextConfig = {
             },
         ],
     },
+    // Empty turbopack config to silence Next.js 16 warning
+    // The punycode alias from webpack config is no longer needed in Next.js 16
+    turbopack: {
+        root: __dirname, // Explicitly set workspace root to silence multiple lockfiles warning
+    },
     webpack: (config, { isServer }) => {
+        // Keep webpack config for backwards compatibility when using --webpack flag
         // Replace Node's built-in punycode with the npm package to avoid deprecation warnings
         config.resolve.alias = {
             ...config.resolve.alias,

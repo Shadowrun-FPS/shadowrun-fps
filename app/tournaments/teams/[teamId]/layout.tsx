@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { teamId: string };
+  params: Promise<{ teamId: string }>;
 }
 
 // Dynamic metadata generation based on team ID
@@ -17,20 +17,21 @@ export async function generateMetadata(
   let description = "View details about this team";
 
   try {
+    const { teamId } = await params;
     // Connect to database
     const client = await clientPromise;
     const db = client.db();
 
     // Check if the teamId is a valid MongoDB ObjectId (24 hex characters)
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(params.teamId);
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(teamId);
 
     // Fetch team data - handle both ObjectId and team tag
     const team = isObjectId
       ? await db.collection("Teams").findOne({
-          _id: new ObjectId(params.teamId),
+          _id: new ObjectId(teamId),
         })
       : await db.collection("Teams").findOne({
-          tag: params.teamId,
+          tag: teamId,
         });
 
     // If team exists, use team name in metadata

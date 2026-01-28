@@ -277,9 +277,11 @@ export const authOptions: NextAuthOptions = {
       }
     },
     debug(code, metadata) {
-      if (process.env.NODE_ENV === "development") {
-        safeLog.log(`[next-auth][debug][${code}]`, metadata);
-      }
+      // Debug logs disabled - too verbose for normal development
+      // Uncomment below if you need to debug auth issues:
+      // if (process.env.NODE_ENV === "development") {
+      //   safeLog.log(`[next-auth][debug][${code}]`, metadata);
+      // }
     },
   },
 };

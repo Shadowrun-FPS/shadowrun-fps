@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { matchId: string };
+  params: Promise<{ matchId: string }>;
 }
 
 export async function generateMetadata(
@@ -12,18 +12,19 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   try {
+    const { matchId } = await params;
     const client = await clientPromise;
     const db = client.db();
 
     // Try to find the match by ID, handling potential invalid ObjectId
-    let query: any = { matchId: params.matchId };
+    let query: any = { matchId: matchId };
 
     // Only try to use ObjectId if it looks like a valid MongoDB ID
-    if (/^[0-9a-fA-F]{24}$/.test(params.matchId)) {
+    if (/^[0-9a-fA-F]{24}$/.test(matchId)) {
       query = {
         $or: [
-          { _id: new ObjectId(params.matchId) },
-          { matchId: params.matchId },
+          { _id: new ObjectId(matchId) },
+          { matchId: matchId },
         ],
       };
     }

@@ -6,9 +6,10 @@ import { withApiSecurity } from "@/lib/api-wrapper";
 
 async function getPlayerHandler(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const discordId = sanitizeString(params.id, 50);
+  const { id } = await params;
+  const discordId = sanitizeString(id, 50);
 
   if (!discordId) {
     return NextResponse.json(

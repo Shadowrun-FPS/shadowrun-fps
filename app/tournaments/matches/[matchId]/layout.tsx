@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { matchId: string };
+  params: Promise<{ matchId: string }>;
 }
 
 export async function generateMetadata(
@@ -16,25 +16,26 @@ export async function generateMetadata(
   let description = "View details about this tournament match";
 
   try {
+    const { matchId } = await params;
     // Connect to database
     const client = await clientPromise;
     const db = client.db();
 
     // Check if matchId is a valid MongoDB ObjectId (24 hex characters)
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(params.matchId);
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(matchId);
     
     // Fetch match data
     let match = null;
     if (isObjectId) {
       match = await db.collection("TournamentMatches").findOne({
-        _id: new ObjectId(params.matchId),
+        _id: new ObjectId(matchId),
       });
     }
     
     // If not found by _id or not an ObjectId, try tournamentMatchId field
     if (!match) {
       match = await db.collection("TournamentMatches").findOne({
-        tournamentMatchId: params.matchId,
+        tournamentMatchId: matchId,
       });
     }
 

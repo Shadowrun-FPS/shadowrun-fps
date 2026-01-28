@@ -9,7 +9,8 @@ import { secureLogger } from "@/lib/secure-logger";
 export const dynamic = "force-dynamic";
 
 export const DELETE = withErrorHandling(
-  async (req: NextRequest, { params }: { params: { matchId: string } }) => {
+  async (req: NextRequest, { params }: { params: Promise<{ matchId: string }> }) => {
+    const { matchId } = await params;
     const session = await getServerSession(authOptions);
 
     // Check if user is authenticated
@@ -25,14 +26,14 @@ export const DELETE = withErrorHandling(
         "Unauthorized access attempt to admin delete endpoint",
         {
           userId: session.user.id,
-          matchId: params.matchId,
+          matchId: matchId,
         }
       );
       throw createError.forbidden("Access denied");
     }
 
     secureLogger.info("Admin match deletion initiated", {
-      matchId: params.matchId,
+      matchId: matchId,
       adminId: session.user.id,
     });
 
@@ -41,7 +42,7 @@ export const DELETE = withErrorHandling(
 
     // Delete the match
     const result = await db.collection("Matches").deleteOne({
-      matchId: params.matchId,
+      matchId: matchId,
     });
 
     if (result.deletedCount === 0) {
@@ -49,7 +50,7 @@ export const DELETE = withErrorHandling(
     }
 
     secureLogger.info("Match deleted successfully", {
-      matchId: params.matchId,
+      matchId: matchId,
       adminId: session.user.id,
     });
 

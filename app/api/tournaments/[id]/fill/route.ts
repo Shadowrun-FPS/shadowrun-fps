@@ -10,9 +10,10 @@ import { revalidatePath } from "next/cache";
 // POST endpoint to fill a tournament with random teams (testing only)
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Rate limiting
     const session = await getServerSession(authOptions);
     const identifier = getClientIdentifier(request, session?.user?.id);
@@ -23,7 +24,7 @@ export async function POST(
       );
     }
 
-    safeLog.log("Fill route hit with ID:", params.id);
+    safeLog.log("Fill route hit with ID:", id);
 
     // Check authentication and admin permission
     if (!session || !session.user) {
@@ -41,7 +42,6 @@ export async function POST(
       discordId: session.user.id,
     });
 
-    const { id } = params;
     if (!ObjectId.isValid(id)) {
       return NextResponse.json(
         { error: "Invalid tournament ID" },

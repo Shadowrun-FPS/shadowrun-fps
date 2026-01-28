@@ -12,9 +12,10 @@ export const dynamic = "force-dynamic";
 
 async function getMatchHandler(
   req: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
-  const matchId = sanitizeString(params.matchId, 100);
+  const { matchId: matchIdParam } = await params;
+  const matchId = sanitizeString(matchIdParam, 100);
 
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
@@ -43,8 +44,9 @@ export const GET = withApiSecurity(getMatchHandler, {
 
 async function deleteMatchHandler(
   req: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
+  const { matchId: matchIdParam } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
@@ -54,7 +56,7 @@ async function deleteMatchHandler(
     );
   }
 
-  const matchId = sanitizeString(params.matchId, 100);
+  const matchId = sanitizeString(matchIdParam, 100);
 
   const isYourAccount = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
 

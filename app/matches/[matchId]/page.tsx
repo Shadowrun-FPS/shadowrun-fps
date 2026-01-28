@@ -38,7 +38,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { PlayerContextMenu } from "@/components/moderation/player-context-menu";
-import { Params } from "next/dist/shared/lib/router/utils/route-matcher";
 import { TeamCard } from "@/components/match/team-card";
 import Link from "next/link";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";

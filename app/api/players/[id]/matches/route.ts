@@ -6,11 +6,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { db } = await connectToDatabase();
-    const playerId = params.id;
+    const playerId = id;
     const limit = parseInt(request.nextUrl.searchParams.get("limit") || "20");
 
     // Find matches where player participated - handle multiple match structures

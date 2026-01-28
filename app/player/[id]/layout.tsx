@@ -4,7 +4,7 @@ import { getPlayerAvatarUrl } from "@/lib/discord-helpers";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // Define types for our OpenGraph and Twitter objects
@@ -38,15 +38,16 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   try {
+    const { id } = await params;
     const client = await clientPromise;
     const db = client.db();
 
     // Try to find the player by ID or username
     const player = await db.collection("Players").findOne({
       $or: [
-        { discordId: params.id },
-        { discordUsername: params.id },
-        { discordNickname: params.id },
+        { discordId: id },
+        { discordUsername: id },
+        { discordNickname: id },
       ],
     });
 

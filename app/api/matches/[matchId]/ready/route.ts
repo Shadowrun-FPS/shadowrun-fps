@@ -9,14 +9,15 @@ import { revalidatePath } from "next/cache";
 
 async function postMatchReadyHandler(
   req: NextRequest,
-  { params }: { params: { matchId: string } }
+  { params }: { params: Promise<{ matchId: string }> }
 ) {
+  const { matchId: matchIdParam } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const matchId = sanitizeString(params.matchId, 100);
+  const matchId = sanitizeString(matchIdParam, 100);
   if (!ObjectId.isValid(matchId)) {
     return NextResponse.json(
       { error: "Invalid match ID" },

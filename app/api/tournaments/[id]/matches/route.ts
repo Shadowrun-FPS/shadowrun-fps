@@ -4,15 +4,16 @@ import { ObjectId } from "mongodb";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { tournamentId: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id: tournamentId } = await params;
     const { roundIndex, matchIndex, score1, score2 } = await req.json();
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
     const tournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(params.tournamentId),
+      _id: new ObjectId(tournamentId),
     });
 
     if (!tournament) {
@@ -30,7 +31,7 @@ export async function POST(
         : tournament.bracket[roundIndex].matches[matchIndex].team2;
 
     await db.collection("Tournaments").updateOne(
-      { _id: new ObjectId(params.tournamentId) },
+      { _id: new ObjectId(tournamentId) },
       {
         $set: {
           [`${updatePath}.score1`]: score1,
@@ -49,7 +50,7 @@ export async function POST(
       }.matches.${nextRoundMatchIndex}`;
 
       await db.collection("Tournaments").updateOne(
-        { _id: new ObjectId(params.tournamentId) },
+        { _id: new ObjectId(tournamentId) },
         {
           $set: {
             [`${nextMatchPath}.${isFirstMatch ? "team1" : "team2"}`]: winner,
@@ -59,7 +60,7 @@ export async function POST(
     }
 
     const updatedTournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(params.tournamentId),
+      _id: new ObjectId(tournamentId),
     });
 
     return NextResponse.json(updatedTournament);

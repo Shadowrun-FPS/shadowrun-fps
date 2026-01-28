@@ -118,7 +118,7 @@ async function updateFeaturedVideoHandler(req: Request) {
   // Revalidate all caches
   revalidatePath("/");
   revalidatePath("/admin/featured-video");
-  revalidateTag("featured-video");
+  revalidateTag("featured-video", "max");
 
   return NextResponse.json({ success: true, settings });
 }

@@ -12,14 +12,15 @@ import { revalidatePath } from "next/cache";
 
 async function postUnregisterHandler(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: idParam } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const tournamentId = sanitizeString(params.id, 50);
+  const tournamentId = sanitizeString(idParam, 50);
   if (!ObjectId.isValid(tournamentId)) {
     return NextResponse.json(
       { error: "Invalid tournament ID format" },

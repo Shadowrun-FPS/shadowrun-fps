@@ -5,11 +5,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { db } = await connectToDatabase();
-    const playerId = params.id;
+    const playerId = id;
     const teamSize = parseInt(request.nextUrl.searchParams.get("teamSize") || "4");
 
     // Get all players with stats for this team size, sorted by ELO

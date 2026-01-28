@@ -216,6 +216,25 @@ async function patchJoinRequestHandler(
         },
       });
 
+      // Notify the team captain that the new member joined
+      if (team.captain?.discordId) {
+        await db.collection("Notifications").insertOne({
+          userId: team.captain.discordId,
+          type: "team_member_joined",
+          title: "Member Joined",
+          message: `${sanitizeString(joinRequest.userNickname || joinRequest.userName || "A player", 100)} has joined your team "${sanitizeString(team.name, 100)}"`,
+          read: false,
+          createdAt: new Date(),
+          metadata: {
+            teamId: joinRequest.teamId,
+            teamName: team.name,
+            userId: joinRequest.userId,
+            userName: sanitizeString(joinRequest.userNickname || joinRequest.userName || "", 100),
+            userAvatar: joinRequest.userAvatar ? sanitizeString(joinRequest.userAvatar, 255) : undefined,
+          },
+        });
+      }
+
       // UPDATED: Recalculate team ELO with the new member
       await recalculateTeamElo(joinRequest.teamId);
     } else {

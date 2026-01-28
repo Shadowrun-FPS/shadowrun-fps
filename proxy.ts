@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { rateLimit, adminRateLimit, authRateLimit } from "./lib/rate-limiting";
-import { generateCSPHeader, SECURITY_CONFIG } from "./lib/security-config";
+import { generateCSPHeader } from "./lib/security-config";
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Skip rate limiting for critical auth endpoints to prevent OAuth flow interruption

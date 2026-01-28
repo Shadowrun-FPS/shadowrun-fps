@@ -9,14 +9,15 @@ import { revalidatePath } from "next/cache";
 
 async function postReadNotificationHandler(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id: idParam } = await params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const id = sanitizeString(params.id, 50);
+  const id = sanitizeString(idParam, 50);
   if (!ObjectId.isValid(id)) {
     return NextResponse.json(
       { error: "Invalid notification ID" },

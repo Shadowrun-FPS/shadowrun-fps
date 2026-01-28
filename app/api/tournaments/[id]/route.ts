@@ -114,9 +114,10 @@ interface TeamMember {
 
 async function getTournamentHandler(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const id = sanitizeString(params.id, 50);
+  const { id: idParam } = await params;
+  const id = sanitizeString(idParam, 50);
 
   if (!ObjectId.isValid(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });

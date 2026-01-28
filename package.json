@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@aws-sdk/s3-request-presigner": "^3.958.0",
-    "@discordjs/rest": "^2.6.0",
+    "@discordjs/rest": "^0.4.1",
     "@hookform/resolvers": "^3.3.3",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/sdk-node": "^0.208.0",
@@ -69,7 +69,7 @@
     "lucide-react": "^0.294.0",
     "moment": "^2.29.4",
     "mongodb": "^7.0.0",
-    "next": "^14.1.0",
+    "next": "^16.1.6",
     "next-auth": "^4.24.5",
     "next-themes": "^0.2.1",
     "postcss": "^8.4.32",

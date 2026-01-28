@@ -4,7 +4,7 @@ import { ObjectId } from "mongodb";
 
 interface LayoutProps {
   children: React.ReactNode;
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata(
@@ -12,12 +12,13 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   try {
+    const { id } = await params;
     const client = await clientPromise;
     const db = client.db();
 
     // Try to find the tournament by ID
     const tournament = await db.collection("Tournaments").findOne({
-      _id: new ObjectId(params.id),
+      _id: new ObjectId(id),
     });
 
     if (!tournament) {
