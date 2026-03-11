@@ -15,7 +15,7 @@ export interface Player {
 
 export interface TeamMember {
   discordId: string;
-  discordUsername: string;
+  discordUsername?: string;
   discordNickname?: string | null;
   discordProfilePicture?: string | null;
   role?: string;
@@ -32,4 +32,7 @@ export interface Team {
   teamSize?: number;
   members: TeamMember[];
   captain: TeamMember;
+  wins?: number;
+  losses?: number;
+  createdAt?: string;
 }

@@ -12,14 +12,15 @@ import { revalidatePath } from "next/cache";
 
 async function postRemoveMemberHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID format" },
@@ -78,6 +79,16 @@ async function postRemoveMemberHandler(
     await db.collection(collectionName).updateOne({ _id: new ObjectId(teamId) }, {
       $pull: { members: { discordId: sanitizedMemberId } },
     } as any);
+
+    // Mark any accepted invite for this member as "left" so roster history is accurate
+    await db.collection("TeamInvites").updateMany(
+      {
+        teamId: new ObjectId(teamId),
+        inviteeId: sanitizedMemberId,
+        status: "accepted",
+      },
+      { $set: { status: "left", updatedAt: new Date() } }
+    );
 
     // Get updated team to check member count
     const updatedTeamResult = await findTeamAcrossCollections(db, teamId);

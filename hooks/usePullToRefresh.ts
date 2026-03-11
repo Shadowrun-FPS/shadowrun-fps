@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, TouchEvent } from "react";
+import { useState, useRef, useCallback, TouchEvent } from "react";
 
 interface PullToRefreshOptions {
   onRefresh: () => Promise<void>;
@@ -23,7 +23,7 @@ export function usePullToRefresh({
     (e: TouchEvent) => {
       if (!enabled || isRefreshing) return;
 
-      const scrollTop = containerRef.current?.scrollTop || window.scrollY;
+      const scrollTop = containerRef.current?.scrollTop ?? window.scrollY;
       if (scrollTop === 0) {
         startY.current = e.touches[0].clientY;
         setIsPulling(true);
@@ -41,10 +41,6 @@ export function usePullToRefresh({
 
       if (distance > 0) {
         setPullDistance(Math.min(distance, threshold * 1.5));
-        // Prevent default scroll behavior when pulling
-        if (distance > 10) {
-          e.preventDefault();
-        }
       }
     },
     [isPulling, enabled, isRefreshing, threshold]

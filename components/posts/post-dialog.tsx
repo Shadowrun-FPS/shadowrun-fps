@@ -48,6 +48,7 @@ import {
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { sanitizeStringClient } from "@/lib/client-utils";
 
 // Custom Calendar with Year/Month Dropdowns
 function CalendarWithDropdowns({
@@ -329,16 +330,16 @@ export function PostDialog({
       if (name === "title") {
         isValid = value.trim().length > 0 && value.length <= 200;
       } else if (name === "description") {
-        isValid = value.trim().length > 0 && value.length <= 500;
+        isValid = value.trim().length > 0 && value.length <= 5000;
       } else if (name === "imageUrl") {
         const normalized = normalizeImageUrl(value);
-        isValid = value.trim().length > 0 && (
+        isValid = value.trim().length > 0 && value.length <= 500 && (
           normalized.match(/^(https?:\/\/.+\..+|^\/.+)$/) !== null
         );
       } else if (name === "link") {
-        isValid = !value || value.match(/^https?:\/\/.+\..+/) !== null;
+        isValid = (!value || (value.match(/^https?:\/\/.+\..+/) !== null && value.length <= 500));
       } else if (name === "author") {
-        isValid = value.trim().length > 0;
+        isValid = value.trim().length > 0 && value.length <= 100;
       }
       
       if (isValid) {
@@ -366,13 +367,15 @@ export function PostDialog({
 
     if (!formData.description.trim()) {
       newErrors.description = "Description is required";
-    } else if (formData.description.length > 500) {
-      newErrors.description = "Description must be 500 characters or less";
+    } else if (formData.description.length > 5000) {
+      newErrors.description = "Description must be 5,000 characters or less";
     }
 
     const normalizedImageUrl = normalizeImageUrl(formData.imageUrl);
     if (!formData.imageUrl.trim()) {
       newErrors.imageUrl = "Image URL is required";
+    } else if (formData.imageUrl.length > 500) {
+      newErrors.imageUrl = "Image URL must be 500 characters or less";
     } else if (
       !normalizedImageUrl.match(
         /^(https?:\/\/.+\..+|^\/.+)$/
@@ -381,12 +384,23 @@ export function PostDialog({
       newErrors.imageUrl = "Please enter a valid URL or local path (starting with /)";
     }
 
-    if (formData.link && !formData.link.match(/^https?:\/\/.+\..+/)) {
-      newErrors.link = "Please enter a valid URL";
+    if (formData.link) {
+      if (!formData.link.match(/^https?:\/\/.+\..+/)) {
+        newErrors.link = "Please enter a valid URL";
+      } else if (formData.link.length > 500) {
+        newErrors.link = "Link must be 500 characters or less";
+      }
+    }
+
+    const allowedTypes = ["EVENT", "ARTICLE", "NEWS"];
+    if (formData.type && !allowedTypes.includes(formData.type)) {
+      newErrors.type = "Type must be Event, Article, or News";
     }
 
     if (!formData.author.trim()) {
       newErrors.author = "Author is required";
+    } else if (formData.author.length > 100) {
+      newErrors.author = "Author must be 100 characters or less";
     }
 
     setErrors(newErrors);
@@ -409,19 +423,25 @@ export function PostDialog({
     try {
       const authorNickname = session?.user?.name || "Unknown User";
 
+      const payload = {
+          title: sanitizeStringClient(formData.title, 200),
+          description: sanitizeStringClient(formData.description, 5000),
+          imageUrl: sanitizeStringClient(formData.imageUrl.trim(), 500),
+          type: formData.type,
+          link: formData.link ? sanitizeStringClient(formData.link.trim(), 500) : "",
+          author: sanitizeStringClient(formData.author.trim(), 100) || authorNickname,
+          authorId: session?.user?.id,
+          date: date?.toISOString(),
+          _id: initialData?._id,
+          published: true,
+        };
+
       const response = await fetch("/api/posts", {
         method: initialData ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          date: date?.toISOString(),
-          _id: initialData?._id,
-          authorId: session?.user?.id,
-          author: authorNickname,
-          published: true,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -539,9 +559,9 @@ export function PostDialog({
               </Label>
               <span className={cn(
                 "text-xs text-muted-foreground",
-                formData.description.length > 500 && "text-destructive"
+                formData.description.length > 5000 && "text-destructive"
               )}>
-                {formData.description.length}/500
+                {formData.description.length.toLocaleString()}/5,000
               </span>
             </div>
             <Textarea
@@ -566,10 +586,18 @@ export function PostDialog({
 
           {/* Image URL */}
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="imageUrl" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-              <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              Image URL <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="imageUrl" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Image URL <span className="text-destructive">*</span>
+              </Label>
+              <span className={cn(
+                "text-xs text-muted-foreground",
+                formData.imageUrl.length > 500 && "text-destructive"
+              )}>
+                {formData.imageUrl.length}/500
+              </span>
+            </div>
             <Input
               id="imageUrl"
               name="imageUrl"
@@ -637,6 +665,12 @@ export function PostDialog({
                   <SelectItem value="NEWS">News</SelectItem>
                 </SelectContent>
               </Select>
+              {errors.type && (
+                <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {errors.type}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 sm:space-y-2.5">
@@ -673,10 +707,20 @@ export function PostDialog({
 
           {/* Link */}
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="link" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-              <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              Link (Optional)
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="link" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Link (Optional)
+              </Label>
+              {formData.link ? (
+                <span className={cn(
+                  "text-xs text-muted-foreground",
+                  formData.link.length > 500 && "text-destructive"
+                )}>
+                  {formData.link.length}/500
+                </span>
+              ) : null}
+            </div>
             <div className="relative">
               <Input
                 id="link"
@@ -714,10 +758,18 @@ export function PostDialog({
 
           {/* Author */}
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="author" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-              <User className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-              Author <span className="text-destructive">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="author" className="flex items-center gap-2 text-sm sm:text-base font-medium">
+                <User className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                Author <span className="text-destructive">*</span>
+              </Label>
+              <span className={cn(
+                "text-xs text-muted-foreground",
+                formData.author.length > 100 && "text-destructive"
+              )}>
+                {formData.author.length}/100
+              </span>
+            </div>
             <Input
               id="author"
               name="author"

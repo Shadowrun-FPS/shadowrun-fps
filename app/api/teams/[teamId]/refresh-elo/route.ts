@@ -12,14 +12,15 @@ import { revalidatePath } from "next/cache";
 
 async function postRefreshEloHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID format" },

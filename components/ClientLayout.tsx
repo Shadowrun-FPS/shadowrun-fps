@@ -26,16 +26,13 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         >
           Skip to main content
         </a>
-        {/* Player Tracker Banner - At very top */}
-        <div className="fixed top-0 left-0 right-0 z-50">
+        {/* Banner + Header in one fixed block so no gap; opaque so content doesn't show through */}
+        <div className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-background">
           <PlayerTrackerBanner />
-        </div>
-        {/* Header - Slightly overlaps banner to prevent content showing through gap on scroll */}
-        <div className="fixed top-[47px] sm:top-[49px] left-0 right-0 z-40">
           <Header />
         </div>
-        {/* Spacer to account for fixed banner + header */}
-        <div className="h-[104px] sm:h-[106px]" aria-hidden />
+        {/* Spacer: banner + header (56px/64px) */}
+        <div className="h-[103px] sm:h-[113px]" aria-hidden />
         <div className="relative flex-1 w-full">
           <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
             {children}

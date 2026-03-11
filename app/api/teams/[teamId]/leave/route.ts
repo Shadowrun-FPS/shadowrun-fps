@@ -13,14 +13,15 @@ import { revalidatePath } from "next/cache";
 
 async function postLeaveHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID format" },
@@ -61,6 +62,16 @@ async function postLeaveHandler(
     await db.collection(collectionName).updateOne({ _id: new ObjectId(teamId) }, {
       $pull: { members: { discordId: userId } },
     } as any);
+
+    // Mark any accepted invite for this user as "left" so roster history is accurate
+    await db.collection("TeamInvites").updateMany(
+      {
+        teamId: new ObjectId(teamId),
+        inviteeId: userId,
+        status: "accepted",
+      },
+      { $set: { status: "left", updatedAt: new Date() } }
+    );
 
     // Get updated team to check member count
     const updatedTeamResult = await findTeamAcrossCollections(db, teamId);
@@ -140,22 +151,24 @@ async function postLeaveHandler(
       }
     }
 
-    // Create a notification for the team captain
+    // Use discordNickname for display (consistent with invite-accepted and other notifications)
+    const displayName = sanitizeString(
+      (memberLeaving as any).discordNickname || session.user.name || "A team member",
+      100
+    );
     await db.collection("Notifications").insertOne({
       userId: team.captain.discordId,
       type: "team_member_left",
       title: "Team Member Left",
-      message: `${session.user.name || "A team member"} has left your team "${
-        team.name
-      }"`,
+      message: `${displayName} has left your team "${team.name}"`,
       read: false,
       createdAt: new Date(),
       metadata: {
         teamId: teamId,
         teamName: team.name,
-        memberName: session.user.name,
+        memberName: displayName,
         memberId: userId,
-        userName: session.user.name || (memberLeaving as any).discordNickname,
+        userName: displayName,
         userAvatar: (memberLeaving as any).discordProfilePicture || session.user.image || undefined,
       },
     });

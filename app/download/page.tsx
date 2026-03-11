@@ -106,23 +106,21 @@ export default function DownloadPage() {
 
   // Download page content
   return (
-    <div className="container px-4 py-12 mx-auto">
-      <div className="mx-auto max-w-4xl">
-        <div className="p-8 mb-8 rounded-2xl border shadow-xl backdrop-blur-sm transition-all duration-300 bg-card/30 border-border/50 hover:shadow-primary/10 hover:shadow-2xl">
-          <h1 className="mb-6 text-4xl font-bold text-center">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/90 to-primary animate-gradient">
-              Download Shadowrun FPS Launcher
-            </span>
+    <div className="w-full min-w-0 px-2 py-8 mx-auto sm:px-4 sm:py-12 md:container">
+      <div className="mx-auto max-w-4xl min-w-0">
+        <div className="px-2 py-4 mb-5 rounded-2xl shadow-xl backdrop-blur-sm bg-card/30 border-0 sm:p-6 sm:mb-8 md:p-8">
+          <h1 className="mb-5 text-2xl font-bold text-left text-foreground break-words sm:text-3xl md:mb-6 md:text-center md:text-4xl">
+            Download Shadowrun FPS Launcher
           </h1>
 
-          <div className="p-6 mb-8 rounded-xl border transition-all duration-300 hover:bg-card/70 bg-card/50 border-border/50">
+          <div className="px-2 py-4 mb-5 rounded-xl bg-card/50 border-0 sm:p-6 sm:mb-8">
             {versionError && (
-              <div className="flex items-start p-3 mb-4 rounded-lg border bg-yellow-500/10 border-yellow-500/30">
-                <AlertCircle className="flex-shrink-0 mt-0.5 mr-2 w-4 h-4 text-yellow-500" />
-                <p className="text-sm text-yellow-500">{versionError}</p>
+              <div className="flex items-start gap-2 p-3 mb-4 rounded-lg border bg-yellow-500/10 border-yellow-500/30">
+                <AlertCircle className="flex-shrink-0 mt-0.5 w-4 h-4 text-yellow-500" />
+                <p className="min-w-0 text-sm text-yellow-500">{versionError}</p>
               </div>
             )}
-            <h2 className="mb-2 text-2xl font-bold">
+            <h2 className="mb-2 text-xl font-bold break-words sm:text-2xl">
               Latest Version:{" "}
               {loadingVersion ? (
                 <span className="inline-block w-20 h-6 rounded animate-pulse bg-muted" />
@@ -130,12 +128,12 @@ export default function DownloadPage() {
                 versionInfo?.version || "Unknown"
               )}
             </h2>
-            <p className="mb-2 text-sm text-muted-foreground">
+            <p className="mb-2 text-sm text-muted-foreground break-words">
               File:{" "}
               {loadingVersion ? (
                 <span className="inline-block w-48 h-4 rounded animate-pulse bg-muted" />
               ) : (
-                versionInfo?.path || "Unknown"
+                <span className="break-all">{versionInfo?.path || "Unknown"}</span>
               )}
             </p>
             <p className="mb-2 text-sm text-muted-foreground">
@@ -170,15 +168,15 @@ export default function DownloadPage() {
                 </p>
               )
             )}
-            <p className="mb-6 text-muted-foreground">
+            <p className="mb-5 text-sm text-muted-foreground sm:mb-6 sm:text-base">
               Full NSIS installer with automatic update capabilities. Easy
               installation for Shadowrun FPS.
             </p>
 
-            <div className="flex flex-col gap-4 justify-center sm:flex-row">
+            <div className="flex flex-col gap-3 justify-start sm:justify-center sm:flex-row sm:gap-4">
               <Button
                 size="lg"
-                className="overflow-hidden relative group animate-pulse-slow"
+                className="w-full min-h-[44px] overflow-hidden relative group animate-pulse-slow border-0 focus-visible:ring-0 sm:w-auto"
                 onClick={handleDownload}
                 disabled={downloading || loadingVersion}
               >
@@ -197,52 +195,52 @@ export default function DownloadPage() {
           </div>
 
           {/* Key Features Section */}
-          <div className="p-6 mb-8 rounded-xl border transition-all duration-300 hover:bg-card/70 bg-card/50 border-border/50">
-            <div className="flex items-center mb-4">
-              <Sparkles className="mr-2 w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold">Key Features</h2>
+          <div className="px-2 py-4 mb-5 rounded-xl bg-card/50 sm:p-6 sm:mb-8">
+            <div className="flex items-center mb-3 sm:mb-4">
+              <Sparkles className="mr-2 w-5 h-5 shrink-0 text-primary" />
+              <h2 className="text-lg font-bold sm:text-xl">Key Features</h2>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex items-start p-4 rounded-lg border transition-all duration-200 bg-background/50 border-border/50 hover:bg-background/70">
-                <Zap className="flex-shrink-0 mr-3 w-5 h-5 text-primary" />
-                <div>
-                  <h3 className="mb-1 font-semibold">Auto-Update System</h3>
-                  <p className="text-sm text-muted-foreground">
+            <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
+              <div className="flex items-start gap-3 p-3 rounded-lg transition-all duration-200 bg-background/50 hover:bg-background/70 sm:p-4">
+                <Zap className="flex-shrink-0 w-5 h-5 text-primary" />
+                <div className="min-w-0">
+                  <h3 className="mb-0.5 text-sm font-semibold sm:mb-1 sm:text-base">Auto-Update System</h3>
+                  <p className="text-xs text-muted-foreground sm:text-sm">
                     Launcher automatically checks for and installs updates
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start p-4 rounded-lg border transition-all duration-200 bg-background/50 border-border/50 hover:bg-background/70">
-                <Download className="flex-shrink-0 mr-3 w-5 h-5 text-primary" />
-                <div>
-                  <h3 className="mb-1 font-semibold">
+              <div className="flex items-start gap-3 p-3 rounded-lg transition-all duration-200 bg-background/50 hover:bg-background/70 sm:p-4">
+                <Download className="flex-shrink-0 w-5 h-5 text-primary" />
+                <div className="min-w-0">
+                  <h3 className="mb-0.5 text-sm font-semibold sm:mb-1 sm:text-base">
                     One-Click Game Installation
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm">
                     Automatically downloads and installs Shadowrun FPS
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start p-4 rounded-lg border transition-all duration-200 bg-background/50 border-border/50 hover:bg-background/70">
-                <Shield className="flex-shrink-0 mr-3 w-5 h-5 text-primary" />
-                <div>
-                  <h3 className="mb-1 font-semibold">
+              <div className="flex items-start gap-3 p-3 rounded-lg transition-all duration-200 bg-background/50 hover:bg-background/70 sm:p-4">
+                <Shield className="flex-shrink-0 w-5 h-5 text-primary" />
+                <div className="min-w-0">
+                  <h3 className="mb-0.5 text-sm font-semibold sm:mb-1 sm:text-base">
                     Automatic Key Generation
                   </h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground sm:text-sm">
                     No manual CD key entry required
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start p-4 rounded-lg border transition-all duration-200 bg-background/50 border-border/50 hover:bg-background/70">
-                <Trash2 className="flex-shrink-0 mr-3 w-5 h-5 text-primary" />
-                <div>
-                  <h3 className="mb-1 font-semibold">Clean Uninstall</h3>
-                  <p className="text-sm text-muted-foreground">
+              <div className="flex items-start gap-3 p-3 rounded-lg transition-all duration-200 bg-background/50 hover:bg-background/70 sm:p-4">
+                <Trash2 className="flex-shrink-0 w-5 h-5 text-primary" />
+                <div className="min-w-0">
+                  <h3 className="mb-0.5 text-sm font-semibold sm:mb-1 sm:text-base">Clean Uninstall</h3>
+                  <p className="text-xs text-muted-foreground sm:text-sm">
                     Easy removal with no leftover files
                   </p>
                 </div>
@@ -251,14 +249,14 @@ export default function DownloadPage() {
           </div>
 
           {/* Installation Instructions Section */}
-          <div className="p-6 mb-8 rounded-xl border transition-all duration-300 hover:bg-card/70 bg-card/50 border-border/50">
-            <div className="flex items-center mb-4">
-              <Info className="mr-2 w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold">Installation Instructions</h2>
+          <div className="px-2 py-4 mb-5 rounded-xl bg-card/50 sm:p-6 sm:mb-8">
+            <div className="flex items-center mb-3 sm:mb-4">
+              <Info className="mr-2 w-5 h-5 shrink-0 text-primary" />
+              <h2 className="text-lg font-bold sm:text-xl">Installation Instructions</h2>
             </div>
 
-            <div className="p-4 mb-4 rounded-lg border bg-background/50 border-border/50">
-              <ol className="space-y-3 list-decimal list-inside text-muted-foreground">
+            <div className="px-2 py-3 mb-4 rounded-lg bg-background/50 sm:p-4">
+              <ol className="space-y-2.5 list-decimal list-outside pl-5 text-sm text-muted-foreground sm:space-y-3 sm:list-inside sm:pl-0">
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">Prerequisites:</strong>{" "}
                   <a
@@ -319,11 +317,11 @@ export default function DownloadPage() {
             </div>
 
             {/* System Requirements */}
-            <div className="p-4 rounded-lg border bg-background/50 border-border/50">
-              <h3 className="mb-3 font-semibold text-foreground">
+            <div className="px-2 py-3 rounded-lg bg-background/50 sm:p-4">
+              <h3 className="mb-2 text-sm font-semibold text-foreground sm:mb-3 sm:text-base">
                 System Requirements
               </h3>
-              <ul className="space-y-1 text-sm text-muted-foreground">
+              <ul className="space-y-0.5 text-xs text-muted-foreground sm:space-y-1 sm:text-sm">
                 <li>
                   <strong className="text-foreground">OS:</strong> Windows 10
                   (64-bit)
@@ -345,9 +343,9 @@ export default function DownloadPage() {
               </ul>
             </div>
 
-            <div className="flex items-start p-4 mt-6 rounded-lg border bg-card/70 border-border/50">
-              <AlertCircle className="flex-shrink-0 mt-1 mr-3 text-primary" />
-              <p className="text-sm text-muted-foreground">
+            <div className="flex items-start gap-3 px-2 py-3 mt-5 rounded-lg bg-card/70 sm:mt-6 sm:p-4">
+              <AlertCircle className="flex-shrink-0 mt-0.5 w-5 h-5 text-primary" />
+              <p className="min-w-0 text-xs text-muted-foreground sm:text-sm">
                 <strong>Note:</strong> Some antivirus software may flag the
                 launcher as suspicious due to its game file interactions. This
                 is a false positive. The launcher has been verified safe by
@@ -358,48 +356,48 @@ export default function DownloadPage() {
           </div>
 
           {/* File Security Information */}
-          <div className="p-6 rounded-xl border transition-all duration-300 hover:bg-card/70 bg-card/50 border-border/50">
-            <div className="flex items-center mb-4">
-              <Shield className="mr-2 w-5 h-5 text-primary" />
-              <h2 className="text-xl font-bold">File Security Information</h2>
+          <div className="px-2 py-4 rounded-xl bg-card/50 sm:p-6">
+            <div className="flex items-center mb-3 sm:mb-4">
+              <Shield className="mr-2 w-5 h-5 shrink-0 text-primary" />
+              <h2 className="text-lg font-bold sm:text-xl">File Security Information</h2>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-4 min-w-0 overflow-x-auto">
               <VirusTotalWidget
                 fileUrl="https://www.virustotal.com/gui/file/5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd?nocache=1"
                 fileName="Shadowrun FPS Launcher Setup.exe"
               />
             </div>
 
-            <div className="grid gap-3 text-sm">
-              <div className="flex justify-between p-3 rounded-lg bg-background/50">
-                <span className="text-muted-foreground">Verified by:</span>
+            <div className="grid gap-2 text-sm sm:gap-3">
+              <div className="flex flex-col gap-0.5 px-2 py-3 rounded-lg bg-background/50 sm:flex-row sm:justify-between sm:gap-2 sm:p-3">
+                <span className="text-xs text-muted-foreground sm:text-sm">Verified by:</span>
                 <span className="font-semibold">VirusTotal</span>
               </div>
-              <div className="flex justify-between p-3 rounded-lg bg-background/50">
-                <span className="text-muted-foreground">Status:</span>
-                <span className="flex items-center font-semibold text-green-500">
-                  <CheckCircle2 className="mr-1 w-4 h-4" />
+              <div className="flex flex-col gap-0.5 px-2 py-3 rounded-lg bg-background/50 sm:flex-row sm:justify-between sm:items-center sm:gap-2 sm:p-3">
+                <span className="text-xs text-muted-foreground sm:text-sm">Status:</span>
+                <span className="flex items-center gap-1 font-semibold text-green-500">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
                   Safe to Download
                 </span>
               </div>
-              <div className="flex justify-between p-3 rounded-lg bg-background/50">
-                <span className="text-muted-foreground">File:</span>
-                <span className="font-semibold">
+              <div className="flex flex-col gap-0.5 px-2 py-3 rounded-lg bg-background/50 sm:flex-row sm:justify-between sm:gap-2 sm:p-3">
+                <span className="text-xs text-muted-foreground sm:text-sm">File:</span>
+                <span className="break-all font-semibold">
                   Shadowrun FPS Launcher Setup.exe
                 </span>
               </div>
-              <div className="flex gap-2 justify-between items-center p-3 rounded-lg bg-background/50">
-                <span className="text-muted-foreground">SHA256:</span>
-                <div className="flex flex-1 gap-2 justify-end items-center min-w-0">
-                  <span className="font-mono text-xs text-right break-all">
+              <div className="flex flex-col gap-2 px-2 py-3 rounded-lg bg-background/50 sm:flex-row sm:justify-between sm:items-start sm:gap-2 sm:p-3">
+                <span className="text-xs text-muted-foreground shrink-0 sm:text-sm">SHA256:</span>
+                <div className="flex gap-2 items-center min-w-0 w-full sm:w-auto sm:flex-1 sm:justify-end">
+                  <span className="font-mono text-xs break-all min-w-0">
                     5f9e3edc7f5f92a094d7b6378f9b87a2e18d832f0f1ff995f899c5c1e9cf78dd
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={copyHash}
-                    className="flex-shrink-0 p-0 w-8 h-8"
+                    className="flex-shrink-0 min-w-[44px] min-h-[44px] p-0 w-10 h-10 sm:w-8 sm:h-8 sm:min-w-0 sm:min-h-0"
                     aria-label="Copy SHA256 hash"
                   >
                     {copiedHash ? (
@@ -410,8 +408,8 @@ export default function DownloadPage() {
                   </Button>
                 </div>
               </div>
-              <div className="flex justify-between p-3 rounded-lg bg-background/50">
-                <span className="text-muted-foreground">Digitally Signed:</span>
+              <div className="flex flex-col gap-0.5 px-2 py-3 rounded-lg bg-background/50 sm:flex-row sm:justify-between sm:gap-2 sm:p-3">
+                <span className="text-xs text-muted-foreground sm:text-sm">Digitally Signed:</span>
                 <span className="font-semibold">Sinful Hollowz</span>
               </div>
             </div>

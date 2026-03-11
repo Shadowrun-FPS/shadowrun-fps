@@ -22,14 +22,15 @@ interface TeamInvite {
 
 async function getTeamInvitesHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID" },
@@ -68,17 +69,44 @@ async function getTeamInvitesHandler(
       .sort({ createdAt: -1 })
       .toArray();
 
+    // Current member IDs (captain + members) so we can mark accepted invites as "left" if they left
+    const currentMemberIds = new Set([
+      team.captain?.discordId,
+      ...(team.members ?? []).map((m: { discordId: string }) => m.discordId),
+    ].filter(Boolean));
+
+    // Backfill: accepted invites for users no longer on the team → set status to "left"
+    const acceptedButLeft = invites.filter(
+      (inv) => inv.status === "accepted" && !currentMemberIds.has(inv.inviteeId)
+    );
+    if (acceptedButLeft.length > 0) {
+      await db.collection("TeamInvites").updateMany(
+        {
+          teamId: new ObjectId(teamId),
+          status: "accepted",
+          inviteeId: { $nin: Array.from(currentMemberIds) },
+        },
+        { $set: { status: "left", updatedAt: new Date() } }
+      );
+    }
+
     const response = NextResponse.json({
-      invites: invites.map((invite) => ({
-        id: invite._id.toString(),
-        inviteeId: invite.inviteeId,
-        inviteeName: invite.inviteeName,
-        inviterId: invite.inviterId,
-        inviterName: invite.inviterName,
-        inviterNickname: invite.inviterNickname || invite.inviterName,
-        status: invite.status,
-        createdAt: invite.createdAt,
-      })),
+      invites: invites.map((invite) => {
+        const effectiveStatus =
+          invite.status === "accepted" && !currentMemberIds.has(invite.inviteeId)
+            ? "left"
+            : invite.status;
+        return {
+          id: invite._id.toString(),
+          inviteeId: invite.inviteeId,
+          inviteeName: invite.inviteeName,
+          inviterId: invite.inviterId,
+          inviterName: invite.inviterName,
+          inviterNickname: invite.inviterNickname || invite.inviterName,
+          status: effectiveStatus,
+          createdAt: invite.createdAt,
+        };
+      }),
     });
     response.headers.set(
       "Cache-Control",

@@ -10,9 +10,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
@@ -184,15 +181,17 @@ export default function AccountDropdown() {
 
   // Check if player stats is enabled
   const playerStatsEnabled = isFeatureEnabled("playerStats");
+  const teamsEnabled = isFeatureEnabled("teams");
 
-  // Display login button if not authenticated
+  // Display login button if not authenticated (Rumble-style pill outline)
   if (status === "unauthenticated") {
     return (
       <Button
+        variant="outline"
         onClick={() => signIn("discord")}
-        className="flex gap-2 items-center"
+        className="flex gap-1.5 items-center rounded-full h-8 sm:h-9 px-3 text-sm font-medium touch-manipulation border border-border/60 bg-transparent hover:bg-accent hover:border-border"
       >
-        <IconDiscordLogo className="w-4 h-4" />
+        <IconDiscordLogo className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         Sign in
       </Button>
     );
@@ -206,8 +205,11 @@ export default function AccountDropdown() {
   // Display user account dropdown when authenticated
   return (
     <div className="flex gap-1.5 items-center">
-      {/* Notifications button */}
-      <Link href="/notifications" className="relative">
+      {/* Notifications button - hidden on small screens (shown in dropdown instead) */}
+      <Link
+        href="/notifications"
+        className="relative hidden md:inline-flex"
+      >
         <Button
           variant="ghost"
           size="icon"
@@ -243,16 +245,16 @@ export default function AccountDropdown() {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-64">
-          <div className="flex flex-col p-3 space-y-2">
+          <div className="flex flex-col p-3.5 pb-3 space-y-2.5 rounded-lg bg-muted/30 -m-0.5 mb-0">
             <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10 ring-2 ring-primary/20">
+              <Avatar className="w-10 h-10 ring-2 ring-primary/10 shadow-sm">
                 <AvatarImage src={session?.user?.image || ""} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
                   {session?.user?.name?.charAt(0) || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-col min-w-0 flex-1">
-                <p className="font-semibold text-sm truncate">
+                <p className="font-medium text-sm truncate text-foreground">
                   {/* Use guild nickname instead of global username */}
                   {guildNickname || session?.user?.nickname}
                 </p>
@@ -274,6 +276,24 @@ export default function AccountDropdown() {
 
           <DropdownMenuSeparator />
 
+          {/* Notifications - only on small screens (navbar shows bell on md+) */}
+          <div className="md:hidden">
+            <DropdownMenuItem asChild>
+              <Link
+                href="/notifications"
+                className="flex items-center cursor-pointer relative"
+              >
+                <Bell className="mr-2 w-4 h-4" />
+                Notifications
+                {unreadCount > 0 && (
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </Link>
+            </DropdownMenuItem>
+          </div>
+
           {/* Only show Player Stats link if feature is enabled */}
           {playerStatsEnabled && (
             <DropdownMenuItem asChild>
@@ -291,39 +311,35 @@ export default function AccountDropdown() {
             </DropdownMenuItem>
           )}
 
-          {/* Teams section - handle multiple teams */}
-          {userTeams.length === 0 ? (
-            <DropdownMenuItem asChild>
-              <Link
-                href="/tournaments/teams"
-                className="flex items-center cursor-pointer"
-              >
-                <Users className="mr-2 w-4 h-4" />
-                Find Team
-              </Link>
-            </DropdownMenuItem>
-          ) : userTeams.length === 1 ? (
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/tournaments/teams/${userTeams[0].id}`}
-                className="flex items-center cursor-pointer"
-              >
-                <Users className="mr-2 w-4 h-4" />
-                My Team
-              </Link>
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger className="cursor-pointer">
-                <Users className="mr-2 w-4 h-4" />
-                My Teams ({userTeams.length})
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+          {/* Teams section - only when teams feature is enabled */}
+          {teamsEnabled &&
+            (userTeams.length === 0 ? (
+              <DropdownMenuItem asChild>
+                <Link
+                  href="/tournaments/teams"
+                  className="flex items-center cursor-pointer"
+                >
+                  <Users className="mr-2 w-4 h-4" />
+                  Find Team
+                </Link>
+              </DropdownMenuItem>
+            ) : userTeams.length === 1 ? (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/tournaments/teams/${userTeams[0].id}`}
+                  className="flex items-center cursor-pointer"
+                >
+                  <Users className="mr-2 w-4 h-4" />
+                  My Team
+                </Link>
+              </DropdownMenuItem>
+            ) : (
+              <>
                 {userTeams.map((team) => (
                   <DropdownMenuItem key={team.id} asChild>
                     <Link
                       href={`/tournaments/teams/${team.id}`}
-                      className="flex items-center justify-between cursor-pointer min-w-[200px]"
+                      className="flex items-center justify-between cursor-pointer min-w-0"
                     >
                       <span className="truncate">
                         {team.tag ? `[${team.tag}] ` : ""}
@@ -337,18 +353,17 @@ export default function AccountDropdown() {
                     </Link>
                   </DropdownMenuItem>
                 ))}
-                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link
                     href="/tournaments/teams"
                     className="flex items-center cursor-pointer text-muted-foreground"
                   >
+                    <Users className="mr-2 w-4 h-4" />
                     Browse All Teams
                   </Link>
                 </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          )}
+              </>
+            ))}
 
           {/* Admin link - show if user has admin, moderator, founder roles or is developer */}
           {(hasModAccess() || isDeveloper()) && (

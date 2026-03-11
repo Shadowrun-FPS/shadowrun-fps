@@ -148,6 +148,9 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
     [validStats, currentDate]
   );
 
+  // Count visible stat cards: when only one, use full width on large screens
+  const visibleStatsCount = Object.values(statsByTeamSize).filter(Boolean).length;
+
   // Find the latest match date across all team sizes
   const getLatestMatchDate = () => {
     const dates = validStats
@@ -336,7 +339,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
         <div className="mb-6">
           <Button
             variant="ghost"
-            className="flex gap-2 items-center text-sm hover:bg-muted/50"
+            className="flex gap-2 items-center text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded-xl"
             onClick={handleBack}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -344,18 +347,17 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
           </Button>
         </div>
 
-        {/* Hero Section with player info */}
+        {/* Hero Section with player info – softer, modern */}
         <PlayerContextMenu player={player} disabled={!hasModAccess}>
-          <Card className="relative overflow-hidden mb-6 sm:mb-8 border-2 bg-gradient-to-br from-card via-card to-muted/30 shadow-xl cursor-context-menu">
-            {/* Subtle background gradient */}
+          <Card className="relative overflow-hidden mb-6 sm:mb-8 rounded-2xl border-border shadow-sm cursor-context-menu">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5" />
             
             <CardContent className="relative z-10 p-4 sm:p-6 md:p-8 lg:p-10">
               <div className="flex flex-col gap-6 items-center sm:flex-row sm:items-start sm:gap-8">
-                {/* Avatar with enhanced styling */}
+                {/* Avatar */}
                 <div className="relative group">
-                  <div className="absolute -inset-2 bg-gradient-to-br from-primary/30 to-primary/10 rounded-full opacity-40 blur-xl group-hover:opacity-60 transition-opacity" />
-                  <div className="relative overflow-hidden w-28 h-28 rounded-full border-2 border-primary/30 shadow-lg ring-2 ring-primary/10 sm:h-32 sm:w-32 md:h-36 md:w-36">
+                  <div className="absolute -inset-1 bg-primary/20 rounded-full opacity-50 blur-xl group-hover:opacity-70 transition-opacity" />
+                  <div className="relative overflow-hidden w-28 h-28 rounded-full border border-border shadow-sm ring-1 ring-border/50 sm:h-32 sm:w-32 md:h-36 md:w-36">
                     <Image
                       src={player.discordProfilePicture || "/placeholder.svg"}
                       alt={
@@ -364,7 +366,9 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         "Player"
                       }
                       fill
+                      sizes="(max-width: 640px) 112px, (max-width: 768px) 128px, 144px"
                       className="object-cover"
+                      priority
                     />
                   </div>
                   {isTopPlayer && (
@@ -391,7 +395,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                           <Badge
                             key={role.id}
                             variant="outline"
-                            className="border-2 font-semibold shadow-md"
+                            className="border-border font-medium rounded-lg"
                             style={{
                               backgroundColor: role.color === "red" 
                                 ? "rgba(239, 68, 68, 0.2)" 
@@ -419,7 +423,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                       variant="outline"
                       size="sm"
                       onClick={handleShare}
-                      className="border-2 shadow-md hover:shadow-lg transition-all"
+                      className="rounded-xl border-border hover:bg-muted/30 transition-colors"
                     >
                       {copied ? (
                         <>
@@ -435,9 +439,9 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                     </Button>
                   </div>
 
-                  {/* Quick stats row */}
+                  {/* Quick stats row – softer tiles */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-4 sm:mt-6">
-                    <div className="flex flex-col items-center sm:items-start p-2 sm:p-2.5 md:p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="flex flex-col items-center sm:items-start p-3 rounded-xl bg-muted/30 border border-border/50">
                       <div className="flex items-center gap-2 mb-1">
                         <Trophy className="w-4 h-4 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">Highest ELO</span>
@@ -446,7 +450,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         {highestElo.toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center sm:items-start p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="flex flex-col items-center sm:items-start p-3 rounded-xl bg-muted/30 border border-border/50">
                       <div className="flex items-center gap-2 mb-1">
                         <TrendingUp className="w-4 h-4 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">Win Rate</span>
@@ -455,7 +459,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         {overallWinRate}%
                       </span>
                     </div>
-                    <div className="flex flex-col items-center sm:items-start p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="flex flex-col items-center sm:items-start p-3 rounded-xl bg-muted/30 border border-border/50">
                       <div className="flex items-center gap-2 mb-1">
                         <Zap className="w-4 h-4 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">Total Matches</span>
@@ -464,7 +468,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         {totalMatches}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center sm:items-start p-3 rounded-lg bg-muted/50 border border-border">
+                    <div className="flex flex-col items-center sm:items-start p-3 rounded-xl bg-muted/30 border border-border/50">
                       <div className="flex items-center gap-2 mb-1">
                         <Clock className="w-4 h-4 text-muted-foreground" />
                         <span className="text-xs text-muted-foreground">Last Active</span>
@@ -480,8 +484,14 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
           </Card>
         </PlayerContextMenu>
 
-        {/* ELO Stats Cards in 2x2 Grid */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-2 sm:gap-6">
+        {/* ELO Stats Cards – full width when only one visible */}
+        <div
+          className={`grid gap-4 sm:gap-6 ${
+            visibleStatsCount === 1
+              ? "grid-cols-1"
+              : "grid-cols-1 sm:grid-cols-2"
+          }`}
+        >
           {Object.entries(statsByTeamSize).map(([mode, stats]) => {
             if (!stats) return null; // Skip if no stats for this mode or inactive
 
@@ -498,18 +508,17 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
             return (
               <Card
                 key={mode}
-                className="relative overflow-hidden border-2 border-border bg-gradient-to-br from-card via-card to-muted/20 backdrop-blur-sm transition-all duration-300 group hover:shadow-xl hover:shadow-primary/10 hover:scale-[1.01]"
+                className="relative overflow-hidden rounded-2xl border-border shadow-sm transition-all duration-300 group hover:shadow-md"
               >
-                {/* Subtle background effects */}
-                <div className="absolute inset-0 bg-gradient-to-br from-primary/3 via-transparent to-primary/3 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 {isTopRanked && (
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-400/10 to-yellow-600/5 rounded-full blur-3xl" />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-amber-400/10 to-amber-600/5 rounded-full blur-3xl" />
                 )}
 
                 <CardHeader className="relative z-10 p-3 pb-2 sm:p-4 md:p-6 border-b border-border/50">
                   <div className="flex justify-between items-center">
                     <div className="flex gap-3 items-center">
-                      <div className="p-2 rounded-lg bg-muted/50 border border-border">
+                      <div className="p-2 rounded-xl bg-muted/30 border border-border/50">
                         {mode === "1v1" && (
                           <User className="w-5 h-5 text-muted-foreground" />
                         )}
@@ -535,13 +544,13 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         )}
                       </div>
                     </div>
-                    <div className="relative w-12 h-12 sm:w-14 sm:h-14">
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full blur-md" />
+                    <div className="relative w-12 h-12 sm:w-14 sm:h-14 shrink-0">
                       <Image
                         src={`/rankedicons/${rank.name.toLowerCase()}.png`}
                         alt={rank.name}
                         fill
-                        className="object-contain drop-shadow-lg"
+                        sizes="56px"
+                        className="object-contain"
                       />
                     </div>
                   </div>
@@ -554,11 +563,11 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                     {eloChange !== 0 && (
                       <div className="flex items-center mb-2">
                         {eloChange > 0 ? (
-                          <Badge variant="outline" className="bg-green-500/20 border-green-500/50 text-green-400">
+                          <Badge variant="outline" className="rounded-lg bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
                             <ArrowUp className="h-3 w-3 mr-1" />+{eloChange}
                           </Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-red-500/20 border-red-500/50 text-red-400">
+                          <Badge variant="outline" className="rounded-lg bg-rose-500/15 border-rose-500/40 text-rose-600 dark:text-rose-400">
                             <ArrowDown className="h-3 w-3 mr-1" />
                             {Math.abs(eloChange)}
                           </Badge>
@@ -587,7 +596,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                     </div>
                     <Progress
                       value={getRankProgress(stats.elo, rank.name)}
-                      className="h-3 bg-muted border border-border/50"
+                      className="h-2.5 bg-muted/50 rounded-full border-0"
                     />
                     {/* ELO to next rank */}
                     {(() => {
@@ -612,7 +621,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                     {/* Leaderboard position */}
                     {leaderboardPositions[mode]?.position && (
                       <div className="mt-2 text-xs text-center">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs rounded-lg border-border/50 bg-muted/20">
                           <Medal className="w-3 h-3 mr-1" />
                           #{leaderboardPositions[mode].position}
                           {leaderboardPositions[mode].percentile && (
@@ -625,9 +634,9 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                     )}
                   </div>
 
-                  {/* Stats grid */}
+                  {/* Stats grid – softer tiles */}
                   <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-                    <div className="p-2 sm:p-3 rounded-lg bg-muted/50 border border-border/50 text-center">
+                    <div className="p-2 sm:p-3 rounded-xl bg-muted/30 border border-border/50 text-center">
                       <div className="text-lg sm:text-xl font-bold text-foreground">
                         {matches}
                       </div>
@@ -635,16 +644,16 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         Matches
                       </div>
                     </div>
-                    <div className="p-2 sm:p-3 rounded-lg bg-muted/50 border border-border text-center">
-                      <div className="text-lg sm:text-xl font-bold text-foreground">
+                    <div className="p-2 sm:p-3 rounded-xl bg-muted/30 border border-border/50 text-center">
+                      <div className="text-lg sm:text-xl font-bold text-emerald-600 dark:text-emerald-400">
                         {stats.wins}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         Wins
                       </div>
                     </div>
-                    <div className="p-2 sm:p-3 rounded-lg bg-muted/50 border border-border text-center">
-                      <div className="text-lg sm:text-xl font-bold text-foreground">
+                    <div className="p-2 sm:p-3 rounded-xl bg-muted/30 border border-border/50 text-center">
+                      <div className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400">
                         {stats.losses}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
@@ -654,7 +663,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                   </div>
 
                   {/* Win rate bar */}
-                  <div className="p-3 sm:p-4 rounded-lg bg-muted/30 border border-border">
+                  <div className="p-3 sm:p-4 rounded-xl bg-muted/20 border border-border/50">
                     <div className="flex justify-between items-center mb-2">
                       <div className="flex items-center gap-2">
                         <Target className="w-4 h-4 text-muted-foreground" />
@@ -664,9 +673,9 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         {winRate}%
                       </span>
                     </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-2 bg-muted/50 rounded-full overflow-hidden">
                       <div
-                        className="h-full transition-all duration-500 bg-primary"
+                        className="h-full transition-all duration-500 rounded-full bg-primary/80"
                         style={{ width: `${winRate}%` }}
                       />
                     </div>
@@ -679,12 +688,12 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
         {/* If no stats were found */}
         {Object.values(statsByTeamSize).every((stat) => stat === null) && (
-          <Card className="border-2">
+          <Card className="rounded-2xl border-border shadow-sm">
             <CardContent className="p-6 sm:p-8 md:p-12 text-center">
-              <div className="relative p-4 rounded-full bg-muted mb-4 inline-block">
+              <div className="relative p-4 rounded-2xl bg-muted/30 border border-border/50 mb-4 inline-block">
                 <Trophy className="w-8 h-8 text-muted-foreground" />
               </div>
-              <h2 className="text-xl font-semibold mb-2">
+              <h2 className="text-xl font-semibold mb-2 text-foreground">
                 No Active Ratings
               </h2>
               <p className="text-sm text-muted-foreground">
@@ -696,10 +705,10 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
         {/* Team Information Section */}
         {teamsInfo.length > 0 && (
-          <Card className="mt-6 border-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
+          <Card className="mt-6 rounded-2xl border-border shadow-sm">
+            <CardHeader className="border-b border-border/50">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <Users className="w-5 h-5 text-muted-foreground" />
                 Team Information
               </CardTitle>
             </CardHeader>
@@ -713,7 +722,7 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                         <div className="flex flex-wrap items-baseline gap-2 mb-1">
                           <Link
                             href={`/tournaments/teams/${teamInfo._id}`}
-                            className="text-xl sm:text-2xl font-bold hover:text-primary transition-colors flex items-baseline gap-2"
+                            className="text-xl sm:text-2xl font-bold hover:text-primary hover:underline underline-offset-2 transition-colors flex items-baseline gap-2"
                           >
                             <span>{teamInfo.name}</span>
                             {teamInfo.tag && (
@@ -768,10 +777,10 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
 
         {/* Match History */}
         {matchHistory.length > 0 && (
-          <Card className="mt-6 border-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
+          <Card className="mt-6 rounded-2xl border-border shadow-sm">
+            <CardHeader className="border-b border-border/50">
+              <CardTitle className="flex items-center gap-2 text-lg font-semibold">
+                <Clock className="w-5 h-5 text-muted-foreground" />
                 Recent Match History
               </CardTitle>
             </CardHeader>
@@ -780,10 +789,10 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
                 {matchHistory.slice(0, 10).map((match) => (
                   <div
                     key={match._id}
-                    className={`p-3 sm:p-4 rounded-lg border-2 ${
+                    className={`p-3 sm:p-4 rounded-xl border ${
                       match.result === "win"
-                        ? "bg-green-500/10 border-green-500/30"
-                        : "bg-red-500/10 border-red-500/30"
+                        ? "bg-emerald-500/10 border-emerald-500/20"
+                        : "bg-rose-500/10 border-rose-500/20"
                     }`}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

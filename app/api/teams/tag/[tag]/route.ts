@@ -8,9 +8,10 @@ import { withApiSecurity } from "@/lib/api-wrapper";
 
 async function getTeamByTagHandler(
   req: NextRequest,
-  { params }: { params: { tag: string } }
+  { params }: { params: Promise<{ tag: string }> }
 ) {
-  const tag = sanitizeString(params.tag, 10);
+  const { tag: rawTag } = await params;
+  const tag = sanitizeString(rawTag, 10);
   if (!tag) {
     return NextResponse.json(
       { error: "Team tag is required" },

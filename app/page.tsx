@@ -1,10 +1,10 @@
-import { Button } from "@/components/ui/button";
 import FeaturedVideos, { hasFeaturedVideo } from "./featured-videos";
-import { Download } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Metadata } from "next";
 import Link from "next/link";
 import { FloatingPlayer } from "@/components/floating-player";
 import DownloadButton from "@/components/download-button";
+import { GettingStartedCard } from "@/components/getting-started-card";
 
 export const dynamic = "force-dynamic";
 
@@ -104,7 +104,7 @@ export default async function Home() {
     <>
       {/* Hero Section - Full width with breakout */}
       <div className="relative right-1/2 left-1/2 -mx-0 -mt-6 w-screen -translate-x-1/2 sm:-mx-0 md:-mx-0 lg:-mx-0">
-        <section className="relative flex flex-col items-center justify-center min-h-[50vh] sm:min-h-[60vh] md:min-h-[70vh] lg:min-h-screen py-12 sm:py-16 md:py-20">
+        <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-79px)] sm:min-h-[calc(100vh-89px)] py-12 sm:py-16 md:py-20">
           {/* Background with proper full-width positioning */}
           <div className="absolute inset-0 w-full h-full">
             <div className="absolute inset-0 bg-center bg-cover bg-hero-image md:bg-fixed" />
@@ -115,8 +115,8 @@ export default async function Home() {
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-70" />
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_0%,rgba(0,0,0,0.8)_100%)]" />
 
-          <div className="relative z-10 px-3 mx-auto w-full max-w-7xl text-center sm:px-4 md:px-6 lg:px-8">
-            {/* Title with enhanced animation */}
+          <div className="relative z-10 flex flex-col gap-24 px-3 mx-auto w-full max-w-7xl text-center sm:px-4 md:px-6 lg:px-8 sm:gap-16">
+            {/* Group 1: Title + description — leaves room for background SHADOWRUN */}
             <div className="duration-1000 animate-in slide-in-from-top">
               <h1 className="mb-3 sm:mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl [text-shadow:_0_4px_24px_rgba(0,0,0,0.5)]">
                 <span className="inline-block bg-clip-text">Shadowrun</span>{" "}
@@ -124,35 +124,35 @@ export default async function Home() {
                   FPS
                 </span>
               </h1>
-            </div>
-
-            <div className="px-2 mx-auto space-y-4 max-w-3xl duration-1000 delay-300 sm:space-y-6 animate-in fade-in sm:px-0">
-              <p className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 [text-shadow:_0_2px_12px_rgba(0,0,0,0.5)]">
+              <p className="px-2 mx-auto max-w-3xl text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 [text-shadow:_0_2px_12px_rgba(0,0,0,0.5)] duration-1000 delay-300 animate-in fade-in sm:px-0">
                 Welcome to the community hub for the Shadowrun FPS
               </p>
+            </div>
 
-              {/* Buttons - made visible on all screen sizes */}
-              <div className="flex flex-col flex-wrap gap-3 justify-center items-stretch sm:flex-row sm:gap-4 sm:items-center">
-                <div className="w-full sm:w-auto">
-                  <DownloadButton />
-                </div>
+            {/* 24px gap so background SHADOWRUN text is visible between groups */}
 
-                <div className="w-full sm:w-auto">
-                  <Link
-                    href="/docs/troubleshoot"
-                    className="inline-flex overflow-hidden relative items-center justify-center w-full px-5 sm:px-6 py-2.5 sm:py-3 text-base sm:text-lg font-medium rounded-lg transition-all group bg-secondary hover:bg-secondary/90 min-h-[44px] sm:min-h-0"
-                    aria-label="Go to troubleshooting guide"
-                  >
-                    <span className="relative z-10 text-secondary-foreground">
-                      Troubleshooting
-                    </span>
-                    <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-secondary to-secondary/90 group-hover:scale-110" />
-                    <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-                  </Link>
-                </div>
+            {/* Group 2: CTA + helper text */}
+            <div className="flex flex-col gap-2 justify-center items-center duration-1000 delay-300 animate-in fade-in">
+              <div className="w-full sm:w-auto">
+                <DownloadButton />
               </div>
+              <p className="text-sm text-gray-300/90 [text-shadow:_0_1px_8px_rgba(0,0,0,0.5)]">
+                Compatible with Windows 10 or newer.
+              </p>
             </div>
           </div>
+
+          {/* Scroll cue */}
+          <a
+            href="#getting-started"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1 text-gray-300/90 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent rounded"
+            aria-label="Scroll to Getting Started"
+          >
+            <span className="text-xs font-medium sm:text-sm">
+              See how to get started
+            </span>
+            <ChevronDown className="w-6 h-6 animate-bounce" aria-hidden />
+          </a>
 
           {/* Enhanced bottom gradient */}
           <div className="absolute bottom-0 w-full h-24 bg-gradient-to-t to-transparent sm:h-32 from-background via-background/90" />
@@ -164,98 +164,26 @@ export default async function Home() {
         {/* Quick Links Section */}
         <section className="relative py-12 sm:py-16 md:py-20">
           <div className="relative px-3 mx-auto max-w-7xl sm:px-4 md:px-6 lg:px-8">
-            <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-5xl scroll-mt-[130px] sm:scroll-mt-[162px]" id="getting-started">
               <h2 className="mb-6 text-2xl font-bold text-center sm:text-3xl md:text-4xl sm:mb-8">
                 Getting Started
               </h2>
-              <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <Link
+              <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:items-stretch">
+                <GettingStartedCard
                   href="/docs/install"
-                  className="relative p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 group sm:rounded-2xl bg-card/30 hover:bg-card/50 hover:shadow-xl hover:shadow-primary/10 border-border/50 hover:border-primary/50"
-                >
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold transition-colors sm:text-xl text-foreground group-hover:text-primary">
-                      Installation Guide
-                    </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                      Step-by-step instructions to get Shadowrun FPS running on
-                      your PC
-                    </p>
-                  </div>
-                  <div className="absolute top-4 right-4 opacity-0 transition-opacity group-hover:opacity-100">
-                    <svg
-                      className="w-5 h-5 text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </Link>
-
-                <Link
+                  title="Installation Guide"
+                  description="Step-by-step instructions to get Shadowrun FPS running on your PC"
+                />
+                <GettingStartedCard
                   href="/docs/troubleshoot"
-                  className="relative p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 group sm:rounded-2xl bg-card/30 hover:bg-card/50 hover:shadow-xl hover:shadow-primary/10 border-border/50 hover:border-primary/50"
-                >
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold transition-colors sm:text-xl text-foreground group-hover:text-primary">
-                      Troubleshooting
-                    </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                      Fix common issues, optimize performance, and get help
-                    </p>
-                  </div>
-                  <div className="absolute top-4 right-4 opacity-0 transition-opacity group-hover:opacity-100">
-                    <svg
-                      className="w-5 h-5 text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </Link>
-
-                <Link
+                  title="Troubleshooting"
+                  description="Fix common issues, optimize performance, and get help"
+                />
+                <GettingStartedCard
                   href="discord://discord.com/servers/this-is-shadowrun-930362820627943495"
-                  className="relative p-6 rounded-xl border backdrop-blur-sm transition-all duration-300 group sm:rounded-2xl bg-card/30 hover:bg-card/50 hover:shadow-xl hover:shadow-primary/10 border-border/50 hover:border-primary/50"
-                >
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold transition-colors sm:text-xl text-foreground group-hover:text-primary">
-                      Join Discord
-                    </h3>
-                    <p className="text-sm sm:text-base text-muted-foreground">
-                      Connect with the community, get support, and find matches
-                    </p>
-                  </div>
-                  <div className="absolute top-4 right-4 opacity-0 transition-opacity group-hover:opacity-100">
-                    <svg
-                      className="w-5 h-5 text-primary"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </Link>
+                  title="Join Discord"
+                  description="Connect with the community, get support, and find matches"
+                />
               </div>
             </div>
           </div>
@@ -264,17 +192,14 @@ export default async function Home() {
         {/* About Section - Enhanced */}
         <section className="overflow-hidden relative py-12 sm:py-16 md:py-20 lg:py-24">
           <div className="absolute inset-0">
-            <div className="absolute inset-0 opacity-20 bg-grid-white/5 animate-grid-flow" />
             <div className="absolute inset-0 bg-gradient-to-b via-transparent from-background to-background" />
           </div>
 
           <div className="relative px-3 mx-auto max-w-7xl sm:px-4 md:px-6 lg:px-8">
             <div className="mx-auto max-w-5xl">
-              <div className="p-4 rounded-xl backdrop-blur-sm transition-all duration-500 sm:p-6 md:p-8 sm:rounded-2xl bg-card/30 hover:bg-card/40 hover:shadow-2xl hover:shadow-primary/5">
-                <h2 className="text-2xl font-bold text-center sm:text-3xl md:text-4xl lg:text-5xl">
-                  <span className="inline-block text-transparent bg-clip-text bg-gradient-to-r from-primary via-primary/90 to-primary animate-gradient">
-                    About Shadowrun FPS
-                  </span>
+              <div className="p-4 rounded-xl backdrop-blur-sm sm:p-6 md:p-8 sm:rounded-2xl bg-card/30">
+                <h2 className="text-2xl font-bold text-center sm:text-3xl md:text-4xl lg:text-5xl text-foreground">
+                  About Shadowrun FPS
                 </h2>
                 <div className="mt-6 space-y-4 sm:mt-8 sm:space-y-6">
                   <p className="text-base text-center sm:text-lg md:text-xl text-muted-foreground">
@@ -305,9 +230,6 @@ export default async function Home() {
                   </h2>
                 </div>
                 <div className="relative">
-                  <div className="absolute -top-16 -left-16 w-32 h-32 rounded-full blur-3xl transition-all duration-1000 sm:-top-32 sm:-left-32 sm:w-64 sm:h-64 bg-primary/5 animate-pulse-slow" />
-                  <div className="absolute -right-16 -bottom-16 w-32 h-32 rounded-full blur-3xl transition-all duration-1000 delay-500 sm:-right-32 sm:-bottom-32 sm:w-64 sm:h-64 bg-primary/5 animate-pulse-slow" />
-
                   <div className="overflow-hidden relative rounded-lg backdrop-blur-sm sm:rounded-xl bg-card/30">
                     <div className="absolute inset-0">
                       <div className="absolute inset-0 bg-gradient-to-t to-transparent from-background/90 via-background/50" />

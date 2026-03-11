@@ -65,17 +65,14 @@ export default function FeaturedPosts() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="rounded-lg h-[400px] sm:h-[450px] bg-muted/50 animate-pulse border-2 border-border"
-          >
-            <div className="h-48 sm:h-56 bg-muted animate-pulse" />
-            <div className="p-4 sm:p-5 space-y-3">
-              <div className="h-6 bg-muted rounded animate-pulse" />
-              <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
-              <div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+          <div key={i} className="flex flex-col">
+            <div className="h-48 sm:h-56 rounded-xl sm:rounded-2xl bg-muted/50 animate-pulse" />
+            <div className="pt-3 sm:pt-4 space-y-2">
+              <div className="h-6 bg-muted/50 rounded animate-pulse" />
+              <div className="h-4 bg-muted/50 rounded animate-pulse w-3/4" />
+              <div className="h-4 bg-muted/50 rounded animate-pulse w-1/2" />
             </div>
           </div>
         ))}
@@ -110,7 +107,7 @@ export default function FeaturedPosts() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-6 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
       {posts.map((post) => (
         <PostCard key={post._id} post={post} />
       ))}

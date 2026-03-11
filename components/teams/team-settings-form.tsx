@@ -14,16 +14,17 @@ interface Team {
   _id: string;
   name: string;
   tag: string;
-  description: string;
+  description?: string;
   createdAt?: string;
 }
 
 interface TeamSettingsFormProps {
   team: Team;
   formatDate?: (dateString: string | undefined) => string;
+  onSuccess?: () => void;
 }
 
-export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
+export function TeamSettingsForm({ team, formatDate, onSuccess }: TeamSettingsFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -31,7 +32,7 @@ export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
   const [formData, setFormData] = useState({
     name: team.name,
     tag: team.tag,
-    description: team.description,
+    description: team.description ?? "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -93,6 +94,7 @@ export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
 
       setIsEditing(false);
       router.refresh();
+      onSuccess?.();
     } catch (error: any) {
       if (process.env.NODE_ENV === "development") {
         console.error("Error updating team:", error);
@@ -113,7 +115,7 @@ export function TeamSettingsForm({ team, formatDate }: TeamSettingsFormProps) {
     setFormData({
       name: team.name,
       tag: team.tag,
-      description: team.description,
+      description: team.description ?? "",
     });
     setIsEditing(false);
   };

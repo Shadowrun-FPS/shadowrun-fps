@@ -212,11 +212,13 @@ export const NotificationItem = memo(function NotificationItem({
   return (
     <div
       ref={itemRef}
-      className={`relative ${densityPadding} group ${notification.read ? "opacity-80" : ""} ${
-        !notification.read 
-          ? `bg-gradient-to-r from-accent/40 via-accent/20 to-card border-l-4 ${colorScheme.border} shadow-sm` 
-          : "bg-card border-l-4 border-l-transparent"
-      } transition-all duration-300 hover:bg-accent/30 hover:shadow-lg hover:scale-[1.005] ${!notification.read && "hover:shadow-primary/10"}`}
+      className={`relative ${densityPadding} group rounded-lg ${
+        notification.read ? "opacity-90" : ""
+      } ${
+        !notification.read
+          ? `bg-accent/15 border-l-[3px] ${colorScheme.border}`
+          : "bg-transparent border-l-[3px] border-l-transparent"
+      } transition-colors duration-200`}
       role="article"
       aria-labelledby={titleId}
       aria-describedby={messageId}
@@ -226,34 +228,31 @@ export const NotificationItem = memo(function NotificationItem({
       {...handlers}
     >
       {!notification.read && (
-        <>
-          <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-r-full ${colorScheme.bg} animate-pulse`} />
-          <span className="sr-only">Unread notification</span>
-        </>
+        <span className="sr-only">Unread notification</span>
       )}
-      
-      {/* Quick actions on hover */}
+
+      {/* Quick mark as read on hover - subtle */}
       {isHovered && !notification.read && onMarkAsRead && (
-        <div className="absolute top-2 right-2 flex gap-1 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-2 right-2 flex gap-1 animate-in fade-in duration-150">
           <Button
-            size="sm"
-            variant="secondary"
-            className="h-7 px-2 shadow-md"
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
             onClick={(e) => {
               e.stopPropagation();
               onMarkAsRead(notification._id);
             }}
-            aria-label="Quick mark as read"
+            aria-label="Mark as read"
           >
-            <Eye className="w-3 h-3" />
+            <Eye className="w-3.5 h-3.5" />
           </Button>
         </div>
       )}
 
       <div className="flex items-start gap-3">
-        {/* Enhanced Avatar */}
+        {/* Avatar */}
         {notification.metadata?.userAvatar || notification.metadata?.userName ? (
-          <Avatar className={`${avatarSize} flex-shrink-0 ring-2 ${colorScheme.border} transition-all duration-200 group-hover:scale-110`}>
+          <Avatar className={`${avatarSize} flex-shrink-0 ring-2 ${colorScheme.border}`}>
             {notification.metadata?.userAvatar ? (
               <AvatarImage src={notification.metadata.userAvatar} alt={notification.metadata.userName || ""} />
             ) : null}
@@ -264,8 +263,8 @@ export const NotificationItem = memo(function NotificationItem({
             </AvatarFallback>
           </Avatar>
         ) : (
-          <div 
-            className={`rounded-full p-2 flex-shrink-0 transition-all duration-200 ${colorScheme.bg} ring-2 ${colorScheme.border} group-hover:scale-110`}
+          <div
+            className={`rounded-full p-2 flex-shrink-0 ${colorScheme.bg} ring-2 ${colorScheme.border}`}
             aria-hidden="true"
           >
             <div className={colorScheme.icon}>
@@ -332,7 +331,7 @@ export const NotificationItem = memo(function NotificationItem({
                 size={densityView === "list" ? "sm" : "default"}
                 onClick={() => handleTeamInviteResponse("reject")}
                 disabled={isSubmitting}
-                className={`w-full sm:w-auto touch-manipulation ${densityView === "list" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[40px]"} border-2 border-destructive/40 text-destructive font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60 transition-all shadow-sm hover:scale-105`}
+                className={`w-full sm:w-auto touch-manipulation ${densityView === "list" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[40px]"} border-2 border-destructive/40 text-destructive font-medium hover:bg-destructive/10 hover:text-destructive hover:border-destructive/60 transition-colors shadow-sm`}
               >
                 {isSubmitting && actionResult === null ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -346,7 +345,7 @@ export const NotificationItem = memo(function NotificationItem({
                 size={densityView === "list" ? "sm" : "default"}
                 onClick={() => handleTeamInviteResponse("accept")}
                 disabled={isSubmitting}
-                className={`w-full sm:w-auto touch-manipulation ${densityView === "list" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[40px]"} bg-green-600 hover:bg-green-700 shadow-md hover:shadow-xl transition-all font-medium hover:scale-105`}
+                className={`w-full sm:w-auto touch-manipulation ${densityView === "list" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[40px]"} bg-green-600 hover:bg-green-700 shadow-md transition-colors font-medium`}
               >
                 {isSubmitting && actionResult === null ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -392,7 +391,7 @@ export const NotificationItem = memo(function NotificationItem({
                     size={densityView === "compact" ? "sm" : "default"}
                     variant="outline"
                     onClick={() => onMarkAsRead(notification._id)}
-                    className={`w-full sm:w-auto touch-manipulation ${densityView === "compact" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[38px]"} font-medium border-2 hover:bg-accent/50 transition-all hover:scale-105`}
+                    className={`w-full sm:w-auto touch-manipulation ${densityView === "compact" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[38px]"} font-medium border-2 hover:bg-accent/50 transition-colors`}
                     aria-label={`Mark notification "${notification.title}" as read`}
                   >
                     <Check className="mr-2 h-3.5 w-3.5" aria-hidden="true" />
@@ -402,8 +401,8 @@ export const NotificationItem = memo(function NotificationItem({
               {onDelete && (
                 <Button
                   size={densityView === "compact" ? "sm" : "default"}
-                  variant="ghost"
-                  className={`w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive touch-manipulation ${densityView === "compact" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[38px]"} font-medium border border-destructive/20 hover:border-destructive/30 transition-all hover:scale-105`}
+                  variant="destructive"
+                  className={`w-full sm:w-auto touch-manipulation font-medium bg-red-600 hover:bg-red-500 text-white shadow-sm ${densityView === "compact" ? "min-h-[36px] text-xs" : "min-h-[44px] sm:min-h-[38px]"}`}
                   onClick={() => onDelete(notification._id)}
                   aria-label={`Delete notification "${notification.title}"`}
                 >

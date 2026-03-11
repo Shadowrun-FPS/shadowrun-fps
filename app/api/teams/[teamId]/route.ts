@@ -6,7 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { containsProfanity } from "@/lib/profanity-filter";
-import { recalculateTeamElo } from "@/lib/team-elo-calculator";
+import { getMemberElosForTeamSize, recalculateTeamElo } from "@/lib/team-elo-calculator";
 import { getAllTeamCollectionNames, getTeamCollectionName } from "@/lib/team-collections";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { cachedQuery } from "@/lib/query-cache";
@@ -29,9 +29,10 @@ interface Team extends WithId<Document> {
 
 async function getTeamHandler(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   const { db } = await connectToDatabase();
 
   const result = await cachedQuery(
@@ -85,7 +86,51 @@ async function getTeamHandler(
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
 
-  return NextResponse.json(result, {
+  type TeamEnrich = {
+    teamSize?: number;
+    members?: { discordId: string; role?: string; joinedAt?: string }[];
+    captain?: { discordId: string; joinedAt?: string };
+    [key: string]: unknown;
+  };
+  const team = result as TeamEnrich;
+
+  // Enrich captain and members with joinedAt (from members) and ELO for team size
+  const teamSize = team.teamSize ?? 4;
+  const memberIds: string[] = Array.from(
+    new Set(
+      [
+        ...(team.members?.map((m) => m.discordId) ?? []),
+        team.captain?.discordId,
+      ].filter((id): id is string => Boolean(id))
+    )
+  );
+  const captainMember = team.members?.find(
+    (m) =>
+      m.discordId === team.captain?.discordId ||
+      (m.role?.toLowerCase() ?? "") === "captain"
+  );
+  let elos: Record<string, number> = {};
+  if (memberIds.length > 0) {
+    try {
+      elos = await getMemberElosForTeamSize(memberIds, teamSize);
+    } catch (err) {
+      safeLog.error("Failed to resolve member ELOs for team response:", err);
+    }
+  }
+  const enriched = {
+    ...result,
+    captain: {
+      ...team.captain,
+      joinedAt: team.captain?.joinedAt ?? captainMember?.joinedAt,
+      elo: team.captain?.discordId ? elos[team.captain.discordId] : undefined,
+    },
+    members: (team.members ?? []).map((m) => ({
+      ...m,
+      elo: elos[m.discordId],
+    })),
+  };
+
+  return NextResponse.json(enriched, {
     headers: {
       "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
     },
@@ -100,14 +145,15 @@ export const GET = withApiSecurity(getTeamHandler, {
 
 async function patchTeamHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID format" },
@@ -228,14 +274,15 @@ async function patchTeamHandler(
 
 async function putTeamHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID format" },
@@ -322,14 +369,15 @@ export const PUT = withApiSecurity(putTeamHandler, {
 
 async function deleteTeamHandler(
   req: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const teamId = sanitizeString(params.teamId, 50);
+  const { teamId: rawTeamId } = await params;
+  const teamId = sanitizeString(rawTeamId, 50);
   if (!ObjectId.isValid(teamId)) {
     return NextResponse.json(
       { error: "Invalid team ID format" },

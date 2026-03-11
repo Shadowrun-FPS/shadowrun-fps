@@ -84,7 +84,7 @@ async function postClearInvitesHandler(
       // Actually DELETE completed/cancelled invites (not just update status)
       result = await db.collection("TeamInvites").deleteMany({
         teamId: new ObjectId(teamId),
-        status: { $in: ["completed", "cancelled", "rejected"] },
+        status: { $in: ["completed", "cancelled", "rejected", "left"] },
       });
 
       return NextResponse.json({

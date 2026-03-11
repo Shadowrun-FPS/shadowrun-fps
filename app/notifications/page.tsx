@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import type { Notification } from "@/contexts/NotificationsContext";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,6 @@ import {
   CheckCircle,
   Shield,
   Calendar,
-  Clock,
-  Filter,
   ChevronLeft,
   ChevronRight,
   Trash2,
@@ -30,10 +29,26 @@ import {
   List,
   Square,
   X,
+  HelpCircle,
+  SlidersHorizontal,
+  Check,
 } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { groupNotifications, isGroupedNotification, type GroupedNotification } from "@/lib/notification-grouping";
 import { groupNotificationsByTime } from "@/lib/notification-design-utils";
 import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/client-utils";
@@ -74,6 +89,8 @@ interface NotificationsContentProps {
   collapsedDateSections?: Set<string>;
   onToggleDateSection?: (sectionKey: string) => void;
   densityView?: "comfortable" | "compact" | "list";
+  onExpandAllGroups?: (ids: string[]) => void;
+  onCollapseAllGroups?: () => void;
 }
 
 export default function NotificationsPage() {
@@ -314,6 +331,15 @@ export default function NotificationsPage() {
     );
   };
 
+  const enterSelectionMode = () => {
+    setSelectionMode(true);
+    toast({
+      title: "Selection mode",
+      description: "Tap notifications to select, then Mark read or Delete.",
+      duration: 4000,
+    });
+  };
+
   const selectAll = () => {
     setSelectedIds(userNotifications.map((n) => n._id));
   };
@@ -396,6 +422,9 @@ export default function NotificationsPage() {
     });
   };
 
+  const expandAllGroups = useCallback((ids: string[]) => setExpandedGroups(new Set(ids)), []);
+  const collapseAllGroups = useCallback(() => setExpandedGroups(new Set()), []);
+
   const toggleDateSection = (sectionKey: string) => {
     setCollapsedDateSections((prev) => {
       const next = new Set(prev);
@@ -427,256 +456,195 @@ export default function NotificationsPage() {
       role="main"
       aria-label="Notifications page"
     >
-      {/* Pull to refresh indicator */}
+      {/* Pull to refresh indicator - with label and Done state */}
       {pullToRefresh.isPulling && (
         <div 
-          className="fixed top-0 left-0 right-0 flex justify-center items-center bg-primary/10 z-50 transition-all"
+          className="fixed top-0 left-0 right-0 flex flex-col justify-center items-center gap-1 bg-background/95 backdrop-blur-sm border-b border-border/50 z-50 transition-all"
           style={{ 
-            height: `${pullToRefresh.pullDistance}px`,
-            opacity: pullToRefresh.progress / 100 
+            height: `${Math.max(pullToRefresh.pullDistance, 56)}px`,
+            opacity: Math.min(1, pullToRefresh.progress / 100),
           }}
           aria-live="polite"
           aria-label={pullToRefresh.isRefreshing ? "Refreshing notifications" : "Pull to refresh"}
         >
-          <ArrowDown className={`w-5 h-5 transition-transform ${pullToRefresh.progress >= 100 ? 'rotate-180' : ''}`} />
+          {pullToRefresh.isRefreshing ? (
+            <>
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <span className="text-xs text-muted-foreground">Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <ArrowDown className={`w-5 h-5 transition-transform ${pullToRefresh.progress >= 100 ? "rotate-180" : ""}`} />
+              <span className="text-xs text-muted-foreground">
+                {pullToRefresh.progress >= 100 ? "Release to refresh" : "Pull to refresh"}
+              </span>
+            </>
+          )}
         </div>
       )}
+      {/* Brief "Done" after refresh (handled by toast) */}
 
-      <div className="container px-3 py-6 mx-auto max-w-4xl sm:px-4 md:px-6 sm:py-8">
-        <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between sm:mb-8">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Notifications
-            </h1>
-            <p className="mt-1 text-sm sm:text-base text-muted-foreground">
-              Stay updated with all your team activities and announcements
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Keyboard shortcuts: R (refresh), A (mark all read), S (selection mode)
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {selectionMode && selectedIds.length > 0 && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleBulkMarkAsRead}
-                  className="gap-2 touch-manipulation min-h-[44px] sm:min-h-0"
-                  aria-label={`Mark ${selectedIds.length} selected notifications as read`}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Mark read ({selectedIds.length})</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleBulkDelete}
-                  className="gap-2 touch-manipulation min-h-[44px] sm:min-h-0 text-destructive"
-                  aria-label={`Delete ${selectedIds.length} selected notifications`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete ({selectedIds.length})</span>
-                </Button>
-              </>
-            )}
-            {selectionMode ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={selectAll}
-                  className="touch-manipulation min-h-[44px] sm:min-h-0"
-                >
-                  Select All
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={deselectAll}
-                  className="touch-manipulation min-h-[44px] sm:min-h-0"
-                >
-                  Deselect All
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setSelectionMode(false);
-                    setSelectedIds([]);
-                  }}
-                  className="touch-manipulation min-h-[44px] sm:min-h-0"
-                >
-                  Cancel
-                </Button>
-              </>
-            ) : (
-              <>
-                {userNotifications.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectionMode(true)}
-                    className="gap-2 touch-manipulation min-h-[44px] sm:min-h-0"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Select</span>
-                  </Button>
-                )}
+      {/* Sticky header - mobile first: compact single line, then expanded on sm+ */}
+      <header className="sticky top-0 z-40 w-full border-b border-border/50 bg-background/95 backdrop-blur-md">
+        <div className="container px-3 py-3 mx-auto max-w-4xl sm:px-4 md:px-6 sm:py-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            {/* Row 1: Title + actions - on mobile single line with icon buttons */}
+            <div className="flex items-center justify-between gap-2 min-h-[44px]">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-xl font-semibold tracking-tight truncate sm:text-2xl md:text-3xl text-foreground">
+                  Notifications
+                </h1>
                 {unreadCount > 0 && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={markAllAsRead}
-                    className="gap-2 touch-manipulation min-h-[44px] sm:min-h-0"
-                    aria-label="Mark all notifications as read"
-                  >
-                    <CheckCircle className="w-4 h-4" />
-                    <span className="hidden sm:inline">Mark all as read</span>
-                    <span className="sm:hidden">Mark all</span>
-                  </Button>
+                  <Badge variant="secondary" className="shrink-0 h-6 px-1.5 text-xs bg-primary text-primary-foreground">
+                    {unreadCount}
+                  </Badge>
                 )}
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex items-center gap-2 touch-manipulation min-h-[44px] sm:min-h-0"
-                  onClick={handleRefresh}
-                  disabled={loading}
-                  aria-label="Refresh notifications"
-                >
-                  {loading || pullToRefresh.isRefreshing ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  <span>Refresh</span>
+              </div>
+              <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                {selectionMode ? (
+                  <>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" onClick={selectAll} aria-label="Select all" title="Select all">
+                      <CheckCircle className="w-4 h-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" onClick={deselectAll} aria-label="Deselect all" title="Deselect all">
+                      <CheckCircle className="w-4 h-4 opacity-50" />
+                    </Button>
+                    <Button size="sm" variant="outline" className="h-9 sm:h-8 gap-1.5 hidden sm:flex" onClick={() => { setSelectionMode(false); setSelectedIds([]); }}>
+                      <X className="w-3.5 h-3.5" /> Cancel
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {userNotifications.length > 0 && (
+                      <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" onClick={enterSelectionMode} aria-label="Select notifications" title="Select">
+                        <CheckCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+                    {unreadCount > 0 && (
+                      <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" onClick={markAllAsRead} aria-label="Mark all as read" title="Mark all as read">
+                        <CheckCircle className="w-4 h-4" />
+                      </Button>
+                    )}
+                    <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" onClick={handleRefresh} disabled={loading} aria-label="Refresh" title="Refresh">
+                      {loading || pullToRefresh.isRefreshing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </Button>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" aria-label="View density" title="View density">
+                          <SlidersHorizontal className="w-4 h-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56 rounded-xl p-2" align="end">
+                        <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">View density</p>
+                        <div className="flex flex-col gap-0.5">
+                          {(["comfortable", "compact", "list"] as const).map((view) => (
+                            <Button
+                              key={view}
+                              variant={densityView === view ? "secondary" : "ghost"}
+                              size="sm"
+                              className="justify-start gap-2"
+                              onClick={() => setDensityView(view)}
+                            >
+                              {view === "comfortable" && <Square className="w-3.5 h-3.5" />}
+                              {view === "compact" && <LayoutGrid className="w-3.5 h-3.5" />}
+                              {view === "list" && <List className="w-3.5 h-3.5" />}
+                              <span className="capitalize">{view === "comfortable" ? "Comfortable" : view}</span>
+                              {densityView === view && <Check className="w-3.5 h-3.5 ml-auto" />}
+                            </Button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button size="icon" variant="ghost" className="h-9 w-9 sm:h-8 sm:w-8" aria-label="Keyboard shortcuts" title="Shortcuts">
+                          <HelpCircle className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="rounded-2xl max-w-sm" aria-describedby="keyboard-shortcuts-desc">
+                        <DialogHeader>
+                          <DialogTitle>Keyboard shortcuts</DialogTitle>
+                          <DialogDescription id="keyboard-shortcuts-desc">
+                            Use these keys to refresh, mark all as read, or toggle selection mode.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <ul className="space-y-2 text-sm text-muted-foreground">
+                          <li className="flex justify-between gap-4"><kbd className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">R</kbd> Refresh</li>
+                          <li className="flex justify-between gap-4"><kbd className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">A</kbd> Mark all as read</li>
+                          <li className="flex justify-between gap-4"><kbd className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">S</kbd> Selection mode</li>
+                          <li className="flex justify-between gap-4"><kbd className="rounded bg-muted px-1.5 py-0.5 text-xs font-medium">Esc</kbd> Exit selection</li>
+                        </ul>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
+              </div>
+            </div>
+            {/* Subtitle - hidden on smallest mobile to save space */}
+            <p className="hidden text-sm text-muted-foreground sm:block">
+              Stay updated with team activities and announcements
+            </p>
+            {/* Selection mode actions - full width on mobile when in selection mode */}
+            {selectionMode && selectedIds.length > 0 && (
+              <div className="flex flex-wrap gap-2 sm:hidden">
+                <Button size="sm" variant="outline" className="gap-2 flex-1 min-h-[44px]" onClick={handleBulkMarkAsRead}>
+                  <CheckCircle className="w-4 h-4" /> Mark read ({selectedIds.length})
                 </Button>
-              </>
+                <Button size="sm" variant="outline" className="gap-2 flex-1 min-h-[44px] text-destructive" onClick={handleBulkDelete}>
+                  <Trash2 className="w-4 h-4" /> Delete
+                </Button>
+                <Button size="sm" variant="ghost" className="min-h-[44px]" onClick={() => { setSelectionMode(false); setSelectedIds([]); }}>Cancel</Button>
+              </div>
+            )}
+            {selectionMode && selectedIds.length > 0 && (
+              <div className="hidden sm:flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" className="gap-2" onClick={handleBulkMarkAsRead}> <CheckCircle className="w-4 h-4" /> Mark read ({selectedIds.length})</Button>
+                <Button size="sm" variant="outline" className="gap-2 text-destructive" onClick={handleBulkDelete}> <Trash2 className="w-4 h-4" /> Delete ({selectedIds.length})</Button>
+              </div>
             )}
           </div>
         </div>
 
+        {/* Filter chips - horizontal scroll on mobile, wrap on sm+ */}
+        <div className="container px-3 pb-3 mx-auto max-w-4xl sm:px-4 md:px-6">
+          <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
+            {[
+              { id: "all", label: "All", icon: Bell, count: categorizedNotifications.all.length, countHighlight: false },
+              { id: "unread", label: "Unread", icon: Info, count: unreadCount, countHighlight: true },
+              { id: "team", label: "Team", icon: Users, count: categorizedNotifications.team.length, countHighlight: false },
+              { id: "system", label: "System", icon: Shield, count: categorizedNotifications.system.length, countHighlight: false },
+            ].map(({ id, label, icon: Icon, count, countHighlight }) => (
+              <Button
+                key={id}
+                variant={activeTab === id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setActiveTab(id)}
+                className="gap-1.5 rounded-full touch-manipulation min-h-[44px] shrink-0 snap-center transition-all text-xs sm:text-sm border-border/60"
+                role="tab"
+                aria-selected={activeTab === id}
+                aria-controls="notifications-content"
+              >
+                <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>{label}</span>
+                {count > 0 && (
+                  <Badge variant="secondary" className={`ml-0.5 px-1 min-w-[18px] h-4 text-[10px] sm:text-xs ${countHighlight ? "bg-primary text-primary-foreground" : ""}`}>
+                    {count}
+                  </Badge>
+                )}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </header>
+
+      <div className="container px-3 py-4 mx-auto max-w-4xl sm:px-4 md:px-6 sm:py-6">
         {error && (
-          <Card className="mb-4 sm:mb-6 border-destructive">
+          <Card className="mb-4 sm:mb-6 rounded-xl border border-destructive/80 bg-destructive/5">
             <CardContent className="p-4 sm:pt-6">
               <p className="text-sm sm:text-base text-destructive">{error}</p>
             </CardContent>
           </Card>
         )}
-
-        {/* Filter Chips - replacing tabs */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6 sm:items-center">
-          <div className="flex flex-wrap gap-2 flex-1 min-w-0" role="tablist" aria-label="Filter notifications">
-            <Button
-              variant={activeTab === "all" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("all")}
-              className="gap-1.5 touch-manipulation min-h-[44px] sm:min-h-0 transition-all text-xs sm:text-sm"
-              role="tab"
-              aria-selected={activeTab === "all"}
-              aria-controls="notifications-content"
-            >
-              <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>All</span>
-              {categorizedNotifications.all.length > 0 && (
-                <Badge variant="secondary" className="ml-0.5 px-1 min-w-[18px] h-4 text-[10px] sm:text-xs">
-                  {categorizedNotifications.all.length}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              variant={activeTab === "unread" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("unread")}
-              className="gap-1.5 touch-manipulation min-h-[44px] sm:min-h-0 transition-all text-xs sm:text-sm"
-              role="tab"
-              aria-selected={activeTab === "unread"}
-            >
-              <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>Unread</span>
-              {unreadCount > 0 && (
-                <Badge variant="secondary" className="ml-0.5 px-1 min-w-[18px] h-4 text-[10px] sm:text-xs bg-primary text-primary-foreground">
-                  {unreadCount}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              variant={activeTab === "team" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("team")}
-              className="gap-1.5 touch-manipulation min-h-[44px] sm:min-h-0 transition-all text-xs sm:text-sm"
-              role="tab"
-              aria-selected={activeTab === "team"}
-            >
-              <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>Team</span>
-              {categorizedNotifications.team.length > 0 && (
-                <Badge variant="secondary" className="ml-0.5 px-1 min-w-[18px] h-4 text-[10px] sm:text-xs">
-                  {categorizedNotifications.team.length}
-                </Badge>
-              )}
-            </Button>
-            <Button
-              variant={activeTab === "system" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setActiveTab("system")}
-              className="gap-1.5 touch-manipulation min-h-[44px] sm:min-h-0 transition-all text-xs sm:text-sm"
-              role="tab"
-              aria-selected={activeTab === "system"}
-            >
-              <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>System</span>
-              {categorizedNotifications.system.length > 0 && (
-                <Badge variant="secondary" className="ml-0.5 px-1 min-w-[18px] h-4 text-[10px] sm:text-xs">
-                  {categorizedNotifications.system.length}
-                </Badge>
-              )}
-            </Button>
-          </div>
-          
-          {/* Density View Toggle - Comfortable / Compact / List (expands to fill width) */}
-          <div
-            className="flex items-stretch flex-1 min-w-0 sm:min-w-[200px] rounded-lg border bg-muted/30 p-0.5"
-            role="group"
-            aria-label="View density"
-          >
-            <span className="sr-only">View density:</span>
-            <Button
-              variant={densityView === "comfortable" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setDensityView("comfortable")}
-              className="h-8 flex-1 gap-1 sm:gap-1.5 px-2 sm:px-3 text-xs touch-manipulation shadow-sm whitespace-nowrap min-w-0"
-              aria-label="Comfortable view – more spacing"
-              title="Comfortable – more spacing, full details"
-            >
-              <Square className="w-3.5 h-3.5 shrink-0" aria-hidden />
-              <span className="sm:hidden truncate">Comfy</span>
-              <span className="hidden sm:inline truncate">Comfortable</span>
-            </Button>
-            <Button
-              variant={densityView === "compact" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setDensityView("compact")}
-              className="h-8 flex-1 gap-1 sm:gap-1.5 px-2 sm:px-3 text-xs touch-manipulation shadow-sm whitespace-nowrap min-w-0"
-              aria-label="Compact view – medium density"
-              title="Compact – medium spacing"
-            >
-              <LayoutGrid className="w-3.5 h-3.5 shrink-0" aria-hidden />
-              <span className="truncate">Compact</span>
-            </Button>
-            <Button
-              variant={densityView === "list" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setDensityView("list")}
-              className="h-8 flex-1 gap-1 sm:gap-1.5 px-2 sm:px-3 text-xs touch-manipulation shadow-sm whitespace-nowrap min-w-0"
-              aria-label="List view – minimal, dense"
-              title="List – minimal, dense list"
-            >
-              <List className="w-3.5 h-3.5 shrink-0" aria-hidden />
-              <span className="truncate">List</span>
-            </Button>
-          </div>
-        </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           {/* Tab triggers are replaced by filter chips above - hide default list */}
@@ -703,6 +671,8 @@ export default function NotificationsPage() {
               collapsedDateSections={collapsedDateSections}
               onToggleDateSection={toggleDateSection}
               densityView={densityView}
+              onExpandAllGroups={expandAllGroups}
+              onCollapseAllGroups={collapseAllGroups}
             />
           </TabsContent>
 
@@ -725,6 +695,8 @@ export default function NotificationsPage() {
               collapsedDateSections={collapsedDateSections}
               onToggleDateSection={toggleDateSection}
               densityView={densityView}
+              onExpandAllGroups={expandAllGroups}
+              onCollapseAllGroups={collapseAllGroups}
             />
           </TabsContent>
 
@@ -747,6 +719,8 @@ export default function NotificationsPage() {
               collapsedDateSections={collapsedDateSections}
               onToggleDateSection={toggleDateSection}
               densityView={densityView}
+              onExpandAllGroups={expandAllGroups}
+              onCollapseAllGroups={collapseAllGroups}
             />
           </TabsContent>
 
@@ -769,19 +743,22 @@ export default function NotificationsPage() {
               collapsedDateSections={collapsedDateSections}
               onToggleDateSection={toggleDateSection}
               densityView={densityView}
+              onExpandAllGroups={expandAllGroups}
+              onCollapseAllGroups={collapseAllGroups}
             />
           </TabsContent>
         </Tabs>
 
-        {/* Floating Quick Actions Toolbar */}
+        {/* Floating Quick Actions Toolbar - safe area for notched devices */}
         {selectionMode && selectedIds.length > 0 && (
           <div
-            className="fixed bottom-6 left-4 right-4 sm:left-1/2 sm:right-auto sm:w-auto sm:min-w-[320px] sm:-translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200"
+            className="fixed left-4 right-4 bottom-4 sm:left-1/2 sm:right-auto sm:w-auto sm:min-w-[320px] sm:-translate-x-1/2 z-50 animate-in slide-in-from-bottom-4 fade-in duration-200"
+            style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom, 0px))" }}
             role="toolbar"
             aria-label="Bulk actions toolbar"
           >
-            <div className="rounded-xl border border-border bg-background/98 shadow-lg shadow-black/20 backdrop-blur-md overflow-hidden">
-              <div className="px-3 py-2.5 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="rounded-2xl border border-border/60 bg-background/95 shadow-xl shadow-black/10 backdrop-blur-md overflow-hidden">
+              <div className="px-3 py-3 sm:px-4 sm:py-3 flex flex-col sm:flex-row sm:items-center gap-3">
                 <div className="flex items-center justify-between gap-3 sm:flex-initial">
                   <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1">
                     {selectedIds.length} selected
@@ -889,62 +866,43 @@ function NotificationsContent({
   collapsedDateSections = new Set(),
   onToggleDateSection,
   densityView = "comfortable",
+  onExpandAllGroups,
+  onCollapseAllGroups,
 }: NotificationsContentProps) {
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-3 sm:p-4">
-          <div className="space-y-3 sm:space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex gap-3 items-start sm:gap-4">
-                <Skeleton className="flex-shrink-0 w-8 h-8 rounded-full sm:w-10 sm:h-10" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="w-3/4 h-3 sm:h-4" />
-                  <Skeleton className="w-1/2 h-3 sm:h-4" />
-                  <div className="flex gap-2 justify-end mt-2">
-                    <Skeleton className="w-16 h-7 sm:w-20 sm:h-8" />
-                    <Skeleton className="w-16 h-7 sm:w-20 sm:h-8" />
-                  </div>
-                </div>
-              </div>
-            ))}
+      <div className="space-y-1">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="flex gap-3 items-start p-3 rounded-xl border border-border/40 bg-card/50 sm:gap-4">
+            <Skeleton className="flex-shrink-0 w-9 h-9 rounded-full sm:w-10 sm:h-10" />
+            <div className="flex-1 space-y-2 min-w-0">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-3 w-1/2" />
+              {i <= 2 && <div className="flex gap-2 mt-2"><Skeleton className="h-8 w-16" /><Skeleton className="h-8 w-16" /></div>}
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
     );
   }
 
   if (notifications.length === 0) {
     return (
-      <Card className="border-2 border-dashed relative overflow-hidden">
-        <CardContent className="flex flex-col justify-center items-center p-8 sm:p-16 relative z-10">
-          {/* Enhanced empty state with gradient background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-          
-          <div className="relative p-4 mb-4 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 animate-pulse">
-            <Bell className="w-8 h-8 sm:w-12 sm:h-12 text-primary" />
+      <Card className="rounded-2xl border border-dashed border-border/60 bg-muted/20">
+        <CardContent className="flex flex-col justify-center items-center p-8 sm:p-12 text-center">
+          <div className="p-3 mb-3 rounded-full bg-muted/50">
+            <Bell className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground" />
           </div>
-          
-          <h3 className="mb-2 text-lg font-bold sm:text-xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            All caught up!
-          </h3>
-          
-          <p className="px-4 max-w-sm text-sm text-center sm:text-base text-muted-foreground mb-6">
-            You don&apos;t have any notifications in this category. 
-            New notifications will appear here.
+          <h3 className="text-lg font-semibold text-foreground mb-1">All caught up</h3>
+          <p className="text-sm text-muted-foreground mb-5 max-w-xs">
+            No notifications in this category yet.
           </p>
-
-          {/* Quick action suggestions */}
-          <div className="flex flex-wrap gap-2 justify-center">
-            <Button variant="outline" size="sm" className="gap-2">
+          <Button asChild variant="default" size="sm" className="gap-2 rounded-full">
+            <Link href="/tournaments/teams">
               <Users className="w-4 h-4" />
-              Browse Teams
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              <Calendar className="w-4 h-4" />
-              View Tournaments
-            </Button>
-          </div>
+              Browse teams
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -982,21 +940,31 @@ function NotificationsContent({
     }
   };
 
+  const allGroupIds = groupedItems.map((i) => i.id);
+  const allExpanded = groupedItems.length > 0 && allGroupIds.every((id) => expandedGroups.has(id));
+
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="space-y-4 sm:space-y-5">
       {/* Grouped notifications section (if any) */}
       {groupedItems.length > 0 && (
         <div className="transition-all duration-300">
-          <div className="flex items-center gap-2 px-2 py-2 mb-2">
-            <Users className="w-4 h-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-foreground">
-              Related Notifications
-            </h3>
-            <Badge variant="secondary" className="ml-auto">
-              {groupedItems.length}
-            </Badge>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5 text-muted-foreground" />
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Related
+              </span>
+            </div>
+            <Badge variant="secondary" className="text-xs">{groupedItems.length}</Badge>
+            {onExpandAllGroups && onCollapseAllGroups && (
+              <div className="flex gap-1 ml-auto">
+                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => allExpanded ? onCollapseAllGroups() : onExpandAllGroups(allGroupIds)}>
+                  {allExpanded ? "Collapse all" : "Expand all"}
+                </Button>
+              </div>
+            )}
           </div>
-          <Card className="overflow-hidden border shadow-sm">
+          <Card className="overflow-hidden rounded-xl border border-border/50 shadow-sm bg-card/95">
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 {groupedItems.map((item) => {
@@ -1004,7 +972,7 @@ function NotificationsContent({
                   return (
                     <div key={item.id} className={getDensityClasses()}>
                       <div
-                        className={`cursor-pointer rounded-lg ${!item.read ? "bg-gradient-to-r from-accent/40 via-accent/20 to-card shadow-md" : "bg-card"} transition-all duration-200 hover:bg-accent/30 hover:shadow-lg hover:scale-[1.01] p-3`}
+                        className={`cursor-pointer rounded-xl ${!item.read ? "bg-accent/30 shadow-sm" : "bg-muted/20"} transition-all duration-200 hover:bg-accent/40 hover:shadow-sm p-3 border border-transparent hover:border-border/40`}
                         onClick={() => onToggleGroup?.(item.id)}
                         role="button"
                         tabIndex={0}
@@ -1086,19 +1054,18 @@ function NotificationsContent({
             {/* Collapsible Date Section Header */}
             <button
               onClick={() => onToggleDateSection?.(key)}
-              className="flex items-center gap-2 px-2 py-2 mb-2 w-full rounded-lg hover:bg-accent/50 transition-colors group"
+              className="flex items-center gap-2 px-2 py-2 mb-2 w-full rounded-lg hover:bg-muted/40 transition-colors group text-left"
               aria-expanded={!isCollapsed}
               aria-controls={`section-${key}`}
             >
               <ChevronRight 
-                className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${!isCollapsed ? 'rotate-90' : ''}`}
+                className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${!isCollapsed ? "rotate-90" : ""}`}
                 aria-hidden="true"
               />
-              <Calendar className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
-              <h3 className="text-sm font-semibold text-foreground">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 {group.label}
-              </h3>
-              <Badge variant="secondary" className="ml-auto">
+              </span>
+              <Badge variant="secondary" className="ml-auto text-[10px] h-5 px-1.5">
                 {itemCount}
               </Badge>
             </button>
@@ -1107,14 +1074,14 @@ function NotificationsContent({
             {!isCollapsed && (
               <Card 
                 id={`section-${key}`}
-                className="overflow-hidden border shadow-sm transition-all duration-300 animate-in fade-in slide-in-from-top-2"
+                className="overflow-hidden rounded-xl border border-border/50 shadow-sm bg-card/95 transition-all duration-300 animate-in fade-in slide-in-from-top-2"
               >
                 <CardContent className="p-0">
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-border/60">
                     {group.items.map((notification) => (
-                      <div 
-                        key={notification._id} 
-                        className="transition-all duration-200"
+                      <div
+                        key={notification._id}
+                        className="rounded-lg mx-1.5 my-0.5 transition-colors hover:bg-muted/50 first:mt-1.5 last:mb-1.5"
                       >
                         {selectionMode && onToggleSelection && (
                           <div className="flex items-start gap-2">

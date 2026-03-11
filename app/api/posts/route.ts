@@ -101,6 +101,11 @@ async function postPostsHandler(req: NextRequest) {
   };
   const { title, description, type, imageUrl, link, authorId, author } = validationData;
 
+  const allowedTypes = ["EVENT", "ARTICLE", "NEWS"];
+  if (!allowedTypes.includes(type)) {
+    throw createError.badRequest("Type must be EVENT, ARTICLE, or NEWS");
+  }
+
   const highestOrder = await db
     .collection("Posts")
     .find({})
@@ -198,7 +203,14 @@ async function putPostsHandler(req: NextRequest) {
 
   if (updateData.title) sanitizedUpdate.title = sanitizeString(updateData.title, 200);
   if (updateData.description) sanitizedUpdate.description = sanitizeString(updateData.description, 5000);
-  if (updateData.type) sanitizedUpdate.type = sanitizeString(updateData.type, 50);
+  if (updateData.type) {
+    const sanitizedType = sanitizeString(updateData.type, 50);
+    const allowedTypes = ["EVENT", "ARTICLE", "NEWS"];
+    if (!allowedTypes.includes(sanitizedType)) {
+      throw createError.badRequest("Type must be EVENT, ARTICLE, or NEWS");
+    }
+    sanitizedUpdate.type = sanitizedType;
+  }
   if (updateData.imageUrl) sanitizedUpdate.imageUrl = sanitizeString(updateData.imageUrl, 500);
   if (updateData.link) sanitizedUpdate.link = sanitizeString(updateData.link, 500);
   if (updateData.author) sanitizedUpdate.author = sanitizeString(updateData.author, 100);

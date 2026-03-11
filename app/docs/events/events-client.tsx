@@ -76,7 +76,7 @@ export default function EventsClient() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="rounded-lg h-[400px] sm:h-[450px] bg-muted/50 animate-pulse border-2 border-border"
+                className="rounded-xl sm:rounded-2xl h-[320px] sm:h-[360px] bg-muted/50 animate-pulse"
               />
             ))}
           </div>

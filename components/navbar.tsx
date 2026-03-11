@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,6 @@ import {
   SheetContent,
   SheetTrigger,
   SheetTitle,
-  SheetDescription,
   SheetHeader,
 } from "@/components/ui/sheet";
 import {
@@ -30,6 +30,7 @@ import {
   HeartHandshake,
   BarChart3,
   Menu,
+  X,
   Download,
   HelpCircle,
   Home,
@@ -101,13 +102,6 @@ const MatchesLinks: NavLink[] = [
     icon: <PanelLeft className="mr-2 w-5 h-5 text-primary" />,
     feature: "matches",
   },
-  {
-    title: "Leaderboard",
-    href: "/leaderboard",
-    description: "See the top players and rankings",
-    icon: <BarChart3 className="mr-2 w-5 h-5 text-primary" />,
-    feature: "leaderboard",
-  },
 ];
 
 const TournamentsLinks: NavLink[] = [
@@ -143,7 +137,6 @@ const TournamentsLinks: NavLink[] = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Memoize filtered links to prevent unnecessary re-renders
   const filteredMatchesLinks = useMemo(
@@ -166,59 +159,9 @@ export function Navbar() {
   const showMatchesMenu = filteredMatchesLinks.length > 0;
   const showTournamentsMenu = filteredTournamentsLinks.length > 0;
 
-  // Handle escape key to close dropdowns
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setMobileNavOpen(false);
-      }
-    };
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, []);
-
   return (
     <nav className="flex flex-1 items-center">
-      {/* Mobile Navigation */}
-      <div className="mr-2 xl:hidden sm:mr-4">
-        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon"
-              className="w-9 h-9 sm:h-10 sm:w-10 touch-manipulation"
-            >
-              <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-[280px] sm:w-[320px] p-0 flex flex-col"
-            onInteractOutside={(e) => {
-              e.preventDefault();
-            }}
-          >
-            <SheetHeader className="relative px-4 pt-6 pb-4 border-b sm:px-6 sm:pt-8 border-border/40">
-              <div className="flex justify-between items-center pr-12 sm:pr-14">
-                <div className="flex-1">
-                  <SheetTitle className="text-lg font-bold sm:text-xl">
-                    Navigation
-                  </SheetTitle>
-                  <SheetDescription className="mt-1 text-xs sm:text-sm text-muted-foreground">
-                    Browse all sections of Shadowrun FPS
-                  </SheetDescription>
-                </div>
-              </div>
-            </SheetHeader>
-            <div className="overflow-y-auto flex-1">
-              <MobileNav onNavigate={() => setMobileNavOpen(false)} />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-
-      {/* Desktop Navigation */}
+      {/* Desktop Navigation only - mobile menu is rendered by Header (MobileNavMenu) */}
       <div className="hidden xl:flex xl:items-center xl:gap-1">
         {/* Simple Links */}
         <Link
@@ -275,14 +218,28 @@ export function Navbar() {
           Troubleshoot
         </Link>
 
+        {isFeatureEnabled("leaderboard") && (
+          <Link
+            href="/leaderboard"
+            className={cn(
+              "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+              pathname === "/leaderboard" &&
+                "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+            )}
+            aria-current={pathname === "/leaderboard" ? "page" : undefined}
+          >
+            <BarChart3 className="mr-2 w-4 h-4" />
+            Leaderboard
+          </Link>
+        )}
+
         {/* Matches Dropdown */}
         {showMatchesMenu && (
           <DropdownMenu>
             <DropdownMenuTrigger
               className={cn(
                 "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                (pathname?.startsWith("/matches") ||
-                  pathname?.startsWith("/leaderboard")) &&
+                pathname?.startsWith("/matches") &&
                   "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
               )}
             >
@@ -515,6 +472,22 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
               </Link>
             );
           })}
+          {isFeatureEnabled("leaderboard") && (
+            <Link
+              href="/leaderboard"
+              className={cn(
+                "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                pathname === "/leaderboard"
+                  ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
+                  : "hover:bg-accent/50 text-foreground"
+              )}
+              onClick={handleLinkClick}
+              aria-current={pathname === "/leaderboard" ? "page" : undefined}
+            >
+              <BarChart3 className="flex-shrink-0 mr-2 w-5 h-5 text-primary" />
+              <span className="ml-3">Leaderboard</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -627,5 +600,60 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Mobile-only hamburger + sheet menu. Rendered on the left in Header (Rumble-style layout). */
+export function MobileNavMenu() {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
+  return (
+    <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-lg h-9 w-9 sm:h-10 sm:w-10 min-h-[44px] min-w-[44px] touch-manipulation"
+        >
+          {mobileNavOpen ? (
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
+          ) : (
+            <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+          )}
+          <span className="sr-only">Toggle Menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="w-[280px] sm:w-[320px] p-0 flex flex-col bg-background/95 backdrop-blur-sm"
+        onInteractOutside={(e) => {
+          e.preventDefault();
+        }}
+      >
+        <SheetHeader className="relative px-4 pt-6 pb-4 border-b sm:px-6 sm:pt-8 border-border/40">
+          <SheetTitle className="sr-only">Navigation</SheetTitle>
+          <div className="flex items-center pr-12 sm:pr-14 min-h-[2.5rem]">
+            <Image
+              src="/title.png"
+              alt="Shadowrun"
+              width={240}
+              height={170}
+              className="max-w-[200px] sm:max-w-[240px] h-8 w-auto object-contain object-left"
+            />
+          </div>
+        </SheetHeader>
+        <div className="overflow-y-auto flex-1">
+          <MobileNav onNavigate={() => setMobileNavOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

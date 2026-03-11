@@ -71,11 +71,13 @@
 }
 
 @layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Visible focus rings for accessibility */
+  a:focus-visible {
+    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background rounded-sm;
   }
 }
 
@@ -130,20 +132,19 @@
   @apply bg-muted-foreground/40;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Better tap targets on mobile */
 @media (max-width: 640px) {
   button,
   a {
     @apply min-h-[44px] min-w-[44px];
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
   }
 }
 

@@ -54,7 +54,7 @@ interface BaseTeamInvite {
   inviteeName: string;
   inviterId: string;
   inviterName: string;
-  status: "pending" | "accepted" | "declined" | "cancelled";
+  status: "pending" | "accepted" | "declined" | "cancelled" | "left";
   createdAt: Date;
   updatedAt: Date;
   cancelledAt?: Date;

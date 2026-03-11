@@ -8,8 +8,14 @@ import {
   TrendingDown,
   RefreshCw,
   AlertCircle,
+  Info,
 } from "lucide-react";
 import { safeLocalStorageGet, safeLocalStorageSet } from "@/lib/client-utils";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface PlayerStats {
   totalOnline: number;
@@ -79,6 +85,16 @@ export default function PlayerTrackerBanner({
   const [onlineTrend, setOnlineTrend] = useState<"up" | "down" | null>(null);
   const [playingTrend, setPlayingTrend] = useState<"up" | "down" | null>(null);
   const [showNotification, setShowNotification] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const infoHoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (infoHoverTimeoutRef.current) {
+        clearTimeout(infoHoverTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Track retry timeout
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -355,11 +371,11 @@ export default function PlayerTrackerBanner({
   );
 
   return (
-    <div className="w-full bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#1a1a2e] border-b border-primary/20 transition-all duration-300">
-      <div className="px-2 mx-auto max-w-screen-2xl sm:px-4 md:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-1.5 sm:py-2 gap-2 sm:gap-4">
-          {/* Left: Status Indicator + Title + Notification Dot */}
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 relative">
+    <div className="w-full min-h-[47px] sm:min-h-[49px] flex flex-col justify-center bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#1a1a2e] border-b border-primary/20 transition-all duration-300">
+      <div className="pl-4 pr-2.5 sm:px-4 md:px-6 lg:px-8 mx-auto w-full max-w-screen-2xl">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-4 py-1.5 sm:py-2">
+          {/* Left: Status Indicator + Title */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 relative flex-shrink-0">
             <div
               className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-300 ${
                 isApiOnline
@@ -379,11 +395,9 @@ export default function PlayerTrackerBanner({
             <span className="text-xs text-gray-400 truncate sm:text-sm">
               {isApiOnline ? "Online" : showError ? "Error" : "Loading"}
             </span>
-            {/* Notification dot when player count increases */}
             {showNotification && hasPlayers && (
               <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full animate-ping bg-primary" />
             )}
-            {/* Error indicator */}
             {showError && (
               <AlertCircle
                 className="flex-shrink-0 ml-1 w-3 h-3 text-red-400"
@@ -392,95 +406,93 @@ export default function PlayerTrackerBanner({
             )}
           </div>
 
-          {/* Center: Stats - Simplified for mobile */}
-          <div className="flex gap-2 items-center sm:gap-4">
-            {/* Total Online */}
-            <div
-              className="flex items-center gap-1.5 sm:gap-2 bg-black/30 px-2 sm:px-3 py-1 rounded border border-primary/30 transition-all duration-500 hover:bg-black/40 hover:border-primary/50 relative cursor-default"
-              title={`${onlineCount} players online${
-                state.stats ? ` (${state.stats.inMenu} in menu)` : ""
-              }`}
-            >
-              <Users
-                className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-primary flex-shrink-0"
-                aria-hidden="true"
-              />
-              <div className="flex gap-1 items-baseline">
-                <span
-                  className="text-base font-bold leading-none transition-all duration-300 sm:text-lg text-primary"
-                  aria-label={`${onlineCount} players online`}
-                >
-                  {state.status === "loading" && !state.stats ? (
-                    <span className="inline-block w-4 h-4 rounded animate-pulse bg-primary/50" />
-                  ) : (
-                    onlineCount
-                  )}
-                </span>
-                <span className="text-[10px] sm:text-xs text-gray-400 leading-none">
-                  online
-                </span>
-              </div>
-              {/* Trending indicator */}
-              {onlineTrend && (
-                <div
-                  className="absolute -top-1 -right-1 duration-300 animate-in fade-in slide-in-from-bottom-2"
+          {/* Center: Stats — compact pills on mobile */}
+          <div className="flex gap-1.5 sm:gap-4 items-center min-w-0 flex-shrink">
+              {/* Total Online */}
+              <div
+                className="flex items-center gap-1 sm:gap-2 bg-black/30 px-1.5 py-1.5 sm:px-3 sm:py-1.5 rounded-md border border-primary/30 transition-all duration-500 hover:bg-black/40 hover:border-primary/50 relative cursor-default"
+                title={`${onlineCount} players online${
+                  state.stats ? ` (${state.stats.inMenu} in menu)` : ""
+                }`}
+              >
+                <Users
+                  className="w-3 h-3 sm:w-4 sm:h-4 text-primary flex-shrink-0"
                   aria-hidden="true"
-                >
-                  {onlineTrend === "up" ? (
-                    <TrendingUp className="w-3 h-3 text-green-400" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 text-red-400" />
-                  )}
+                />
+                <div className="flex gap-0.5 sm:gap-1 items-baseline">
+                  <span
+                    className="text-sm font-bold leading-none sm:text-lg text-primary tabular-nums"
+                    aria-label={`${onlineCount} players online`}
+                  >
+                    {state.status === "loading" && !state.stats ? (
+                      <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 rounded animate-pulse bg-primary/50" />
+                    ) : (
+                      onlineCount
+                    )}
+                  </span>
+                  <span className="text-[10px] sm:text-xs text-gray-400 leading-none">
+                    online
+                  </span>
                 </div>
-              )}
-            </div>
+                {onlineTrend && (
+                  <div
+                    className="absolute -top-0.5 -right-0.5 duration-300 animate-in fade-in slide-in-from-bottom-2"
+                    aria-hidden="true"
+                  >
+                    {onlineTrend === "up" ? (
+                      <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400" />
+                    ) : (
+                      <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400" />
+                    )}
+                  </div>
+                )}
+              </div>
 
-            {/* In Game */}
-            <div
-              className="flex items-center gap-1.5 sm:gap-2 bg-black/30 px-2 sm:px-3 py-1 rounded border border-green-500/30 transition-all duration-500 hover:bg-black/40 hover:border-green-500/50 relative cursor-default"
-              title={`${playingCount} players in game`}
-            >
-              <Gamepad2
-                className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-green-500 flex-shrink-0"
-                aria-hidden="true"
-              />
-              <div className="flex gap-1 items-baseline">
-                <span
-                  className="text-base font-bold leading-none text-green-500 transition-all duration-300 sm:text-lg"
-                  aria-label={`${playingCount} players in game`}
-                >
-                  {state.status === "loading" && !state.stats ? (
-                    <span className="inline-block w-4 h-4 rounded animate-pulse bg-green-500/50" />
-                  ) : (
-                    playingCount
-                  )}
-                </span>
-                <span className="text-[10px] sm:text-xs text-gray-400 leading-none">
-                  playing
-                </span>
-              </div>
-              {/* Trending indicator */}
-              {playingTrend && (
-                <div
-                  className="absolute -top-1 -right-1 duration-300 animate-in fade-in slide-in-from-bottom-2"
+              {/* In Game */}
+              <div
+                className="flex items-center gap-1 sm:gap-2 bg-black/30 px-1.5 py-1.5 sm:px-3 sm:py-1.5 rounded-md border border-green-500/30 transition-all duration-500 hover:bg-black/40 hover:border-green-500/50 relative cursor-default"
+                title={`${playingCount} players in game`}
+              >
+                <Gamepad2
+                  className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0"
                   aria-hidden="true"
-                >
-                  {playingTrend === "up" ? (
-                    <TrendingUp className="w-3 h-3 text-green-400" />
-                  ) : (
-                    <TrendingDown className="w-3 h-3 text-red-400" />
-                  )}
+                />
+                <div className="flex gap-0.5 sm:gap-1 items-baseline">
+                  <span
+                    className="text-sm font-bold leading-none text-green-500 sm:text-lg tabular-nums"
+                    aria-label={`${playingCount} players in game`}
+                  >
+                    {state.status === "loading" && !state.stats ? (
+                      <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 rounded animate-pulse bg-green-500/50" />
+                    ) : (
+                      playingCount
+                    )}
+                  </span>
+                  <span className="text-[10px] sm:text-xs text-gray-400 leading-none">
+                    playing
+                  </span>
                 </div>
-              )}
-            </div>
+                {playingTrend && (
+                  <div
+                    className="absolute -top-0.5 -right-0.5 duration-300 animate-in fade-in slide-in-from-bottom-2"
+                    aria-hidden="true"
+                  >
+                    {playingTrend === "up" ? (
+                      <TrendingUp className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400" />
+                    ) : (
+                      <TrendingDown className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-red-400" />
+                    )}
+                  </div>
+                )}
+              </div>
           </div>
 
-          {/* Right: Last Updated + Refresh Button */}
-          <div className="hidden gap-2 items-center min-w-0 md:flex">
+          {/* Right: Refresh + Timestamp (md) + Info */}
+          <div className="flex gap-2 items-center min-w-0 flex-shrink-0">
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
-              className="p-1 rounded transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-wait"
+              className="hidden md:flex p-1 rounded transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-wait"
               aria-label={
                 isRefreshing
                   ? "Refreshing player stats..."
@@ -497,7 +509,7 @@ export default function PlayerTrackerBanner({
               />
             </button>
             <span
-              className="text-xs text-gray-500 truncate"
+              className="hidden md:inline text-xs text-gray-500 truncate"
               aria-live="polite"
               aria-atomic="true"
             >
@@ -506,6 +518,64 @@ export default function PlayerTrackerBanner({
                 minute: "2-digit",
               }) ?? "--:--"}
             </span>
+            <Popover open={infoOpen} onOpenChange={setInfoOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center justify-center min-w-[44px] min-h-[44px] rounded-full text-gray-400 hover:text-gray-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#16213e] touch-manipulation"
+                  aria-label="About player count accuracy"
+                  onMouseEnter={() => {
+                    if (infoHoverTimeoutRef.current) {
+                      clearTimeout(infoHoverTimeoutRef.current);
+                      infoHoverTimeoutRef.current = null;
+                    }
+                    infoHoverTimeoutRef.current = setTimeout(
+                      () => setInfoOpen(true),
+                      400
+                    );
+                  }}
+                  onMouseLeave={() => {
+                    if (infoHoverTimeoutRef.current) {
+                      clearTimeout(infoHoverTimeoutRef.current);
+                      infoHoverTimeoutRef.current = null;
+                    }
+                    infoHoverTimeoutRef.current = setTimeout(
+                      () => setInfoOpen(false),
+                      150
+                    );
+                  }}
+                >
+                  <Info className="w-4 h-4 sm:w-5 sm:h-5" aria-hidden />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                side="bottom"
+                align="end"
+                sideOffset={8}
+                className="max-w-[260px] text-sm text-center p-3"
+                onMouseEnter={() => {
+                  if (infoHoverTimeoutRef.current) {
+                    clearTimeout(infoHoverTimeoutRef.current);
+                    infoHoverTimeoutRef.current = null;
+                  }
+                }}
+                onMouseLeave={() => {
+                  if (infoHoverTimeoutRef.current) {
+                    clearTimeout(infoHoverTimeoutRef.current);
+                    infoHoverTimeoutRef.current = null;
+                  }
+                  infoHoverTimeoutRef.current = setTimeout(
+                    () => setInfoOpen(false),
+                    150
+                  );
+                }}
+              >
+                <p>
+                  Numbers may not be accurate yet — the full community
+                  hasn&apos;t switched to this tracker.
+                </p>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
       </div>
