@@ -41,6 +41,7 @@ import { useSession } from "next-auth/react";
 import { getRankByElo, getRankProgress, getEloToNextRank } from "@/lib/rank-utils";
 import { useRouter } from "next/navigation";
 import { SECURITY_CONFIG } from "@/lib/security-config";
+import { isFeatureEnabled } from "@/lib/features";
 import { toast } from "@/components/ui/use-toast";
 
 // Format date to Month DD, YYYY (or Month DD if same year)
@@ -290,12 +291,16 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
     const fetchAdditionalData = async () => {
       setLoadingAdditionalData(true);
       try {
-        // Fetch all teams for this player
-        const teamRes = await fetch(`/api/players/${player.discordId}/team`);
-        if (teamRes.ok) {
-          const teamData = await teamRes.json();
-          // API now returns teams array, sorted with 4v4 first, then by size
-          setTeamsInfo(teamData.teams || []);
+        // Fetch all teams for this player (only when teams feature is enabled)
+        if (isFeatureEnabled("teams")) {
+          const teamRes = await fetch(`/api/players/${player.discordId}/team`);
+          if (teamRes.ok) {
+            const teamData = await teamRes.json();
+            // API now returns teams array, sorted with 4v4 first, then by size
+            setTeamsInfo(teamData.teams || []);
+          }
+        } else {
+          setTeamsInfo([]);
         }
 
         // Fetch leaderboard positions for each active team size
@@ -703,8 +708,8 @@ export default function PlayerStatsPage({ player }: PlayerProps) {
           </Card>
         )}
 
-        {/* Team Information Section */}
-        {teamsInfo.length > 0 && (
+        {/* Team Information Section - only when teams feature is enabled */}
+        {isFeatureEnabled("teams") && teamsInfo.length > 0 && (
           <Card className="mt-6 rounded-2xl border-border shadow-sm">
             <CardHeader className="border-b border-border/50">
               <CardTitle className="flex items-center gap-2 text-lg font-semibold">

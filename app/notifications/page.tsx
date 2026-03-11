@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
+import { isFeatureEnabled } from "@/lib/features";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import {
   Popover,
@@ -897,12 +898,14 @@ function NotificationsContent({
           <p className="text-sm text-muted-foreground mb-5 max-w-xs">
             No notifications in this category yet.
           </p>
-          <Button asChild variant="default" size="sm" className="gap-2 rounded-full">
-            <Link href="/tournaments/teams">
-              <Users className="w-4 h-4" />
-              Browse teams
-            </Link>
-          </Button>
+          {isFeatureEnabled("teams") && (
+            <Button asChild variant="default" size="sm" className="gap-2 rounded-full">
+              <Link href="/tournaments/teams">
+                <Users className="w-4 h-4" />
+                Browse teams
+              </Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
     );
