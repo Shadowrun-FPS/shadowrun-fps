@@ -45,7 +45,7 @@ export default async function VideoList({
               className="w-full rounded-md aspect-video"
               src={video.src}
               frameBorder="0"
-              allowFullScreen
+              allow="fullscreen"
               title={video.title}
               style={{ width: "100%" }}
             ></iframe>

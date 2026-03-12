@@ -228,8 +228,7 @@ export default function FeaturedVideoPage() {
                       src={getYouTubeEmbedUrl(settings.youtubeUrl)}
                       className="w-full h-full"
                       frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
                       title="YouTube preview"
                     />
                   </div>
@@ -274,7 +273,7 @@ export default function FeaturedVideoPage() {
                       src={getTwitchEmbedUrl(settings.twitchChannel)}
                       className="w-full h-full"
                       frameBorder="0"
-                      allowFullScreen
+                      allow="fullscreen"
                       title="Twitch preview"
                     />
                   </div>
