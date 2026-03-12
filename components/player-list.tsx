@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -71,13 +71,18 @@ import { Player, ModerationActionType } from "@/types/moderation";
 import { formatDistanceToNow, format } from "date-fns";
 import { PlayerNameDisplay } from "@/components/player-name-display";
 import { formatTimeAgo } from "@/lib/utils";
+import { sanitizeDisplayName } from "@/lib/security";
 import { Card, CardContent } from "@/components/ui/card";
 
 type FilterType = "all" | "active" | "banned";
 type SortField = "name" | "lastActive" | "none" | "updatedAt" | "discordId" | "status" | "warnings" | "bans";
 type SortDirection = "asc" | "desc";
 
-export function PlayerList() {
+interface PlayerListProps {
+  onModerationSuccess?: () => void;
+}
+
+export function PlayerList({ onModerationSuccess }: PlayerListProps) {
   const [players, setPlayers] = useState<Player[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -96,28 +101,33 @@ export function PlayerList() {
   // Pagination settings
   const playersPerPage = 10;
 
-  useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const response = await fetch("/api/admin/players");
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-        const data = await response.json();
-        setPlayers(data);
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load players. Please try again.",
-        });
-      } finally {
-        setLoading(false);
+  const fetchPlayers = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/players");
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
       }
-    };
-
-    fetchPlayers();
+      const data = await response.json();
+      setPlayers(data);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load players. Please try again.",
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [toast]);
+
+  useEffect(() => {
+    fetchPlayers();
+  }, [fetchPlayers]);
+
+  const handleModerationSuccess = useCallback(() => {
+    fetchPlayers();
+    onModerationSuccess?.();
+  }, [fetchPlayers, onModerationSuccess]);
 
   // Reset to first page when filter or search changes
   useEffect(() => {
@@ -298,9 +308,9 @@ export function PlayerList() {
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
           className="h-9 w-9"
-          aria-label="Previous page"
+          aria-label="Go to previous page"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-4 h-4" aria-hidden />
         </Button>
 
         {/* First page + ellipsis for larger ranges */}
@@ -311,6 +321,7 @@ export function PlayerList() {
               size="sm"
               onClick={() => handlePageChange(1)}
               className="h-9 w-9"
+              aria-label="Go to page 1"
             >
               1
             </Button>
@@ -327,7 +338,7 @@ export function PlayerList() {
         <div className="flex gap-1 sm:gap-2">
           {/* Show just the current page on very small screens */}
           <div className="block sm:hidden">
-            <Button variant="default" size="sm" className="h-9 w-9">
+            <Button variant="default" size="sm" className="h-9 w-9" aria-current="page" aria-label={`Current page, page ${currentPage}`}>
               {currentPage}
             </Button>
           </div>
@@ -347,7 +358,7 @@ export function PlayerList() {
             )}
 
             {/* Current page */}
-            <Button variant="default" size="sm" className="h-9 w-9">
+            <Button variant="default" size="sm" className="h-9 w-9" aria-current="page" aria-label={`Current page, page ${currentPage}`}>
               {currentPage}
             </Button>
 
@@ -392,9 +403,9 @@ export function PlayerList() {
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
           className="h-9 w-9"
-          aria-label="Next page"
+          aria-label="Go to next page"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-4 h-4" aria-hidden />
         </Button>
       </div>
     );
@@ -402,23 +413,26 @@ export function PlayerList() {
 
   if (loading) {
     return (
-      <div className="py-12 sm:py-16 text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+      <div className="py-12 sm:py-16 text-center" role="status" aria-live="polite">
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" aria-hidden />
         <p className="text-muted-foreground">Loading players...</p>
       </div>
     );
   }
 
+  const isEmpty = sortedPlayers.length === 0;
+
   return (
     <div className="w-full overflow-x-hidden space-y-4 sm:space-y-6">
-      {/* Search and Filter Bar */}
+      {/* Search and Filter Bar - softer styling */}
       <div className="flex flex-col w-full gap-3 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" aria-hidden />
           <Input
             type="search"
             placeholder="Search players by name or ID..."
-            className="pl-10 min-h-[44px] sm:min-h-0 border-2 focus:border-primary/50 transition-colors"
+            aria-label="Search players by name or Discord ID"
+            className="pl-10 min-h-[44px] sm:min-h-0 rounded-xl border border-border/60 bg-background/80 focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -426,8 +440,8 @@ export function PlayerList() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 border-2 hover:border-primary/50 transition-colors">
-              <Filter className="w-4 h-4 mr-2" />
+            <Button variant="outline" className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 rounded-xl border border-border/60 hover:border-primary/40 hover:bg-muted/30 transition-all" aria-haspopup="listbox">
+              <Filter className="w-4 h-4 mr-2" aria-hidden />
               {filter === "all"
                 ? "All Players"
                 : filter === "active"
@@ -454,9 +468,38 @@ export function PlayerList() {
         </DropdownMenu>
       </div>
 
+      {isEmpty ? (
+        <div className="rounded-2xl border border-border/60 bg-card/80 py-12 px-4 text-center" role="status">
+          <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" aria-hidden />
+          <p className="text-foreground font-medium">
+            {players.length === 0
+              ? "No players yet"
+              : "No players match your search or filter"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {players.length === 0
+              ? "Add a player to get started."
+              : "Try a different search term or show all players."}
+          </p>
+          {filter !== "all" || searchQuery.trim() ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setFilter("all");
+                setSearchQuery("");
+              }}
+            >
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <>
       <div className="w-full space-y-3 sm:space-y-4 overflow-x-hidden lg:hidden">
         {paginatedPlayers.map((player) => (
-          <Card key={player._id} className="w-full overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
+          <Card key={player._id} className="w-full overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm hover:shadow-md hover:border-border transition-all duration-300">
             <CardContent className="p-4 sm:p-6">
               <div className="space-y-3 sm:space-y-4">
                 <div className="flex items-start justify-between">
@@ -467,25 +510,27 @@ export function PlayerList() {
                       )}`}
                       className="text-base sm:text-lg font-semibold truncate hover:text-primary hover:underline transition-colors"
                     >
-                      {player.discordNickname ||
-                        player.discordUsername ||
-                        "Unknown Player"}
+                      {sanitizeDisplayName(
+                        player.discordNickname || player.discordUsername,
+                        "Unknown Player"
+                      )}
                     </Link>
-                    <div className="flex items-center gap-2 mt-1 group">
-                      <div className="overflow-hidden text-xs sm:text-sm break-all whitespace-normal text-muted-foreground font-mono blur-[2px] group-hover:blur-0 transition-all duration-300 select-none">
+                    <div className="flex items-center gap-2 mt-1 group focus-within:blur-0">
+                      <div className="overflow-hidden text-xs sm:text-sm break-all whitespace-normal text-muted-foreground font-mono blur-[2px] group-hover:blur-0 group-focus-within:blur-0 transition-all duration-300 select-none">
                         {player.discordId}
                       </div>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity min-w-[28px] min-h-[28px] touch-manipulation"
+                        className="h-7 w-7 opacity-70 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 min-w-[28px] min-h-[28px] touch-manipulation"
                         onClick={(e) => handleCopyId(player.discordId || "", e)}
                         title="Copy Discord ID"
+                        aria-label={copiedId === player.discordId ? "Discord ID copied" : "Copy Discord ID"}
                       >
                         {copiedId === player.discordId ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-4 w-4 text-green-500" aria-hidden />
                         ) : (
-                          <Copy className="h-4 w-4" />
+                          <Copy className="h-4 w-4" aria-hidden />
                         )}
                       </Button>
                     </div>
@@ -531,8 +576,9 @@ export function PlayerList() {
                     size="sm"
                     className="flex-1 border-amber-500/20 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/40 min-h-[44px] sm:min-h-0"
                     onClick={() => handleOpenModeration(player, "warn")}
+                    aria-label={`Issue warning to ${player.discordNickname || player.discordUsername || "player"}`}
                   >
-                    <AlertTriangle className="w-4 h-4 mr-1.5" />
+                    <AlertTriangle className="w-4 h-4 mr-1.5" aria-hidden />
                     <span className="text-xs sm:text-sm">Warn</span>
                   </Button>
 
@@ -541,8 +587,9 @@ export function PlayerList() {
                     size="sm"
                     className="flex-1 border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-500/40 min-h-[44px] sm:min-h-0"
                     onClick={() => handleOpenModeration(player, "ban")}
+                    aria-label={player.isBanned ? `Update ban for ${player.discordNickname || player.discordUsername || "player"}` : `Ban ${player.discordNickname || player.discordUsername || "player"}`}
                   >
-                    <Ban className="w-4 h-4 mr-1.5" />
+                    <Ban className="w-4 h-4 mr-1.5" aria-hidden />
                     <span className="text-xs sm:text-sm">Ban</span>
                   </Button>
 
@@ -553,8 +600,9 @@ export function PlayerList() {
                     onClick={() =>
                       router.push(`/admin/players/${player._id}/history`)
                     }
+                    aria-label={`View moderation history for ${player.discordNickname || player.discordUsername || "player"}`}
                   >
-                    <History className="w-4 h-4 mr-1.5" />
+                    <History className="w-4 h-4 mr-1.5" aria-hidden />
                     <span className="text-xs sm:text-sm">History</span>
                   </Button>
                 </div>
@@ -567,91 +615,103 @@ export function PlayerList() {
         {renderPagination()}
       </div>
 
-      <div className="hidden overflow-x-auto lg:block">
+      <div className="hidden overflow-x-auto lg:block" role="region" aria-label="Players table">
         <div className="inline-block min-w-full align-middle">
-          <div className="overflow-hidden rounded-lg border-2">
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead
-                    className="w-[250px] cursor-pointer hover:bg-muted/70 transition-colors font-semibold"
-                    onClick={() => handleSortClick("name")}
-                  >
-                    <div className="flex items-center gap-2">
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/50">
+                  <TableHead className="w-[250px] font-medium text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 hover:bg-muted/40 transition-colors rounded px-1 py-0.5 -mx-1 -my-0.5 text-left w-full"
+                      onClick={() => handleSortClick("name")}
+                      aria-sort={sortField === "name" ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                    >
                       Player
                       {renderSortIndicator("name")}
-                    </div>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="font-semibold cursor-pointer hover:bg-muted/70 transition-colors"
-                    onClick={() => handleSortClick("discordId")}
-                  >
-                    <div className="flex items-center gap-2">
+                  <TableHead className="font-medium text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 hover:bg-muted/40 transition-colors rounded px-1 py-0.5 -mx-1 -my-0.5 text-left w-full"
+                      onClick={() => handleSortClick("discordId")}
+                      aria-sort={sortField === "discordId" ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                    >
                       Discord ID
                       {renderSortIndicator("discordId")}
-                    </div>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="font-semibold cursor-pointer hover:bg-muted/70 transition-colors"
-                    onClick={() => handleSortClick("status")}
-                  >
-                    <div className="flex items-center gap-2">
+                  <TableHead className="font-medium text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 hover:bg-muted/40 transition-colors rounded px-1 py-0.5 -mx-1 -my-0.5 text-left w-full"
+                      onClick={() => handleSortClick("status")}
+                      aria-sort={sortField === "status" ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                    >
                       Status
                       {renderSortIndicator("status")}
-                    </div>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="text-center font-semibold cursor-pointer hover:bg-muted/70 transition-colors"
-                    onClick={() => handleSortClick("warnings")}
-                  >
-                    <div className="flex items-center justify-center gap-2">
+                  <TableHead className="text-center font-medium text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 hover:bg-muted/40 transition-colors rounded px-1 py-0.5 -my-0.5 mx-auto"
+                      onClick={() => handleSortClick("warnings")}
+                      aria-sort={sortField === "warnings" ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                    >
                       Warnings
                       {renderSortIndicator("warnings")}
-                    </div>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="text-center font-semibold cursor-pointer hover:bg-muted/70 transition-colors"
-                    onClick={() => handleSortClick("bans")}
-                  >
-                    <div className="flex items-center justify-center gap-2">
+                  <TableHead className="text-center font-medium text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 hover:bg-muted/40 transition-colors rounded px-1 py-0.5 -my-0.5 mx-auto"
+                      onClick={() => handleSortClick("bans")}
+                      aria-sort={sortField === "bans" ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                    >
                       Bans
                       {renderSortIndicator("bans")}
-                    </div>
+                    </button>
                   </TableHead>
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/70 transition-colors font-semibold"
-                    onClick={() => handleSortClick("lastActive")}
-                  >
-                    <div className="flex items-center gap-2">
+                  <TableHead className="font-medium text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 hover:bg-muted/40 transition-colors rounded px-1 py-0.5 -mx-1 -my-0.5 text-left w-full"
+                      onClick={() => handleSortClick("lastActive")}
+                      aria-sort={sortField === "lastActive" ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                    >
                       Last Active
                       {renderSortIndicator("lastActive")}
-                    </div>
+                    </button>
                   </TableHead>
-                  <TableHead className="text-right font-semibold">Actions</TableHead>
+                  <TableHead className="text-right font-medium text-muted-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedPlayers.map((player) => (
-                  <TableRow key={player._id} className="hover:bg-muted/30 transition-colors">
+                  <TableRow key={player._id} className="hover:bg-muted/20 transition-colors border-b border-border/30 last:border-b-0">
                     <TableCell className="font-medium">
                       <PlayerNameDisplay player={player} />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2 group">
-                        <span className="font-mono text-sm text-muted-foreground blur-[2px] group-hover:blur-0 transition-all duration-300 select-none">
+                      <div className="flex items-center gap-2 group focus-within:blur-0">
+                        <span className="font-mono text-sm text-muted-foreground blur-[2px] group-hover:blur-0 group-focus-within:blur-0 transition-all duration-300 select-none">
                           {player.discordId}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                          className="h-7 w-7 opacity-70 group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 transition-opacity hover:bg-muted"
                           onClick={(e) => handleCopyId(player.discordId || "", e)}
-                          title="Copy Discord ID"
+                          aria-label={copiedId === player.discordId ? "Discord ID copied" : "Copy Discord ID"}
                         >
                           {copiedId === player.discordId ? (
-                            <Check className="h-4 w-4 text-green-500" />
+                            <Check className="h-4 w-4 text-green-500" aria-hidden />
                           ) : (
-                            <Copy className="h-4 w-4" />
+                            <Copy className="h-4 w-4" aria-hidden />
                           )}
                         </Button>
                       </div>
@@ -689,32 +749,32 @@ export function PlayerList() {
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenModeration(player, "warn")}
-                          title="Add Warning"
+                          aria-label={`Issue warning to ${player.discordNickname || player.discordUsername || "player"}`}
                           className="hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400"
                         >
-                          <AlertTriangle className="w-4 h-4" />
+                          <AlertTriangle className="w-4 h-4" aria-hidden />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleOpenModeration(player, "ban")}
-                          title={player.isBanned ? "Update Ban" : "Ban Player"}
+                          aria-label={player.isBanned ? `Update ban for ${player.discordNickname || player.discordUsername || "player"}` : `Ban ${player.discordNickname || player.discordUsername || "player"}`}
                           className={`hover:bg-red-500/10 ${
                             player.isBanned
                               ? "text-muted-foreground"
                               : "hover:text-red-600 dark:hover:text-red-400"
                           }`}
                         >
-                          <Ban className="h-4 w-4" />
+                          <Ban className="h-4 w-4" aria-hidden />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleViewHistory(player)}
-                          title="View History"
+                          aria-label={`View moderation history for ${player.discordNickname || player.discordUsername || "player"}`}
                           className="hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400"
                         >
-                          <Shield className="w-4 h-4" />
+                          <Shield className="w-4 h-4" aria-hidden />
                         </Button>
                       </div>
                     </TableCell>
@@ -734,11 +794,13 @@ export function PlayerList() {
               <> • Page {currentPage} of {totalPages}</>
             )}
           </div>
-          <div className="flex justify-center order-1 w-full sm:order-2 sm:w-auto">
+          <nav className="flex justify-center order-1 w-full sm:order-2 sm:w-auto" aria-label="Pagination">
             {renderPagination()}
-          </div>
+          </nav>
         </div>
       </div>
+        </>
+      )}
 
       {selectedPlayer && moderationAction && (
         <ModerationDialog
@@ -746,6 +808,7 @@ export function PlayerList() {
           action={moderationAction}
           open={dialogOpen}
           onOpenChange={setDialogOpen}
+          onSuccess={handleModerationSuccess}
         />
       )}
     </div>

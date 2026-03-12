@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PlayerContextMenu } from "@/components/player-context-menu";
 import { cn } from "@/lib/utils";
+import { sanitizeDisplayName } from "@/lib/security";
 import { Player } from "@/types/moderation";
 
 interface PlayerNameDisplayProps {
@@ -14,7 +15,10 @@ export function PlayerNameDisplay({
   player,
   className,
 }: PlayerNameDisplayProps) {
-  const displayName = player.discordNickname || player.discordUsername || "";
+  const displayName = sanitizeDisplayName(
+    player.discordNickname || player.discordUsername,
+    "Unknown Player"
+  );
   // Use discordUsername for URL (lowercase, no spaces), but display nickname if available
   const profileUrl = `/player/stats?playerName=${encodeURIComponent(
     player.discordUsername || player.discordNickname || ""

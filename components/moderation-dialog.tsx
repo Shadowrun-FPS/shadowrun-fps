@@ -41,6 +41,7 @@ interface ModerationDialogProps {
   action: ModerationActionType;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
 export function ModerationDialog({
@@ -48,6 +49,7 @@ export function ModerationDialog({
   action,
   open,
   onOpenChange,
+  onSuccess,
 }: ModerationDialogProps) {
   const [reason, setReason] = useState("");
   const [ruleId, setRuleId] = useState("");
@@ -144,6 +146,7 @@ export function ModerationDialog({
       });
 
       onOpenChange(false);
+      onSuccess?.();
       router.refresh();
     } catch (error) {
       if (process.env.NODE_ENV === "development") {

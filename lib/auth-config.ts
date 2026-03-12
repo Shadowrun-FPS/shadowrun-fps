@@ -83,6 +83,7 @@ export const authOptions: AuthOptions = {
         const client = await clientPromise;
         const db = client.db("ShadowrunWeb");
 
+        const now = new Date();
         await db.collection("Players").updateOne(
           { discordId },
           {
@@ -91,7 +92,12 @@ export const authOptions: AuthOptions = {
               discordUsername,
               discordNickname: discordNickname || discordUsername, // Ensure fallback
               discordProfilePicture,
-              updatedAt: new Date(),
+              updatedAt: now,
+            },
+            $setOnInsert: {
+              stats: [],
+              createdAt: now,
+              joinedAt: now,
             },
           },
           { upsert: true }

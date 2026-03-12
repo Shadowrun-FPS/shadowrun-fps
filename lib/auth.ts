@@ -219,6 +219,7 @@ export const authOptions: NextAuthOptions = {
 
           const { db } = await connectToDatabase();
 
+          const now = new Date();
           await db.collection("Players").updateOne(
             { discordId },
             {
@@ -226,17 +227,18 @@ export const authOptions: NextAuthOptions = {
                 discordNickname,
                 discordUsername,
                 discordProfilePicture,
-                updatedAt: new Date().toISOString(),
+                updatedAt: now,
               },
               $setOnInsert: {
                 stats: [],
-                createdAt: new Date().toISOString(),
+                createdAt: now,
+                joinedAt: now,
               },
             },
             { upsert: true }
           );
         } catch (error) {
-          console.error("Error updating player document:", error);
+          safeLog.error("Error updating player document:", error);
         }
       }
 

@@ -83,7 +83,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Fixed sidebar - shows on extra large screens only (xl:), mobile menu used up to xl: */}
-      <aside className="hidden xl:block fixed left-0 top-[104px] bottom-0 w-72 overflow-y-auto z-30 border-r border-border/40 bg-muted/20 backdrop-blur-sm">
+      <aside className="hidden xl:block fixed left-0 top-[104px] bottom-0 w-72 overflow-y-auto z-30 border-r border-border/50 bg-background/95 backdrop-blur-md">
         <AdminSidebar />
       </aside>
 

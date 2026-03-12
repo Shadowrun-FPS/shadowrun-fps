@@ -65,18 +65,18 @@ export function AdminSidebar() {
   ];
 
   return (
-    <div className="p-6 space-y-8">
-      {/* Header */}
+    <div className="p-5 xl:p-6 space-y-6">
+      {/* Header - use solid text so title is always visible on sidebar background */}
       <div className="space-y-2">
         <div className="flex gap-3 items-center">
-          <div className="p-2 bg-gradient-to-br rounded-lg border from-primary/20 to-primary/10 border-primary/20">
+          <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
             <LayoutDashboard className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/70">
+            <h2 className="text-xl font-semibold text-foreground tracking-tight">
               Admin Panel
             </h2>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Management Dashboard
             </p>
           </div>
@@ -85,8 +85,8 @@ export function AdminSidebar() {
 
       {/* Main Navigation */}
       <nav className="space-y-2">
-        <div className="px-2 mb-3">
-          <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+        <div className="px-2 mb-2">
+          <h3 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
             Navigation
           </h3>
         </div>
@@ -99,10 +99,10 @@ export function AdminSidebar() {
               key={route.href}
               href={route.href}
               className={cn(
-                "flex gap-3 items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group",
+                "flex gap-3 items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group",
                 isActive
-                  ? "shadow-lg bg-primary text-primary-foreground shadow-primary/20"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-primary/90 text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
               <route.icon
@@ -124,8 +124,8 @@ export function AdminSidebar() {
 
       {/* External Links */}
       <nav className="space-y-2">
-        <div className="px-2 mb-3">
-          <h3 className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+        <div className="px-2 mb-2">
+          <h3 className="text-xs font-medium tracking-wider uppercase text-muted-foreground">
             External Links
           </h3>
         </div>
@@ -133,7 +133,7 @@ export function AdminSidebar() {
           <Link
             key={link.href}
             href={link.href}
-            className="flex gap-3 items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 text-muted-foreground hover:bg-accent hover:text-accent-foreground group"
+            className="flex gap-3 items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-muted-foreground hover:bg-muted/50 hover:text-foreground group"
           >
             <link.icon className="flex-shrink-0 w-5 h-5 transition-transform duration-200 group-hover:scale-110" />
             <span>{link.label}</span>

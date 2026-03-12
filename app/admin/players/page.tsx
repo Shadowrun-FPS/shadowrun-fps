@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AddPlayerDialog } from "@/components/add-player-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Users, UserCheck, UserX, Shield } from "lucide-react";
+import { AlertTriangle, Users, UserCheck, UserX, UserPlus } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { PlayerList } from "@/components/player-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -42,9 +42,29 @@ export default function PlayersPage() {
     loading: true,
   });
 
-  const handleActionComplete = () => {
-    // Handle action completion
-  };
+  const refetchStats = useCallback(async () => {
+    try {
+      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
+      const players = await deduplicatedFetch<any[]>("/api/admin/players", {
+        ttl: 0, // bypass cache for refetch
+      });
+      const active = players.filter((p: any) => !p.isBanned).length;
+      const banned = players.filter((p: any) => p.isBanned).length;
+      setStats((prev) => ({
+        ...prev,
+        total: players.length,
+        active,
+        banned,
+        loading: false,
+      }));
+    } catch {
+      setStats((prev) => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  const handleActionComplete = useCallback(() => {
+    refetchStats();
+  }, [refetchStats]);
 
   const handleSubmit = () => {
     if (!reason.trim()) {
@@ -78,79 +98,92 @@ export default function PlayersPage() {
   }, []);
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-4 sm:space-y-6 lg:space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-5 sm:space-y-6 lg:space-y-8">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
             Players
           </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1" id="players-description">
             Manage player accounts and moderation actions
           </p>
         </div>
-      </div>
+        <Button
+          onClick={() => setAddPlayerOpen(true)}
+          className="w-full sm:w-auto shrink-0"
+          aria-describedby="players-description"
+        >
+          <UserPlus className="h-4 w-4 shrink-0" aria-hidden />
+          Add player
+        </Button>
+      </header>
 
-      {/* Stats Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-        <Card className="relative overflow-hidden border-2 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-4 sm:px-6 pt-4 sm:pt-6">
-            <CardTitle className="text-sm sm:text-base font-medium">Total Players</CardTitle>
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+      {/* Stats Cards - softer, modern style */}
+      <section aria-label="Player statistics" className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-3">
+        <Card className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm hover:shadow-md hover:border-blue-500/30 transition-all duration-300" aria-label={`Total players: ${stats.loading ? "loading" : stats.total}`}>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" aria-hidden />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-5 sm:px-6 pt-5 sm:pt-6">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Players</CardTitle>
+            <div className="p-2 rounded-xl bg-blue-500/10">
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500/90" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10 px-4 sm:px-6 pb-4 sm:pb-6">
+          <CardContent className="relative z-10 px-5 sm:px-6 pb-5 sm:pb-6">
             {stats.loading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 rounded-lg" />
             ) : (
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-semibold text-foreground tabular-nums">
                 {stats.total}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-2 hover:border-green-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-4 sm:px-6 pt-4 sm:pt-6">
-            <CardTitle className="text-sm sm:text-base font-medium">Active Players</CardTitle>
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+        <Card className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm hover:shadow-md hover:border-emerald-500/30 transition-all duration-300" aria-label={`Active players: ${stats.loading ? "loading" : stats.active}`}>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" aria-hidden />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-5 sm:px-6 pt-5 sm:pt-6">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Players</CardTitle>
+            <div className="p-2 rounded-xl bg-emerald-500/10">
+              <UserCheck className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500/90" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10 px-4 sm:px-6 pb-4 sm:pb-6">
+          <CardContent className="relative z-10 px-5 sm:px-6 pb-5 sm:pb-6">
             {stats.loading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 rounded-lg" />
             ) : (
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-semibold text-foreground tabular-nums">
                 {stats.active}
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-2 hover:border-red-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-4 sm:px-6 pt-4 sm:pt-6">
-            <CardTitle className="text-sm sm:text-base font-medium">Banned Players</CardTitle>
-            <div className="p-2 rounded-lg bg-red-500/10">
-              <UserX className="h-4 w-4 sm:h-5 sm:w-5 text-red-500" />
+        <Card className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm hover:shadow-md hover:border-rose-500/30 transition-all duration-300" aria-label={`Banned players: ${stats.loading ? "loading" : stats.banned}`}>
+          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" aria-hidden />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10 px-5 sm:px-6 pt-5 sm:pt-6">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Banned Players</CardTitle>
+            <div className="p-2 rounded-xl bg-rose-500/10">
+              <UserX className="h-4 w-4 sm:h-5 sm:w-5 text-rose-500/90" />
             </div>
           </CardHeader>
-          <CardContent className="relative z-10 px-4 sm:px-6 pb-4 sm:pb-6">
+          <CardContent className="relative z-10 px-5 sm:px-6 pb-5 sm:pb-6">
             {stats.loading ? (
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-20 rounded-lg" />
             ) : (
-              <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-semibold text-foreground tabular-nums">
                 {stats.banned}
               </div>
             )}
           </CardContent>
         </Card>
-      </div>
+      </section>
 
-      <PlayerList />
+      <section aria-labelledby="players-list-heading" className="space-y-4 sm:space-y-6">
+        <h2 id="players-list-heading" className="sr-only">
+          Player list
+        </h2>
+        <PlayerList onModerationSuccess={refetchStats} />
+      </section>
 
       <AddPlayerDialog
         open={addPlayerOpen}

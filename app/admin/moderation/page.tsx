@@ -351,7 +351,7 @@ export default function ModerationPage() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-4 sm:space-y-6 lg:space-y-8">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
           Moderation Panel
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
@@ -446,7 +446,7 @@ export default function ModerationPage() {
               <Card className="relative overflow-hidden border-2 hover:border-amber-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                 <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
-                  <CardTitle className="text-sm sm:text-base font-medium">
+                  <CardTitle className="text-sm sm:text-base font-medium text-foreground">
                     Active Warnings
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-amber-500/10">
@@ -454,7 +454,7 @@ export default function ModerationPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-amber-600 to-amber-400 bg-clip-text text-transparent">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-amber-600 dark:text-amber-400">
                     {stats.warnings}
                   </div>
                   <p
@@ -472,7 +472,7 @@ export default function ModerationPage() {
               <Card className="relative overflow-hidden border-2 hover:border-red-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                 <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
-                  <CardTitle className="text-sm sm:text-base font-medium">
+                  <CardTitle className="text-sm sm:text-base font-medium text-foreground">
                     Active Bans
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-red-500/10">
@@ -480,7 +480,7 @@ export default function ModerationPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-red-600 dark:text-red-400">
                     {stats.activeBans}
                   </div>
                   <p
@@ -498,7 +498,7 @@ export default function ModerationPage() {
               <Card className="relative overflow-hidden border-2 hover:border-blue-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
                 <CardHeader className="flex flex-row justify-between items-center pb-2 space-y-0 px-4 sm:px-6 pt-4 sm:pt-6 relative z-10">
-                  <CardTitle className="text-sm sm:text-base font-medium">
+                  <CardTitle className="text-sm sm:text-base font-medium text-foreground">
                     Total Actions
                   </CardTitle>
                   <div className="p-2 rounded-lg bg-blue-500/10">
@@ -506,7 +506,7 @@ export default function ModerationPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6 relative z-10">
-                  <div className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+                  <div className="text-xl sm:text-2xl md:text-3xl font-bold text-blue-600 dark:text-blue-400">
                     {stats.totalActions}
                   </div>
                   <p

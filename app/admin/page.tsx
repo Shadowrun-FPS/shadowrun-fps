@@ -132,7 +132,7 @@ export default function AdminDashboard() {
   return (
     <div className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8 lg:space-y-10">
       <div className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight text-foreground">
           Admin Dashboard
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
         <Card className="relative overflow-hidden border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium">Total Players</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Total Players</CardTitle>
             <div className="p-2 rounded-lg bg-blue-500/10">
               <Users className="h-4 w-4 text-blue-500" />
             </div>
@@ -165,7 +165,7 @@ export default function AdminDashboard() {
             {loading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">
                 {stats?.totalPlayers || 0}
               </div>
             )}
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
         <Card className="relative overflow-hidden border-2 hover:border-red-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium">Active Bans</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Active Bans</CardTitle>
             <div className="p-2 rounded-lg bg-red-500/10">
               <Shield className="h-4 w-4 text-red-500" />
             </div>
@@ -184,7 +184,7 @@ export default function AdminDashboard() {
             {loading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
                 {stats?.activeBans || 0}
               </div>
             )}
@@ -194,7 +194,7 @@ export default function AdminDashboard() {
         <Card className="relative overflow-hidden border-2 hover:border-green-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium">Total Rules</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Total Rules</CardTitle>
             <div className="p-2 rounded-lg bg-green-500/10">
               <Book className="h-4 w-4 text-green-500" />
             </div>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
             {loading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-green-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">
                 {stats?.totalRules || 0}
               </div>
             )}
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
         <Card className="relative overflow-hidden border-2 hover:border-purple-500/50 transition-all duration-300 hover:shadow-lg bg-gradient-to-br from-background to-muted/20">
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
-            <CardTitle className="text-sm font-medium">Recent Actions</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">Recent Actions</CardTitle>
             <div className="p-2 rounded-lg bg-purple-500/10">
               <Activity className="h-4 w-4 text-purple-500" />
             </div>
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
             {loading ? (
               <Skeleton className="h-8 w-20" />
             ) : (
-              <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-400 bg-clip-text text-transparent">
+              <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">
                 {stats?.recentModerationActions || 0}
               </div>
             )}
