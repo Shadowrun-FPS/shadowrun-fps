@@ -37,6 +37,21 @@ export const metadata: Metadata = {
     "tactical shooter",
     "hero shooter",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      {
+        url: "/android-chrome-192x192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   openGraph: {
     title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
@@ -45,7 +60,7 @@ export const metadata: Metadata = {
     siteName: "Shadowrun FPS",
     images: [
       {
-        url: "/hero.png",
+        url: "https://www.shadowrunfps.com/hero.png",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Gameplay",
@@ -59,7 +74,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
       "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
-    images: ["/hero.png"],
+    images: ["https://www.shadowrunfps.com/hero.png"],
     creator: "@ShadowrunFPS",
   },
   robots: {
@@ -137,6 +152,7 @@ export default function RootLayout({
               "@type": "WebSite",
               name: "Shadowrun FPS",
               url: "https://www.shadowrunfps.com",
+              image: "https://www.shadowrunfps.com/hero.png",
               description:
                 "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
               potentialAction: {

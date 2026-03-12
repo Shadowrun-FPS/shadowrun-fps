@@ -5,12 +5,15 @@ import { Toaster } from "@/components/ui/toaster";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import PlayerTrackerBanner from "@/components/player-tracker-banner";
+import { useVisualViewportOffset } from "@/hooks/useVisualViewportOffset";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
+  const visualViewportOffsetTop = useVisualViewportOffset();
+
   return (
     <ThemeProvider
       attribute="class"
@@ -26,8 +29,13 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         >
           Skip to main content
         </a>
-        {/* Banner + Header in one fixed block so no gap; opaque so content doesn't show through */}
-        <div className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-background">
+        {/* Banner + Header in one fixed block; pinned to visual viewport on iOS when URL bar hides */}
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-background"
+          style={{
+            transform: `translateY(${visualViewportOffsetTop}px)`,
+          }}
+        >
           <PlayerTrackerBanner />
           <Header />
         </div>

@@ -4,6 +4,8 @@
 
 @layer base {
   :root {
+    /* Pinned to visual viewport on iOS when URL bar hides (see useVisualViewportOffset) */
+    --visual-viewport-offset-top: 0;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
 

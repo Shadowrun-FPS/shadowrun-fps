@@ -428,7 +428,7 @@ export default function ModerationPage() {
             size="icon"
             onClick={() => fetchData()}
             disabled={loading}
-            className="w-full sm:w-auto min-h-[44px] sm:min-h-0 sm:w-10 sm:h-10 hover:bg-accent transition-colors"
+            className="w-full min-h-[44px] sm:min-h-0 sm:w-10 sm:h-10 hover:bg-accent transition-colors"
             title="Refresh data"
           >
             {loading ? (

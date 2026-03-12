@@ -126,8 +126,8 @@ export function FloatingPlayer({
   return (
     <div
       className={cn(
-        "fixed right-6 bottom-6 z-50 rounded-full border shadow-lg backdrop-blur-sm transition-all duration-300 bg-background/95 hover:shadow-xl",
-        isExpanded ? "p-4" : "p-3",
+        "fixed right-3 bottom-3 sm:right-6 sm:bottom-6 z-50 rounded-full border shadow-lg backdrop-blur-sm transition-all duration-300 bg-background/95 hover:shadow-xl",
+        isExpanded ? "p-2.5 sm:p-4" : "p-2 sm:p-3",
         className
       )}
     >
@@ -136,7 +136,7 @@ export function FloatingPlayer({
       <div
         className={cn(
           "flex items-center transition-all duration-300",
-          isExpanded ? "space-x-3" : "space-x-2"
+          isExpanded ? "space-x-1.5 sm:space-x-3" : "space-x-1 sm:space-x-2"
         )}
       >
         {/* Play/Pause Button */}
@@ -144,33 +144,33 @@ export function FloatingPlayer({
           variant="ghost"
           size="icon"
           onClick={togglePlay}
-          className="w-12 h-12 rounded-full bg-primary/10 hover:bg-primary/20"
+          className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-primary/10 hover:bg-primary/20"
           aria-label={isPlaying ? "Pause audio" : "Play audio"}
         >
           {isPlaying ? (
-            <Pause className="w-6 h-6" />
+            <Pause className="w-4 h-4 sm:w-6 sm:h-6" />
           ) : (
-            <Play className="ml-1 w-6 h-6" />
+            <Play className="ml-0.5 sm:ml-1 w-4 h-4 sm:w-6 sm:h-6" />
           )}
         </Button>
 
         {/* Track Info & Progress - Only show when expanded (playing) */}
         {isExpanded && (
-          <div className="flex-col space-y-1 min-w-0 sm:flex">
-            <div className="text-sm font-medium truncate max-w-32">
+          <div className="flex-col space-y-0.5 sm:space-y-1 min-w-0 sm:flex">
+            <div className="text-[11px] sm:text-sm font-medium truncate max-w-20 sm:max-w-32">
               {trackTitle}
             </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xs text-muted-foreground">
+            <div className="flex items-center space-x-1.5 sm:space-x-2">
+              <span className="text-[10px] sm:text-xs text-muted-foreground tabular-nums">
                 {formatTime(currentTime)}
               </span>
-              <div className="flex-1 h-1 rounded-full bg-muted min-w-16">
+              <div className="flex-1 h-0.5 sm:h-1 rounded-full bg-muted min-w-12 sm:min-w-16">
                 <div
-                  className="h-1 rounded-full transition-all duration-300 bg-primary"
+                  className="h-0.5 sm:h-1 rounded-full transition-all duration-300 bg-primary"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[10px] sm:text-xs text-muted-foreground tabular-nums">
                 {formatTime(duration)}
               </span>
             </div>
@@ -183,13 +183,13 @@ export function FloatingPlayer({
             variant="ghost"
             size="icon"
             onClick={toggleMute}
-            className="w-8 h-8 rounded-full sm:flex"
+            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full sm:flex min-w-6 min-h-6"
             aria-label={isMuted ? "Unmute audio" : "Mute audio"}
           >
             {isMuted ? (
-              <VolumeX className="w-4 h-4" />
+              <VolumeX className="w-3 h-3 sm:w-4 sm:h-4" />
             ) : (
-              <Volume2 className="w-4 h-4" />
+              <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
             )}
           </Button>
         )}
