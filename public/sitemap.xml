@@ -7,57 +7,82 @@
 
 <url>
   <loc>https://www.shadowrunfps.com/</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>1.00</priority>
 </url>
 <url>
+  <loc>https://www.shadowrunfps.com/download</loc>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
+  <priority>0.90</priority>
+</url>
+<url>
   <loc>https://www.shadowrunfps.com/docs/events</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/docs/install</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
+  <priority>0.80</priority>
+</url>
+<url>
+  <loc>https://www.shadowrunfps.com/docs/rules</loc>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/docs/troubleshoot</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/leaderboard</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
+  <loc>https://www.shadowrunfps.com/moderation-log</loc>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
+  <priority>0.60</priority>
+</url>
+<url>
+  <loc>https://www.shadowrunfps.com/privacy</loc>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
+  <priority>0.50</priority>
+</url>
+<url>
+  <loc>https://www.shadowrunfps.com/terms</loc>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
+  <priority>0.50</priority>
+</url>
+<url>
   <loc>https://www.shadowrunfps.com/tournaments/overview</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.80</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/tournaments/teams</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.70</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/tournaments/rankings</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.70</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/tournaments/scrimmages</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.70</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/matches/queues</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.70</priority>
 </url>
 <url>
   <loc>https://www.shadowrunfps.com/matches/history</loc>
-  <lastmod>2024-06-01T01:45:30+00:00</lastmod>
+  <lastmod>2026-03-11T00:00:00+00:00</lastmod>
   <priority>0.60</priority>
 </url>
 </urlset>

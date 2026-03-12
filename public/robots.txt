@@ -2,4 +2,4 @@ User-agent: *
 Disallow: /admin/
 Allow: /
 
-Sitemap: https://shadowrunfps.com/sitemap.xml 
+Sitemap: https://www.shadowrunfps.com/sitemap.xml 
