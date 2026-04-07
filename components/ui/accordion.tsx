@@ -29,11 +29,11 @@ const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
+  <AccordionPrimitive.Header className="flex w-full min-w-0">
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 items-center justify-between py-4 px-6",
+        "flex w-full min-w-0 flex-1 cursor-pointer items-center justify-between gap-3 py-4 px-6 text-left",
         "text-lg font-medium transition-all duration-300",
         "hover:bg-accent/5 active:bg-accent/10",
         "group-data-[state=open]:bg-accent/10",
@@ -43,10 +43,13 @@ const AccordionTrigger = React.forwardRef<
       )}
       {...props}
     >
-      <span className="text-left group-data-[state=open]:text-primary transition-colors">
+      <span className="min-w-0 flex-1 text-left group-data-[state=open]:text-primary transition-colors">
         {children}
       </span>
-      <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ease-in-out group-data-[state=open]:rotate-180 group-data-[state=open]:text-primary" />
+      <ChevronDown
+        className="pointer-events-none h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-300 ease-in-out group-data-[state=open]:rotate-180 group-data-[state=open]:text-primary"
+        aria-hidden
+      />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

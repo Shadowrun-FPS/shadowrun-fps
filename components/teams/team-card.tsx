@@ -11,8 +11,10 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, Users, Swords } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import type { MongoTeam, TeamMember } from "@/types/mongodb";
 import { cn } from "@/lib/utils";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
 import { ChallengeTeamDialog } from "@/components/teams/challenge-team-dialog";
 import {
   Tooltip,
@@ -53,6 +55,7 @@ export function TeamCard({
   teamSize,
 }: TeamCardProps) {
   const { data: session } = useSession();
+  const scrimmageEnabled = useFeatureFlag("scrimmage");
 
   // Find the captain
   const captain = members.find((member) => member.role === "captain");
@@ -60,7 +63,7 @@ export function TeamCard({
 
   // Count active members
   const activeMembersCount = members.filter(
-    (member) => member.role !== "substitute"
+    (member) => member.role !== "substitute",
   ).length;
 
   // Get team sizes (default to 4 if not specified)
@@ -68,9 +71,9 @@ export function TeamCard({
   const userTeamSize = userTeam?.teamSize || 4;
 
   // Check if user's team is full
-  const userTeamMemberCount = userTeam?.members?.filter(
-    (m: TeamMember) => m.role !== "substitute"
-  ).length || 0;
+  const userTeamMemberCount =
+    userTeam?.members?.filter((m: TeamMember) => m.role !== "substitute")
+      .length || 0;
   const hasFullTeam = userTeamMemberCount >= userTeamSize;
 
   // Check if the team being viewed is full
@@ -79,34 +82,47 @@ export function TeamCard({
   // Teams must have matching sizes to challenge
   const teamSizesMatch = targetTeamSize === userTeamSize;
 
-  // Determine tooltip text based on team membership status (simplified)
-  const challengeTooltip = !teamSizesMatch
-    ? `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but this team is ${targetTeamSize}v${targetTeamSize}.`
-    : !hasFullTeam
-    ? `Your team needs ${userTeamSize} members to challenge other teams`
-    : !targetTeamHasFullTeam
-    ? `This team needs ${targetTeamSize} members to be challenged`
-    : "Challenge this team";
+  const canChallenge =
+    Boolean(_id) &&
+    scrimmageEnabled &&
+    teamSizesMatch &&
+    hasFullTeam &&
+    targetTeamHasFullTeam;
 
-  // Determine if challenge button should be disabled
-  const disableChallenge = !teamSizesMatch || !hasFullTeam || !targetTeamHasFullTeam;
+  const challengeTooltip = !scrimmageEnabled
+    ? "Scrimmages are currently disabled."
+    : !_id
+      ? "This team cannot be challenged right now."
+      : !teamSizesMatch
+        ? `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but this team is ${targetTeamSize}v${targetTeamSize}.`
+        : !userTeam || !hasFullTeam
+          ? userTeam
+            ? `Your team needs ${userTeamSize} members to challenge other teams.`
+            : "Join or create a full team to challenge others."
+          : !targetTeamHasFullTeam
+            ? `This team needs ${targetTeamSize} members to be challenged.`
+            : "Challenge this team";
 
   return (
     <Card
       className={cn(
-        "transition-all hover:bg-accent",
-        onClick && "cursor-pointer"
+        /* No scale on hover: carousel (overflow-hidden) clips scaled cards and borders */
+        "h-full border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm transition-[border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none hover:border-primary/40 hover:shadow-xl",
+        onClick && "cursor-pointer",
       )}
       onClick={onClick}
     >
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
-          <CardTitle className="min-h-[3rem] line-clamp-2 break-words flex-1">
+          <CardTitle className="min-h-[3rem] line-clamp-2 break-words flex-1 text-lg font-bold sm:text-xl">
             {name}
           </CardTitle>
-          <div className="px-3 py-1 text-sm font-medium rounded-md bg-accent/80 text-foreground shrink-0">
+          <Badge
+            variant="secondary"
+            className="shrink-0 text-xs font-semibold sm:text-sm"
+          >
             {teamElo?.toLocaleString() || "N/A"} ELO
-          </div>
+          </Badge>
         </div>
         <p className="mt-1 text-sm text-muted-foreground min-h-[2.5rem] line-clamp-2">
           {description || "Top ranked competitive team"}
@@ -117,7 +133,10 @@ export function TeamCard({
         <div className="space-y-4">
           {/* Captain */}
           <div className="flex items-center">
-            <Shield className="w-5 h-5 mr-2 text-muted-foreground" />
+            <Shield
+              className="mr-2 h-5 w-5 shrink-0 text-primary"
+              aria-hidden
+            />
             <div>
               <div className="font-medium">Captain</div>
               <div className="text-sm text-muted-foreground">{captainName}</div>
@@ -126,7 +145,7 @@ export function TeamCard({
 
           {/* Members */}
           <div className="flex items-center">
-            <Users className="w-5 h-5 mr-2 text-muted-foreground" />
+            <Users className="mr-2 h-5 w-5 shrink-0 text-primary" aria-hidden />
             <div>
               <div className="font-medium">Members</div>
               <div className="text-sm text-muted-foreground">
@@ -135,7 +154,7 @@ export function TeamCard({
             </div>
           </div>
 
-          <div className="flex flex-col gap-1 text-sm">
+          <div className="flex flex-col gap-1 border-t border-border/50 pt-4 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Scrimmage Record:</span>
               <span>
@@ -156,7 +175,8 @@ export function TeamCard({
         {isUserTeam ? (
           // For user's own team, show "Manage Team" if captain, otherwise "View Details"
           (() => {
-            const isCaptain = userTeam?.captain?.discordId === session?.user?.id;
+            const isCaptain =
+              userTeam?.captain?.discordId === session?.user?.id;
             return (
               <Button
                 variant="outline"
@@ -172,75 +192,71 @@ export function TeamCard({
           })()
         ) : (
           // For other teams, show Challenge and View Details buttons
-          <>
-            {userTeam && _id ? (
-              teamSizesMatch && hasFullTeam && targetTeamHasFullTeam ? (
-                <ChallengeTeamDialog
-                  team={{
-                    _id,
-                    name,
-                    tag,
-                    captain: captain || members[0],
-                    members,
-                    teamSize: targetTeamSize,
-                  }}
-                  userTeam={userTeam}
-                />
-              ) : (
-                <TooltipProvider>
+          <TooltipProvider delayDuration={300}>
+            <>
+              {_id ? (
+                canChallenge && userTeam ? (
+                  <ChallengeTeamDialog
+                    team={{
+                      _id,
+                      name,
+                      tag,
+                      captain: captain || members[0],
+                      members,
+                      teamSize: targetTeamSize,
+                    }}
+                    userTeam={userTeam}
+                  />
+                ) : (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        disabled={true}
-                        aria-label={challengeTooltip}
-                      >
-                        <Swords className="w-4 h-4 mr-2" />
-                        Challenge
-                      </Button>
+                      <span className="inline-flex min-w-0 w-full cursor-not-allowed">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="pointer-events-none h-8 w-full"
+                          disabled
+                          aria-label={challengeTooltip}
+                        >
+                          <Swords className="mr-2 h-4 w-4" aria-hidden />
+                          Challenge
+                        </Button>
+                      </span>
                     </TooltipTrigger>
                     <TooltipContent>
                       <p>{challengeTooltip}</p>
                     </TooltipContent>
                   </Tooltip>
-                </TooltipProvider>
-              )
-            ) : (
-              <TooltipProvider>
+                )
+              ) : (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8"
-                      onClick={() => {
-                        // Only open challenge dialog if both teams have full rosters and matching sizes
-                        if (teamSizesMatch && hasFullTeam && targetTeamHasFullTeam) {
-                          // Existing code to open challenge dialog
-                        }
-                      }}
-                      disabled={disableChallenge}
-                      aria-label={challengeTooltip}
-                    >
-                      <Swords className="w-4 h-4 mr-2" />
-                      Challenge
-                    </Button>
+                    <span className="inline-flex min-w-0 w-full cursor-not-allowed">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="pointer-events-none h-8 w-full"
+                        disabled
+                        aria-label={challengeTooltip}
+                      >
+                        <Swords className="mr-2 h-4 w-4" aria-hidden />
+                        Challenge
+                      </Button>
+                    </span>
                   </TooltipTrigger>
-                  {disableChallenge && (
-                    <TooltipContent>
-                      <p>{challengeTooltip}</p>
-                    </TooltipContent>
-                  )}
+                  <TooltipContent>
+                    <p>{challengeTooltip}</p>
+                  </TooltipContent>
                 </Tooltip>
-              </TooltipProvider>
-            )}
+              )}
 
-            <Button variant="outline" size="sm" className="h-8" asChild>
-              <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
-            </Button>
-          </>
+              <Button variant="outline" size="sm" className="h-8" asChild>
+                <Link href={`/tournaments/teams/${_id}`}>View Details</Link>
+              </Button>
+            </>
+          </TooltipProvider>
         )}
       </CardFooter>
     </Card>

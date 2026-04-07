@@ -190,8 +190,8 @@ export function TeamSettingsPanel({
 
   if (!isMember) {
     return (
-      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
-        <p className="font-medium text-amber-700 dark:text-amber-300">
+      <div className="rounded-xl border border-border/70 bg-muted/30 p-6 text-center">
+        <p className="text-sm font-medium text-foreground">
           You must be a team member to access settings.
         </p>
       </div>

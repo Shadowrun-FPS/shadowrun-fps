@@ -16,6 +16,14 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        display: [
+          "var(--font-display)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+      },
       keyframes: {
         "accordion-down": {
           from: { height: "0" },
@@ -66,6 +74,14 @@ module.exports = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        tertiary: {
+          DEFAULT: "hsl(var(--tertiary))",
+          foreground: "hsl(var(--tertiary-foreground))",
+        },
+        neutral: {
+          DEFAULT: "hsl(var(--neutral))",
+          foreground: "hsl(var(--neutral-foreground))",
         },
         discord: {
           DEFAULT: "var(--discord-brand)",

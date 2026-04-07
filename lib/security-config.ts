@@ -1,7 +1,11 @@
 // Security Configuration - Move all hardcoded IDs to environment variables
 export const SECURITY_CONFIG = {
-  // Discord User IDs
-  DEVELOPER_ID: process.env.DEVELOPER_DISCORD_ID || "DISCORD_ID",
+  // Discord User IDs — use NEXT_PUBLIC_* so client components can compare to session.user.id
+  // (non-NEXT env vars are undefined in the browser bundle).
+  DEVELOPER_ID:
+    process.env.NEXT_PUBLIC_DEVELOPER_DISCORD_ID ||
+    process.env.DEVELOPER_DISCORD_ID ||
+    "DISCORD_ID",
 
   // Discord Role IDs
   ROLES: {

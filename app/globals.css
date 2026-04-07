@@ -6,42 +6,53 @@
   :root {
     /* Pinned to visual viewport on iOS when URL bar hides (see useVisualViewportOffset) */
     --visual-viewport-offset-top: 0;
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Light — clean neutral base (app is dark-first) */
+    --background: 220 20% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 222.2 47.4% 11.2%;
+    /* Brand: restrained esports blue */
+    --primary: 207 76% 42%;
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 222 40% 16%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 94%;
+    --muted-foreground: 215 16% 40%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 220 14% 92%;
+    --accent-foreground: 222 40% 16%;
 
-    --destructive: 0 84.2% 60.2%;
+    --tertiary: 220 12% 90%;
+    --tertiary-foreground: 215 14% 38%;
+
+    --neutral: 220 10% 88%;
+    --neutral-foreground: 215 12% 45%;
+
+    --destructive: 0 72% 48%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 220 13% 88%;
+    --input: 220 13% 88%;
+    --ring: 207 76% 42%;
 
-    --radius: 0.5rem;
+    --radius: 0.625rem;
 
     --discord-brand: rgb(88, 101, 242);
+    /* Xbox marketing green — store / console CTAs */
+    --xbox-brand: rgb(16, 124, 16);
     --success: rgb(16, 185, 129); /* #10B981 */
     --danger: rgb(239, 68, 68); /* #EF4444 */
   }
 
   .dark {
+    /* Blue-slate canvas (classic shadcn slate) — saturated hue reads “dark blue” not flat grey */
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
 
@@ -51,8 +62,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 207 76% 56%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -63,23 +74,45 @@
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
 
+    --tertiary: 217.2 30% 12.5%;
+    --tertiary-foreground: 215 18% 62%;
+
+    --neutral: 217.2 32.6% 17.5%;
+    --neutral-foreground: 215 16% 55%;
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 207 76% 56%;
   }
 }
 
 @layer base {
+  /* Fixed header (banner + nav spacer) — hash links and scrollIntoView align below it */
+  html {
+    scroll-padding-top: 103px;
+    scroll-behavior: smooth;
+  }
+  @media (min-width: 640px) {
+    html {
+      scroll-padding-top: 113px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
 
   /* Visible focus rings for accessibility */
   a:focus-visible {
-    @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background rounded-sm;
+    @apply outline-none ring-2 ring-primary/90 ring-offset-2 ring-offset-background rounded-sm;
   }
 }
 

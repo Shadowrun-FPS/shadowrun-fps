@@ -13,15 +13,28 @@ async function getFeaturedVideoHandler() {
   const client = await clientPromise;
   const db = client.db();
 
-  const settings = await db
+  const doc = await db
     .collection("ui_settings")
     .findOne({ component: "featured_video" });
 
-  const response = NextResponse.json(settings?.settings || {
+  const raw = doc?.settings ?? {
     type: "none",
     youtubeUrl: "",
     twitchChannel: "",
     title: "",
+  };
+
+  const updatedAt = (raw as { updatedAt?: Date }).updatedAt;
+  const lastUpdated =
+    updatedAt instanceof Date
+      ? updatedAt.toISOString()
+      : typeof updatedAt === "string"
+        ? updatedAt
+        : null;
+
+  const response = NextResponse.json({
+    ...raw,
+    lastUpdated,
   });
   // Use shorter cache with tag for easy invalidation
   response.headers.set(

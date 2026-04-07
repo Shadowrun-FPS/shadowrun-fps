@@ -36,6 +36,7 @@ import {
   ClockIcon,
   ChevronRight,
   Loader2,
+  Undo2,
 } from "lucide-react";
 import { PlayerContextMenu } from "@/components/moderation/player-context-menu";
 import { TeamCard } from "@/components/match/team-card";
@@ -44,6 +45,17 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { UserCircle } from "lucide-react";
 import { FeatureGate } from "@/components/feature-gate";
 import { cn } from "@/lib/utils";
+import { SECURITY_CONFIG } from "@/lib/security-config";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MatchPlayer {
   discordId: string;
@@ -109,6 +121,8 @@ interface Match {
   mapScores?: MapScore[];
   team1Name?: string;
   team2Name?: string;
+  /** Ranked queue matches store the Queues document `_id` */
+  queueId?: string;
 }
 
 interface ScoreFormValues {
@@ -193,6 +207,8 @@ export default function MatchDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [scoreDiscrepancy, setScoreDiscrepancy] =
     useState<ScoreDiscrepancy | null>(null);
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [revertingToQueue, setRevertingToQueue] = useState(false);
 
   // Add the getTeamName function inside the component
   const getTeamName = (teamNumber: number, isQueueMatch: boolean = true) => {
@@ -573,6 +589,49 @@ export default function MatchDetailPage() {
   const team1Elo = team1.reduce((sum, player) => sum + player.elo, 0);
   const team2Elo = team2.reduce((sum, player) => sum + player.elo, 0);
 
+  const canRevertMatchToQueue =
+    !!session?.user &&
+    !!match?.queueId &&
+    String(match.status || "").toLowerCase() !== "completed" &&
+    (session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+      (session.user.roles &&
+        (session.user.roles.includes("admin") ||
+          session.user.roles.includes("moderator") ||
+          session.user.roles.includes("founder"))));
+
+  const confirmRevertToQueue = async () => {
+    if (!match) return;
+    setRevertingToQueue(true);
+    try {
+      const res = await fetch(
+        `/api/matches/${match.matchId}/revert-to-queue`,
+        { method: "POST" }
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+      };
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to revert match");
+      }
+      toast({
+        title: "Match reverted",
+        description: "Players were returned to the queue.",
+      });
+      setRevertDialogOpen(false);
+      router.push("/matches/queues");
+      router.refresh();
+    } catch (e) {
+      toast({
+        title: "Error",
+        description:
+          e instanceof Error ? e.message : "Failed to revert match",
+        variant: "destructive",
+      });
+    } finally {
+      setRevertingToQueue(false);
+    }
+  };
+
   return (
     <FeatureGate feature="matches">
       <main className="min-h-screen bg-background">
@@ -598,6 +657,23 @@ export default function MatchDetailPage() {
                     Match Details
                   </h1>
                   {getStatusBadge(match.status)}
+                  {canRevertMatchToQueue && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="border-destructive/50 text-destructive hover:bg-destructive/10"
+                      onClick={() => setRevertDialogOpen(true)}
+                      disabled={revertingToQueue}
+                    >
+                      {revertingToQueue ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Undo2 className="mr-2 h-4 w-4" />
+                      )}
+                      Return to queue
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground">
                   {match.eloTier} Queue • {match.teamSize}v{match.teamSize} • {match.type}
@@ -1077,6 +1153,39 @@ export default function MatchDetailPage() {
             </>
           )}
         </div>
+
+        <AlertDialog open={revertDialogOpen} onOpenChange={setRevertDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Return players to queue?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This deletes the match and puts all participants back on the
+                original ranked queue (current waitlist is kept). Other queues
+                are not restored if players had joined them after launch.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={revertingToQueue}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  void confirmRevertToQueue();
+                }}
+                disabled={revertingToQueue}
+              >
+                {revertingToQueue ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                    Reverting…
+                  </>
+                ) : (
+                  "Revert"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </main>
     </FeatureGate>
   );

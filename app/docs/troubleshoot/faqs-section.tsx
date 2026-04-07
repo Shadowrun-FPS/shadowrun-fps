@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type DragEvent } from "react";
 import { useSession } from "next-auth/react";
+import { safeLog } from "@/lib/security";
 import {
   Accordion,
   AccordionContent,
@@ -35,6 +36,13 @@ interface FAQ {
   order: number;
 }
 
+interface UserPermissions {
+  isAdmin?: boolean;
+  isModerator?: boolean;
+  isDeveloper?: boolean;
+  roles?: string[];
+}
+
 export function FAQsSection() {
   const { data: session } = useSession();
   const [faqs, setFaqs] = useState<FAQ[]>([]);
@@ -42,7 +50,8 @@ export function FAQsSection() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FAQ | null>(null);
   const [deleteFaqId, setDeleteFaqId] = useState<string | null>(null);
-  const [userPermissions, setUserPermissions] = useState<any>(null);
+  const [userPermissions, setUserPermissions] =
+    useState<UserPermissions | null>(null);
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
@@ -66,7 +75,7 @@ export function FAQsSection() {
           });
           setUserPermissions(userData.permissions);
         } catch (error) {
-          console.error("Error fetching permissions:", error);
+          safeLog.error("Error fetching permissions:", error);
         }
       }
     };
@@ -89,12 +98,12 @@ export function FAQsSection() {
     const fetchFAQs = async () => {
       try {
         const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-        const data = await deduplicatedFetch<any[]>("/api/faqs?category=errors", {
+        const data = await deduplicatedFetch<FAQ[]>("/api/faqs?category=errors", {
           ttl: 300000, // Cache for 5 minutes (FAQs don't change often)
         });
         setFaqs(data);
       } catch (error) {
-        console.error("Error fetching FAQs:", error);
+        safeLog.error("Error fetching FAQs:", error);
       } finally {
         setLoading(false);
       }
@@ -125,7 +134,7 @@ export function FAQsSection() {
         });
       }
     } catch (error) {
-      console.error("Error deleting FAQ:", error);
+      safeLog.error("Error deleting FAQ:", error);
       toast({
         title: "Error",
         description: "Failed to delete FAQ.",
@@ -152,12 +161,12 @@ export function FAQsSection() {
     // ✅ Refresh FAQs using deduplication
     try {
       const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-      const data = await deduplicatedFetch<any[]>("/api/faqs?category=errors", {
+      const data = await deduplicatedFetch<FAQ[]>("/api/faqs?category=errors", {
         ttl: 300000,
       });
       setFaqs(data);
     } catch (error) {
-      console.error("Error refreshing FAQs:", error);
+      safeLog.error("Error refreshing FAQs:", error);
     }
   };
 
@@ -165,7 +174,7 @@ export function FAQsSection() {
     setDraggedIndex(index);
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: DragEvent, index: number) => {
     e.preventDefault();
     if (draggedIndex !== null && draggedIndex !== index) {
       setDragOverIndex(index);
@@ -176,7 +185,7 @@ export function FAQsSection() {
     setDragOverIndex(null);
   };
 
-  const handleDrop = async (e: React.DragEvent, dropIndex: number) => {
+  const handleDrop = async (e: DragEvent, dropIndex: number) => {
     e.preventDefault();
     setDragOverIndex(null);
 
@@ -221,7 +230,7 @@ export function FAQsSection() {
         description: "The FAQ order has been updated successfully.",
       });
     } catch (error) {
-      console.error("Error updating FAQ order:", error);
+      safeLog.error("Error updating FAQ order:", error);
       toast({
         title: "Error",
         description: "Failed to update FAQ order. Please try again.",
@@ -230,12 +239,12 @@ export function FAQsSection() {
       // ✅ Revert on error using deduplication
       try {
         const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-        const data = await deduplicatedFetch<any[]>("/api/faqs?category=errors", {
+        const data = await deduplicatedFetch<FAQ[]>("/api/faqs?category=errors", {
           ttl: 300000,
         });
         setFaqs(data);
       } catch (revertError) {
-        console.error("Error reverting FAQs:", revertError);
+        safeLog.error("Error reverting FAQs:", revertError);
       }
     }
   };
@@ -248,11 +257,9 @@ export function FAQsSection() {
   if (loading) {
     return (
       <div className="space-y-3 sm:space-y-4">
-        <div className="h-8 bg-muted animate-pulse rounded" />
-        <div className="h-4 bg-muted animate-pulse rounded w-3/4" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-muted animate-pulse rounded" />
+            <div key={i} className="h-20 bg-muted animate-pulse rounded-xl" />
           ))}
         </div>
       </div>
@@ -261,20 +268,9 @@ export function FAQsSection() {
 
   return (
     <>
-      <section id="errors" className="space-y-3 sm:space-y-4">
-        <div className="space-y-3 sm:space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 sm:gap-4">
-            <div className="flex-1">
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                Common Errors
-              </h2>
-              <p className="text-base sm:text-lg leading-relaxed text-muted-foreground mt-1">
-                Find solutions to common issues and error messages below. Click on
-                an error to see its solution.
-              </p>
-            </div>
-            {isAdmin && (
-              <div className="flex items-center gap-2 flex-shrink-0 w-full lg:w-auto lg:ml-4">
+      <div className="space-y-4 sm:space-y-5">
+        {isAdmin ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
                   variant={isReorderMode ? "default" : "outline"}
                   onClick={() => setIsReorderMode(!isReorderMode)}
@@ -313,10 +309,8 @@ export function FAQsSection() {
                   <span className="sm:hidden">Add</span>
                   <span className="hidden sm:inline">Add FAQ</span>
                 </Button>
-              </div>
-            )}
           </div>
-        </div>
+        ) : null}
         <Accordion 
           type="single" 
           collapsible={!isReorderMode}
@@ -346,7 +340,7 @@ export function FAQsSection() {
               }}
               onDragEnd={handleDragEnd}
               className={cn(
-                "group border-2 rounded-xl mb-3 shadow-sm backdrop-blur-sm",
+                "group w-full min-w-0 border-2 rounded-xl mb-3 shadow-sm backdrop-blur-sm",
                 "transition-all duration-300 ease-in-out",
                 "bg-card/50 hover:bg-card/80",
                 "border-border/60 hover:border-border/80",
@@ -360,28 +354,30 @@ export function FAQsSection() {
               <AccordionItem
                 value={`item-${index}`}
                 className={cn(
-                  "border-0 rounded-xl overflow-hidden",
-                  "data-[state=open]:shadow-lg data-[state=open]:border-primary/30 data-[state=open]:bg-gradient-to-br data-[state=open]:from-accent/10 data-[state=open]:to-accent/5",
-                  "data-[state=open]:ring-1 data-[state=open]:ring-primary/10"
+                  "w-full min-w-0 border-0 rounded-xl overflow-hidden bg-transparent",
+                  "data-[state=open]:bg-transparent data-[state=open]:shadow-none",
+                  "hover:bg-transparent"
                 )}
                 disabled={isReorderMode}
               >
-                <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
                   {isReorderMode && (
                     <div 
-                      className="flex-shrink-0 pl-3 sm:pl-4 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center group/drag"
+                      className="flex min-h-[44px] w-[44px] shrink-0 touch-manipulation items-center justify-center self-stretch pl-3 sm:w-[52px] sm:pl-4 group/drag"
                       onTouchStart={(e) => e.stopPropagation()}
                     >
-                      <div className="relative p-2 rounded-lg bg-muted/50 group-hover/drag:bg-primary/10 transition-colors duration-200">
-                        <GripVertical className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground group-hover/drag:text-primary cursor-grab active:cursor-grabbing transition-colors duration-200" />
-                        <div className="absolute inset-0 rounded-lg bg-primary/0 group-hover/drag:bg-primary/5 transition-colors duration-200" />
+                      <div className="relative rounded-lg bg-muted/50 p-2 transition-colors duration-200 group-hover/drag:bg-primary/10">
+                        <GripVertical className="h-5 w-5 text-muted-foreground transition-colors duration-200 group-hover/drag:text-primary sm:h-6 sm:w-6 cursor-grab active:cursor-grabbing" />
+                        <div className="absolute inset-0 rounded-lg bg-primary/0 transition-colors duration-200 group-hover/drag:bg-primary/5" />
                       </div>
                     </div>
                   )}
                   <AccordionTrigger 
                     className={cn(
-                      "flex-1 px-4 py-3 sm:py-4 text-base sm:text-lg text-left sm:px-6 hover:no-underline touch-manipulation min-h-[44px] sm:min-h-0",
-                      "font-semibold transition-colors duration-200",
+                      "min-h-[44px] min-w-0 flex-1 rounded-none px-4 py-3 text-base font-semibold hover:no-underline sm:px-6 sm:py-4 sm:text-lg",
+                      "touch-manipulation transition-colors duration-200",
+                      "bg-transparent hover:bg-transparent active:bg-transparent",
+                      "group-data-[state=open]:bg-transparent",
                       "group-data-[state=open]:text-primary",
                       "hover:text-foreground",
                       isReorderMode && "pointer-events-none opacity-90"
@@ -446,7 +442,7 @@ export function FAQsSection() {
             </div>
           ))}
         </Accordion>
-      </section>
+      </div>
 
       {isDialogOpen && (
         <FAQDialog

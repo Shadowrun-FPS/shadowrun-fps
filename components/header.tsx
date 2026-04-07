@@ -7,7 +7,7 @@ import { Navbar, MobileNavMenu } from "./navbar";
 
 export function Header() {
   return (
-    <header className="w-full border-t-0 border-b border-border/30 bg-background/80 dark:bg-background/90 backdrop-blur-md shadow-sm pt-[env(safe-area-inset-top)]">
+    <header className="w-full border-t-0 border-b border-border/50 bg-background/75 backdrop-blur-xl backdrop-saturate-150 shadow-[0_1px_0_0_hsl(var(--border)_/_0.35)] pt-[env(safe-area-inset-top)]">
       <div className="flex items-center h-14 sm:h-16 max-w-screen-2xl mx-auto px-4 sm:px-4 md:px-6 lg:px-8">
         {/* Left: Hamburger (mobile) + Logo — Rumble-style */}
         <div className="flex items-center flex-shrink-0 gap-2 sm:gap-3 mr-4 sm:mr-6">

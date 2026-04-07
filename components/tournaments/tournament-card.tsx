@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { format } from "date-fns";
-import { Calendar, Clock, Users, ArrowRight, Trophy } from "lucide-react";
+import { Calendar, Users, ArrowRight } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -39,7 +39,12 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
   const teamsProgress = (teamsCount / maxTeams) * 100;
 
   return (
-    <Card className="group overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5 border hover:border-primary/20">
+    <Card
+      className={cn(
+        "group flex h-full flex-col overflow-hidden border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm transition-[border-color,box-shadow] duration-200 ease-out motion-reduce:transition-none",
+        "hover:border-primary/40 hover:shadow-xl",
+      )}
+    >
       <CardHeader className="pb-3 space-y-3 h-[8.75rem]">
         {/* Badges */}
         <div className="flex items-center gap-2 flex-wrap h-[1.75rem]">
@@ -49,7 +54,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
               "rounded-full px-3 py-1 text-xs font-medium",
               isUpcoming && "bg-blue-500/20 text-blue-400 border-blue-500/30",
               isActive && "bg-green-500/20 text-green-400 border-green-500/30",
-              isCompleted && "bg-muted text-muted-foreground"
+              isCompleted && "bg-muted text-muted-foreground",
             )}
           >
             {isUpcoming ? "Upcoming" : isActive ? "Active" : "Completed"}
@@ -83,8 +88,7 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
             <Calendar className="w-4 h-4 text-primary" />
           </div>
           <span className="text-foreground">
-            {format(startDate, "MMMM d, yyyy")} at{" "}
-            {format(startDate, "h:mm a")}
+            {format(startDate, "MMMM d, yyyy")} at {format(startDate, "h:mm a")}
           </span>
         </div>
 
@@ -94,7 +98,8 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
             <Users className="w-4 h-4 text-primary" />
           </div>
           <span className="text-foreground">
-            {tournament.teamSize}v{tournament.teamSize} • {teamsCount}/{maxTeams} Teams
+            {tournament.teamSize}v{tournament.teamSize} • {teamsCount}/
+            {maxTeams} Teams
           </span>
         </div>
 
@@ -124,15 +129,18 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
         </div>
       </CardContent>
 
-      <CardFooter className="pt-4 border-t min-h-[4.5rem] flex items-center">
+      <CardFooter className="mt-auto flex min-h-[4.5rem] items-center border-t border-border/50 pt-4">
         <Button
           asChild
-          className="w-full group/button"
-          variant="default"
+          variant="outline"
+          className="group/button w-full rounded-full border-border/80"
         >
-          <Link href={`/tournaments/${tournament._id}`} className="flex items-center justify-center gap-2">
-            View Details
-            <ArrowRight className="w-4 h-4 transition-transform group-hover/button:translate-x-1" />
+          <Link
+            href={`/tournaments/${tournament._id}`}
+            className="flex items-center justify-center gap-2"
+          >
+            View details
+            <ArrowRight className="h-4 w-4 transition-transform group-hover/button:translate-x-0.5" />
           </Link>
         </Button>
       </CardFooter>

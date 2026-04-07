@@ -42,6 +42,7 @@ import {
   RefreshCw,
   Search,
   Shield,
+  UserMinus,
   X,
 } from "lucide-react";
 import { cn, formatTimeAgo } from "@/lib/utils";
@@ -544,6 +545,8 @@ export default function ModerationPage() {
                         <div className="flex gap-2 items-center">
                           {action.action === "warn" ? (
                             <AlertTriangle className="w-4 h-4 text-amber-500" />
+                          ) : action.action === "queue_remove_player" ? (
+                            <UserMinus className="w-4 h-4 text-muted-foreground" />
                           ) : action.action === "ban" ? (
                             <Badge
                               variant={
@@ -566,9 +569,11 @@ export default function ModerationPage() {
                             <p className="text-xs text-muted-foreground">
                               {action.action === "warn"
                                 ? "Warning"
-                                : action.action === "ban"
-                                ? `Ban (${action.duration || "Permanent"})`
-                                : "Unban"}
+                                : action.action === "queue_remove_player"
+                                  ? "Queue removal"
+                                  : action.action === "ban"
+                                    ? `Ban (${action.duration || "Permanent"})`
+                                    : "Unban"}
                             </p>
                           </div>
                         </div>
@@ -910,6 +915,8 @@ export default function ModerationPage() {
                         <TableCell>
                           {action.action === "warn" ? (
                             <Badge variant="warning">Warning</Badge>
+                          ) : action.action === "queue_remove_player" ? (
+                            <Badge variant="secondary">Queue removal</Badge>
                           ) : (
                             <Badge
                               variant={
@@ -1033,16 +1040,20 @@ export default function ModerationPage() {
                           variant={
                             action.action === "warn"
                               ? "warning"
-                              : isPlayerUnbanned(action.playerId, action)
-                              ? "outline"
-                              : "destructive"
+                              : action.action === "queue_remove_player"
+                                ? "secondary"
+                                : isPlayerUnbanned(action.playerId, action)
+                                  ? "outline"
+                                  : "destructive"
                           }
                         >
                           {action.action === "warn"
                             ? "Warning"
-                            : isPlayerUnbanned(action.playerId, action)
-                            ? "Unbanned"
-                            : "Ban"}
+                            : action.action === "queue_remove_player"
+                              ? "Queue removal"
+                              : isPlayerUnbanned(action.playerId, action)
+                                ? "Unbanned"
+                                : "Ban"}
                         </Badge>
                       </div>
                       <p className="mb-2 text-sm">{action.reason}</p>

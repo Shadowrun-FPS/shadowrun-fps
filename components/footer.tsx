@@ -86,7 +86,9 @@ function RumbleIcon() {
   );
 }
 
-function buildSocialLinks(urls: ReturnType<typeof getSocialUrls>): SocialLinkConfig[] {
+function buildSocialLinks(
+  urls: ReturnType<typeof getSocialUrls>,
+): SocialLinkConfig[] {
   const links: SocialLinkConfig[] = [];
 
   if (urls.discordApp || urls.discord) {
@@ -174,40 +176,51 @@ export function Footer() {
   }, []);
 
   return (
-    <footer className="relative z-10 w-full text-white bg-black xl:ml-0" role="contentinfo">
-      <div className="border-t border-gray-800/80">
-        <div className="responsive-container py-6 sm:py-8">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-            {/* Social links */}
-            {socialLinks.length > 0 && (
-              <div className="flex flex-wrap justify-center gap-2 sm:gap-3" role="list">
-                <TooltipProvider delayDuration={300}>
-                  {socialLinks.map((link) => (
-                    <Tooltip key={link.platform}>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={link.url}
-                          className="text-gray-400 transition-all hover:text-white hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={link.label}
-                          role="listitem"
+    <footer
+      className="relative z-10 w-full mt-auto text-white"
+      role="contentinfo"
+    >
+      <div className="responsive-x-padding">
+        <div className="w-full rounded-t-2xl sm:rounded-t-3xl bg-black border-t border-gray-800/80">
+          <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
+              {/* Copyright */}
+              <p className="text-sm text-gray-500">
+                &copy; {currentYear} Shadowrun FPS Community
+              </p>
+              {/* Social links */}
+              {socialLinks.length > 0 && (
+                <div
+                  className="flex flex-wrap justify-center gap-2 sm:gap-3"
+                  role="list"
+                >
+                  <TooltipProvider delayDuration={300}>
+                    {socialLinks.map((link) => (
+                      <Tooltip key={link.platform}>
+                        <TooltipTrigger asChild>
+                          <Link
+                            href={link.url}
+                            className="text-gray-400 transition-all hover:text-white hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded touch-manipulation min-h-[44px] min-w-[44px] flex items-center justify-center"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={link.label}
+                            role="listitem"
+                          >
+                            {link.icon}
+                          </Link>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="bg-popover text-popover-foreground"
                         >
-                          {link.icon}
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="bg-popover text-popover-foreground">
-                        {link.tooltip}
-                      </TooltipContent>
-                    </Tooltip>
-                  ))}
-                </TooltipProvider>
-              </div>
-            )}
-            {/* Copyright */}
-            <p className="text-sm text-gray-500 order-last sm:order-none">
-              &copy; {currentYear} Shadowrun FPS Community
-            </p>
+                          {link.tooltip}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </TooltipProvider>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

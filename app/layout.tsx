@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientLayout } from "@/components/ClientLayout";
@@ -9,8 +9,11 @@ import { OnlineStatus } from "@/components/online-status";
 import { NotificationsProvider } from "@/contexts/NotificationsContext";
 import { PlayerUpdater } from "@/components/player-updater";
 
-// Define the Inter font outside the component
 const inter = Inter({ subsets: ["latin"] });
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+});
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.shadowrunfps.com"),
@@ -131,10 +134,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      className="dark"
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+    >
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#000000" />
+        <meta name="theme-color" content="#020617" />
         <link rel="canonical" href="https://www.shadowrunfps.com" />
         <meta
           name="google-site-verification"
@@ -171,7 +179,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className}`}
+        className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className} ${spaceGrotesk.variable}`}
       >
         <AuthProvider>
           <NotificationsProvider>

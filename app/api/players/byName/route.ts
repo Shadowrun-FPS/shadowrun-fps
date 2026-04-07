@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { safeLog, sanitizeString } from "@/lib/security";
+import { sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
+import {
+  db2PlayerDocToSlice,
+  mergeFourVsFourFromDb2,
+} from "@/lib/merge-db2-four-vs-four";
 
 export const dynamic = "force-dynamic"; // Mark as dynamic route
 
@@ -46,27 +50,20 @@ async function getPlayerByNameHandler(request: NextRequest) {
       player.stats = [...player.stats];
     }
 
-    // If db2Player exists, update the teamSize 4 stats with data from ShadowrunDB2
-    if (db2Player && db2Player.rating !== undefined) {
-      // Find the index of teamSize 4 stats
+    // If db2Player exists, merge ShadowrunDB2 4v4 ladder into Web stats (keep Web lastMatchDate if DB2 omits it)
+    const db2Slice = db2PlayerDocToSlice(db2Player);
+    if (db2Slice) {
       const team4Index = player.stats.findIndex(
         (stat: { teamSize: number }) => stat.teamSize === 4
       );
-
-      const db2Stats = {
-        teamSize: 4,
-        elo: db2Player.rating,
-        wins: db2Player.wins || 0,
-        losses: db2Player.losses || 0,
-        lastMatchDate: db2Player.lastMatchDate,
-      };
+      const existingWeb4 =
+        team4Index >= 0 ? player.stats[team4Index] : undefined;
+      const merged4 = mergeFourVsFourFromDb2(existingWeb4, db2Slice);
 
       if (team4Index >= 0) {
-        // Replace existing teamSize 4 stats
-        player.stats[team4Index] = db2Stats;
+        player.stats[team4Index] = merged4;
       } else {
-        // Add new teamSize 4 stats
-        player.stats.push(db2Stats);
+        player.stats.push(merged4);
       }
     }
 

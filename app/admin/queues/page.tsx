@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Loader2,
   MapPin,
@@ -134,6 +134,49 @@ export default function AdminQueuesPage() {
     { discordId: string; discordNickname?: string; discordUsername?: string }[]
   >([]);
   const [savingBannedPlayers, setSavingBannedPlayers] = useState(false);
+
+  const searchParams = useSearchParams();
+  const openBansParamHandledRef = useRef<string | null>(null);
+
+  const openBannedPlayersDialogForQueue = useCallback(async (queue: Queue) => {
+    setManagingBannedPlayersQueue(queue);
+    const banned = queue.bannedPlayers || [];
+    setBannedPlayers(banned);
+    setPlayerSearch("");
+    setSearchResults([]);
+
+    const info: Record<
+      string,
+      { discordNickname?: string; discordUsername?: string }
+    > = {};
+    for (const discordId of banned) {
+      try {
+        const response = await fetch(
+          `/api/players/search?q=${encodeURIComponent(discordId)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const player = data.players?.find(
+            (p: { discordId: string }) => p.discordId === discordId
+          );
+          if (player) {
+            info[discordId] = {
+              discordNickname: player.discordNickname,
+              discordUsername: player.discordUsername,
+            };
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching player info:", error);
+      }
+    }
+    setBannedPlayersInfo(info);
+
+    setBannedPlayersDialogOpen((prev) => ({
+      ...prev,
+      [queue._id]: true,
+    }));
+  }, []);
 
   // Check authorization
   useEffect(() => {
@@ -274,6 +317,36 @@ export default function AdminQueuesPage() {
       fetchData();
     }
   }, [status, toast]);
+
+  // Deep link from match queues: /admin/queues?openBans=<queue Mongo _id>
+  useEffect(() => {
+    const openBansId = searchParams.get("openBans");
+    if (!openBansId) {
+      openBansParamHandledRef.current = null;
+      return;
+    }
+    if (loading) return;
+    if (openBansParamHandledRef.current === openBansId) return;
+
+    const queue = queues.find((q) => q._id === openBansId);
+    if (!queue) {
+      if (queues.length > 0) {
+        openBansParamHandledRef.current = openBansId;
+        router.replace("/admin/queues", { scroll: false });
+      }
+      return;
+    }
+
+    openBansParamHandledRef.current = openBansId;
+    void openBannedPlayersDialogForQueue(queue);
+    router.replace("/admin/queues", { scroll: false });
+  }, [
+    loading,
+    queues,
+    searchParams,
+    openBannedPlayersDialogForQueue,
+    router,
+  ]);
 
   const toggleMapSelection = (queueId: string, mapId: string) => {
     setSelectedMaps((prev) => {
@@ -800,54 +873,7 @@ export default function AdminQueuesPage() {
                             variant="outline"
                             size="sm"
                             className="w-full"
-                            onClick={async () => {
-                              setManagingBannedPlayersQueue(queue);
-                              const banned = queue.bannedPlayers || [];
-                              setBannedPlayers(banned);
-                              setPlayerSearch("");
-                              setSearchResults([]);
-
-                              // Fetch player info for banned players
-                              const info: Record<
-                                string,
-                                {
-                                  discordNickname?: string;
-                                  discordUsername?: string;
-                                }
-                              > = {};
-                              for (const discordId of banned) {
-                                try {
-                                  const response = await fetch(
-                                    `/api/players/search?q=${encodeURIComponent(
-                                      discordId
-                                    )}`
-                                  );
-                                  if (response.ok) {
-                                    const data = await response.json();
-                                    const player = data.players?.find(
-                                      (p: any) => p.discordId === discordId
-                                    );
-                                    if (player) {
-                                      info[discordId] = {
-                                        discordNickname: player.discordNickname,
-                                        discordUsername: player.discordUsername,
-                                      };
-                                    }
-                                  }
-                                } catch (error) {
-                                  console.error(
-                                    "Error fetching player info:",
-                                    error
-                                  );
-                                }
-                              }
-                              setBannedPlayersInfo(info);
-
-                              setBannedPlayersDialogOpen((prev) => ({
-                                ...prev,
-                                [queue._id]: true,
-                              }));
-                            }}
+                            onClick={() => void openBannedPlayersDialogForQueue(queue)}
                           >
                             <Ban className="mr-2 w-4 h-4" />
                             Manage Players

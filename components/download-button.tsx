@@ -15,10 +15,10 @@ export default function DownloadButton() {
   return (
     <Link
       href={href}
-      className="flex overflow-hidden relative items-center justify-center w-full px-6 py-3 text-lg font-medium rounded-lg transition-all group bg-primary hover:bg-primary/90"
+      className="group flex overflow-hidden relative items-center justify-center w-full px-6 py-3 text-lg font-medium rounded-lg transition-all bg-primary hover:bg-primary/90"
       aria-label={downloadEnabled ? "Download Shadowrun FPS launcher" : "Go to PC installation guide"}
     >
-      <span className="flex relative z-10 items-center text-primary-foreground">
+      <span className="flex relative z-10 items-center text-primary-foreground underline-offset-4 decoration-transparent transition-[text-decoration-color] group-hover:underline group-hover:decoration-primary-foreground/80">
         <Download className="mr-2 w-5 h-5" />
         {buttonText}
       </span>

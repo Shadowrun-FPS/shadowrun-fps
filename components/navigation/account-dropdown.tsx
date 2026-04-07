@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
 import Link from "next/link";
-import { Bell, Shield, Users, BarChart2 } from "lucide-react";
+import { Bell, Shield, Users, BarChart2, LogOut } from "lucide-react";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { Badge } from "@/components/ui/badge";
 import { isFeatureEnabled } from "@/lib/features";
@@ -162,14 +162,6 @@ export default function AccountDropdown() {
     return userPermissions?.isModerator || userPermissions?.isAdmin || false;
   };
 
-  const hasAdminAccess = (): boolean => {
-    return userPermissions?.isAdmin || false;
-  };
-
-  const hasModeratorAccess = (): boolean => {
-    return userPermissions?.isModerator || false;
-  };
-
   const isDeveloper = (): boolean => {
     return userPermissions?.isDeveloper || false;
   };
@@ -213,7 +205,7 @@ export default function AccountDropdown() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-9 w-9 rounded-lg hover:bg-accent transition-colors"
+          className="relative h-9 w-9 rounded-full border border-transparent text-muted-foreground transition-colors hover:border-border/50 hover:bg-muted/40 hover:text-foreground"
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
@@ -229,64 +221,53 @@ export default function AccountDropdown() {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="flex relative gap-2.5 items-center px-2.5 py-1.5 h-auto rounded-lg hover:bg-accent transition-colors group"
+            className="group relative flex h-auto items-center gap-2.5 rounded-full border border-border/40 bg-muted/25 px-2 py-1 pr-2.5 transition-colors hover:bg-muted/45 hover:border-border/60"
           >
-            <Avatar className="w-8 h-8 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
+            <Avatar className="h-8 w-8 ring-2 ring-transparent transition-all group-hover:ring-primary/15">
               <AvatarImage src={session?.user?.image || ""} />
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              <AvatarFallback className="bg-primary/10 font-semibold text-primary">
                 {session?.user?.name?.charAt(0) || "U"}
               </AvatarFallback>
             </Avatar>
-            <span className="hidden md:inline max-w-[140px] truncate text-sm font-medium">
-              {/* Use guild nickname instead of global username */}
+            <span className="hidden max-w-[140px] truncate text-sm font-medium text-foreground md:inline">
               {guildNickname || session?.user?.nickname}
             </span>
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-64">
-          <div className="flex flex-col p-3.5 pb-3 space-y-2.5 rounded-lg bg-muted/30 -m-0.5 mb-0">
-            <div className="flex items-center gap-3">
-              <Avatar className="w-10 h-10 ring-2 ring-primary/10 shadow-sm">
-                <AvatarImage src={session?.user?.image || ""} />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {session?.user?.name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col min-w-0 flex-1">
-                <p className="font-medium text-sm truncate text-foreground">
-                  {/* Use guild nickname instead of global username */}
-                  {guildNickname || session?.user?.nickname}
-                </p>
+        <DropdownMenuContent
+          align="end"
+          className="w-[min(17rem,calc(100vw-1.5rem))] p-1.5"
+          sideOffset={8}
+        >
+          {userRoleDisplay.length > 0 && (
+            <>
+              <div className="mb-1 rounded-xl border border-border/40 bg-muted/25 px-3 py-2.5">
+                <div className="flex flex-wrap gap-1.5">
+                  {userRoleDisplay.map((role) => (
+                    <Badge
+                      key={role.id}
+                      className={`text-white ${role.color} px-2 py-0.5 text-xs font-semibold`}
+                    >
+                      {role.name}
+                    </Badge>
+                  ))}
+                </div>
               </div>
-            </div>
-            {userRoleDisplay.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {userRoleDisplay.map((role) => (
-                  <Badge
-                    key={role.id}
-                    className={`text-white ${role.color} text-xs font-semibold px-2 py-0.5`}
-                  >
-                    {role.name}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
+              <DropdownMenuSeparator className="my-1 bg-border/60" />
+            </>
+          )}
 
-          <DropdownMenuSeparator />
-
-          {/* Notifications - only on small screens (navbar shows bell on md+) */}
           <div className="md:hidden">
             <DropdownMenuItem asChild>
               <Link
                 href="/notifications"
-                className="flex items-center cursor-pointer relative"
+                className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
               >
-                <Bell className="mr-2 w-4 h-4" />
-                Notifications
+                <Bell className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>Notifications</span>
                 {unreadCount > 0 && (
-                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white">
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -294,7 +275,6 @@ export default function AccountDropdown() {
             </DropdownMenuItem>
           </div>
 
-          {/* Only show Player Stats link if feature is enabled */}
           {playerStatsEnabled && (
             <DropdownMenuItem asChild>
               <Link
@@ -303,23 +283,22 @@ export default function AccountDropdown() {
                     ? `/player/stats?playerName=${discordUsername}`
                     : "/profile"
                 }
-                className="flex items-center cursor-pointer"
+                className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
               >
-                <BarChart2 className="mr-2 w-4 h-4" />
+                <BarChart2 className="h-4 w-4 shrink-0 text-muted-foreground" />
                 Player Stats
               </Link>
             </DropdownMenuItem>
           )}
 
-          {/* Teams section - only when teams feature is enabled */}
           {teamsEnabled &&
             (userTeams.length === 0 ? (
               <DropdownMenuItem asChild>
                 <Link
                   href="/tournaments/teams"
-                  className="flex items-center cursor-pointer"
+                  className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
                 >
-                  <Users className="mr-2 w-4 h-4" />
+                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                   Find Team
                 </Link>
               </DropdownMenuItem>
@@ -327,9 +306,9 @@ export default function AccountDropdown() {
               <DropdownMenuItem asChild>
                 <Link
                   href={`/tournaments/teams/${userTeams[0].id}`}
-                  className="flex items-center cursor-pointer"
+                  className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
                 >
-                  <Users className="mr-2 w-4 h-4" />
+                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
                   My Team
                 </Link>
               </DropdownMenuItem>
@@ -339,14 +318,17 @@ export default function AccountDropdown() {
                   <DropdownMenuItem key={team.id} asChild>
                     <Link
                       href={`/tournaments/teams/${team.id}`}
-                      className="flex items-center justify-between cursor-pointer min-w-0"
+                      className="flex min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl py-2.5"
                     >
                       <span className="truncate">
                         {team.tag ? `[${team.tag}] ` : ""}
                         {team.name}
                       </span>
                       {team.isCaptain && (
-                        <Badge variant="secondary" className="ml-2 text-xs shrink-0">
+                        <Badge
+                          variant="secondary"
+                          className="ml-2 shrink-0 text-xs"
+                        >
                           Captain
                         </Badge>
                       )}
@@ -356,36 +338,37 @@ export default function AccountDropdown() {
                 <DropdownMenuItem asChild>
                   <Link
                     href="/tournaments/teams"
-                    className="flex items-center cursor-pointer text-muted-foreground"
+                    className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5 text-muted-foreground"
                   >
-                    <Users className="mr-2 w-4 h-4" />
+                    <Users className="h-4 w-4 shrink-0" />
                     Browse All Teams
                   </Link>
                 </DropdownMenuItem>
               </>
             ))}
 
-          {/* Admin link - show if user has admin, moderator, founder roles or is developer */}
           {(hasModAccess() || isDeveloper()) && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/admin" className="flex items-center cursor-pointer">
-                  <Shield className="mr-2 w-4 h-4" />
-                  Admin
-                </Link>
-              </DropdownMenuItem>
-            </>
+            <DropdownMenuItem asChild>
+              <Link
+                href="/admin"
+                className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
+              >
+                <Shield className="h-4 w-4 shrink-0 text-muted-foreground" />
+                Admin
+              </Link>
+            </DropdownMenuItem>
           )}
-          <DropdownMenuSeparator />
+
+          <DropdownMenuSeparator className="my-1 bg-border/60" />
 
           <DropdownMenuItem
-            className="cursor-pointer text-destructive focus:text-destructive"
+            className="cursor-pointer gap-3 rounded-xl py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive"
             onSelect={(event) => {
               event.preventDefault();
               handleSignOut();
             }}
           >
+            <LogOut className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -572,7 +572,7 @@ export default function PlayerTrackerBanner({
               >
                 <p>
                   Numbers may not be accurate yet — the full community
-                  hasn&apos;t switched to this tracker.
+                  hasn&apos;t switched to this launcher.
                 </p>
               </PopoverContent>
             </Popover>

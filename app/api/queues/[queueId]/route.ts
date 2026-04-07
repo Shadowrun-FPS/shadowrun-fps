@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 
 async function deleteQueueHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -29,7 +29,8 @@ async function deleteQueueHandler(
     );
   }
 
-  const queueId = sanitizeString(params.queueId, 50);
+  const { queueId: queueIdParam } = await params;
+  const queueId = sanitizeString(queueIdParam, 50);
   if (!ObjectId.isValid(queueId)) {
     return NextResponse.json(
       { error: "Invalid queue ID" },

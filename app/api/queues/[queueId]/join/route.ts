@@ -114,14 +114,15 @@ async function createMatch(db: any, queue: any) {
 
 async function postJoinHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const queueId = sanitizeString(params.queueId, 50);
+  const { queueId: queueIdParam } = await params;
+  const queueId = sanitizeString(queueIdParam, 50);
   if (!ObjectId.isValid(queueId)) {
     return NextResponse.json(
       { error: "Invalid queue ID format" },
@@ -237,7 +238,7 @@ async function postJoinHandler(
 
     // Check if the queue is now full after adding this player
     const updatedQueue = await db.collection("Queues").findOne({
-      _id: new ObjectId(params.queueId),
+      _id: new ObjectId(queueId),
     });
 
     if (

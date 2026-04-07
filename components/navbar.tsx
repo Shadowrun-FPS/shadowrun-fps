@@ -16,6 +16,7 @@ import {
   SheetTrigger,
   SheetTitle,
   SheetHeader,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import {
   DropdownMenu,
@@ -135,6 +136,31 @@ const TournamentsLinks: NavLink[] = [
   },
 ];
 
+/** Desktop-only: inset pill rail + shared control chrome */
+const desktopNavRailClass =
+  "flex flex-wrap items-center gap-0.5 rounded-full border border-border/40 bg-muted/30 px-1 py-1 shadow-[inset_0_1px_0_0_hsl(var(--border)/0.35)] dark:bg-muted/20";
+
+const desktopNavControlClass =
+  "relative inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors duration-200 ease-out motion-reduce:transition-none hover:bg-background/85 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+
+const desktopNavRouteActiveClass =
+  "bg-background/95 text-foreground shadow-sm ring-1 ring-primary/20 dark:bg-background/45 dark:ring-primary/30";
+
+const desktopNavTriggerOpenClass =
+  "data-[state=open]:bg-background/95 data-[state=open]:text-foreground data-[state=open]:shadow-sm data-[state=open]:ring-1 data-[state=open]:ring-primary/20 dark:data-[state=open]:bg-background/45 dark:data-[state=open]:ring-primary/30";
+
+const desktopMegaLinkClass =
+  "relative flex items-start gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-200 ease-out motion-reduce:transition-none hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-popover";
+
+const desktopMegaLinkActiveClass =
+  "bg-primary/[0.08] text-foreground ring-1 ring-primary/15 dark:bg-primary/[0.12] dark:ring-primary/25";
+
+const mobileSheetNavIdleClass =
+  "text-foreground hover:bg-muted/55 motion-reduce:transition-none";
+
+const mobileSheetNavActiveClass =
+  "bg-primary/[0.08] text-foreground ring-1 ring-inset ring-primary/15 dark:bg-primary/[0.12] dark:ring-primary/25";
+
 export function Navbar() {
   const pathname = usePathname();
 
@@ -162,176 +188,188 @@ export function Navbar() {
   return (
     <nav className="flex flex-1 items-center">
       {/* Desktop Navigation only - mobile menu is rendered by Header (MobileNavMenu) */}
-      <div className="hidden xl:flex xl:items-center xl:gap-1">
-        {/* Simple Links */}
-        <Link
-          href="/docs/events"
-          className={cn(
-            "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            pathname === "/docs/events" &&
-              "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-          )}
-          aria-current={pathname === "/docs/events" ? "page" : undefined}
-        >
-          <Calendar className="mr-2 w-4 h-4" />
-          Events
-        </Link>
-
-        {ENABLE_DOWNLOAD_PAGE && (
+      <div className="hidden xl:flex xl:items-center xl:justify-start">
+        <div className={desktopNavRailClass}>
           <Link
-            href="/download"
+            href="/docs/events"
             className={cn(
-              "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              pathname === "/download" &&
-                "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+              desktopNavControlClass,
+              pathname === "/docs/events" && desktopNavRouteActiveClass
             )}
-            aria-current={pathname === "/download" ? "page" : undefined}
+            aria-current={pathname === "/docs/events" ? "page" : undefined}
           >
-            <Download className="mr-2 w-4 h-4" />
-            Download
+            <Calendar className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Events
           </Link>
-        )}
 
-        <Link
-          href="/docs/install"
-          className={cn(
-            "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            pathname === "/docs/install" &&
-              "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+          {ENABLE_DOWNLOAD_PAGE && (
+            <Link
+              href="/download"
+              className={cn(
+                desktopNavControlClass,
+                pathname === "/download" && desktopNavRouteActiveClass
+              )}
+              aria-current={pathname === "/download" ? "page" : undefined}
+            >
+              <Download className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+              Download
+            </Link>
           )}
-          aria-current={pathname === "/docs/install" ? "page" : undefined}
-        >
-          <Book className="mr-2 w-4 h-4" />
-          Manual Install
-        </Link>
 
-        <Link
-          href="/docs/troubleshoot"
-          className={cn(
-            "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-            pathname === "/docs/troubleshoot" &&
-              "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-          )}
-          aria-current={pathname === "/docs/troubleshoot" ? "page" : undefined}
-        >
-          <HelpCircle className="mr-2 w-4 h-4" />
-          Troubleshoot
-        </Link>
-
-        {isFeatureEnabled("leaderboard") && (
           <Link
-            href="/leaderboard"
+            href="/docs/install"
             className={cn(
-              "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-              pathname === "/leaderboard" &&
-                "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+              desktopNavControlClass,
+              pathname === "/docs/install" && desktopNavRouteActiveClass
             )}
-            aria-current={pathname === "/leaderboard" ? "page" : undefined}
+            aria-current={pathname === "/docs/install" ? "page" : undefined}
           >
-            <BarChart3 className="mr-2 w-4 h-4" />
-            Leaderboard
+            <Book className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Manual Install
           </Link>
-        )}
 
-        {/* Matches Dropdown */}
-        {showMatchesMenu && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className={cn(
-                "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                pathname?.startsWith("/matches") &&
-                  "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
-              )}
-            >
-              <Clock className="mr-2 w-4 h-4" />
-              Matches
-              <ChevronDown className="ml-1 w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="w-[400px]"
-              onCloseAutoFocus={(e) => e.preventDefault()}
-            >
-              <div className="flex flex-col gap-1 p-2">
-                {filteredMatchesLinks.map((link) => {
-                  const isActive =
-                    pathname === link.href ||
-                    pathname?.startsWith(link.href + "/");
-                  return (
-                    <Link
-                      key={link.title}
-                      href={link.href}
-                      className={cn(
-                        "relative flex items-start gap-3 rounded-md p-3 text-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                        isActive &&
-                          "bg-accent/50 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-md"
-                      )}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <div className="mt-0.5 shrink-0">{link.icon}</div>
-                      <div className="flex-1">
-                        <div className="font-medium">{link.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {link.description}
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+          <Link
+            href="/docs/troubleshoot"
+            className={cn(
+              desktopNavControlClass,
+              pathname === "/docs/troubleshoot" && desktopNavRouteActiveClass
+            )}
+            aria-current={pathname === "/docs/troubleshoot" ? "page" : undefined}
+          >
+            <HelpCircle className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Troubleshoot
+          </Link>
 
-        {/* Tournaments Dropdown */}
-        {showTournamentsMenu && (
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          {isFeatureEnabled("leaderboard") && (
+            <Link
+              href="/leaderboard"
               className={cn(
-                "relative inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                pathname?.startsWith("/tournaments") &&
-                  "bg-accent/50 text-accent-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-full"
+                desktopNavControlClass,
+                pathname === "/leaderboard" && desktopNavRouteActiveClass
               )}
+              aria-current={pathname === "/leaderboard" ? "page" : undefined}
             >
-              <Trophy className="mr-2 w-4 h-4" />
-              Tournaments
-              <ChevronDown className="ml-1 w-4 h-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="w-[400px]"
-              onCloseAutoFocus={(e) => e.preventDefault()}
-            >
-              <div className="flex flex-col gap-1 p-2">
-                {filteredTournamentsLinks.map((link) => {
-                  const isActive =
-                    pathname === link.href ||
-                    pathname?.startsWith(link.href + "/");
-                  return (
-                    <Link
-                      key={link.title}
-                      href={link.href}
-                      className={cn(
-                        "relative flex items-start gap-3 rounded-md p-3 text-sm transition-all duration-200 hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                        isActive &&
-                          "bg-accent/50 before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-md"
-                      )}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <div className="mt-0.5 shrink-0">{link.icon}</div>
-                      <div className="flex-1">
-                        <div className="font-medium">{link.title}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {link.description}
+              <BarChart3 className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+              Leaderboard
+            </Link>
+          )}
+
+          {showMatchesMenu && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "group",
+                  desktopNavControlClass,
+                  desktopNavTriggerOpenClass,
+                  pathname?.startsWith("/matches") && desktopNavRouteActiveClass
+                )}
+              >
+                <Clock className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+                Matches
+                <ChevronDown
+                  className="ml-0.5 h-4 w-4 shrink-0 opacity-70 transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
+                  aria-hidden
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
+                <div className="border-b border-border/50 bg-muted/35 px-4 py-2.5 dark:bg-muted/25">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Matches
+                  </p>
+                </div>
+                <div className="flex flex-col gap-0.5 p-2">
+                  {filteredMatchesLinks.map((link) => {
+                    const isActive =
+                      pathname === link.href ||
+                      pathname?.startsWith(link.href.split("#")[0] + "/") ||
+                      pathname === link.href.split("#")[0];
+                    return (
+                      <Link
+                        key={link.title}
+                        href={link.href}
+                        className={cn(
+                          desktopMegaLinkClass,
+                          isActive && desktopMegaLinkActiveClass
+                        )}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        <div className="mt-0.5 shrink-0">{link.icon}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium">{link.title}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {link.description}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {showTournamentsMenu && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                className={cn(
+                  "group",
+                  desktopNavControlClass,
+                  desktopNavTriggerOpenClass,
+                  pathname?.startsWith("/tournaments") &&
+                    desktopNavRouteActiveClass
+                )}
+              >
+                <Trophy className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+                Tournaments
+                <ChevronDown
+                  className="ml-0.5 h-4 w-4 shrink-0 opacity-70 transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
+                  aria-hidden
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
+                onCloseAutoFocus={(e) => e.preventDefault()}
+              >
+                <div className="border-b border-border/50 bg-muted/35 px-4 py-2.5 dark:bg-muted/25">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">
+                    Tournaments
+                  </p>
+                </div>
+                <div className="flex flex-col gap-0.5 p-2">
+                  {filteredTournamentsLinks.map((link) => {
+                    const isActive =
+                      pathname === link.href ||
+                      pathname?.startsWith(link.href + "/");
+                    return (
+                      <Link
+                        key={link.title}
+                        href={link.href}
+                        className={cn(
+                          desktopMegaLinkClass,
+                          isActive && desktopMegaLinkActiveClass
+                        )}
+                        aria-current={isActive ? "page" : undefined}
+                      >
+                        <div className="mt-0.5 shrink-0">{link.icon}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium">{link.title}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {link.description}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
     </nav>
   );
@@ -431,14 +469,12 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   ];
 
   return (
-    <div className="flex flex-col gap-1 py-4">
+    <div className="flex flex-col gap-1 pt-2 pb-4">
       <Link
         href="/"
         className={cn(
-          "relative flex items-center px-4 sm:px-6 py-3 text-base font-medium rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-          pathname === "/"
-            ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-            : "hover:bg-accent/50 text-foreground"
+          "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base font-medium transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
+          pathname === "/" ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
         )}
         onClick={handleLinkClick}
         aria-current={pathname === "/" ? "page" : undefined}
@@ -447,68 +483,59 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         <span>Home</span>
       </Link>
 
-      <div className="px-4 py-3 mt-2 border-t sm:px-6 border-border/40">
-        <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-          Documentation
-        </h4>
-        <div className="flex flex-col gap-1">
-          {DocLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.title}
-                href={link.href}
-                className={cn(
-                  "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                  isActive
-                    ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-                    : "hover:bg-accent/50 text-foreground"
-                )}
-                onClick={handleLinkClick}
-                aria-current={isActive ? "page" : undefined}
-              >
-                <span className="flex-shrink-0">{link.icon}</span>
-                <span className="ml-3">{link.title}</span>
-              </Link>
-            );
-          })}
-          {isFeatureEnabled("leaderboard") && (
-            <Link
-              href="/leaderboard"
-              className={cn(
-                "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                pathname === "/leaderboard"
-                  ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-                  : "hover:bg-accent/50 text-foreground"
-              )}
-              onClick={handleLinkClick}
-              aria-current={pathname === "/leaderboard" ? "page" : undefined}
-            >
-              <BarChart3 className="flex-shrink-0 mr-2 w-5 h-5 text-primary" />
-              <span className="ml-3">Leaderboard</span>
-            </Link>
+      {DocLinks.map((link) => {
+        const isActive = pathname === link.href;
+        return (
+          <Link
+            key={link.title}
+            href={link.href}
+            className={cn(
+              "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
+              isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
+            )}
+            onClick={handleLinkClick}
+            aria-current={isActive ? "page" : undefined}
+          >
+            <span className="flex-shrink-0">{link.icon}</span>
+            <span className="ml-3">{link.title}</span>
+          </Link>
+        );
+      })}
+      {isFeatureEnabled("leaderboard") && (
+        <Link
+          href="/leaderboard"
+          className={cn(
+            "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
+            pathname === "/leaderboard"
+              ? mobileSheetNavActiveClass
+              : mobileSheetNavIdleClass
           )}
-        </div>
-      </div>
+          onClick={handleLinkClick}
+          aria-current={pathname === "/leaderboard" ? "page" : undefined}
+        >
+          <BarChart3 className="mr-2 h-5 w-5 flex-shrink-0 text-primary" />
+          <span className="ml-3">Leaderboard</span>
+        </Link>
+      )}
 
       {showMatchesSection && (
-        <div className="px-4 py-3 border-t sm:px-6 border-border/40">
-          <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+        <div className="border-t border-border/50 pt-3">
+          <h4 className="mx-2 mb-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
             Matches
           </h4>
           <div className="flex flex-col gap-1">
             {filteredMatchesLinks.map((link) => {
+              const hrefPath = link.href.split("#")[0];
               const isActive =
-                pathname === link.href || pathname?.startsWith(link.href + "/");
+                pathname === hrefPath ||
+                pathname?.startsWith(`${hrefPath}/`);
               return (
                 <Link
                   key={link.title}
                   href={link.href}
                   className={cn(
-                    "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                    isActive
-                      ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-                      : "hover:bg-accent/50 text-foreground"
+                    "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
+                    isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
                   )}
                   onClick={handleLinkClick}
                   aria-current={isActive ? "page" : undefined}
@@ -523,8 +550,8 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       )}
 
       {showTournamentsSection && (
-        <div className="px-4 py-3 border-t sm:px-6 border-border/40">
-          <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+        <div className="border-t border-border/50 pt-3">
+          <h4 className="mx-2 mb-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
             Tournaments
           </h4>
           <div className="flex flex-col gap-1">
@@ -536,10 +563,8 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
                   key={link.title}
                   href={link.href}
                   className={cn(
-                    "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                    isActive
-                      ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-                      : "hover:bg-accent/50 text-foreground"
+                    "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
+                    isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
                   )}
                   onClick={handleLinkClick}
                   aria-current={isActive ? "page" : undefined}
@@ -554,8 +579,8 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       )}
 
       {hasModAccess && (
-        <div className="px-4 py-3 mt-2 border-t sm:px-6 border-border/40">
-          <h4 className="mb-3 text-xs font-semibold tracking-wider uppercase text-muted-foreground">
+        <div className="mt-2 border-t border-border/50 pt-3">
+          <h4 className="mx-2 mb-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
             Admin
           </h4>
           <div className="flex flex-col gap-1">
@@ -567,10 +592,8 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
                   key={link.title}
                   href={link.href}
                   className={cn(
-                    "flex relative items-center px-4 py-3 mx-2 text-base rounded-lg transition-all duration-200 sm:px-6 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                    isActive
-                      ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-                      : "hover:bg-accent/50 text-foreground"
+                    "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
+                    isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
                   )}
                   onClick={handleLinkClick}
                   aria-current={isActive ? "page" : undefined}
@@ -583,10 +606,10 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
             <Link
               href="/moderation-log"
               className={cn(
-                "relative flex items-center px-4 sm:px-6 py-3 text-base rounded-lg mx-2 transition-all duration-200 touch-manipulation min-h-[44px] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+                "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
                 pathname === "/moderation-log"
-                  ? "bg-accent text-accent-foreground before:absolute before:left-0 before:top-0 before:bottom-0 before:w-1 before:bg-primary before:rounded-l-lg"
-                  : "hover:bg-accent/50 text-foreground"
+                  ? mobileSheetNavActiveClass
+                  : mobileSheetNavIdleClass
               )}
               onClick={handleLinkClick}
               aria-current={pathname === "/moderation-log" ? "page" : undefined}
@@ -633,14 +656,17 @@ export function MobileNavMenu() {
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="w-[280px] sm:w-[320px] p-0 flex flex-col bg-background/95 backdrop-blur-sm"
+        className="flex w-[280px] flex-col border-r border-border/50 bg-background/95 p-0 backdrop-blur-md sm:w-[320px]"
         onInteractOutside={(e) => {
           e.preventDefault();
         }}
       >
-        <SheetHeader className="relative px-4 pt-6 pb-4 border-b sm:px-6 sm:pt-8 border-border/40">
+        <SheetHeader className="relative border-b border-border/50 px-4 pb-3 pt-6 sm:px-6 sm:pt-8">
           <SheetTitle className="sr-only">Navigation</SheetTitle>
-          <div className="flex items-center pr-12 sm:pr-14 min-h-[2.5rem]">
+          <SheetDescription className="sr-only">
+            Main navigation links for the site.
+          </SheetDescription>
+          <div className="flex min-h-[2.5rem] items-center pr-12 sm:pr-14">
             <Image
               src="/title.png"
               alt="Shadowrun"

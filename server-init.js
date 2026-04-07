@@ -3,8 +3,8 @@
 require("./lib/patch-punycode");
 
 const { createServer } = require("http");
-const { parse } = require("url");
 const next = require("next");
+const { parseRequestUrl } = require("./lib/parse-request-url");
 
 // Import the socket implementation directly (not through Next.js)
 let initSocketIO;
@@ -28,7 +28,7 @@ app.prepare().then(() => {
       return;
     }
 
-    const parsedUrl = parse(req.url || "", true);
+    const parsedUrl = parseRequestUrl(req.url || "");
     handle(req, res, parsedUrl);
   });
 

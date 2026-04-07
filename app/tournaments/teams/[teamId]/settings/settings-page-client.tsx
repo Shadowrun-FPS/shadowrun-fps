@@ -25,16 +25,18 @@ export function SettingsPageClient({
           </Link>
         </Button>
 
-        <div className="mb-8 flex gap-3 items-center">
-          <div className="rounded-xl border border-border/50 bg-card/50 p-2.5 shadow-sm">
-            <Settings className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+        <div className="mb-8 flex items-center gap-3">
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-2.5 shadow-sm">
+            <Settings className="h-5 w-5 text-primary sm:h-6 sm:w-6" aria-hidden />
           </div>
-          <h1 className="text-xl font-semibold text-foreground sm:text-2xl">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             Edit team details
           </h1>
         </div>
 
-        <TeamSettingsPanel initialTeam={initialTeam} teamId={teamId} />
+        <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-5 shadow-sm sm:p-6">
+          <TeamSettingsPanel initialTeam={initialTeam} teamId={teamId} />
+        </div>
       </div>
     </div>
   );

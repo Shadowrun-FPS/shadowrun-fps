@@ -3,8 +3,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PlayerStatsContent from "@/components/player-stats-content";
 import { Metadata, ResolvingMetadata } from "next";
 import clientPromise from "@/lib/mongodb";
+import { secureLogger } from "@/lib/secure-logger";
 import { FeatureGate } from "@/components/feature-gate";
 import { getRankByElo } from "@/lib/rank-utils";
+import {
+  formatTeamSizeLabel,
+  getPrimaryTeamStat,
+} from "@/lib/player-primary-stat";
 
 // Define types for our OpenGraph and Twitter objects
 interface OpenGraphMetadata {
@@ -102,15 +107,13 @@ function buildDescription(
   displayName: string,
   stats: StatEntry[]
 ): string {
-  const prefer4v4 = stats.find((s) => s.teamSize === 4);
-  const fallback = stats.find((s) => s.teamSize === 2 || s.teamSize === 5 || s.teamSize === 1);
-  const primary = prefer4v4 ?? fallback ?? stats[0];
+  const primary = getPrimaryTeamStat(stats);
 
   if (!primary) {
     return `View ${displayName}'s profile and statistics on Shadowrun FPS.`;
   }
 
-  const modeLabel = `${primary.teamSize}v${primary.teamSize}`;
+  const modeLabel = formatTeamSizeLabel(primary.teamSize);
   const rank = getRankByElo(primary.elo);
   const wins = primary.wins ?? 0;
   const losses = primary.losses ?? 0;
@@ -169,7 +172,7 @@ export async function generateMetadata(
       twitter.description = description;
     }
   } catch (error) {
-    console.error("Error fetching player data for metadata:", error);
+    secureLogger.error("Error fetching player data for metadata", error);
   }
 
   return {

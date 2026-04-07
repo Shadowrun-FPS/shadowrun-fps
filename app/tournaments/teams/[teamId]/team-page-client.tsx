@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
 import {
-  Users,
   Settings,
   Loader2,
   X,
@@ -13,8 +13,8 @@ import {
   AlertCircle,
   Mail,
   UserMinus,
+  ChevronRight,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TeamInvitesList } from "@/components/teams/team-invites-list";
 import { TeamMemberRoster } from "@/components/teams/team-member-roster";
@@ -22,12 +22,14 @@ import { TeamSettingsPanel } from "@/components/teams/team-settings-panel";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
-import TeamHeader from "./team-header";
+import { TeamPageHero } from "@/components/teams/team-page-hero";
+import { TeamUpcomingEvents } from "@/components/teams/team-upcoming-events";
 import {
   Tooltip,
   TooltipContent,
@@ -36,6 +38,7 @@ import {
 } from "@/components/ui/tooltip";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog } from "@/lib/security";
+import { cn } from "@/lib/utils";
 import type { Team } from "@/types";
 import {
   AlertDialog,
@@ -47,6 +50,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const slugPanelClass =
+  "rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm";
 
 interface TeamPageClientProps {
   initialTeam: Team;
@@ -64,12 +70,18 @@ export default function TeamPageClient({
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [isRefreshingElo, setIsRefreshingElo] = useState(false);
   const [userCurrentTeam, setUserCurrentTeam] = useState<Team | null>(null);
-  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [showRemoveDialog, setShowRemoveDialog] = useState(false);
-  const [showCancelJoinRequestDialog, setShowCancelJoinRequestDialog] = useState(false);
+  const [showCancelJoinRequestDialog, setShowCancelJoinRequestDialog] =
+    useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const checkUserTeamRef = useRef(false);
+  const linkCopiedResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isTeamCaptain = session?.user?.id === team.captain.discordId;
   const isMember = team.members.some((m) => m.discordId === session?.user?.id);
@@ -77,7 +89,9 @@ export default function TeamPageClient({
   const refetchTeam = useCallback(async () => {
     try {
       const isObjectId = /^[0-9a-fA-F]{24}$/.test(teamId);
-      const endpoint = isObjectId ? `/api/teams/${teamId}` : `/api/teams/tag/${teamId}`;
+      const endpoint = isObjectId
+        ? `/api/teams/${teamId}`
+        : `/api/teams/tag/${teamId}`;
       const res = await fetch(endpoint);
       if (res.ok) {
         const data = await res.json();
@@ -99,7 +113,7 @@ export default function TeamPageClient({
       if (team.members.some((m) => m.discordId === session.user.id)) return;
       try {
         const res = await fetch(
-          `/api/teams/${team._id}/join-requests?userId=${session.user.id}`
+          `/api/teams/${team._id}/join-requests?userId=${session.user.id}`,
         );
         if (res.ok) {
           const data = await res.json();
@@ -131,19 +145,6 @@ export default function TeamPageClient({
     check();
   }, [session]);
 
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return "N/A";
-    try {
-      return new Date(dateString).toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    } catch {
-      return "Invalid date";
-    }
-  };
-
   const handleRefreshElo = async () => {
     if (!team) return;
     try {
@@ -154,7 +155,8 @@ export default function TeamPageClient({
         body: JSON.stringify({
           isAdminRequest:
             session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
-            (Array.isArray(session?.user?.roles) && session?.user?.roles.includes("admin")),
+            (Array.isArray(session?.user?.roles) &&
+              session?.user?.roles.includes("admin")),
         }),
       });
       if (!res.ok) {
@@ -163,12 +165,16 @@ export default function TeamPageClient({
       }
       const data = await res.json();
       setTeam((prev) => ({ ...prev, teamElo: data.teamElo }));
-      toast({ title: "Success", description: "Team ELO refreshed successfully" });
+      toast({
+        title: "Success",
+        description: "Team ELO refreshed successfully",
+      });
     } catch (error: unknown) {
       safeLog.error("Refresh ELO error:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to refresh team ELO",
+        description:
+          error instanceof Error ? error.message : "Failed to refresh team ELO",
         variant: "destructive",
       });
     } finally {
@@ -180,7 +186,9 @@ export default function TeamPageClient({
     if (!session?.user?.id) return false;
     if (isTeamCaptain) return true;
     if (session.user.id === SECURITY_CONFIG.DEVELOPER_ID) return true;
-    return Array.isArray(session.user.roles) && session.user.roles.includes("admin");
+    return (
+      Array.isArray(session.user.roles) && session.user.roles.includes("admin")
+    );
   };
 
   const handleRemoveMemberClick = (memberId: string, memberName: string) => {
@@ -222,7 +230,10 @@ export default function TeamPageClient({
       safeLog.error("Error removing member:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to remove team member",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to remove team member",
         variant: "destructive",
         duration: 2000,
       });
@@ -232,46 +243,105 @@ export default function TeamPageClient({
   };
 
   const teamSize = team.teamSize ?? 4;
+  const memberCount = useMemo(
+    () =>
+      team.members.filter((m) => (m.role?.toLowerCase() ?? "") !== "substitute")
+        .length,
+    [team.members],
+  );
   const currentActive = team.members.filter(
-    (m) => (m.role?.toLowerCase() ?? "") !== "substitute" && m.discordId !== team.captain.discordId
+    (m) =>
+      (m.role?.toLowerCase() ?? "") !== "substitute" &&
+      m.discordId !== team.captain.discordId,
   ).length;
   const canInvite = isTeamCaptain && currentActive < teamSize - 1;
+
+  const copyTeamLink = useCallback(() => {
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    if (!url) return;
+    void navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      if (linkCopiedResetRef.current) clearTimeout(linkCopiedResetRef.current);
+      linkCopiedResetRef.current = setTimeout(() => setLinkCopied(false), 2000);
+      toast({
+        title: "Link copied",
+        description: "Team page URL is on your clipboard.",
+      });
+    });
+  }, [toast]);
+
+  useEffect(() => {
+    return () => {
+      if (linkCopiedResetRef.current) clearTimeout(linkCopiedResetRef.current);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-screen-xl px-4 py-6 sm:px-6 lg:px-8 xl:px-12 sm:py-8 lg:py-10">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6">
+        <nav
+          className="mb-4 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground sm:text-sm"
+          aria-label="Breadcrumb"
+        >
+          <ol className="flex flex-wrap items-center gap-1.5">
+            <li>
+              <Link
+                href="/tournaments"
+                className="transition-colors hover:text-foreground"
+              >
+                Tournaments
+              </Link>
+            </li>
+            <li aria-hidden className="text-border">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </li>
+            <li>
+              <Link
+                href="/tournaments/teams"
+                className="transition-colors hover:text-foreground"
+              >
+                Teams
+              </Link>
+            </li>
+            <li aria-hidden className="text-border">
+              <ChevronRight className="h-3.5 w-3.5" />
+            </li>
+            <li
+              className="max-w-[min(12rem,40vw)] truncate font-medium text-foreground"
+              aria-current="page"
+            >
+              [{team.tag}]
+            </li>
+          </ol>
+        </nav>
+
+        <div className="mb-6">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => router.push("/tournaments/teams")}
             className="h-9 gap-2 text-muted-foreground hover:text-foreground sm:h-10"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-4 w-4" aria-hidden />
             Back to Teams
           </Button>
-          {isMember && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 border-border/50 sm:h-10"
-              onClick={() => setShowSettingsDialog(true)}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Team settings
-            </Button>
-          )}
+        </div>
 
         <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
-          <DialogContent
-            className="max-h-[90dvh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-4 sm:p-6"
-            aria-describedby={undefined}
-          >
+          <DialogContent className="max-h-[90dvh] w-[calc(100vw-1rem)] max-w-lg overflow-y-auto p-4 sm:p-6">
             <DialogHeader>
-              <DialogTitle className="flex gap-2 items-center pr-8">
-                <Settings className="h-5 w-5 text-primary" />
+              <DialogTitle className="flex items-center gap-2 pr-8">
+                <Settings
+                  className="h-5 w-5 shrink-0 text-primary"
+                  aria-hidden
+                />
                 Team settings
               </DialogTitle>
+              <DialogDescription>
+                Captains can update the team profile, roster rules, and
+                danger-zone actions. Members only see read-only details here
+                when applicable.
+              </DialogDescription>
             </DialogHeader>
             <TeamSettingsPanel
               initialTeam={team}
@@ -280,14 +350,15 @@ export default function TeamPageClient({
             />
           </DialogContent>
         </Dialog>
-        </div>
 
-        <TeamHeader
-          teamName={team.name}
-          teamTag={team.tag}
-          teamElo={team.teamElo ?? 0}
-          wins={team.wins}
-          losses={team.losses}
+        <TeamPageHero
+          team={team}
+          teamSize={teamSize}
+          memberCount={memberCount}
+          linkCopied={linkCopied}
+          onCopyLink={copyTeamLink}
+          isMember={isMember}
+          onOpenSettings={() => setShowSettingsDialog(true)}
           onRefreshElo={canRefreshElo() ? handleRefreshElo : undefined}
           isRefreshingElo={isRefreshingElo}
           showRefreshElo={canRefreshElo()}
@@ -295,55 +366,72 @@ export default function TeamPageClient({
 
         {/* Join This Team - non-members */}
         {session?.user?.id && !isMember && (
-          <Card className="mb-6 border border-border/50 bg-card/50 shadow-sm sm:mb-8">
+          <Card className={cn("mb-6 sm:mb-8", slugPanelClass)}>
             <CardHeader className="pb-3">
-              <div className="flex gap-3 items-center">
-                <div className="flex justify-center rounded-xl border border-primary/20 bg-primary/10 p-2.5">
-                  <UserPlus className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+              <div className="flex items-center gap-3">
+                <div className="flex justify-center rounded-xl border border-primary/30 bg-primary/10 p-2.5">
+                  <UserPlus
+                    className="h-5 w-5 text-primary sm:h-6 sm:w-6"
+                    aria-hidden
+                  />
                 </div>
                 <CardTitle className="text-lg font-bold text-foreground sm:text-xl">
-                  Join This Team
+                  Join this team
                 </CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               {team.members.length >= teamSize ? (
-                <div className="rounded-lg border-2 border-amber-500/30 bg-amber-500/10 p-4">
-                  <div className="flex gap-2 items-center">
-                    <AlertCircle className="h-5 w-5 shrink-0 text-amber-500" />
-                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                      This team is full ({teamSize}/{teamSize} members)
-                    </p>
-                  </div>
+                <div
+                  className="flex items-start gap-3 rounded-lg border border-border/70 bg-muted/30 p-4"
+                  role="status"
+                >
+                  <AlertCircle
+                    className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                    aria-hidden
+                  />
+                  <p className="text-sm leading-relaxed text-foreground">
+                    This team is full ({teamSize}/{teamSize} members). Check
+                    back later or browse other rosters.
+                  </p>
                 </div>
               ) : hasPendingRequest ? (
                 <div className="space-y-4">
-                  <div className="rounded-lg border-2 border-blue-500/30 bg-blue-500/10 p-4">
-                    <div className="flex gap-2 items-center">
-                      <AlertCircle className="h-5 w-5 shrink-0 text-blue-500" />
-                      <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                        You have a pending request to join this team
-                      </p>
-                    </div>
+                  <div
+                    className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary/5 p-4"
+                    role="status"
+                  >
+                    <Mail
+                      className="mt-0.5 h-5 w-5 shrink-0 text-primary"
+                      aria-hidden
+                    />
+                    <p className="text-sm leading-relaxed text-foreground">
+                      Your join request is pending. The captain will accept or
+                      decline when they can.
+                    </p>
                   </div>
                   <Button
                     variant="outline"
-                    className="h-10 w-full border-red-500/50 hover:bg-red-500/10 hover:border-red-500 sm:h-11 sm:w-auto"
+                    className="h-10 w-full border-destructive/40 text-destructive hover:bg-destructive/10 sm:h-11 sm:w-auto"
                     onClick={() => setShowCancelJoinRequestDialog(true)}
                     disabled={isSubmitting}
                   >
                     {isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2
+                        className="mr-2 h-4 w-4 animate-spin"
+                        aria-hidden
+                      />
                     ) : (
-                      <X className="mr-2 h-4 w-4" />
+                      <X className="mr-2 h-4 w-4" aria-hidden />
                     )}
-                    Cancel Join Request
+                    Cancel join request
                   </Button>
                 </div>
               ) : (
                 <>
                   <p className="text-sm text-muted-foreground">
-                    This team has {team.members.length}/{teamSize} members. Send a request to join.
+                    This team has {team.members.length}/{teamSize} members. Send
+                    a request to join.
                   </p>
                   {userCurrentTeam &&
                   (userCurrentTeam.teamSize ?? 4) === teamSize ? (
@@ -351,14 +439,18 @@ export default function TeamPageClient({
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <span>
-                            <Button disabled className="mt-2 flex cursor-not-allowed gap-2 items-center">
+                            <Button
+                              disabled
+                              className="mt-2 flex cursor-not-allowed gap-2 items-center"
+                            >
                               <UserPlus className="h-4 w-4" />
                               Request to Join
                             </Button>
                           </span>
                         </TooltipTrigger>
                         <TooltipContent>
-                          You are already in a {teamSize}-person team. Leave it to join another.
+                          You are already in a {teamSize}-person team. Leave it
+                          to join another.
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
@@ -367,12 +459,17 @@ export default function TeamPageClient({
                       onClick={async () => {
                         setIsSubmitting(true);
                         try {
-                          const res = await fetch(`/api/teams/${team._id}/request-join`, {
-                            method: "POST",
-                          });
+                          const res = await fetch(
+                            `/api/teams/${team._id}/request-join`,
+                            {
+                              method: "POST",
+                            },
+                          );
                           if (!res.ok) {
                             const data = await res.json();
-                            throw new Error(data.error || "Failed to send join request");
+                            throw new Error(
+                              data.error || "Failed to send join request",
+                            );
                           }
                           setHasPendingRequest(true);
                           toast({
@@ -381,11 +478,16 @@ export default function TeamPageClient({
                             duration: 2000,
                           });
                         } catch (error: unknown) {
-                          safeLog.error("Error requesting to join team:", error);
+                          safeLog.error(
+                            "Error requesting to join team:",
+                            error,
+                          );
                           toast({
                             title: "Error",
                             description:
-                              error instanceof Error ? error.message : "Failed to send join request",
+                              error instanceof Error
+                                ? error.message
+                                : "Failed to send join request",
                             variant: "destructive",
                           });
                         } finally {
@@ -409,72 +511,23 @@ export default function TeamPageClient({
           </Card>
         )}
 
-        {/* Two-column layout: left = overview, right = members */}
+        {/* Two-column layout: left = upcoming events, right = roster */}
         <div className="grid gap-6 lg:grid-cols-[1fr,minmax(0,380px)] lg:gap-8">
-          {/* Left column: team details (single card) */}
-          <section aria-labelledby="overview-heading" className="min-w-0">
-            <h2 id="overview-heading" className="mb-4 text-lg font-semibold text-foreground sm:text-xl">
-              Team details
-            </h2>
-            <div className="rounded-xl border border-border/50 bg-card/50 p-5 shadow-sm sm:p-6">
-              <dl className="space-y-4">
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Team name
-                  </dt>
-                  <dd className="mt-1 text-lg font-semibold text-foreground">{team.name}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Team tag
-                  </dt>
-                  <dd className="mt-1">
-                    <Badge variant="secondary" className="text-base font-bold border-0">
-                      [{team.tag}]
-                    </Badge>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Description
-                  </dt>
-                  <dd className="mt-1 text-sm leading-relaxed text-foreground">
-                    {team.description || (
-                      <span className="italic text-muted-foreground">No description available</span>
-                    )}
-                  </dd>
-                </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-3 border-t border-border/50 pt-4">
-                  {team.createdAt && (
-                    <div>
-                      <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Created
-                      </dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">
-                        {formatDate(team.createdAt)}
-                      </dd>
-                    </div>
-                  )}
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Team size
-                    </dt>
-                    <dd className="mt-1">
-                      <Badge variant="secondary" className="text-sm font-bold border-0">
-                        {teamSize === 2 ? "2v2" : teamSize === 3 ? "3v3" : teamSize === 4 ? "4v4" : "5v5"} (
-                        {teamSize} players)
-                      </Badge>
-                    </dd>
-                  </div>
-                </div>
-              </dl>
-            </div>
-          </section>
+          <TeamUpcomingEvents
+            teamId={team._id}
+            panelClassName={cn(slugPanelClass, "overflow-hidden")}
+          />
 
           {/* Right column: roster (members) */}
-          <section aria-labelledby="members-heading" className="min-w-0 overflow-x-hidden">
+          <section
+            aria-labelledby="members-heading"
+            className="flex min-h-[280px] min-w-0 flex-col overflow-x-hidden lg:min-h-[420px]"
+          >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <h2 id="members-heading" className="text-lg font-semibold text-foreground sm:text-xl">
+              <h2
+                id="members-heading"
+                className="text-base font-semibold tracking-tight text-foreground sm:text-lg"
+              >
                 Roster
               </h2>
               {canInvite && (
@@ -482,7 +535,9 @@ export default function TeamPageClient({
                   size="sm"
                   onClick={() => {
                     window.dispatchEvent(
-                      new CustomEvent("openInviteModal", { detail: { teamId: team._id } })
+                      new CustomEvent("openInviteModal", {
+                        detail: { teamId: team._id },
+                      }),
                     );
                   }}
                   className="h-9 w-full sm:h-10 sm:w-auto"
@@ -492,23 +547,31 @@ export default function TeamPageClient({
                 </Button>
               )}
             </div>
-            <TeamMemberRoster
-              team={team}
-              isCaptain={isTeamCaptain}
-              onRemoveMember={handleRemoveMemberClick}
-            />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <TeamMemberRoster
+                team={team}
+                isCaptain={isTeamCaptain}
+                onRemoveMember={handleRemoveMemberClick}
+              />
+            </div>
           </section>
         </div>
 
         {/* Full-width: invites (below the two columns) */}
-        <section className="mt-8 border-t border-border/40 pt-8" aria-labelledby="recent-invites-heading">
+        <section
+          className="mt-8 border-t border-border/40 pt-8"
+          aria-labelledby="recent-invites-heading"
+        >
           {isTeamCaptain ? (
             <TeamInvitesList teamId={team._id} isCaptain={true} />
           ) : (
-            <div className="rounded-xl border border-border/50 bg-card/50 p-8 text-center">
-              <Mail className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+            <div className={cn("p-8 text-center", slugPanelClass)}>
+              <Mail
+                className="mx-auto mb-3 h-10 w-10 text-primary/70"
+                aria-hidden
+              />
               <p className="text-sm font-medium text-foreground">Invites</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Only the team captain can view and manage invites.
               </p>
             </div>
@@ -518,7 +581,9 @@ export default function TeamPageClient({
         {isTeamCaptain && (
           <div
             className="fixed bottom-0 right-0 z-40 p-4 sm:hidden"
-            style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))" }}
+            style={{
+              paddingBottom: "max(1rem, env(safe-area-inset-bottom, 0px))",
+            }}
           >
             <Button
               size="lg"
@@ -526,7 +591,9 @@ export default function TeamPageClient({
               aria-label="Invite player"
               onClick={() => {
                 window.dispatchEvent(
-                  new CustomEvent("openInviteModal", { detail: { teamId: team._id } })
+                  new CustomEvent("openInviteModal", {
+                    detail: { teamId: team._id },
+                  }),
                 );
               }}
             >
@@ -540,12 +607,15 @@ export default function TeamPageClient({
             <AlertDialogHeader>
               <AlertDialogTitle>Remove team member</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to remove <strong>{memberToRemove?.name}</strong> from the
-                team? This cannot be undone.
+                Are you sure you want to remove{" "}
+                <strong>{memberToRemove?.name}</strong> from the team? This
+                cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isSubmitting}>
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleRemoveMember}
                 disabled={isSubmitting}
@@ -580,22 +650,33 @@ export default function TeamPageClient({
                   if (isSubmitting) return;
                   setIsSubmitting(true);
                   try {
-                    const res = await fetch(`/api/teams/${team._id}/cancel-join-request`, {
-                      method: "POST",
-                    });
+                    const res = await fetch(
+                      `/api/teams/${team._id}/cancel-join-request`,
+                      {
+                        method: "POST",
+                      },
+                    );
                     if (!res.ok) {
                       const data = await res.json();
-                      throw new Error(data.error || "Failed to cancel join request");
+                      throw new Error(
+                        data.error || "Failed to cancel join request",
+                      );
                     }
                     setHasPendingRequest(false);
-                    toast({ title: "Success", description: "Join request cancelled", duration: 2000 });
+                    toast({
+                      title: "Success",
+                      description: "Join request cancelled",
+                      duration: 2000,
+                    });
                     router.refresh();
                   } catch (error: unknown) {
                     safeLog.error("Error cancelling join request:", error);
                     toast({
                       title: "Error",
                       description:
-                        error instanceof Error ? error.message : "Failed to cancel join request",
+                        error instanceof Error
+                          ? error.message
+                          : "Failed to cancel join request",
                       variant: "destructive",
                     });
                   } finally {
@@ -605,7 +686,9 @@ export default function TeamPageClient({
                 }}
                 disabled={isSubmitting}
               >
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 Yes, cancel
               </AlertDialogAction>
             </AlertDialogFooter>

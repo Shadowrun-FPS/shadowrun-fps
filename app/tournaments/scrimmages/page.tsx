@@ -613,7 +613,7 @@ export default function ScrimmagesPage() {
                 <Trophy className="relative w-6 h-6 sm:w-7 sm:h-7 text-primary drop-shadow-sm" />
               </div>
               <div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl">
                   Scrimmages
                 </h1>
                 <p className="text-sm sm:text-base text-muted-foreground mt-1">

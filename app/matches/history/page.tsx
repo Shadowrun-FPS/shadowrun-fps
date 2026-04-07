@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
@@ -22,6 +22,7 @@ import {
   Eye,
   Loader2,
   History,
+  Undo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ import {
 } from "@/components/ui/context-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { FeatureGate } from "@/components/feature-gate";
-import { SECURITY_CONFIG } from "@/lib/security-config";
+import { hasModeratorRole, SECURITY_CONFIG } from "@/lib/security-config";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,7 +78,8 @@ interface Match {
   createdAt: number;
   winner?: number;
   completedAt?: number;
-  // Add any other fields you need
+  /** Ranked queue matches only — used for “Revert to queue” */
+  queueId?: string;
 }
 
 export default function MatchHistoryPage() {
@@ -97,8 +99,26 @@ export default function MatchHistoryPage() {
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const [matchToDelete, setMatchToDelete] = useState<string | null>(null);
+  const [matchToRevert, setMatchToRevert] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isReverting, setIsReverting] = useState(false);
   const { toast } = useToast();
+
+  const canManageMatches = useMemo(
+    () =>
+      Boolean(
+        session?.user &&
+          (session.user.isAdmin === true ||
+            session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+            hasModeratorRole(session.user.roles ?? []))
+      ),
+    [session]
+  );
+
+  const canRevertMatch = (m: Match) =>
+    canManageMatches &&
+    Boolean(m.queueId) &&
+    String(m.status || "").toLowerCase() !== "completed";
 
   // Close date picker when clicking outside
   useEffect(() => {
@@ -156,13 +176,7 @@ export default function MatchHistoryPage() {
 
         url += `&startDate=${startTimestamp}&endDate=${endTimestamp}`;
 
-        console.log("Date filter:", {
-          date: dateFilter,
-          startTimestamp,
-          endTimestamp,
-          startDate: new Date(startTimestamp).toISOString(),
-          endDate: new Date(endTimestamp).toISOString(),
-        });
+      
 
         toast({
           title: "Date Filter Applied",
@@ -337,17 +351,13 @@ export default function MatchHistoryPage() {
 
     setIsDeleting(true);
     try {
-      // Check if the current user is you by ID
-      const isYourAccount = session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID;
-      const isstaff =
-        session?.user?.roles?.includes("admin") ||
-        session?.user?.roles?.includes("moderator") ||
-        session?.user?.roles?.includes("founder");
-
       let response;
 
-      // Use different endpoints based on who is making the request
-      if (isYourAccount || isstaff) {
+      if (
+        session?.user?.isAdmin === true ||
+        session?.user?.id === SECURITY_CONFIG.DEVELOPER_ID ||
+        hasModeratorRole(session?.user?.roles ?? [])
+      ) {
         // For your account, use the admin override endpoint that we know works
         response = await fetch("/api/admin-override/delete-match", {
           method: "POST",
@@ -393,6 +403,42 @@ export default function MatchHistoryPage() {
     } finally {
       setIsDeleting(false);
       setMatchToDelete(null);
+    }
+  };
+
+  const handleRevertMatch = (matchId: string) => {
+    setMatchToRevert(matchId);
+  };
+
+  const confirmRevertMatch = async () => {
+    if (!matchToRevert || isReverting) return;
+    setIsReverting(true);
+    try {
+      const response = await fetch(
+        `/api/matches/${matchToRevert}/revert-to-queue`,
+        { method: "POST" }
+      );
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to revert match");
+      }
+      toast({
+        title: "Match reverted",
+        description: "Players were returned to the queue.",
+      });
+      setMatchToRevert(null);
+      fetchMatches();
+      router.push("/matches/queues");
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to revert match",
+        variant: "destructive",
+      });
+    } finally {
+      setIsReverting(false);
     }
   };
 
@@ -709,14 +755,18 @@ export default function MatchHistoryPage() {
                       <Eye className="w-4 h-4" />
                       <span>View Match</span>
                     </ContextMenuItem>
-                    {(session?.user?.id ===
-                      SECURITY_CONFIG.DEVELOPER_ID ||
-                      (session?.user?.roles &&
-                        (session.user.roles.includes("admin") ||
-                          session.user.roles.includes("moderator") ||
-                          session.user.roles.includes("founder")))) && (
+                    {canManageMatches && (
                       <>
                         <ContextMenuSeparator className="bg-[#3b82f6]/30" />
+                        {canRevertMatch(match) && (
+                          <ContextMenuItem
+                            className="flex items-center gap-2 text-amber-400 cursor-pointer hover:bg-[#2d3748] hover:text-amber-300"
+                            onClick={() => handleRevertMatch(match.matchId)}
+                          >
+                            <Undo2 className="w-4 h-4" />
+                            <span>Revert to queue</span>
+                          </ContextMenuItem>
+                        )}
                         <ContextMenuItem
                           className="flex items-center gap-2 text-red-400 cursor-pointer hover:bg-[#2d3748] hover:text-red-300"
                           onClick={() => handleDeleteMatch(match.matchId)}
@@ -917,16 +967,27 @@ export default function MatchHistoryPage() {
                             <Copy className="w-4 h-4" />
                             <span>Copy Match ID</span>
                           </ContextMenuItem>
-
-                          {/* Only show delete option for admins/moderators */}
-                          {(session?.user?.id ===
-                            SECURITY_CONFIG.DEVELOPER_ID ||
-                            (session?.user?.roles &&
-                              (session.user.roles.includes("admin") ||
-                                session.user.roles.includes("moderator") ||
-                                session.user.roles.includes("founder")))) && (
+                          <ContextMenuItem
+                            className="flex items-center gap-2 cursor-pointer hover:bg-[#2d3748]"
+                            onClick={() => handleViewMatch(match.matchId)}
+                          >
+                            <Eye className="w-4 h-4" />
+                            <span>View Match</span>
+                          </ContextMenuItem>
+                          {canManageMatches && (
                             <>
                               <ContextMenuSeparator className="bg-[#3b82f6]/30" />
+                              {canRevertMatch(match) && (
+                                <ContextMenuItem
+                                  className="flex items-center gap-2 text-amber-400 cursor-pointer hover:bg-[#2d3748] hover:text-amber-300"
+                                  onClick={() =>
+                                    handleRevertMatch(match.matchId)
+                                  }
+                                >
+                                  <Undo2 className="w-4 h-4" />
+                                  <span>Revert to queue</span>
+                                </ContextMenuItem>
+                              )}
                               <ContextMenuItem
                                 className="flex items-center gap-2 text-red-400 cursor-pointer hover:bg-[#2d3748] hover:text-red-300"
                                 onClick={() => handleDeleteMatch(match.matchId)}
@@ -1042,6 +1103,42 @@ export default function MatchHistoryPage() {
                 </>
               ) : (
                 "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!matchToRevert}
+        onOpenChange={(open) => !open && setMatchToRevert(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revert match to queue?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the match and puts players back on the original ranked
+              queue. This cannot be undone from the history list alone—use with
+              care.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isReverting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-amber-600 text-white hover:bg-amber-700"
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmRevertMatch();
+              }}
+              disabled={isReverting}
+            >
+              {isReverting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                  Reverting…
+                </>
+              ) : (
+                "Revert to queue"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -22,15 +22,3 @@ const FEATURE_FLAGS: Record<FeatureFlag, boolean> = {
 export function isFeatureEnabled(feature: FeatureFlag): boolean {
   return FEATURE_FLAGS[feature] ?? false;
 }
-
-import { useState, useEffect } from "react";
-
-export function useFeatureFlag(feature: string): boolean {
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    setEnabled(isFeatureEnabled(feature as FeatureFlag));
-  }, [feature]);
-
-  return enabled;
-}

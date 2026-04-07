@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { InvitePlayerDialog } from "@/components/teams/invite-player-dialog";
 import { Loader2, Shield } from "lucide-react";
-import type { MongoTeam } from "@/types/mongodb";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { safeLog } from "@/lib/security";
 
 interface TeamInvite {
   _id: string;
@@ -46,34 +47,37 @@ interface Team {
   updatedAt: string;
 }
 
+const panelClass =
+  "rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-sm";
+
 export default function TeamDetailsClient({ team }: { team: Team }) {
   const { data: session } = useSession();
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [teamDetails, setTeamDetails] = useState({
-    name: team.name,
-    tag: team.tag,
-    description: team.description,
-  });
   const [invites, setInvites] = useState<TeamInvite[]>([]);
+  const [rosterMembers, setRosterMembers] = useState<TeamMember[]>(team.members);
 
-  // Check if current user is the team captain
   const isCaptain = session?.user?.id === team.captain.discordId;
 
   useEffect(() => {
-    const fetchInvites = async () => {
-      try {
-        const response = await fetch(`/api/teams/${team._id}/invites`);
-        if (!response.ok) throw new Error("Failed to fetch invites");
-        const data = await response.json();
-        setInvites(data);
-      } catch (error) {
-        console.error("Failed to fetch invites:", error);
-      }
-    };
+    setRosterMembers(team.members);
+  }, [team]);
 
-    fetchInvites();
+  const refetchInvites = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/teams/${team._id}/invites`);
+      if (!response.ok) throw new Error("Failed to fetch invites");
+      const data = await response.json();
+      setInvites(data);
+    } catch (error) {
+      safeLog.error("Failed to fetch invites:", error);
+    }
   }, [team._id]);
+
+  useEffect(() => {
+    void refetchInvites();
+  }, [refetchInvites]);
 
   const handleRemoveMember = async (memberId: string) => {
     if (!isCaptain) {
@@ -87,61 +91,23 @@ export default function TeamDetailsClient({ team }: { team: Team }) {
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `/api/teams/${team._id}/members/${memberId}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/teams/${team._id}/members/${memberId}`, {
+        method: "DELETE",
+      });
 
       if (!response.ok) throw new Error("Failed to remove member");
 
+      setRosterMembers((prev) => prev.filter((m) => m.discordId !== memberId));
       toast({
         title: "Member Removed",
         description: "Team member has been removed successfully",
       });
-
-      // Refresh the page
-      window.location.reload();
+      router.refresh();
     } catch (error) {
+      safeLog.error("Remove member failed:", error);
       toast({
         title: "Error",
         description: "Failed to remove team member",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleUpdateTeam = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(`/api/teams/${team._id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(teamDetails),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to update team");
-      }
-
-      toast({
-        title: "Success",
-        description: "Team details updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to update team",
         variant: "destructive",
       });
     } finally {
@@ -157,7 +123,6 @@ export default function TeamDetailsClient({ team }: { team: Team }) {
 
       if (!response.ok) throw new Error("Failed to cancel invite");
 
-      // Refresh invites with proper typing
       const updatedInvites = invites.map((invite) =>
         invite._id === inviteId
           ? {
@@ -174,6 +139,7 @@ export default function TeamDetailsClient({ team }: { team: Team }) {
         description: "Team invite has been cancelled",
       });
     } catch (error) {
+      safeLog.error("Cancel invite failed:", error);
       toast({
         title: "Error",
         description: "Failed to cancel invite",
@@ -184,64 +150,59 @@ export default function TeamDetailsClient({ team }: { team: Team }) {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className={panelClass}>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Team Members</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg">Team members</CardTitle>
             {isCaptain && <InvitePlayerDialog teamId={team._id.toString()} />}
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {/* Captain */}
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-lg border border-border/60 bg-background/40 p-3">
               <div className="flex items-center gap-3">
-                <Shield className="w-4 h-4 text-primary" />
+                <Shield className="h-4 w-4 shrink-0 text-primary" aria-hidden />
                 <div>
                   <p className="font-medium">
-                    {team.captain.discordNickname ||
-                      team.captain.discordUsername}
+                    {team.captain.discordNickname || team.captain.discordUsername}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {team.captain.discordUsername} • Captain
+                    {team.captain.discordUsername} · Captain
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Other Members */}
-            {team.members
+            {rosterMembers
               .filter((member) => member.discordId !== team.captain.discordId)
               .sort(
                 (a, b) =>
-                  new Date(a.joinedAt).getTime() -
-                  new Date(b.joinedAt).getTime()
+                  new Date(a.joinedAt).getTime() - new Date(b.joinedAt).getTime()
               )
               .map((member) => (
                 <div
                   key={member.discordId}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                  className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 p-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="font-medium">
-                        {member.discordNickname || member.discordUsername}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {member.discordUsername}
-                        {member.role === "captain" && " • Captain"}
-                      </p>
-                    </div>
+                  <div className="min-w-0">
+                    <p className="font-medium">
+                      {member.discordNickname || member.discordUsername}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {member.discordUsername}
+                      {member.role === "captain" && " · Captain"}
+                    </p>
                   </div>
                   {isCaptain && (
                     <Button
                       variant="destructive"
                       size="sm"
+                      className="shrink-0"
                       onClick={() => handleRemoveMember(member.discordId)}
                       disabled={isLoading}
                     >
                       {isLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                       ) : (
                         "Remove"
                       )}
@@ -253,38 +214,36 @@ export default function TeamDetailsClient({ team }: { team: Team }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className={panelClass}>
         <CardHeader>
-          <CardTitle>Team Management</CardTitle>
+          <CardTitle className="text-lg">Team management</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">Recent Invites</h3>
+            <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Recent invites
+            </h3>
             {invites.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No invites to show
-              </p>
+              <p className="text-sm text-muted-foreground">No invites to show.</p>
             ) : (
               <div className="space-y-2">
                 {invites.map((invite) => (
                   <div
                     key={invite._id}
-                    className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-background/40 p-3"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">{invite.inviteeName}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>
-                          {format(new Date(invite.createdAt), "MMM d, yyyy")}
-                        </span>
-                        <span>•</span>
+                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                        <span>{format(new Date(invite.createdAt), "MMM d, yyyy")}</span>
+                        <span aria-hidden>·</span>
                         <span
                           className={cn(
                             "capitalize",
-                            invite.status === "pending" && "text-yellow-500",
-                            invite.status === "accepted" && "text-green-500",
-                            invite.status === "declined" && "text-red-500",
-                            invite.status === "cancelled" && "text-gray-500"
+                            invite.status === "pending" && "text-primary",
+                            invite.status === "accepted" && "text-emerald-600 dark:text-emerald-400",
+                            invite.status === "declined" && "text-destructive",
+                            invite.status === "cancelled" && "text-muted-foreground"
                           )}
                         >
                           {invite.status}
@@ -295,6 +254,7 @@ export default function TeamDetailsClient({ team }: { team: Team }) {
                       <Button
                         variant="outline"
                         size="sm"
+                        className="border-primary/25"
                         onClick={() => handleCancelInvite(invite._id)}
                       >
                         Cancel

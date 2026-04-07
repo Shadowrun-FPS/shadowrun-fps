@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "kill-port": "scripts\\kill-port.bat"
   },
   "dependencies": {
@@ -63,7 +63,7 @@
     "discord-interactions": "^4.4.0",
     "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.0.0-rc19",
-    "eslint-config-next": "13.4.19",
+    "eslint-config-next": "^16.1.6",
     "ioredis": "^5.8.2",
     "leo-profanity": "^1.8.0",
     "lucide-react": "^0.294.0",
@@ -96,7 +96,7 @@
     "@tailwindcss/typography": "^0.5.10",
     "artillery": "^2.0.27",
     "cross-env": "^10.1.0",
-    "eslint": "^8.57.1",
+    "eslint": "^9.39.2",
     "k6": "^0.0.0",
     "tsx": "^4.20.6"
   },

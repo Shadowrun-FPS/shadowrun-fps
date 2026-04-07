@@ -28,35 +28,60 @@ async function getQueuesEventsHandler(req: NextRequest) {
         const cleanup = () => {
           if (isClosed) return;
           isClosed = true;
-          
+
           if (heartbeatInterval) {
             clearInterval(heartbeatInterval);
             heartbeatInterval = null;
           }
-          
+
           try {
             changeStream.close();
-          } catch (error) {
+          } catch {
             // Change stream might already be closed
           }
         };
 
+        const safeEnqueue = (payload: string) => {
+          if (isClosed) return;
+          try {
+            controller.enqueue(payload);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            if (
+              message.includes("closed") ||
+              (err as { code?: string })?.code === "ERR_INVALID_STATE"
+            ) {
+              cleanup();
+            } else {
+              safeLog.error("SSE enqueue error:", err);
+            }
+          }
+        };
+
         try {
-          // Send initial queues data
+          // Send initial queues data (client may disconnect during await)
           const initialQueues = await db.collection("Queues").find({}).toArray();
-          controller.enqueue(`data: ${JSON.stringify(initialQueues)}\n\n`);
+          if (isClosed || req.signal.aborted) {
+            cleanup();
+            try {
+              controller.close();
+            } catch {
+              /* already closed */
+            }
+            return;
+          }
+          safeEnqueue(`data: ${JSON.stringify(initialQueues)}\n\n`);
 
           // Watch for queue changes
           changeStream.on("change", async () => {
             if (isClosed) return;
-            
+
             try {
-              // Fetch updated queues
               const updatedQueues = await db
                 .collection("Queues")
                 .find({})
                 .toArray();
-              controller.enqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
+              safeEnqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
             } catch (error) {
               safeLog.error("Error sending queue update:", error);
             }
@@ -64,17 +89,11 @@ async function getQueuesEventsHandler(req: NextRequest) {
 
           changeStream.on("error", (error) => {
             safeLog.error("Change stream error:", error);
-            // Try to send error notification to client
-            try {
-              controller.enqueue(
-                `data: ${JSON.stringify({ type: "error", message: "Change stream error" })}\n\n`
-              );
-            } catch (e) {
-              // Controller might be closed
-            }
+            safeEnqueue(
+              `data: ${JSON.stringify({ type: "error", message: "Change stream error" })}\n\n`
+            );
           });
 
-          // Send heartbeat every 15 seconds (reduced from 30s for better stability)
           heartbeatInterval = setInterval(() => {
             if (isClosed) {
               if (heartbeatInterval) {
@@ -83,27 +102,26 @@ async function getQueuesEventsHandler(req: NextRequest) {
               }
               return;
             }
-            
-            try {
-              controller.enqueue(
-                `data: ${JSON.stringify({ type: "heartbeat", timestamp: Date.now() })}\n\n`
-              );
-            } catch (error) {
-              // Controller closed, cleanup
-              cleanup();
-            }
+
+            safeEnqueue(
+              `data: ${JSON.stringify({ type: "heartbeat", timestamp: Date.now() })}\n\n`
+            );
           }, 15000);
 
-          // Clean up on stream end
           req.signal.addEventListener("abort", () => {
             cleanup();
+            try {
+              controller.close();
+            } catch {
+              /* already closed */
+            }
           });
         } catch (error) {
           safeLog.error("Error in SSE stream start:", error);
           cleanup();
           try {
             controller.close();
-          } catch (e) {
+          } catch {
             // Already closed
           }
         }

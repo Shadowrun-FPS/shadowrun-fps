@@ -19,7 +19,7 @@ function getQuickLinks(pathname: string | null): QuickLink[] {
 
   if (pathname.includes("/install")) {
     return [
-      { title: "Required Downloads", href: "#getting-started" },
+      { title: "Required tools", href: "#getting-started" },
       { title: "Installation Steps", href: "#installation-steps" },
       { title: "Post-Installation Tips", href: "#post-install" },
       { title: "Getting a Game Key", href: "#game-key" },
@@ -30,12 +30,12 @@ function getQuickLinks(pathname: string | null): QuickLink[] {
 
   if (pathname.includes("/troubleshoot")) {
     return [
-      { title: "Common Errors", href: "#errors" },
-      { title: "Activation Issues", href: "#activation" },
-      { title: "Performance Settings", href: "#performance" },
-      { title: "Controller Setup", href: "#controller" },
-      { title: "Getting the Game", href: "#getting-game" },
-      { title: "Connection Issues", href: "#connection" },
+      { title: "Common errors", href: "#errors" },
+      { title: "Activation issues", href: "#activation" },
+      { title: "Performance settings", href: "#performance" },
+      { title: "Controller setup", href: "#controller" },
+      { title: "Getting the game", href: "#getting-game" },
+      { title: "Connection issues", href: "#connection" },
     ];
   }
 

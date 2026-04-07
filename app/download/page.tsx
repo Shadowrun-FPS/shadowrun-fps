@@ -12,7 +12,9 @@ import {
   Trash2,
   Copy,
   Check,
+  Package,
 } from "lucide-react";
+
 import VirusTotalWidget from "@/components/VirusTotalWidget";
 import { Button } from "@/components/ui/button";
 import { safeLog } from "@/lib/security";
@@ -23,6 +25,9 @@ interface LauncherVersion {
   size: number;
   releaseDate: string;
 }
+
+const PORTABLE_LAUNCHER_ZIP_URL =
+  "https://pub-8a9c9dccd2fa45dea562e2e02706c5ec.r2.dev/Shadowrun%20FPS%20Launcher.zip";
 
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
@@ -328,7 +333,7 @@ export default function DownloadPage() {
                 </li>
                 <li>
                   <strong className="text-foreground">Requirements:</strong>{" "}
-                  .NET Desktop Runtime 6.0 (auto-installed)
+                  .NET Desktop Runtime 6.0
                 </li>
                 <li>
                   <strong className="text-foreground">
@@ -351,6 +356,49 @@ export default function DownloadPage() {
                 is a false positive. The launcher has been verified safe by
                 VirusTotal (see below). You may need to add an exception in your
                 antivirus software.
+              </p>
+            </div>
+          </div>
+
+          {/* Portable launcher (ZIP) — no full install */}
+          <div className="px-2 py-4 mb-5 rounded-xl bg-card/50 sm:p-6 sm:mb-8">
+            <div className="flex items-center mb-3 sm:mb-4">
+              <Package className="mr-2 w-5 h-5 shrink-0 text-primary" />
+              <h2 className="text-lg font-bold sm:text-xl">
+                Portable launcher (no installer)
+              </h2>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground sm:text-base">
+              Prefer not to run the full installer? Download a portable ZIP
+              that contains the launcher executable. Extract it anywhere you
+              like and run it from there.
+            </p>
+            <div className="flex flex-col gap-3 justify-start sm:flex-row sm:gap-4">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full min-h-[44px] sm:w-auto"
+                asChild
+              >
+                <a
+                  href={PORTABLE_LAUNCHER_ZIP_URL}
+                  download="Shadowrun FPS Launcher.zip"
+                  rel="noopener noreferrer"
+                >
+                  <Download className="mr-2 w-5 h-5" aria-hidden />
+                  Download portable ZIP
+                </a>
+              </Button>
+            </div>
+            <div className="flex items-start gap-3 px-2 py-3 mt-5 rounded-lg bg-card/70 sm:mt-6 sm:p-4">
+              <AlertCircle className="flex-shrink-0 mt-0.5 w-5 h-5 text-primary" />
+              <p className="min-w-0 text-xs text-muted-foreground sm:text-sm">
+                <strong>Important:</strong> If you use the launcher&apos;s
+                built-in updater and install a new version, that process will
+                perform a full install of the launcher on your PC. To stay on a
+                portable-only setup, you must not use in-app updater; instead,
+                download a new portable ZIP from this page when a new release is
+                available and replace your old files.
               </p>
             </div>
           </div>

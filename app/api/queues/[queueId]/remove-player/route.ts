@@ -6,13 +6,11 @@ import { authOptions } from "@/lib/auth";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
-import { revalidatePath } from "next/cache";
-
 export const dynamic = "force-dynamic";
 
 async function postRemovePlayerHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -36,7 +34,8 @@ async function postRemovePlayerHandler(
     );
   }
 
-  const queueId = sanitizeString(params.queueId, 50);
+  const { queueId: queueIdParam } = await params;
+  const queueId = sanitizeString(queueIdParam, 50);
   if (!ObjectId.isValid(queueId)) {
     return NextResponse.json(
       { error: "Invalid queue ID format" },
@@ -61,34 +60,87 @@ async function postRemovePlayerHandler(
 
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
+  const queueObjectId = new ObjectId(queueId);
 
-  const result = await db
-    .collection("Queues")
-    .updateOne({ _id: new ObjectId(queueId) }, {
+  const queueDoc = await db.collection("Queues").findOne({ _id: queueObjectId });
+  if (!queueDoc) {
+    return NextResponse.json({ error: "Queue not found" }, { status: 404 });
+  }
+
+  const players = queueDoc.players as
+    | Array<{
+        discordId: string;
+        discordNickname?: string;
+        discordUsername?: string;
+      }>
+    | undefined;
+  const removedPlayer = players?.find((p) => p.discordId === sanitizedPlayerId);
+  if (!removedPlayer) {
+    return NextResponse.json(
+      { error: "Player not in this queue" },
+      { status: 400 }
+    );
+  }
+
+  const result = await db.collection("Queues").updateOne(
+    { _id: queueObjectId },
+    {
       $pull: {
         players: { discordId: sanitizedPlayerId },
       },
-    } as any);
+    } as any
+  );
 
-    if (result.modifiedCount === 0) {
-      return NextResponse.json(
-        { error: "Failed to remove player" },
-        { status: 400 }
-      );
-    }
+  if (result.modifiedCount === 0) {
+    return NextResponse.json(
+      { error: "Failed to remove player" },
+      { status: 400 }
+    );
+  }
 
-    revalidatePath("/matches/queues");
-    revalidatePath("/admin/queues");
+  const removedName =
+    removedPlayer.discordNickname ||
+    removedPlayer.discordUsername ||
+    "Unknown";
 
-    return NextResponse.json({
-      success: true,
-      message: "Player removed successfully",
+  try {
+    await db.collection("moderation_logs").insertOne({
+      action: "queue_remove_player",
+      playerId: sanitizedPlayerId,
+      playerName: sanitizeString(removedName, 100),
+      moderatorId: session.user.id,
+      moderatorName: sanitizeString(session.user?.name || "", 100),
+      reason: sanitizeString(
+        `Removed from ranked matchmaking queue (queue MongoDB id: ${queueId})`,
+        500
+      ),
+      queueMongoId: queueId,
+      timestamp: new Date(),
     });
+  } catch (logError) {
+    safeLog.error("remove-player: failed to write moderation_logs entry", logError);
+  }
+
+  safeLog.info("Queue player removed by staff", {
+    queueId,
+    targetDiscordId: sanitizedPlayerId,
+    moderatorId: session.user.id,
+  });
+
+  return NextResponse.json({
+    success: true,
+    message: "Player removed successfully",
+  });
 }
 
 export const POST = withApiSecurity(postRemovePlayerHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
-  revalidatePaths: ["/matches/queues", "/admin/queues"],
+  requireAdmin: false,
+  revalidatePaths: [
+    "/matches/queues",
+    "/admin/queues",
+    "/admin/moderation",
+    "/moderation-log",
+  ],
 });

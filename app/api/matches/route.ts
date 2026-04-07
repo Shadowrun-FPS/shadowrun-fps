@@ -83,6 +83,7 @@ async function getMatchesHandler(req: NextRequest) {
         teamSize: match.teamSize,
         eloTier: match.eloTier,
         type: match.type,
+        queueId: match.queueId,
         createdAt:
           typeof match.createdAt === "number"
             ? match.createdAt

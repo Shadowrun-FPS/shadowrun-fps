@@ -56,6 +56,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useFeatureFlag } from "@/lib/use-feature-flag";
 
 interface Team {
   _id: string;
@@ -109,6 +110,7 @@ export function ChallengeTeamDialog({
 }: ChallengeTeamDialogProps) {
   const { data: session } = useSession();
   const router = useRouter();
+  const scrimmageEnabled = useFeatureFlag("scrimmage");
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [timeOption, setTimeOption] = useState("evening");
@@ -134,11 +136,12 @@ export function ChallengeTeamDialog({
   const userTeamSize = userTeam?.teamSize || 4;
   const teamMemberCount = team.members.length;
   const userTeamMemberCount = userTeam?.members?.length || 0;
-  
-  // Teams must have matching sizes and both must be full
-  const canChallenge = 
-    teamSize === userTeamSize && 
-    teamMemberCount >= teamSize && 
+
+  // Teams must have matching sizes and both must be full; scrimmages feature on
+  const canChallenge =
+    scrimmageEnabled &&
+    teamSize === userTeamSize &&
+    teamMemberCount >= teamSize &&
     userTeamMemberCount >= userTeamSize;
 
   // Reset form when dialog is closed
@@ -257,11 +260,11 @@ export function ChallengeTeamDialog({
   const handleStandardMapSelection = () => {
     // Find the standard maps: Nerve Center (Small), Lobby (Small), and Power Station
     const nerveCenterSmall = maps.find(
-      (map) => map.name === "Nerve Center (Small)"
+      (map) => map.name === "Nerve Center (Small)",
     );
     const lobbySmall = maps.find((map) => map.name === "Lobby (Small)");
     const powerStation = maps.find(
-      (map) => map.name === "Power Station" && !map.isSmallVariant
+      (map) => map.name === "Power Station" && !map.isSmallVariant,
     );
 
     if (nerveCenterSmall && lobbySmall && powerStation) {
@@ -320,7 +323,7 @@ export function ChallengeTeamDialog({
         isSmallVariant: map.isSmallVariant,
         gameMode: map.gameMode,
         image: map.image,
-      }))
+      })),
     );
     setMapSelectionMethod("random");
   };
@@ -428,56 +431,39 @@ export function ChallengeTeamDialog({
     }
   };
 
-  // Handle dialog opening separately
-  const handleOpenDialog = () => {
-    if (canChallenge) {
-      setOpen(true);
-    }
-  };
-
-  // Create a standalone button that doesn't interfere with DialogTrigger
-  const ChallengeButton = () => (
-    <Button
-      size="sm"
-      className="h-8 transition duration-200 ease-in-out transform hover:bg-gray-200 hover:scale-105 active:scale-95"
-      onClick={handleOpenDialog}
-      disabled={!canChallenge}
-    >
-      <Swords className="mr-2 w-5 h-5" />
-      Challenge
-    </Button>
-  );
+  const challengeDisabledReason = !scrimmageEnabled
+    ? "Scrimmages are currently disabled."
+    : teamSize !== userTeamSize
+      ? `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but ${team.name} is ${teamSize}v${teamSize}.`
+      : teamMemberCount < teamSize
+        ? `${team.name} needs ${teamSize} members to be challenged (currently has ${teamMemberCount}).`
+        : userTeamMemberCount < userTeamSize
+          ? `Your team needs ${userTeamSize} members to challenge others (currently has ${userTeamMemberCount}).`
+          : "Team cannot be challenged";
 
   return (
     <>
-      {/* Tooltip for disabled button */}
+      {/* Disabled buttons do not receive pointer events; span wrapper restores hover tooltips */}
       {!canChallenge && (
-        <TooltipProvider>
+        <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="inline-block">
-                {" "}
-                {/* Use span to avoid nesting issues */}
+              <span className="inline-flex min-w-0 w-full cursor-not-allowed">
                 <Button
+                  type="button"
                   size="sm"
-                  className="h-8 transition duration-200 ease-in-out transform hover:bg-gray-200 hover:scale-105 active:scale-95"
-                  disabled={true}
+                  variant="outline"
+                  className="pointer-events-none h-8 w-full transition duration-200 ease-in-out hover:scale-100"
+                  disabled
+                  aria-label={challengeDisabledReason}
                 >
-                  <Swords className="mr-2 w-5 h-5" />
+                  <Swords className="mr-2 h-4 w-4" aria-hidden />
                   Challenge
                 </Button>
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p>
-                {teamSize !== userTeamSize
-                  ? `Team sizes must match. Your team is ${userTeamSize}v${userTeamSize}, but ${team.name} is ${teamSize}v${teamSize}.`
-                  : teamMemberCount < teamSize
-                  ? `${team.name} needs ${teamSize} members to be challenged (currently has ${teamMemberCount}).`
-                  : userTeamMemberCount < userTeamSize
-                  ? `Your team needs ${userTeamSize} members to challenge others (currently has ${userTeamMemberCount}).`
-                  : "Team cannot be challenged"}
-              </p>
+              <p>{challengeDisabledReason}</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -573,7 +559,7 @@ export function ChallengeTeamDialog({
                           variant="outline"
                           className={cn(
                             "justify-start text-left font-normal h-11 border-2",
-                            !date && "text-muted-foreground"
+                            !date && "text-muted-foreground",
                           )}
                         >
                           <CalendarIcon className="mr-2 w-4 h-4" />
@@ -785,10 +771,10 @@ export function ChallengeTeamDialog({
                           selectedMaps.some(
                             (m) =>
                               m.id === map._id &&
-                              m.isSmallVariant === map.isSmallVariant
+                              m.isSmallVariant === map.isSmallVariant,
                           )
                             ? "border-primary ring-2 ring-primary ring-opacity-50"
-                            : "hover:border-primary/50"
+                            : "hover:border-primary/50",
                         )}
                       >
                         <div className="relative w-full aspect-square bg-black/40">
@@ -808,7 +794,7 @@ export function ChallengeTeamDialog({
                           {selectedMaps.some(
                             (m) =>
                               m.id === map._id &&
-                              m.isSmallVariant === map.isSmallVariant
+                              m.isSmallVariant === map.isSmallVariant,
                           ) && (
                             <div className="flex absolute inset-0 justify-center items-center bg-primary/20">
                               <Check className="w-8 h-8 text-primary" />

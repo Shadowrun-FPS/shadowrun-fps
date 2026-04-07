@@ -113,7 +113,7 @@ function generateCombinations<T>(array: T[], k: number): T[][] {
 
 async function postLaunchHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -145,12 +145,18 @@ async function postLaunchHandler(
       );
     }
 
+    const { queueId: queueIdParam } = await params;
+    const queueId = sanitizeString(queueIdParam, 50);
+    if (!ObjectId.isValid(queueId)) {
+      return NextResponse.json({ error: "Invalid queue ID" }, { status: 400 });
+    }
+
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
 
     // Get the queue
     const queue = await db.collection("Queues").findOne({
-      _id: new ObjectId(params.queueId),
+      _id: new ObjectId(queueId),
     });
 
     if (!queue) {
@@ -159,18 +165,33 @@ async function postLaunchHandler(
 
     // Check if queue has enough players
     const teamSize = queue.teamSize || 4; // Default to 4 if not specified
-    if (queue.players.length < teamSize * 2) {
+    const requiredSlots = teamSize * 2;
+    if (queue.players.length < requiredSlots) {
       return NextResponse.json(
-        { error: `Need ${teamSize * 2} players to start a match` },
+        { error: `Need ${requiredSlots} players to start a match` },
         { status: 400 }
       );
     }
 
-    // Sort players by ELO to optimize initial placement
-    const sortedPlayers = [...queue.players].sort((a, b) => b.elo - a.elo);
+    // Only the first N players by join time (FIFO) enter the match — same as queues UI active lobby.
+    const fifoPlayers = [...queue.players].sort((a, b) => {
+      const ta =
+        typeof a.joinedAt === "number" && !Number.isNaN(a.joinedAt)
+          ? a.joinedAt
+          : 0;
+      const tb =
+        typeof b.joinedAt === "number" && !Number.isNaN(b.joinedAt)
+          ? b.joinedAt
+          : 0;
+      return ta - tb;
+    });
+    const activeLobby = fifoPlayers.slice(0, requiredSlots);
 
-    // Create balanced teams
-    const [team1, team2] = createBalancedTeams(sortedPlayers, teamSize);
+    // Among those players only, sort by ELO for balanced team composition
+    const sortedForBalance = [...activeLobby].sort((a, b) => b.elo - a.elo);
+
+    // Create balanced teams (exactly requiredSlots players)
+    const [team1, team2] = createBalancedTeams(sortedForBalance, teamSize);
 
     // Ensure all players have valid nicknames
     const ensureValidNicknames = (players: QueuePlayer[]) => {
@@ -192,7 +213,7 @@ async function postLaunchHandler(
     const matchId = uuidv4();
 
     safeLog.log("Queue data:", {
-      queueId: params.queueId,
+      queueId,
       teamSize: queue.teamSize,
       playerCount: queue.players.length,
       hasMaps: !!queue.maps,
@@ -395,29 +416,27 @@ async function postLaunchHandler(
         isReady: false,
       })),
       eloDifference: 0,
-      queueId: params.queueId,
+      queueId,
     };
 
     // Insert the match into the database
     await db.collection("Matches").insertOne(match);
 
-    // Update the queue to keep waitlisted players instead of clearing it
-    await db
-      .collection("Queues")
-      .updateOne(
-        { _id: new ObjectId(params.queueId) },
-        { $set: { players: queue.players.slice(teamSize * 2) } }
-      );
+    // Remove only the FIFO active lobby; waitlist is the remainder in FIFO order (player 9 → slot 1).
+    await db.collection("Queues").updateOne(
+      { _id: new ObjectId(queueId) },
+      { $set: { players: fifoPlayers.slice(requiredSlots) } }
+    );
 
-    // After creating the match, remove active players from all other queues
-    const activePlayerIds = team1.map(
+    // After creating the match, remove all match participants from other queues
+    const activePlayerIds = [...team1, ...team2].map(
       (player: QueuePlayer) => player.discordId
     );
 
     // Update all other queues to remove these players
     await db.collection("Queues").updateMany(
       {
-        _id: { $ne: new ObjectId(params.queueId) },
+        _id: { $ne: new ObjectId(queueId) },
         "players.discordId": { $in: activePlayerIds },
       },
       {

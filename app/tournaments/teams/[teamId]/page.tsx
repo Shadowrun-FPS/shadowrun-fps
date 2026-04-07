@@ -15,7 +15,7 @@ export default async function TeamPage({ params }: PageProps) {
   if (!team) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="mx-4 max-w-md rounded-xl border-2 border-border bg-card p-8 text-center">
+        <div className="mx-4 max-w-md rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 p-8 text-center shadow-sm">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
             <AlertCircle className="h-8 w-8 text-destructive" />
               </div>

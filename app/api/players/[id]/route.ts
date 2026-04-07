@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
-import { safeLog, sanitizeString } from "@/lib/security";
+import { sanitizeString } from "@/lib/security";
 import { cachedQuery } from "@/lib/query-cache";
 import { withApiSecurity } from "@/lib/api-wrapper";
+import {
+  db2PlayerDocToSlice,
+  mergeFourVsFourFromDb2,
+} from "@/lib/merge-db2-four-vs-four";
 
 async function getPlayerHandler(
   req: NextRequest,
@@ -34,20 +38,17 @@ async function getPlayerHandler(
       const db2Player = await db2.collection("players").findOne({ discordId });
       const stats = [...(webPlayer.stats || [])];
 
-      if (db2Player && db2Player.rating !== undefined) {
+      const db2Slice = db2PlayerDocToSlice(db2Player);
+      if (db2Slice) {
         const team4Index = stats.findIndex((stat) => stat.teamSize === 4);
-        const db2Stats = {
-          teamSize: 4,
-          elo: db2Player.rating,
-          wins: db2Player.wins || 0,
-          losses: db2Player.losses || 0,
-          lastMatchDate: db2Player.lastMatchDate,
-        };
+        const existingWeb4 =
+          team4Index >= 0 ? stats[team4Index] : undefined;
+        const merged4 = mergeFourVsFourFromDb2(existingWeb4, db2Slice);
 
         if (team4Index >= 0) {
-          stats[team4Index] = db2Stats;
+          stats[team4Index] = merged4;
         } else {
-          stats.push(db2Stats);
+          stats.push(merged4);
         }
       }
 

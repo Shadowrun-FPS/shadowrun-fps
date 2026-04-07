@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 async function postFillQueueHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
@@ -29,7 +29,8 @@ async function postFillQueueHandler(
       );
     }
 
-    const queueId = sanitizeString(params.queueId, 50);
+    const { queueId: queueIdParam } = await params;
+    const queueId = sanitizeString(queueIdParam, 50);
     if (!ObjectId.isValid(queueId)) {
       return NextResponse.json(
         { error: "Invalid queue ID" },

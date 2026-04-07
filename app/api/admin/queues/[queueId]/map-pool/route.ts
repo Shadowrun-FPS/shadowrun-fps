@@ -12,7 +12,7 @@ const DEVELOPER_DISCORD_ID = "238329746671271936";
 
 async function getQueueMapPoolHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -20,7 +20,8 @@ async function getQueueMapPoolHandler(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const queueId = sanitizeString(params.queueId, 50);
+  const { queueId: queueIdParam } = await params;
+  const queueId = sanitizeString(queueIdParam, 50);
   if (!ObjectId.isValid(queueId)) {
     return NextResponse.json(
       { error: "Invalid queue ID" },
@@ -66,7 +67,7 @@ async function getQueueMapPoolHandler(
 
 async function patchQueueMapPoolHandler(
   req: NextRequest,
-  { params }: { params: { queueId: string } }
+  { params }: { params: Promise<{ queueId: string }> }
 ) {
   const session = await getServerSession(authOptions);
 
@@ -74,7 +75,8 @@ async function patchQueueMapPoolHandler(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const queueId = sanitizeString(params.queueId, 50);
+  const { queueId: queueIdParam } = await params;
+  const queueId = sanitizeString(queueIdParam, 50);
   if (!ObjectId.isValid(queueId)) {
     return NextResponse.json(
       { error: "Invalid queue ID" },
