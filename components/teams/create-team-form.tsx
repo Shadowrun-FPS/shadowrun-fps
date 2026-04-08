@@ -165,7 +165,7 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                 <Shield className="relative w-5 h-5 text-primary drop-shadow-sm" />
               </div>
               <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                <h2 className="text-xl sm:text-2xl font-bold text-foreground">
                   Create New Team
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -355,7 +355,7 @@ export function CreateTeamForm({ onSuccess, isSheet = false, onClose }: CreateTe
                 <Shield className="relative w-5 h-5 text-primary drop-shadow-sm" />
               </div>
               <div className="flex-1">
-                <DialogTitle className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+                <DialogTitle className="text-xl sm:text-2xl font-bold">
                   Create New Team
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground mt-1">

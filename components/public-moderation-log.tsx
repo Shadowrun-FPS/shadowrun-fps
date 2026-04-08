@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import {
   Table,
   TableBody,
@@ -10,18 +11,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDistanceToNow } from "date-fns";
+import { formatModerationLogDateParts } from "@/lib/moderation-log-date";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { format, formatDistanceToNow } from "date-fns";
-import {
-  AlertTriangle,
-  Ban,
-  Check,
   Search,
   Filter,
   RefreshCw,
@@ -51,6 +44,11 @@ import {
 } from "@/components/ui/pagination";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { safeLog } from "@/lib/security";
+import {
+  MODERATION_LOG_PUSHER_CHANNEL,
+  MODERATION_LOG_PUSHER_EVENT,
+} from "@/lib/moderation-log-realtime-constants";
 
 interface ModerationLog {
   _id: string;
@@ -63,31 +61,79 @@ interface ModerationLog {
   revoked?: boolean; // If the action was revoked (e.g., unban)
 }
 
-// Add these styles to your CSS file or use inline styles
-const blurredStyle = {
-  filter: "blur(4px)",
-  transition: "filter 0.2s ease-in-out",
-};
+const PLACEHOLDER_SIGNED_IN = "Hover to reveal";
+const PLACEHOLDER_SIGNED_OUT = "Sign in to reveal";
 
-const hoverStyle = {
-  filter: "blur(0)",
-};
+function LogDateDisplay({
+  timestamp,
+  align = "left",
+}: {
+  timestamp: string;
+  align?: "left" | "right";
+}) {
+  const parts = formatModerationLogDateParts(timestamp);
+  return (
+    <div
+      className={cn(
+        "space-y-0.5",
+        align === "right" && "text-right",
+      )}
+    >
+      <time
+        className="block text-sm font-medium text-foreground"
+        dateTime={parts.dateTimeAttr}
+      >
+        {parts.primary}
+      </time>
+      <span className="block font-mono text-[11px] text-muted-foreground tabular-nums">
+        {parts.secondary}
+      </span>
+      <div className="text-xs text-muted-foreground">{parts.relative}</div>
+    </div>
+  );
+}
 
-// Add this CSS class to your module or global CSS
-// .player-name-blur {
-//   filter: blur(4px);
-//   transition: filter 0.2s ease-in-out;
-// }
-//
-// .player-name-blur:hover {
-//   filter: blur(0);
-// }
+function RedactedPlayerName({
+  name,
+  canRevealOnHover,
+}: {
+  name: string;
+  canRevealOnHover: boolean;
+}) {
+  if (canRevealOnHover) {
+    return (
+      <span
+        className="group/player relative inline-flex min-h-[1.35rem] max-w-full cursor-default items-center rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        tabIndex={0}
+        title="Hover or focus to reveal player name"
+      >
+        <span className="text-xs italic text-muted-foreground transition-opacity duration-200 group-hover/player:opacity-0 group-focus-within/player:opacity-0">
+          {PLACEHOLDER_SIGNED_IN}
+        </span>
+        <span className="pointer-events-none absolute left-0 top-0 z-[1] max-w-[min(280px,70vw)] truncate text-sm font-medium text-foreground opacity-0 transition-opacity duration-200 group-hover/player:opacity-100 group-focus-within/player:opacity-100">
+          {name}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="text-xs italic text-muted-foreground select-none"
+      aria-label="Player name hidden. Sign in to enable reveal on hover."
+    >
+      {PLACEHOLDER_SIGNED_OUT}
+    </span>
+  );
+}
 
 type FilterType = "all" | "warn" | "ban" | "unban";
 type SortField = "date" | "action" | "player" | "none";
 type SortDirection = "asc" | "desc";
 
 export default function PublicModerationLog() {
+  const { status } = useSession();
+  const canRevealPlayerNames = status === "authenticated";
   const [logs, setLogs] = useState<ModerationLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -97,24 +143,54 @@ export default function PublicModerationLog() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent === true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const response = await fetch("/api/moderation/logs?limit=500");
       if (!response.ok) throw new Error("Failed to fetch moderation logs");
 
       const data = await response.json();
       setLogs(data.logs || []);
     } catch (error) {
-      console.error("Error fetching moderation logs:", error);
+      safeLog.error("Error fetching public moderation logs:", error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchLogs();
-  }, []);
+    void fetchLogs();
+  }, [fetchLogs]);
+
+  useEffect(() => {
+    const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+    if (!key || !cluster) return;
+
+    let cleaned = false;
+    let disconnect: (() => void) | undefined;
+
+    void import("pusher-js").then(({ default: Pusher }) => {
+      if (cleaned) return;
+      const client = new Pusher(key, { cluster });
+      const channel = client.subscribe(MODERATION_LOG_PUSHER_CHANNEL);
+      const onUpdated = () => {
+        void fetchLogs({ silent: true });
+      };
+      channel.bind(MODERATION_LOG_PUSHER_EVENT, onUpdated);
+      disconnect = () => {
+        channel.unbind(MODERATION_LOG_PUSHER_EVENT, onUpdated);
+        client.unsubscribe(MODERATION_LOG_PUSHER_CHANNEL);
+        client.disconnect();
+      };
+    });
+
+    return () => {
+      cleaned = true;
+      disconnect?.();
+    };
+  }, [fetchLogs]);
 
   // Filter and sort logs
   const filteredAndSortedLogs = useMemo(() => {
@@ -123,12 +199,13 @@ export default function PublicModerationLog() {
     // Apply search filter
     if (searchQuery.trim() !== "") {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (log) =>
-          log.playerName.toLowerCase().includes(query) ||
-          log.reason.toLowerCase().includes(query) ||
-          log.duration.toLowerCase().includes(query)
-      );
+      filtered = filtered.filter((log) => {
+        const reasonMatch = log.reason.toLowerCase().includes(query);
+        const durationMatch = log.duration.toLowerCase().includes(query);
+        const playerMatch =
+          canRevealPlayerNames && log.playerName.toLowerCase().includes(query);
+        return reasonMatch || durationMatch || playerMatch;
+      });
     }
 
     // Apply action filter
@@ -165,7 +242,14 @@ export default function PublicModerationLog() {
     });
 
     return filtered;
-  }, [logs, searchQuery, filter, sortField, sortDirection]);
+  }, [
+    logs,
+    searchQuery,
+    filter,
+    sortField,
+    sortDirection,
+    canRevealPlayerNames,
+  ]);
 
   // Pagination
   const totalPages = Math.ceil(filteredAndSortedLogs.length / itemsPerPage);
@@ -203,25 +287,37 @@ export default function PublicModerationLog() {
     switch (action) {
       case "warn":
         return (
-          <Badge className="text-white bg-amber-500 border-0 hover:bg-amber-600">
+          <Badge
+            variant="outline"
+            className="border-amber-500/35 bg-amber-500/[0.08] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-700 shadow-none dark:text-amber-400"
+          >
             Warning
           </Badge>
         );
       case "ban":
         return (
-          <Badge className="text-white bg-red-500 border-0 hover:bg-red-600">
+          <Badge
+            variant="outline"
+            className="border-rose-500/35 bg-rose-500/[0.08] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-rose-700 shadow-none dark:text-rose-400"
+          >
             Ban
           </Badge>
         );
       case "unban":
         return (
-          <Badge className="text-white bg-green-500 border-0 hover:bg-green-600">
+          <Badge
+            variant="outline"
+            className="border-emerald-500/35 bg-emerald-500/[0.08] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-700 shadow-none dark:text-emerald-400"
+          >
             Unban
           </Badge>
         );
       default:
         return (
-          <Badge className="text-white bg-gray-500 border-0 hover:bg-gray-600">
+          <Badge
+            variant="outline"
+            className="border-border/60 bg-muted/40 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground shadow-none"
+          >
             {action}
           </Badge>
         );
@@ -252,7 +348,7 @@ export default function PublicModerationLog() {
 
     // For bans, check if they're still active
     if (log.action === "ban") {
-      if (log.duration === "Permanent") {
+      if (log.duration?.trim().toLowerCase() === "permanent") {
         return <span>Permanent</span>;
       }
 
@@ -267,9 +363,7 @@ export default function PublicModerationLog() {
           });
           return (
             <div className="space-y-1">
-              <div className="font-medium text-primary">
-                {timeRemaining}
-              </div>
+              <div className="font-medium text-primary">{timeRemaining}</div>
               <div className="text-xs text-muted-foreground font-mono">
                 {discordTimestamp}
               </div>
@@ -294,173 +388,232 @@ export default function PublicModerationLog() {
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
       <div className="space-y-4">
-        <div className="flex flex-col gap-4 justify-between items-start sm:flex-row sm:items-center">
-          <div className="space-y-2">
-            <div className="flex gap-3 items-center">
-              <div className="p-2 rounded-lg border bg-primary/10 border-primary/20">
-                <Shield className="w-6 h-6 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r sm:text-3xl md:text-4xl from-foreground to-foreground/70">
-                Community Moderation Log
-              </h1>
+        <div className="space-y-2">
+          <div className="flex gap-3 items-center">
+            <div className="rounded-xl border border-primary/20 bg-primary/[0.07] p-2.5">
+              <Shield className="h-6 w-6 text-primary" />
             </div>
-            <p className="text-sm sm:text-base text-muted-foreground">
-              Public record of moderation actions taken to maintain community
-              standards
-            </p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+              Moderation log
+            </h1>
           </div>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => fetchLogs()}
-            disabled={loading}
-            className="min-h-[44px] sm:min-h-0 w-10 h-10 hover:bg-accent transition-colors"
-            title="Refresh logs"
-          >
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
-          </Button>
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Public record of moderation actions. Updates in near real time when configured.
+          </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 w-4 h-4 -translate-y-1/2 text-muted-foreground" />
+        {/* Search, filter, refresh — one toolbar on desktop; mobile stacks cleanly */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search by player or reason..."
-              className="pl-9 min-h-[44px] sm:min-h-0 border-2 focus:border-primary/50 transition-colors"
+              placeholder={
+                canRevealPlayerNames
+                  ? "Search player, reason, or duration..."
+                  : "Search reason or duration..."
+              }
+              className="min-h-[44px] rounded-xl border-border/60 bg-card/40 pl-9 transition-colors focus-visible:ring-primary/30 sm:min-h-10"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Select
-            value={filter}
-            onValueChange={(value) => setFilter(value as FilterType)}
-          >
-            <SelectTrigger className="w-full sm:w-[180px] min-h-[44px] sm:min-h-0 border-2">
-              <Filter className="mr-2 w-4 h-4" />
-              <SelectValue placeholder="Filter by action" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Actions</SelectItem>
-              <SelectItem value="warn">Warnings</SelectItem>
-              <SelectItem value="ban">Bans</SelectItem>
-              <SelectItem value="unban">Unbans</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2 sm:shrink-0">
+            <Select
+              value={filter}
+              onValueChange={(value) => setFilter(value as FilterType)}
+            >
+              <SelectTrigger className="min-h-[44px] flex-1 rounded-xl border-border/60 bg-card/40 sm:h-10 sm:min-h-0 sm:w-[min(100%,180px)] sm:flex-initial">
+                <Filter className="mr-2 h-4 w-4 shrink-0" />
+                <SelectValue placeholder="Filter by action" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Actions</SelectItem>
+                <SelectItem value="warn">Warnings</SelectItem>
+                <SelectItem value="ban">Bans</SelectItem>
+                <SelectItem value="unban">Unbans</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={() => void fetchLogs()}
+              disabled={loading}
+              className="h-11 w-11 shrink-0 rounded-xl border-border/60 bg-card/40 min-h-[44px] transition-colors hover:bg-muted/60 sm:min-h-10"
+              title="Refresh logs"
+              aria-label="Refresh moderation log"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <Card className="overflow-hidden border-2">
-        {loading ? (
-          <div className="flex justify-center items-center h-48">
-            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      {/* Log list: cards below lg (matches admin players mobile), table on lg+ */}
+      {loading ? (
+        <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm">
+          <div className="flex h-48 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead
-                    className="transition-colors cursor-pointer hover:bg-muted/70"
-                    onClick={() => handleSortClick("action")}
-                  >
-                    <div className="flex gap-2 items-center">
-                      Action
-                      {renderSortIndicator("action")}
+        </Card>
+      ) : paginatedLogs.length === 0 ? (
+        <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm">
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+            <Shield className="h-12 w-12 text-muted-foreground opacity-50" />
+            <div>
+              <p className="text-base font-medium text-foreground">
+                No moderation actions found
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {searchQuery || filter !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "No moderation actions have been recorded yet"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div
+            className="w-full space-y-3 overflow-x-hidden sm:space-y-4 lg:hidden"
+            role="feed"
+            aria-label="Moderation actions"
+          >
+            {paginatedLogs.map((log) => (
+              <Card
+                key={log._id}
+                className="w-full overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm transition-all duration-300 hover:border-border hover:shadow-md"
+              >
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 shrink-0">
+                      {getActionBadge(log.action)}
                     </div>
-                  </TableHead>
-                  <TableHead
-                    className="transition-colors cursor-pointer hover:bg-muted/70"
-                    onClick={() => handleSortClick("player")}
-                  >
-                    <div className="flex gap-2 items-center">
+                    <div className="min-w-0 text-right">
+                      <LogDateDisplay timestamp={log.timestamp} align="right" />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Player
-                      {renderSortIndicator("player")}
+                    </p>
+                    <RedactedPlayerName
+                      name={log.playerName}
+                      canRevealOnHover={canRevealPlayerNames}
+                    />
+                  </div>
+
+                  <div className="mt-4 space-y-1 border-t border-border/40 pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Reason
+                    </p>
+                    <p className="text-sm leading-relaxed text-foreground/90">
+                      {log.reason || "No reason provided"}
+                    </p>
+                  </div>
+
+                  <div className="mt-4 space-y-1 border-t border-border/40 pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Duration
+                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      <DurationDisplay log={log} />
                     </div>
-                  </TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead
-                    className="transition-colors cursor-pointer hover:bg-muted/70"
-                    onClick={() => handleSortClick("date")}
-                  >
-                    <div className="flex gap-2 items-center">
-                      Date
-                      {renderSortIndicator("date")}
-                    </div>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedLogs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-48 text-center">
-                      <div className="flex flex-col justify-center items-center space-y-3">
-                        <Shield className="w-12 h-12 opacity-50 text-muted-foreground" />
-                        <div>
-                          <p className="text-base font-medium text-foreground">
-                            No moderation actions found
-                          </p>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {searchQuery || filter !== "all"
-                              ? "Try adjusting your search or filters"
-                              : "No moderation actions have been recorded yet"}
-                          </p>
-                        </div>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  paginatedLogs.map((log) => (
-                    <TableRow
-                      key={log._id}
-                      className="transition-colors hover:bg-muted/30"
-                    >
-                      <TableCell>{getActionBadge(log.action)}</TableCell>
-                      <TableCell className="font-medium">
-                        <div className="relative group">
-                          <span className="inline-block transition-all duration-300 cursor-default blur-[2px] group-hover:blur-0 select-none">
-                            {log.playerName}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-md">
-                        <p
-                          className="truncate"
-                          title={log.reason || "No reason provided"}
-                        >
-                          {log.reason || "No reason provided"}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <DurationDisplay log={log} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">
-                            {format(new Date(log.timestamp), "MMM d, yyyy")}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(log.timestamp), {
-                              addSuffix: true,
-                            })}
-                          </div>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        )}
-      </Card>
+
+          <div
+            className="hidden overflow-x-auto lg:block"
+            role="region"
+            aria-label="Moderation actions table"
+          >
+            <Card className="overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-border/50 bg-muted/25 hover:bg-muted/25">
+                      <TableHead
+                        className="h-11 cursor-pointer text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50"
+                        onClick={() => handleSortClick("action")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Action
+                          {renderSortIndicator("action")}
+                        </div>
+                      </TableHead>
+                      <TableHead
+                        className="h-11 cursor-pointer text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50"
+                        onClick={() => handleSortClick("player")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Player
+                          {renderSortIndicator("player")}
+                        </div>
+                      </TableHead>
+                      <TableHead className="h-11 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Reason
+                      </TableHead>
+                      <TableHead className="h-11 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Duration
+                      </TableHead>
+                      <TableHead
+                        className="h-11 cursor-pointer text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-colors hover:bg-muted/50"
+                        onClick={() => handleSortClick("date")}
+                      >
+                        <div className="flex items-center gap-2">
+                          Date
+                          {renderSortIndicator("date")}
+                        </div>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLogs.map((log) => (
+                      <TableRow
+                        key={log._id}
+                        className="border-border/40 transition-colors hover:bg-muted/[0.35]"
+                      >
+                        <TableCell className="py-4 align-middle">
+                          {getActionBadge(log.action)}
+                        </TableCell>
+                        <TableCell className="py-4 align-middle">
+                          <RedactedPlayerName
+                            name={log.playerName}
+                            canRevealOnHover={canRevealPlayerNames}
+                          />
+                        </TableCell>
+                        <TableCell className="max-w-md py-4 align-middle">
+                          <p
+                            className="line-clamp-2 text-sm leading-snug text-foreground/90 sm:line-clamp-none sm:truncate"
+                            title={log.reason || "No reason provided"}
+                          >
+                            {log.reason || "No reason provided"}
+                          </p>
+                        </TableCell>
+                        <TableCell className="py-4 align-middle text-sm text-muted-foreground">
+                          <DurationDisplay log={log} />
+                        </TableCell>
+                        <TableCell className="py-4 align-middle">
+                          <LogDateDisplay timestamp={log.timestamp} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </div>
+        </>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -473,7 +626,7 @@ export default function PublicModerationLog() {
                     setCurrentPage((prev) => Math.max(1, prev - 1))
                   }
                   className={cn(
-                    currentPage === 1 && "pointer-events-none opacity-50"
+                    currentPage === 1 && "pointer-events-none opacity-50",
                   )}
                 />
               </PaginationItem>
@@ -505,7 +658,7 @@ export default function PublicModerationLog() {
                     );
                   }
                   return null;
-                }
+                },
               )}
               <PaginationItem>
                 <PaginationNext
@@ -514,7 +667,7 @@ export default function PublicModerationLog() {
                   }
                   className={cn(
                     currentPage === totalPages &&
-                      "pointer-events-none opacity-50"
+                      "pointer-events-none opacity-50",
                   )}
                 />
               </PaginationItem>
@@ -524,18 +677,18 @@ export default function PublicModerationLog() {
       )}
 
       {/* Footer Info */}
-      <Card className="border-2 bg-muted/20">
-        <CardContent className="pt-6">
-          <div className="space-y-2 text-sm text-center text-muted-foreground">
-            <p className="font-medium text-foreground">
-              About the Moderation Log
-            </p>
-            <p>
-              This log displays public moderation actions taken by our team to
-              maintain community standards. Player names are blurred for privacy
-              and can be revealed by hovering.
-            </p>
-          </div>
+      <Card className="rounded-2xl border border-border/60 bg-muted/15 shadow-none">
+        <CardHeader className="pb-2 pt-6">
+          <CardTitle className="text-center text-base font-semibold text-foreground">
+            About this log
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-6 pt-0">
+          <p className="mx-auto max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
+            Actions listed here support transparency for the community. Player
+            names use text placeholders; signed-in users can hover or focus to see the name. The list will
+            refresh automatically when new actions are logged.
+          </p>
         </CardContent>
       </Card>
     </div>

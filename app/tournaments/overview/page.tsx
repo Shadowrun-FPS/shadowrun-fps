@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { CalendarDays, CheckCircle, Clock, X, ListFilter } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle,
+  ChevronDown,
+  Clock,
+  ListFilter,
+  X,
+} from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
 import { FeatureGate } from "@/components/feature-gate";
@@ -15,7 +22,13 @@ import { TournamentCard } from "@/components/tournaments/tournament-card";
 import { TournamentsOverviewHeader } from "@/components/tournaments/tournaments-overview-header";
 import { TournamentsOverviewFilters } from "@/components/tournaments/tournaments-overview-filters";
 import { TournamentsOverviewEmpty } from "@/components/tournaments/tournaments-overview-empty";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { safeLog } from "@/lib/security";
+import { cn } from "@/lib/utils";
 
 interface Tournament {
   _id: string;
@@ -28,6 +41,13 @@ interface Tournament {
   registrationDeadline?: string;
   registeredTeams: { _id: string; name: string; tag: string }[];
   maxTeams?: number;
+}
+
+/** Parsed start time, or null if missing/invalid (treated as “date TBD”). */
+function tournamentStartMs(startDate: string | undefined): number | null {
+  if (!startDate) return null;
+  const t = new Date(startDate).getTime();
+  return Number.isNaN(t) ? null : t;
 }
 
 function OverviewLoadingShell() {
@@ -187,8 +207,28 @@ function TournamentsOverviewContent() {
     return true;
   });
 
+  const nowMs = Date.now();
+
+  /** True upcoming: workflow upcoming and start not in the past (or no fixed date yet). */
   const upcomingTournaments = filteredTournaments
-    .filter((t) => t.status === "upcoming")
+    .filter((t) => {
+      if (t.status !== "upcoming") return false;
+      const startMs = tournamentStartMs(t.startDate);
+      if (startMs === null) return true;
+      return startMs >= nowMs;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
+    );
+
+  /** Still `upcoming` in DB but scheduled start has passed — needs status/date update. */
+  const staleUpcomingTournaments = filteredTournaments
+    .filter((t) => {
+      if (t.status !== "upcoming") return false;
+      const startMs = tournamentStartMs(t.startDate);
+      return startMs !== null && startMs < nowMs;
+    })
     .sort(
       (a, b) =>
         new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
@@ -360,9 +400,11 @@ function TournamentsOverviewContent() {
                       aria-hidden
                     />
                     <span>Upcoming</span>
-                    {upcomingTournaments.length > 0 ? (
+                    {upcomingTournaments.length + staleUpcomingTournaments.length >
+                    0 ? (
                       <span className="ml-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground sm:ml-2">
-                        {upcomingTournaments.length}
+                        {upcomingTournaments.length +
+                          staleUpcomingTournaments.length}
                       </span>
                     ) : null}
                   </TabsTrigger>
@@ -432,14 +474,56 @@ function TournamentsOverviewContent() {
                         />
                       ))}
                     </div>
-                  ) : upcomingTournaments.length > 0 ? (
-                    <div className={tournamentGridClass}>
-                      {upcomingTournaments.map((tournament) => (
-                        <TournamentCard
-                          key={tournament._id}
-                          tournament={tournament}
-                        />
-                      ))}
+                  ) : upcomingTournaments.length > 0 ||
+                    staleUpcomingTournaments.length > 0 ? (
+                    <div className="space-y-10">
+                      {upcomingTournaments.length > 0 ? (
+                        <div className={tournamentGridClass}>
+                          {upcomingTournaments.map((tournament) => (
+                            <TournamentCard
+                              key={tournament._id}
+                              tournament={tournament}
+                            />
+                          ))}
+                        </div>
+                      ) : null}
+                      {staleUpcomingTournaments.length > 0 ? (
+                        <Collapsible
+                          defaultOpen={false}
+                          className="rounded-xl border border-border/60 bg-muted/10"
+                        >
+                          <CollapsibleTrigger
+                            className={cn(
+                              "group flex w-full items-center gap-2 rounded-t-xl px-4 py-3 text-left text-sm font-medium text-foreground transition-colors",
+                              "hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                              "data-[state=open]:border-b data-[state=open]:border-border/50",
+                            )}
+                          >
+                            <ChevronDown
+                              className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+                              aria-hidden
+                            />
+                            <span>Past due</span>
+                            <Badge
+                              variant="outline"
+                              className="ml-0.5 rounded-full border-amber-500/40 bg-amber-500/10 px-2 py-0 text-xs font-semibold tabular-nums text-amber-800 dark:text-amber-300"
+                            >
+                              {staleUpcomingTournaments.length}
+                            </Badge>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="px-4 pb-4 pt-2">
+                            <div className={tournamentGridClass}>
+                              {staleUpcomingTournaments.map((tournament) => (
+                                <TournamentCard
+                                  key={tournament._id}
+                                  tournament={tournament}
+                                  pastScheduledStart
+                                />
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      ) : null}
                     </div>
                   ) : (
                     <TournamentsOverviewEmpty

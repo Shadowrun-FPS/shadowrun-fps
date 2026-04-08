@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { useSession } from "next-auth/react";
 import { safeLocalStorageSet } from "@/lib/client-utils";
+import { safeLog } from "@/lib/security";
 
 export interface Notification {
   _id: string;
@@ -121,7 +122,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         process.env.NODE_ENV === "development" ||
         (error.message && !error.message.includes("Unauthorized"))
       ) {
-        console.error("Error fetching notifications:", error);
+        safeLog.error("Error fetching notifications:", error);
       }
 
       if (error.name === "AbortError") {
@@ -170,7 +171,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         process.env.NODE_ENV === "development" ||
         (error instanceof Error && !error.message.includes("Unauthorized"))
       ) {
-        console.error("Error marking notification as read:", error);
+        safeLog.error("Error marking notification as read:", error);
       }
       // Revert optimistic update on error by refetching
       await fetchNotifications(true);
@@ -200,7 +201,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         process.env.NODE_ENV === "development" ||
         (error instanceof Error && !error.message.includes("Unauthorized"))
       ) {
-        console.error("Error marking all notifications as read:", error);
+        safeLog.error("Error marking all notifications as read:", error);
       }
     }
   };
@@ -232,7 +233,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         process.env.NODE_ENV === "development" ||
         (error instanceof Error && !error.message.includes("Unauthorized"))
       ) {
-        console.error("Error deleting notification:", error);
+        safeLog.error("Error deleting notification:", error);
       }
       // Revert optimistic update on error by refetching
       await fetchNotifications(true);
@@ -268,7 +269,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         process.env.NODE_ENV === "development" ||
         (error instanceof Error && !error.message.includes("Unauthorized"))
       ) {
-        console.error("Error bulk marking notifications as read:", error);
+        safeLog.error("Error bulk marking notifications as read:", error);
       }
       // Revert optimistic update on error
       await fetchNotifications(true);
@@ -315,7 +316,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         process.env.NODE_ENV === "development" ||
         (error instanceof Error && !error.message.includes("Unauthorized"))
       ) {
-        console.error("Error bulk deleting notifications:", error);
+        safeLog.error("Error bulk deleting notifications:", error);
       }
       // Revert optimistic update on error
       await fetchNotifications(true);

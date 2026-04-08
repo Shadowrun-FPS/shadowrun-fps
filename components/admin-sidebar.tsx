@@ -12,6 +12,7 @@ import {
   MapPin,
   Video,
   Settings,
+  Trophy,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -54,6 +55,11 @@ export function AdminSidebar() {
       icon: Settings,
       label: "Guild Settings",
     },
+    {
+      href: "/tournaments",
+      icon: Trophy,
+      label: "Tournaments",
+    },
   ];
 
   const externalLinks = [
@@ -73,7 +79,7 @@ export function AdminSidebar() {
             <LayoutDashboard className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-semibold text-foreground tracking-tight">
+            <h2 className="text-xl mt-4 font-semibold text-foreground tracking-tight">
               Admin Panel
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -91,13 +97,15 @@ export function AdminSidebar() {
           </h3>
         </div>
         {routes.map((route) => {
-          const isActive =
-            pathname === route.href ||
-            (route.href !== "/admin" && pathname?.startsWith(route.href));
+          const isDashboard = route.href === "/admin";
+          const isActive = isDashboard
+            ? pathname === "/admin" || pathname === "/admin/"
+            : pathname === route.href || pathname?.startsWith(`${route.href}/`);
           return (
             <Link
               key={route.href}
               href={route.href}
+              aria-current={isActive ? "page" : undefined}
               className={cn(
                 "flex gap-3 items-center px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 group",
                 isActive

@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { queryCache } from "@/lib/query-cache";
 import { revalidatePath } from "next/cache";
 
 const DEVELOPER_DISCORD_ID = "238329746671271936";
@@ -146,12 +147,15 @@ async function patchQueueMapPoolHandler(
       updateData
     );
 
+    queryCache.invalidate("queues:all");
+
     const updatedQueue = await db.collection("Queues").findOne({
       _id: new ObjectId(queueId),
     });
 
     revalidatePath("/admin/queues");
     revalidatePath(`/admin/queues/${queueId}`);
+    revalidatePath("/matches/queues");
 
     return NextResponse.json({
       success: true,

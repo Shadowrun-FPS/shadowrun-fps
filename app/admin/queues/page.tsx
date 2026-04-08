@@ -1,80 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Loader2,
-  MapPin,
-  CheckCircle2,
-  X,
-  Save,
-  RefreshCw,
-  AlertCircle,
-  Edit,
-  Ban,
-  Settings,
-  Search,
-  Trash2,
-  Copy,
-  Hash,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-interface Queue {
-  _id: string;
-  queueId: string;
-  gameType: string;
-  teamSize: number;
-  eloTier: string;
-  status: string;
-  mapPool?: string[] | null;
-  minElo?: number;
-  maxElo?: number;
-  requiredRoles?: string[];
-  customQueueChannel?: string;
-  customMatchChannel?: string;
-  bannedPlayers?: string[];
-}
-
-interface Map {
-  _id: string;
-  name: string;
-  gameMode: string;
-  rankedMap: boolean;
-  smallOption: boolean;
-  src: string;
-}
+import { AdminQueueCard } from "@/components/admin-queue-card";
+import { AdminQueueDetailsDialog } from "@/components/admin/queues/admin-queue-details-dialog";
+import { AdminQueueMapPoolDialog } from "@/components/admin/queues/admin-queue-map-pool-dialog";
+import { AdminQueueBansDialog } from "@/components/admin/queues/admin-queue-bans-dialog";
+import { safeLog } from "@/lib/security";
+import { containsProfanity } from "@/lib/profanity-filter";
+import type {
+  AdminQueueMapSource,
+  AdminQueueMapVariant,
+  AdminQueuePlayerSearchHit,
+  AdminQueueRecord,
+} from "@/types/admin-queue";
 
 interface MapPoolItem {
   _id: string; // Base map ObjectId for validation
@@ -88,10 +33,11 @@ export default function AdminQueuesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { toast } = useToast();
-  const [queues, setQueues] = useState<Queue[]>([]);
-  const [maps, setMaps] = useState<Map[]>([]);
-  const [originalMaps, setOriginalMaps] = useState<Map[]>([]); // Store original maps without variants
+  const [queues, setQueues] = useState<AdminQueueRecord[]>([]);
+  const [maps, setMaps] = useState<AdminQueueMapVariant[]>([]);
+  const [originalMaps, setOriginalMaps] = useState<AdminQueueMapSource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [selectedMaps, setSelectedMaps] = useState<Record<string, string[]>>(
     {}
@@ -102,10 +48,11 @@ export default function AdminQueuesPage() {
   const [mapsDialogOpen, setMapsDialogOpen] = useState<Record<string, boolean>>(
     {}
   );
-  const [editingQueue, setEditingQueue] = useState<Queue | null>(null);
-  const [managingMapsQueue, setManagingMapsQueue] = useState<Queue | null>(
+  const [editingQueue, setEditingQueue] = useState<AdminQueueRecord | null>(
     null
   );
+  const [managingMapsQueue, setManagingMapsQueue] =
+    useState<AdminQueueRecord | null>(null);
   const [queueName, setQueueName] = useState("");
   const [queueTier, setQueueTier] = useState("");
   const [teamSize, setTeamSize] = useState("");
@@ -124,21 +71,23 @@ export default function AdminQueuesPage() {
     Record<string, boolean>
   >({});
   const [managingBannedPlayersQueue, setManagingBannedPlayersQueue] =
-    useState<Queue | null>(null);
+    useState<AdminQueueRecord | null>(null);
   const [bannedPlayers, setBannedPlayers] = useState<string[]>([]);
   const [bannedPlayersInfo, setBannedPlayersInfo] = useState<
     Record<string, { discordNickname?: string; discordUsername?: string }>
   >({});
   const [playerSearch, setPlayerSearch] = useState("");
   const [searchResults, setSearchResults] = useState<
-    { discordId: string; discordNickname?: string; discordUsername?: string }[]
+    AdminQueuePlayerSearchHit[]
   >([]);
   const [savingBannedPlayers, setSavingBannedPlayers] = useState(false);
+  const [mapPoolSearch, setMapPoolSearch] = useState("");
 
   const searchParams = useSearchParams();
   const openBansParamHandledRef = useRef<string | null>(null);
 
-  const openBannedPlayersDialogForQueue = useCallback(async (queue: Queue) => {
+  const openBannedPlayersDialogForQueue = useCallback(
+    async (queue: AdminQueueRecord) => {
     setManagingBannedPlayersQueue(queue);
     const banned = queue.bannedPlayers || [];
     setBannedPlayers(banned);
@@ -167,7 +116,7 @@ export default function AdminQueuesPage() {
           }
         }
       } catch (error) {
-        console.error("Error fetching player info:", error);
+        safeLog.error("Error fetching player info:", error);
       }
     }
     setBannedPlayersInfo(info);
@@ -217,7 +166,7 @@ export default function AdminQueuesPage() {
         setRoles(rolesData.roles || []);
         setChannels(channelsData.channels || []);
       } catch (error) {
-        console.error("Error fetching roles/channels:", error);
+        safeLog.error("Error fetching roles/channels:", error);
       }
     };
     if (status === "authenticated") {
@@ -225,98 +174,95 @@ export default function AdminQueuesPage() {
     }
   }, [status]);
 
-  // Fetch queues and maps - use deduplication
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchQueuesAndMaps = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = options?.silent === true;
       try {
-        setLoading(true);
+        if (silent) {
+          setIsRefreshing(true);
+        } else {
+          setLoading(true);
+        }
         const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-        const [queuesData, mapsData] = await Promise.all([
-          deduplicatedFetch<any[]>("/api/queues", {
-            ttl: 10000, // Cache for 10 seconds
-          }),
-          deduplicatedFetch<any[]>("/api/maps", {
-            ttl: 60000, // Cache for 1 minute (maps don't change often)
-          }),
-        ]);
+      const [queuesData, mapsData] = await Promise.all([
+        deduplicatedFetch<any[]>("/api/queues", {
+          ttl: 10000,
+        }),
+        deduplicatedFetch<any[]>("/api/maps", {
+          ttl: 60000,
+        }),
+      ]);
 
-        // Use all maps (same as scrimmage challenges), not just ranked maps
-        // Create map variants (normal and small if applicable) - same logic as scrimmage challenges
-        const mapsWithVariants: Map[] = [];
-        for (const map of mapsData) {
-          // Add the regular map
+      const mapsWithVariants: AdminQueueMapVariant[] = [];
+      for (const map of mapsData) {
+        mapsWithVariants.push({
+          ...map,
+          _id: `${map._id}-normal`,
+          name: map.name,
+          src: `/maps/map_${map.name.toLowerCase().replace(/\s+/g, "")}.png`,
+        });
+
+        if (map.smallOption) {
           mapsWithVariants.push({
             ...map,
-            _id: `${map._id}-normal`,
-            name: map.name,
+            _id: `${map._id}-small`,
+            name: `${map.name} (Small)`,
             src: `/maps/map_${map.name.toLowerCase().replace(/\s+/g, "")}.png`,
           });
-
-          // Add small variant if available
-          if (map.smallOption) {
-            mapsWithVariants.push({
-              ...map,
-              _id: `${map._id}-small`,
-              name: `${map.name} (Small)`,
-              src: `/maps/map_${map.name
-                .toLowerCase()
-                .replace(/\s+/g, "")}.png`,
-            });
-          }
         }
+      }
 
-        setMaps(mapsWithVariants);
-        setOriginalMaps(mapsData); // Store original maps for variant checking
-        setQueues(queuesData);
+      setMaps(mapsWithVariants);
+      setOriginalMaps(mapsData);
+      setQueues(queuesData);
 
-        // Initialize selected maps from queue map pools
-        // mapPool now contains map objects with _id, name, src, gameMode, isSmall
-        const initialSelected: Record<string, string[]> = {};
-        queuesData.forEach((queue: Queue) => {
-          if (queue.mapPool && Array.isArray(queue.mapPool)) {
-            // Convert map objects back to variant IDs for UI state
-            const variantIds: string[] = [];
-            queue.mapPool.forEach((mapItem: any) => {
-              // Handle both old format (variant IDs) and new format (objects)
-              if (typeof mapItem === "string") {
-                // Backward compatibility: old format with variant IDs
-                if (mapsWithVariants.some((m) => m._id === mapItem)) {
-                  variantIds.push(mapItem);
-                }
-              } else if (mapItem && mapItem._id) {
-                // New format: map object
-                const variantId = mapItem.isSmall
-                  ? `${mapItem._id}-small`
-                  : `${mapItem._id}-normal`;
-                // Verify the variant exists in our maps list
-                if (mapsWithVariants.some((m) => m._id === variantId)) {
-                  variantIds.push(variantId);
-                }
+      const initialSelected: Record<string, string[]> = {};
+      queuesData.forEach((queue: AdminQueueRecord) => {
+        if (queue.mapPool && Array.isArray(queue.mapPool)) {
+          const variantIds: string[] = [];
+          queue.mapPool.forEach((mapItem: any) => {
+            if (typeof mapItem === "string") {
+              if (mapsWithVariants.some((m) => m._id === mapItem)) {
+                variantIds.push(mapItem);
               }
-            });
-            initialSelected[queue._id] = Array.from(new Set(variantIds));
-          } else {
-            // If no map pool, select all maps by default
-            initialSelected[queue._id] = mapsWithVariants.map((m) => m._id);
-          }
-        });
-        setSelectedMaps(initialSelected);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load queues and maps",
-          variant: "destructive",
-        });
-      } finally {
+            } else if (mapItem && mapItem._id) {
+              const variantId = mapItem.isSmall
+                ? `${mapItem._id}-small`
+                : `${mapItem._id}-normal`;
+              if (mapsWithVariants.some((m) => m._id === variantId)) {
+                variantIds.push(variantId);
+              }
+            }
+          });
+          initialSelected[queue._id] = Array.from(new Set(variantIds));
+        } else {
+          initialSelected[queue._id] = mapsWithVariants.map((m) => m._id);
+        }
+      });
+      setSelectedMaps(initialSelected);
+    } catch (error) {
+      safeLog.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load queues and maps",
+        variant: "destructive",
+      });
+    } finally {
+      if (silent) {
+        setIsRefreshing(false);
+      } else {
         setLoading(false);
       }
-    };
-
-    if (status === "authenticated") {
-      fetchData();
     }
-  }, [status, toast]);
+  },
+  [toast]
+);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      void fetchQueuesAndMaps();
+    }
+  }, [status, fetchQueuesAndMaps]);
 
   // Deep link from match queues: /admin/queues?openBans=<queue Mongo _id>
   useEffect(() => {
@@ -386,7 +332,7 @@ export default function AdminQueuesPage() {
     }));
   };
 
-  const handleSave = async (queue: Queue): Promise<void> => {
+  const handleSave = async (queue: AdminQueueRecord): Promise<void> => {
     // Prevent double-clicks and rapid successive saves
     if (saving[queue._id]) {
       return;
@@ -556,7 +502,7 @@ export default function AdminQueuesPage() {
           }
         }
       } catch (refetchError) {
-        console.error("Error refetching queue data:", refetchError);
+        safeLog.error("Error refetching queue data:", refetchError);
         // Fallback to using response data (which contains map objects)
         const savedMapPool = responseData.mapPool || mapPoolItems;
         setQueues((prev) =>
@@ -589,10 +535,12 @@ export default function AdminQueuesPage() {
 
       toast({
         title: "Success",
-        description: `Map pool updated for ${queue.gameType} ${queue.eloTier}`,
+        description: `Map pool updated for ${queue.gameType}${
+          queue.eloTier?.trim() ? ` (${queue.eloTier})` : ""
+        }`,
       });
     } catch (error: any) {
-      console.error("Error saving map pool:", error);
+      safeLog.error("Error saving map pool:", error);
       toast({
         title: "Error",
         description: error.message || "Failed to save map pool",
@@ -604,59 +552,328 @@ export default function AdminQueuesPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case "active":
-        return (
-          <Badge className="text-green-400 bg-green-500/20 border-green-500/50">
-            Active
-          </Badge>
-        );
-      case "open":
-        return (
-          <Badge className="text-blue-400 bg-blue-500/20 border-blue-500/50">
-            Open
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline" className="text-muted-foreground">
-            {status || "Unknown"}
-          </Badge>
-        );
-    }
-  };
+  const customPoolCount = useMemo(
+    () =>
+      queues.filter(
+        (q) => q.mapPool !== null && q.mapPool !== undefined
+      ).length,
+    [queues]
+  );
 
-  const getEloTierBadge = (tier?: string) => {
-    if (!tier) return null;
-    const colors: Record<string, string> = {
-      low: "bg-yellow-500/20 text-yellow-400 border-yellow-500/50",
-      mid: "bg-orange-500/20 text-orange-400 border-orange-500/50",
-      high: "bg-red-500/20 text-red-400 border-red-500/50",
-    };
+  const copyQueueId = useCallback(
+    (queue: AdminQueueRecord) => {
+      void navigator.clipboard.writeText(queue.queueId);
+      toast({
+        title: "Copied",
+        description: "Queue ID copied to clipboard",
+      });
+    },
+    [toast]
+  );
 
-    return (
-      <Badge
-        className={
-          colors[tier] || "bg-gray-500/20 text-gray-400 border-gray-500/50"
-        }
-      >
-        {tier.toUpperCase()}
-      </Badge>
+  const copyChannelId = useCallback(
+    (channelId: string, description: string) => {
+      void navigator.clipboard.writeText(channelId);
+      toast({
+        title: "Copied",
+        description: `${description} copied to clipboard`,
+      });
+    },
+    [toast]
+  );
+
+  const mapPoolDialogFilteredMaps = useMemo(() => {
+    const q = mapPoolSearch.trim().toLowerCase();
+    if (!q) return maps;
+    return maps.filter(
+      (m) =>
+        m.name.toLowerCase().includes(q) ||
+        m.gameMode.toLowerCase().includes(q)
     );
-  };
+  }, [maps, mapPoolSearch]);
+
+  const handleEditQueueDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && editingQueue) {
+        setEditDialogOpen((prev) => ({
+          ...prev,
+          [editingQueue._id]: false,
+        }));
+        setEditingQueue(null);
+      }
+    },
+    [editingQueue]
+  );
+
+  const saveQueueDetails = useCallback(async () => {
+    if (!editingQueue) return;
+    const trimmedQueueName = queueName.trim();
+    if (!trimmedQueueName) {
+      toast({
+        title: "Error",
+        description: "Queue name is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (trimmedQueueName.length > 50) {
+      toast({
+        title: "Error",
+        description: "Queue name must be 50 characters or less.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (containsProfanity(trimmedQueueName)) {
+      toast({
+        title: "Error",
+        description: "Queue name contains inappropriate language.",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      setSavingDetails(true);
+      const response = await fetch(
+        `/api/admin/queues/${editingQueue._id}/details`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gameType: trimmedQueueName,
+            teamSize: teamSize ? parseInt(teamSize) : undefined,
+            eloTier: queueTier.trim(),
+            minElo: minElo ? parseInt(minElo) : undefined,
+            maxElo: maxElo ? parseInt(maxElo) : undefined,
+            requiredRoles:
+              requiredRoles.length > 0 ? requiredRoles : undefined,
+            customQueueChannel: customQueueChannel || undefined,
+            customMatchChannel: customMatchChannel || undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update");
+      }
+
+      const nextTier = queueTier.trim();
+      setQueues((prev) =>
+        prev.map((q) => {
+          if (q._id !== editingQueue._id) return q;
+          const { eloTier: _prevTier, ...rest } = q;
+          return {
+            ...rest,
+            gameType: trimmedQueueName,
+            teamSize: teamSize ? parseInt(teamSize) : q.teamSize,
+            ...(nextTier ? { eloTier: nextTier } : {}),
+            minElo: minElo ? parseInt(minElo) : q.minElo,
+            maxElo: maxElo ? parseInt(maxElo) : q.maxElo,
+            requiredRoles:
+              requiredRoles.length > 0 ? requiredRoles : q.requiredRoles,
+            customQueueChannel:
+              customQueueChannel || q.customQueueChannel,
+            customMatchChannel:
+              customMatchChannel || q.customMatchChannel,
+          };
+        })
+      );
+
+      toast({
+        title: "Success",
+        description: "Queue details updated successfully",
+      });
+
+      setEditDialogOpen((prev) => ({
+        ...prev,
+        [editingQueue._id]: false,
+      }));
+      setEditingQueue(null);
+    } catch (error: any) {
+      safeLog.error("Error updating queue details:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update queue details",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingDetails(false);
+    }
+  }, [
+    editingQueue,
+    queueName,
+    teamSize,
+    queueTier,
+    minElo,
+    maxElo,
+    requiredRoles,
+    customQueueChannel,
+    customMatchChannel,
+    toast,
+  ]);
+
+  const handleMapPoolDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && managingMapsQueue) {
+        setMapPoolSearch("");
+        setMapsDialogOpen((prev) => ({
+          ...prev,
+          [managingMapsQueue._id]: false,
+        }));
+        setManagingMapsQueue(null);
+      } else if (open && managingMapsQueue && managingMapsQueue._id) {
+        setMapPoolSearch("");
+        if (
+          !selectedMaps[managingMapsQueue._id] ||
+          selectedMaps[managingMapsQueue._id].length === 0
+        ) {
+          if (
+            managingMapsQueue.mapPool &&
+            Array.isArray(managingMapsQueue.mapPool)
+          ) {
+            const validVariantIds = managingMapsQueue.mapPool.filter(
+              (variantId: string) => maps.some((m) => m._id === variantId)
+            );
+            setSelectedMaps((prev) => ({
+              ...prev,
+              [managingMapsQueue._id]: Array.from(new Set(validVariantIds)),
+            }));
+          } else if (!managingMapsQueue.mapPool) {
+            setSelectedMaps((prev) => ({
+              ...prev,
+              [managingMapsQueue._id]: maps.map((m) => m._id),
+            }));
+          }
+        }
+      }
+    },
+    [managingMapsQueue, maps, selectedMaps]
+  );
+
+  const handleBannedPlayerSearchChange = useCallback(
+    async (search: string) => {
+      setPlayerSearch(search);
+      if (search.length >= 3) {
+        try {
+          const response = await fetch(
+            `/api/players/search?q=${encodeURIComponent(search)}`
+          );
+          if (response.ok) {
+            const data = await response.json();
+            setSearchResults(data.players || []);
+          }
+        } catch (error) {
+          safeLog.error("Error searching players:", error);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    },
+    []
+  );
+
+  const handleBansDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && managingBannedPlayersQueue) {
+        setBannedPlayersDialogOpen((prev) => ({
+          ...prev,
+          [managingBannedPlayersQueue._id]: false,
+        }));
+        setManagingBannedPlayersQueue(null);
+        setBannedPlayers([]);
+        setPlayerSearch("");
+        setSearchResults([]);
+      }
+    },
+    [managingBannedPlayersQueue]
+  );
+
+  const saveBannedPlayersList = useCallback(async () => {
+    if (!managingBannedPlayersQueue) return;
+    try {
+      setSavingBannedPlayers(true);
+      const response = await fetch(
+        `/api/admin/queues/${managingBannedPlayersQueue._id}/banned-players`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            bannedPlayers,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update");
+      }
+
+      setQueues((prev) =>
+        prev.map((q) =>
+          q._id === managingBannedPlayersQueue._id
+            ? { ...q, bannedPlayers }
+            : q
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Banned players updated successfully",
+      });
+
+      setBannedPlayersDialogOpen((prev) => ({
+        ...prev,
+        [managingBannedPlayersQueue._id]: false,
+      }));
+      setManagingBannedPlayersQueue(null);
+      setBannedPlayers([]);
+      setPlayerSearch("");
+      setSearchResults([]);
+    } catch (error: any) {
+      safeLog.error("Error updating banned players:", error);
+      toast({
+        title: "Error",
+        description:
+          error.message || "Failed to update banned players",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingBannedPlayers(false);
+    }
+  }, [managingBannedPlayersQueue, bannedPlayers, toast]);
 
   if (loading) {
     return (
-      <div className="container px-4 py-6 mx-auto sm:px-6 lg:px-8">
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="mb-4 w-full h-8" />
-                <Skeleton className="w-3/4 h-4" />
-              </CardContent>
-            </Card>
+      <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-6 space-y-2">
+          <Skeleton className="h-8 w-40" />
+          <Skeleton className="h-4 w-full max-w-md" />
+        </div>
+        <div className="mb-6 flex flex-wrap gap-8 border-b border-border/40 pb-4">
+          <Skeleton className="h-12 w-24" />
+          <Skeleton className="h-12 w-28" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div
+              key={i}
+              className="overflow-hidden rounded-lg border border-border/40 bg-card"
+            >
+              <div className="flex items-center justify-between gap-2 border-b border-border/40 px-4 py-2.5">
+                <Skeleton className="h-5 w-36" />
+                <Skeleton className="h-8 w-8 rounded-md" />
+              </div>
+              <div className="space-y-3 p-4">
+                <Skeleton className="h-6 w-4/5 max-w-[200px]" />
+                <Skeleton className="h-3 w-full max-w-[220px]" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
           ))}
         </div>
       </div>
@@ -671,216 +888,116 @@ export default function AdminQueuesPage() {
     }
     acc[key].push(queue);
     return acc;
-  }, {} as Record<string, Queue[]>);
+  }, {} as Record<string, AdminQueueRecord[]>);
 
   return (
-    <div className="container px-4 py-6 mx-auto sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="mb-2 text-2xl font-bold sm:text-3xl">
-          Queue Management
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Manage map pools and settings for each queue. Customize which maps are
-          available and configure queue details.
-        </p>
+    <div className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Queues
+          </h1>
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+            Map pools, Discord channels, role gates, and queue-specific bans.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="shrink-0 gap-2"
+          onClick={() => void fetchQueuesAndMaps({ silent: true })}
+          disabled={isRefreshing}
+        >
+          <RefreshCw
+            className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+            aria-hidden
+          />
+          Refresh
+        </Button>
+      </div>
+
+      <div className="mb-8 flex flex-wrap gap-x-10 gap-y-4 border-b border-border/40 pb-5">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Queues
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-foreground">
+            {queues.length}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            Custom map pools
+          </p>
+          <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums text-foreground">
+            {customPoolCount}
+          </p>
+        </div>
       </div>
 
       {Object.keys(queuesByTeamSize).length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <AlertCircle className="mx-auto mb-4 w-12 h-12 text-muted-foreground" />
-            <p className="text-muted-foreground">No queues found</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-border/40 bg-card/30 px-6 py-14 text-center">
+          <AlertCircle
+            className="mx-auto mb-3 h-10 w-10 text-muted-foreground"
+            aria-hidden
+          />
+          <p className="text-sm text-muted-foreground">No queues found</p>
+        </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-10">
           {Object.entries(queuesByTeamSize).map(([teamSize, teamQueues]) => (
             <div key={teamSize}>
-              <h2 className="mb-4 text-xl font-semibold">{teamSize} Queues</h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mb-4 flex items-center gap-3">
+                <h2 className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                  {teamSize}
+                </h2>
+                <div className="h-px flex-1 bg-border/40" />
+              </div>
+              <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {teamQueues.map((queue) => {
                   const selected = selectedMaps[queue._id] || [];
                   const hasCustomMapPool =
                     queue.mapPool !== null && queue.mapPool !== undefined;
 
                   return (
-                    <Card
+                    <AdminQueueCard
                       key={queue._id}
-                      className={cn(
-                        "transition-all",
-                        hasCustomMapPool && "border-primary/50 bg-primary/5"
-                      )}
-                    >
-                      <CardHeader className="pb-3">
-                        <div className="flex gap-2 justify-between items-start">
-                          <div className="flex-1 min-w-0">
-                            <CardTitle className="text-lg truncate">
-                              {queue.gameType}
-                            </CardTitle>
-                            <CardDescription className="mt-1">
-                              <div className="flex flex-wrap gap-2 items-center">
-                                {getEloTierBadge(queue.eloTier)}
-                                {getStatusBadge(queue.status)}
-                              </div>
-                            </CardDescription>
-                          </div>
-                          {hasCustomMapPool && (
-                            <Badge variant="outline" className="shrink-0">
-                              Custom
-                            </Badge>
-                          )}
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="text-sm text-muted-foreground">
-                          <p>Queue ID: {queue.queueId}</p>
-                          <p className="mt-1">
-                            {(() => {
-                              // Count total variant selections (normal + small)
-                              const totalSelected = selected.length;
-                              // Total available variants = all maps with variants
-                              const totalAvailable = maps.length;
-                              return `${totalSelected} out of ${totalAvailable} maps`;
-                            })()}
-                          </p>
-                          {queue.minElo !== undefined &&
-                            queue.maxElo !== undefined && (
-                              <p className="mt-1">
-                                ELO Range: {queue.minElo.toLocaleString()} -{" "}
-                                {queue.maxElo.toLocaleString()}
-                              </p>
-                            )}
-                          {queue.requiredRoles &&
-                            queue.requiredRoles.length > 0 && (
-                              <div className="mt-2">
-                                <p className="mb-1">Required Roles:</p>
-                                <div className="flex flex-wrap gap-1">
-                                  {queue.requiredRoles.map((roleId) => {
-                                    const role = roles.find(
-                                      (r) => r.id === roleId
-                                    );
-                                    return role ? (
-                                      <Badge key={roleId} variant="secondary">
-                                        {role.name}
-                                      </Badge>
-                                    ) : null;
-                                  })}
-                                </div>
-                              </div>
-                            )}
-                          {queue.customQueueChannel && (
-                            <div className="flex gap-2 items-center mt-2">
-                              <Hash className="w-4 h-4 text-blue-400" />
-                              <span className="text-blue-400">
-                                Queue Channel:{" "}
-                                {channels.find(
-                                  (c) => c.id === queue.customQueueChannel
-                                )?.name || queue.customQueueChannel}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="p-0 w-6 h-6"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    queue.customQueueChannel || ""
-                                  );
-                                  toast({
-                                    title: "Copied",
-                                    description:
-                                      "Channel ID copied to clipboard",
-                                  });
-                                }}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                          {queue.customMatchChannel && (
-                            <div className="flex gap-2 items-center mt-2">
-                              <Hash className="w-4 h-4 text-blue-400" />
-                              <span className="text-blue-400">
-                                Match Channel:{" "}
-                                {channels.find(
-                                  (c) => c.id === queue.customMatchChannel
-                                )?.name || queue.customMatchChannel}
-                              </span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="p-0 w-6 h-6"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    queue.customMatchChannel || ""
-                                  );
-                                  toast({
-                                    title: "Copied",
-                                    description:
-                                      "Channel ID copied to clipboard",
-                                  });
-                                }}
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              setEditingQueue(queue);
-                              setQueueName(queue.gameType || "");
-                              setQueueTier(queue.eloTier || "");
-                              setTeamSize(queue.teamSize?.toString() || "");
-                              setMinElo(queue.minElo?.toString() || "");
-                              setMaxElo(queue.maxElo?.toString() || "");
-                              setRequiredRoles(queue.requiredRoles || []);
-                              setCustomQueueChannel(
-                                queue.customQueueChannel || ""
-                              );
-                              setCustomMatchChannel(
-                                queue.customMatchChannel || ""
-                              );
-                              setEditDialogOpen((prev) => ({
-                                ...prev,
-                                [queue._id]: true,
-                              }));
-                            }}
-                          >
-                            <Settings className="mr-2 w-4 h-4" />
-                            Edit Queue Details
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              setManagingMapsQueue(queue);
-                              setMapsDialogOpen((prev) => ({
-                                ...prev,
-                                [queue._id]: true,
-                              }));
-                            }}
-                          >
-                            <MapPin className="mr-2 w-4 h-4" />
-                            Manage Maps
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => void openBannedPlayersDialogForQueue(queue)}
-                          >
-                            <Ban className="mr-2 w-4 h-4" />
-                            Manage Players
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
+                      queue={queue}
+                      roles={roles}
+                      channels={channels}
+                      selectedMapCount={selected.length}
+                      totalMapCount={maps.length}
+                      hasCustomMapPool={hasCustomMapPool}
+                      onEditDetails={() => {
+                        setEditingQueue(queue);
+                        setQueueName(queue.gameType || "");
+                        setQueueTier(queue.eloTier || "");
+                        setTeamSize(queue.teamSize?.toString() || "");
+                        setMinElo(queue.minElo?.toString() || "");
+                        setMaxElo(queue.maxElo?.toString() || "");
+                        setRequiredRoles(queue.requiredRoles || []);
+                        setCustomQueueChannel(queue.customQueueChannel || "");
+                        setCustomMatchChannel(queue.customMatchChannel || "");
+                        setEditDialogOpen((prev) => ({
+                          ...prev,
+                          [queue._id]: true,
+                        }));
+                      }}
+                      onManageMaps={() => {
+                        setMapPoolSearch("");
+                        setManagingMapsQueue(queue);
+                        setMapsDialogOpen((prev) => ({
+                          ...prev,
+                          [queue._id]: true,
+                        }));
+                      }}
+                      onManageBannedPlayers={() =>
+                        void openBannedPlayersDialogForQueue(queue)
+                      }
+                      onCopyQueueId={() => copyQueueId(queue)}
+                      onCopyChannelId={copyChannelId}
+                    />
                   );
                 })}
               </div>
@@ -889,793 +1006,102 @@ export default function AdminQueuesPage() {
         </div>
       )}
 
-      {/* Edit Queue Details Dialog */}
-      <Dialog
+      {/* Queue admin dialogs — see components/admin/queues/ */}
+      <AdminQueueDetailsDialog
         open={editingQueue ? editDialogOpen[editingQueue._id] || false : false}
-        onOpenChange={(open) => {
-          if (!open && editingQueue) {
-            setEditDialogOpen((prev) => ({
-              ...prev,
-              [editingQueue._id]: false,
-            }));
-            setEditingQueue(null);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[500px] p-6 max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="pb-4">
-            <DialogTitle>Edit Queue</DialogTitle>
-            <DialogDescription>Update queue configuration.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="gameType">
-                Game Type<span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="gameType"
-                value={queueName}
-                onChange={(e) => setQueueName(e.target.value)}
-                placeholder="e.g., Ranked"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="teamSize">
-                Team Size<span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="teamSize"
-                type="number"
-                value={teamSize}
-                onChange={(e) => setTeamSize(e.target.value)}
-                placeholder="1"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Supported sizes: 1v1, 2v2, 3v3, 4v4, 5v5, 8v8
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="eloTier">ELO Tier (optional)</Label>
-              <Input
-                id="eloTier"
-                value={queueTier}
-                onChange={(e) => setQueueTier(e.target.value)}
-                placeholder="e.g., mid"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minElo">Min ELO</Label>
-                <Input
-                  id="minElo"
-                  type="number"
-                  value={minElo}
-                  onChange={(e) => setMinElo(e.target.value)}
-                  placeholder="0"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="maxElo">Max ELO</Label>
-                <Input
-                  id="maxElo"
-                  type="number"
-                  value={maxElo}
-                  onChange={(e) => setMaxElo(e.target.value)}
-                  placeholder="3000"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Roles Whitelist</Label>
-              <p className="text-xs text-muted-foreground">
-                Only players with at least one of these roles can join this
-                queue
-              </p>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {requiredRoles.map((roleId) => {
-                  const role = roles.find((r) => r.id === roleId);
-                  return (
-                    <Badge key={roleId} variant="secondary" className="gap-1">
-                      {role?.name || roleId}
-                      <button
-                        onClick={() =>
-                          setRequiredRoles(
-                            requiredRoles.filter((id) => id !== roleId)
-                          )
-                        }
-                        className="ml-1 hover:text-destructive"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </Badge>
-                  );
-                })}
-              </div>
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  if (value && !requiredRoles.includes(value)) {
-                    setRequiredRoles([...requiredRoles, value]);
-                    setRoleSearch("");
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Search roles..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <div className="sticky top-0 z-10 p-2 border-b bg-background">
-                    <Input
-                      placeholder="Search roles..."
-                      value={roleSearch}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setRoleSearch(e.target.value);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="max-h-[300px] overflow-y-auto">
-                    {roles
-                      .filter(
-                        (role) =>
-                          !requiredRoles.includes(role.id) &&
-                          role.name
-                            .toLowerCase()
-                            .includes(roleSearch.toLowerCase())
-                      )
-                      .map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    {roles.filter(
-                      (role) =>
-                        !requiredRoles.includes(role.id) &&
-                        role.name
-                          .toLowerCase()
-                          .includes(roleSearch.toLowerCase())
-                    ).length === 0 && (
-                      <div className="px-2 py-6 text-sm text-center text-muted-foreground">
-                        No roles found
-                      </div>
-                    )}
-                  </div>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customQueueChannel">
-                Custom Queue Channel (Optional)
-              </Label>
-              <Select
-                value={customQueueChannel || "none"}
-                onValueChange={(value) =>
-                  setCustomQueueChannel(value === "none" ? "" : value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select channel..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Default</SelectItem>
-                  {channels
-                    .filter((channel) => channel.type === 0)
-                    .map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id}>
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Override default team-size channel. Leave as &quot;Default&quot;
-                to use default.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customMatchChannel">
-                Custom Match Channel (Optional)
-              </Label>
-              <Select
-                value={customMatchChannel || "none"}
-                onValueChange={(value) =>
-                  setCustomMatchChannel(value === "none" ? "" : value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select channel..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Default</SelectItem>
-                  {channels
-                    .filter((channel) => channel.type === 0)
-                    .map((channel) => (
-                      <SelectItem key={channel.id} value={channel.id}>
-                        #{channel.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Post match embeds to this channel instead of default #matches
-                channel. Leave as &quot;Default&quot; to use default.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (editingQueue) {
-                  setEditDialogOpen((prev) => ({
-                    ...prev,
-                    [editingQueue._id]: false,
-                  }));
-                  setEditingQueue(null);
-                }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!editingQueue) return;
-
-                try {
-                  setSavingDetails(true);
-                  const response = await fetch(
-                    `/api/admin/queues/${editingQueue._id}/details`,
-                    {
-                      method: "PATCH",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        gameType: queueName,
-                        teamSize: teamSize ? parseInt(teamSize) : undefined,
-                        eloTier: queueTier || undefined,
-                        minElo: minElo ? parseInt(minElo) : undefined,
-                        maxElo: maxElo ? parseInt(maxElo) : undefined,
-                        requiredRoles:
-                          requiredRoles.length > 0 ? requiredRoles : undefined,
-                        customQueueChannel: customQueueChannel || undefined,
-                        customMatchChannel: customMatchChannel || undefined,
-                      }),
-                    }
-                  );
-
-                  if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || "Failed to update");
-                  }
-
-                  // Update local state
-                  setQueues((prev) =>
-                    prev.map((q) =>
-                      q._id === editingQueue._id
-                        ? {
-                            ...q,
-                            gameType: queueName,
-                            teamSize: teamSize
-                              ? parseInt(teamSize)
-                              : q.teamSize,
-                            eloTier: queueTier || q.eloTier,
-                            minElo: minElo ? parseInt(minElo) : q.minElo,
-                            maxElo: maxElo ? parseInt(maxElo) : q.maxElo,
-                            requiredRoles:
-                              requiredRoles.length > 0
-                                ? requiredRoles
-                                : q.requiredRoles,
-                            customQueueChannel:
-                              customQueueChannel || q.customQueueChannel,
-                            customMatchChannel:
-                              customMatchChannel || q.customMatchChannel,
-                          }
-                        : q
-                    )
-                  );
-
-                  toast({
-                    title: "Success",
-                    description: "Queue details updated successfully",
-                  });
-
-                  setEditDialogOpen((prev) => ({
-                    ...prev,
-                    [editingQueue._id]: false,
-                  }));
-                  setEditingQueue(null);
-                } catch (error: any) {
-                  console.error("Error updating queue details:", error);
-                  toast({
-                    title: "Error",
-                    description:
-                      error.message || "Failed to update queue details",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setSavingDetails(false);
-                }
-              }}
-              disabled={savingDetails}
-            >
-              {savingDetails ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 w-4 h-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manage Maps Dialog */}
-      <Dialog
+        onOpenChange={handleEditQueueDialogOpenChange}
+        queue={editingQueue}
+        queueName={queueName}
+        setQueueName={setQueueName}
+        teamSize={teamSize}
+        setTeamSize={setTeamSize}
+        queueTier={queueTier}
+        setQueueTier={setQueueTier}
+        minElo={minElo}
+        setMinElo={setMinElo}
+        maxElo={maxElo}
+        setMaxElo={setMaxElo}
+        requiredRoles={requiredRoles}
+        setRequiredRoles={setRequiredRoles}
+        customQueueChannel={customQueueChannel}
+        setCustomQueueChannel={setCustomQueueChannel}
+        customMatchChannel={customMatchChannel}
+        setCustomMatchChannel={setCustomMatchChannel}
+        roles={roles}
+        channels={channels}
+        roleSearch={roleSearch}
+        setRoleSearch={setRoleSearch}
+        savingDetails={savingDetails}
+        onSave={saveQueueDetails}
+      />
+      <AdminQueueMapPoolDialog
         open={
           managingMapsQueue && managingMapsQueue._id
             ? mapsDialogOpen[managingMapsQueue._id] || false
             : false
         }
-        onOpenChange={(open) => {
-          if (!open && managingMapsQueue) {
+        onOpenChange={handleMapPoolDialogOpenChange}
+        queue={managingMapsQueue}
+        filteredMaps={mapPoolDialogFilteredMaps}
+        mapPoolSearch={mapPoolSearch}
+        setMapPoolSearch={setMapPoolSearch}
+        selectedMapIds={
+          managingMapsQueue && managingMapsQueue._id
+            ? selectedMaps[managingMapsQueue._id] || []
+            : []
+        }
+        totalMapCount={maps.length}
+        onToggleMap={(mapId) =>
+          managingMapsQueue &&
+          toggleMapSelection(managingMapsQueue._id, mapId)
+        }
+        onSelectAllMaps={() =>
+          managingMapsQueue &&
+          managingMapsQueue._id &&
+          selectAllMaps(managingMapsQueue._id)
+        }
+        onDeselectAllMaps={() =>
+          managingMapsQueue &&
+          managingMapsQueue._id &&
+          deselectAllMaps(managingMapsQueue._id)
+        }
+        saving={Boolean(
+          managingMapsQueue &&
+            managingMapsQueue._id &&
+            saving[managingMapsQueue._id]
+        )}
+        onSave={async () => {
+          if (!managingMapsQueue || saving[managingMapsQueue._id]) return;
+          try {
+            await handleSave(managingMapsQueue);
             setMapsDialogOpen((prev) => ({
               ...prev,
               [managingMapsQueue._id]: false,
             }));
             setManagingMapsQueue(null);
-          } else if (open && managingMapsQueue && managingMapsQueue._id) {
-            // Ensure selectedMaps is initialized for this queue when modal opens
-            // mapPool now contains variant IDs directly
-            if (
-              !selectedMaps[managingMapsQueue._id] ||
-              selectedMaps[managingMapsQueue._id].length === 0
-            ) {
-              if (
-                managingMapsQueue.mapPool &&
-                Array.isArray(managingMapsQueue.mapPool)
-              ) {
-                // mapPool contains variant IDs - use them directly
-                // Filter to only include valid variant IDs that exist in our maps list
-                const validVariantIds = managingMapsQueue.mapPool.filter(
-                  (variantId: string) => maps.some((m) => m._id === variantId)
-                );
-                setSelectedMaps((prev) => ({
-                  ...prev,
-                  [managingMapsQueue._id]: Array.from(new Set(validVariantIds)),
-                }));
-              } else if (!managingMapsQueue.mapPool) {
-                // If no map pool, initialize with all maps selected
-                setSelectedMaps((prev) => ({
-                  ...prev,
-                  [managingMapsQueue._id]: maps.map((m) => m._id),
-                }));
-              }
-            }
+          } catch {
+            /* handled in handleSave */
           }
         }}
-      >
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-6">
-          <DialogHeader className="pb-4">
-            <DialogTitle>Manage Map Pool</DialogTitle>
-            <DialogDescription>
-              Select which maps are available for {managingMapsQueue?.gameType}{" "}
-              {managingMapsQueue?.eloTier}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex overflow-hidden flex-col flex-1 space-y-4">
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 text-xs"
-                onClick={() =>
-                  managingMapsQueue &&
-                  managingMapsQueue._id &&
-                  selectAllMaps(managingMapsQueue._id)
-                }
-              >
-                Select All
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="flex-1 text-xs"
-                onClick={() =>
-                  managingMapsQueue &&
-                  managingMapsQueue._id &&
-                  deselectAllMaps(managingMapsQueue._id)
-                }
-              >
-                Deselect All
-              </Button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 pr-2 space-y-2">
-              {managingMapsQueue &&
-                managingMapsQueue._id &&
-                maps.map((map) => {
-                  const isSelected = (
-                    selectedMaps[managingMapsQueue._id] || []
-                  ).includes(map._id);
-                  return (
-                    <div
-                      key={map._id}
-                      className={cn(
-                        "flex gap-3 items-center p-2 rounded-lg border transition-colors",
-                        isSelected
-                          ? "bg-primary/10 border-primary/50"
-                          : "border-transparent bg-muted/50"
-                      )}
-                    >
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={() =>
-                          managingMapsQueue &&
-                          toggleMapSelection(managingMapsQueue._id, map._id)
-                        }
-                      />
-                      <div className="overflow-hidden relative w-12 h-12 rounded shrink-0">
-                        <Image
-                          src={map.src}
-                          alt={map.name}
-                          fill
-                          className="object-cover"
-                          loading="lazy"
-                          unoptimized
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {map.name}
-                        </p>
-                        <div className="flex gap-2 items-center text-xs text-muted-foreground">
-                          <span>{map.gameMode}</span>
-                          {map.rankedMap && (
-                            <Badge variant="outline" className="text-[10px]">
-                              Ranked
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-          <DialogFooter className="gap-2 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (managingMapsQueue) {
-                  setMapsDialogOpen((prev) => ({
-                    ...prev,
-                    [managingMapsQueue._id]: false,
-                  }));
-                  setManagingMapsQueue(null);
-                }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (managingMapsQueue && !saving[managingMapsQueue._id]) {
-                  try {
-                    await handleSave(managingMapsQueue);
-                    setMapsDialogOpen((prev) => ({
-                      ...prev,
-                      [managingMapsQueue._id]: false,
-                    }));
-                    setManagingMapsQueue(null);
-                  } catch (error) {
-                    // Error already handled in handleSave, just don't close dialog
-                  }
-                }
-              }}
-              disabled={
-                managingMapsQueue && managingMapsQueue._id
-                  ? saving[managingMapsQueue._id]
-                  : false
-              }
-            >
-              {managingMapsQueue &&
-              managingMapsQueue._id &&
-              saving[managingMapsQueue._id] ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 w-4 h-4" />
-                  Save Map Pool
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Manage Banned Players Dialog */}
-      <Dialog
+      />
+      <AdminQueueBansDialog
         open={
           managingBannedPlayersQueue && managingBannedPlayersQueue._id
             ? bannedPlayersDialogOpen[managingBannedPlayersQueue._id] || false
             : false
         }
-        onOpenChange={(open) => {
-          if (!open && managingBannedPlayersQueue) {
-            setBannedPlayersDialogOpen((prev) => ({
-              ...prev,
-              [managingBannedPlayersQueue._id]: false,
-            }));
-            setManagingBannedPlayersQueue(null);
-            setBannedPlayers([]);
-            setPlayerSearch("");
-            setSearchResults([]);
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-[500px] p-6">
-          <DialogHeader className="pb-4">
-            <DialogTitle>Manage Banned Players</DialogTitle>
-            <DialogDescription>
-              Manage queue-specific bans for{" "}
-              {managingBannedPlayersQueue?.gameType}. These players can still
-              queue in other queues. Bans are based on Discord ID, so they
-              persist even if the player leaves and rejoins.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Search Players</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 w-4 h-4 transform -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by Discord ID or nickname..."
-                  value={playerSearch}
-                  onChange={async (e) => {
-                    const search = e.target.value;
-                    setPlayerSearch(search);
-                    if (search.length >= 3) {
-                      try {
-                        const response = await fetch(
-                          `/api/players/search?q=${encodeURIComponent(search)}`
-                        );
-                        if (response.ok) {
-                          const data = await response.json();
-                          setSearchResults(data.players || []);
-                        }
-                      } catch (error) {
-                        console.error("Error searching players:", error);
-                      }
-                    } else {
-                      setSearchResults([]);
-                    }
-                  }}
-                  className="pl-10"
-                />
-              </div>
-              {searchResults.length > 0 && (
-                <div className="overflow-y-auto max-h-40 rounded-md border">
-                  {searchResults
-                    .filter(
-                      (player) => !bannedPlayers.includes(player.discordId)
-                    )
-                    .map((player) => (
-                      <div
-                        key={player.discordId}
-                        className="flex justify-between items-center p-2 cursor-pointer hover:bg-muted"
-                        onClick={() => {
-                          if (!bannedPlayers.includes(player.discordId)) {
-                            setBannedPlayers([
-                              ...bannedPlayers,
-                              player.discordId,
-                            ]);
-                            setBannedPlayersInfo({
-                              ...bannedPlayersInfo,
-                              [player.discordId]: {
-                                discordNickname: player.discordNickname,
-                                discordUsername: player.discordUsername,
-                              },
-                            });
-                          }
-                          setPlayerSearch("");
-                          setSearchResults([]);
-                        }}
-                      >
-                        <div>
-                          <p className="text-sm font-medium">
-                            {player.discordNickname ||
-                              player.discordUsername ||
-                              player.discordId}
-                          </p>
-                          {player.discordNickname && (
-                            <p className="text-xs text-muted-foreground">
-                              {player.discordId}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!bannedPlayers.includes(player.discordId)) {
-                              setBannedPlayers([
-                                ...bannedPlayers,
-                                player.discordId,
-                              ]);
-                            }
-                            setPlayerSearch("");
-                            setSearchResults([]);
-                          }}
-                        >
-                          Ban
-                        </Button>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label>Banned Players ({bannedPlayers.length})</Label>
-              {bannedPlayers.length === 0 ? (
-                <p className="py-4 text-sm text-center text-muted-foreground">
-                  No players are banned from this queue.
-                </p>
-              ) : (
-                <div className="overflow-y-auto max-h-60 rounded-md border">
-                  {bannedPlayers.map((discordId) => {
-                    const playerInfo = bannedPlayersInfo[discordId];
-                    const displayName =
-                      playerInfo?.discordNickname ||
-                      playerInfo?.discordUsername ||
-                      discordId;
-                    const hasNameInfo =
-                      playerInfo?.discordNickname ||
-                      playerInfo?.discordUsername;
-                    return (
-                      <div
-                        key={discordId}
-                        className="flex justify-between items-center p-2 hover:bg-muted"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {displayName}
-                          </p>
-                          {hasNameInfo && (
-                            <p className="font-mono text-xs truncate text-muted-foreground">
-                              {discordId}
-                            </p>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="flex-shrink-0 ml-2"
-                          onClick={() => {
-                            setBannedPlayers(
-                              bannedPlayers.filter((id) => id !== discordId)
-                            );
-                            const newInfo = { ...bannedPlayersInfo };
-                            delete newInfo[discordId];
-                            setBannedPlayersInfo(newInfo);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter className="pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (managingBannedPlayersQueue) {
-                  setBannedPlayersDialogOpen((prev) => ({
-                    ...prev,
-                    [managingBannedPlayersQueue._id]: false,
-                  }));
-                  setManagingBannedPlayersQueue(null);
-                  setBannedPlayers([]);
-                  setPlayerSearch("");
-                  setSearchResults([]);
-                }
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={async () => {
-                if (!managingBannedPlayersQueue) return;
-
-                try {
-                  setSavingBannedPlayers(true);
-                  const response = await fetch(
-                    `/api/admin/queues/${managingBannedPlayersQueue._id}/banned-players`,
-                    {
-                      method: "PATCH",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        bannedPlayers: bannedPlayers,
-                      }),
-                    }
-                  );
-
-                  if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || "Failed to update");
-                  }
-
-                  // Update local state
-                  setQueues((prev) =>
-                    prev.map((q) =>
-                      q._id === managingBannedPlayersQueue._id
-                        ? { ...q, bannedPlayers: bannedPlayers }
-                        : q
-                    )
-                  );
-
-                  toast({
-                    title: "Success",
-                    description: "Banned players updated successfully",
-                  });
-
-                  setBannedPlayersDialogOpen((prev) => ({
-                    ...prev,
-                    [managingBannedPlayersQueue._id]: false,
-                  }));
-                  setManagingBannedPlayersQueue(null);
-                  setBannedPlayers([]);
-                  setPlayerSearch("");
-                  setSearchResults([]);
-                } catch (error: any) {
-                  console.error("Error updating banned players:", error);
-                  toast({
-                    title: "Error",
-                    description:
-                      error.message || "Failed to update banned players",
-                    variant: "destructive",
-                  });
-                } finally {
-                  setSavingBannedPlayers(false);
-                }
-              }}
-              disabled={savingBannedPlayers}
-            >
-              {savingBannedPlayers ? (
-                <>
-                  <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 w-4 h-4" />
-                  Save Changes
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onOpenChange={handleBansDialogOpenChange}
+        queue={managingBannedPlayersQueue}
+        playerSearch={playerSearch}
+        onPlayerSearchChange={handleBannedPlayerSearchChange}
+        searchResults={searchResults}
+        bannedPlayers={bannedPlayers}
+        setBannedPlayers={setBannedPlayers}
+        bannedPlayersInfo={bannedPlayersInfo}
+        setBannedPlayersInfo={setBannedPlayersInfo}
+        savingBannedPlayers={savingBannedPlayers}
+        onSave={saveBannedPlayersList}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import clientPromise from "@/lib/mongodb";
 import { authOptions } from "@/lib/auth";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
+import { RANKED_TEAM_SIZES } from "@/lib/ranked-team-sizes";
 
 export const dynamic = "force-dynamic";
 
@@ -25,34 +26,29 @@ async function getCheckMissingTeamSizesHandler(req: NextRequest) {
     discordId: userId,
   });
 
-    if (!player) {
-      return NextResponse.json(
-        { hasPlayer: false, missingTeamSizes: [] },
-        { status: 200 }
-      );
-    }
-
-    // All team sizes that should exist
-    const allTeamSizes = [1, 2, 4, 5];
-
-    // Get the team sizes the player already has
-    const existingTeamSizes = player.stats.map((stat: any) => stat.teamSize);
-
-    // Find missing team sizes
-    const missingTeamSizes = allTeamSizes.filter(
-      (size) => !existingTeamSizes.includes(size)
+  if (!player) {
+    return NextResponse.json(
+      { hasPlayer: false, missingTeamSizes: [] },
+      { status: 200 }
     );
+  }
 
-    const response = NextResponse.json({
-      hasPlayer: true,
-      missingTeamSizes: missingTeamSizes,
-      has4v4: existingTeamSizes.includes(4),
-    });
-    response.headers.set(
-      "Cache-Control",
-      "private, no-cache, no-store, must-revalidate"
-    );
-    return response;
+  const existingTeamSizes = player.stats.map((stat: any) => stat.teamSize);
+
+  const missingTeamSizes = RANKED_TEAM_SIZES.filter(
+    (size) => !existingTeamSizes.includes(size)
+  );
+
+  const response = NextResponse.json({
+    hasPlayer: true,
+    missingTeamSizes: missingTeamSizes,
+    has4v4: existingTeamSizes.includes(4),
+  });
+  response.headers.set(
+    "Cache-Control",
+    "private, no-cache, no-store, must-revalidate"
+  );
+  return response;
 }
 
 export const GET = withApiSecurity(getCheckMissingTeamSizesHandler, {

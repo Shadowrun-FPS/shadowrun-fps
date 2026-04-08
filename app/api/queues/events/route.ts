@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
+import { enrichQueueDocumentsWithRoleNames } from "@/lib/enrich-queue-documents-role-names";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 
@@ -70,7 +71,11 @@ async function getQueuesEventsHandler(req: NextRequest) {
             }
             return;
           }
-          safeEnqueue(`data: ${JSON.stringify(initialQueues)}\n\n`);
+          const enrichedInitial = await enrichQueueDocumentsWithRoleNames(
+            initialQueues,
+            db
+          );
+          safeEnqueue(`data: ${JSON.stringify(enrichedInitial)}\n\n`);
 
           // Watch for queue changes
           changeStream.on("change", async () => {
@@ -81,7 +86,11 @@ async function getQueuesEventsHandler(req: NextRequest) {
                 .collection("Queues")
                 .find({})
                 .toArray();
-              safeEnqueue(`data: ${JSON.stringify(updatedQueues)}\n\n`);
+              const enriched = await enrichQueueDocumentsWithRoleNames(
+                updatedQueues,
+                db
+              );
+              safeEnqueue(`data: ${JSON.stringify(enriched)}\n\n`);
             } catch (error) {
               safeLog.error("Error sending queue update:", error);
             }

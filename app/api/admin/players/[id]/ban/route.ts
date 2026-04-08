@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId, UpdateFilter, Document } from "mongodb";
+import { playersRouteIdFilter } from "@/lib/admin-player-lookup";
 import { createModerationLog } from "@/lib/moderation";
 import {
   ADMIN_ROLE_IDS,
@@ -38,7 +39,7 @@ interface Player {
 
 async function postBanPlayerHandler(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
 
@@ -50,8 +51,10 @@ async function postBanPlayerHandler(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const playerId = sanitizeString(params.id, 50);
-  if (!ObjectId.isValid(playerId)) {
+  const { id: rawId } = await params;
+  const playerId = sanitizeString(rawId, 50);
+  const lookup = playersRouteIdFilter(playerId);
+  if (!lookup) {
     return NextResponse.json(
       { error: "Invalid player ID" },
       { status: 400 }
@@ -111,9 +114,7 @@ async function postBanPlayerHandler(
       100
     );
 
-    const playerExists = await db.collection("Players").findOne({
-      _id: new ObjectId(playerId),
-    });
+    const playerExists = await db.collection("Players").findOne(lookup);
 
       if (!playerExists) {
         return NextResponse.json(
@@ -146,7 +147,10 @@ async function postBanPlayerHandler(
 
       const result = await db
         .collection("Players")
-        .updateOne({ _id: new ObjectId(playerId) }, typedUpdateDoc);
+        .updateOne(
+          { _id: playerExists._id as ObjectId },
+          typedUpdateDoc,
+        );
 
       await createModerationLog({
         playerId: playerId,

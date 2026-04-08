@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { formatTimeAgo } from "@/lib/utils";
 import { ModerationAction } from "@/types/moderation";
 import {
@@ -16,32 +16,90 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Ban, AlertTriangle, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import Image from "next/image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { safeLog } from "@/lib/security";
+
+function mapLogToModerationAction(
+  log: Record<string, unknown>,
+): ModerationAction {
+  const action = typeof log.action === "string" ? log.action : "";
+  let type: ModerationAction["type"] = "warning";
+  if (action === "warn") {
+    type = "warning";
+  } else if (action === "unban") {
+    type = "unban";
+  } else if (action === "ban") {
+    const duration =
+      typeof log.duration === "string" ? log.duration : undefined;
+    const perm =
+      !duration ||
+      /^permanent$/i.test(duration) ||
+      /^perm/i.test(duration);
+    type = perm ? "perm_ban" : "temp_ban";
+  }
+
+  return {
+    _id: String(log._id ?? ""),
+    type,
+    reason: typeof log.reason === "string" ? log.reason : "",
+    moderatorId: typeof log.moderatorId === "string" ? log.moderatorId : "",
+    moderatorName:
+      typeof log.moderatorName === "string" ? log.moderatorName : "",
+    moderatorNickname:
+      typeof log.moderatorNickname === "string"
+        ? log.moderatorNickname
+        : undefined,
+    playerName: typeof log.playerName === "string" ? log.playerName : "",
+    playerId: typeof log.playerId === "string" ? log.playerId : "",
+    duration: typeof log.duration === "string" ? log.duration : undefined,
+    expiry: log.expiry as ModerationAction["expiry"],
+    timestamp: (log.timestamp as string) ?? "",
+    playerProfilePicture:
+      typeof log.playerProfilePicture === "string"
+        ? log.playerProfilePicture
+        : null,
+    moderatorProfilePicture:
+      typeof log.moderatorProfilePicture === "string"
+        ? log.moderatorProfilePicture
+        : null,
+  };
+}
 
 export function ModerationLogs() {
   const [logs, setLogs] = useState<ModerationAction[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const response = await fetch("/api/admin/moderation-logs");
-        if (!response.ok) {
-          throw new Error(`Error: ${response.status}`);
-        }
-        const data = await response.json();
-        setLogs(data);
-      } catch (error) {
-        console.error("Failed to fetch moderation logs:", error);
-      } finally {
-        setLoading(false);
+  const fetchLogs = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/moderation-logs?limit=500");
+      if (!response.ok) {
+        throw new Error(`Error: ${response.status}`);
       }
-    };
-
-    fetchLogs();
+      const data: unknown = await response.json();
+      const raw = Array.isArray(data)
+        ? data
+        : data &&
+            typeof data === "object" &&
+            "logs" in data &&
+            Array.isArray((data as { logs: unknown[] }).logs)
+          ? (data as { logs: Record<string, unknown>[] }).logs
+          : [];
+      setLogs(
+        raw.map((row) =>
+          mapLogToModerationAction(row as Record<string, unknown>),
+        ),
+      );
+    } catch (error) {
+      safeLog.error("Failed to fetch moderation logs:", error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchLogs();
+  }, [fetchLogs]);
 
   // Filter logs based on search query
   const filteredLogs = logs.filter((log) => {

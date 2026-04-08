@@ -5,7 +5,11 @@ import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
+import { containsProfanity } from "@/lib/profanity-filter";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { getCachedGuildRoleNameById } from "@/lib/discord-guild-role-names";
+import { normalizeDiscordSnowflakeList } from "@/lib/normalize-discord-snowflake";
+import { queryCache } from "@/lib/query-cache";
 import { revalidatePath } from "next/cache";
 
 const DEVELOPER_DISCORD_ID = "238329746671271936";
@@ -43,6 +47,9 @@ async function patchQueueDetailsHandler(
   }
 
   const body = await req.json();
+  // TODO(queue-privacy): Add optional `hidePlayerElo` boolean to validateBody + $set below, then
+  // expose a toggle in Admin Queues "Edit Queue Details" dialog. Public GET /api/queues already
+  // returns full documents, so matchmaking cards will receive the field once it exists on the doc.
   const validation = validateBody(body, {
     gameType: { type: "string", required: true, maxLength: 50 },
     teamSize: { type: "number", required: false, min: 1, max: 8 },
@@ -61,16 +68,7 @@ async function patchQueueDetailsHandler(
     );
   }
 
-  const {
-    gameType,
-    teamSize,
-    eloTier,
-    minElo,
-    maxElo,
-    requiredRoles,
-    customQueueChannel,
-    customMatchChannel,
-  } = validation.data! as {
+  const validated = validation.data! as {
     gameType: string;
     teamSize?: number;
     eloTier?: string;
@@ -80,6 +78,32 @@ async function patchQueueDetailsHandler(
     customQueueChannel?: string;
     customMatchChannel?: string;
   };
+
+  const {
+    gameType: rawGameType,
+    teamSize,
+    minElo,
+    maxElo,
+    requiredRoles,
+    customQueueChannel,
+    customMatchChannel,
+  } = validated;
+
+  const trimmedName = typeof rawGameType === "string" ? rawGameType.trim() : "";
+  if (!trimmedName) {
+    return NextResponse.json(
+      { error: "Queue name is required" },
+      { status: 400 }
+    );
+  }
+
+  const gameType = sanitizeString(trimmedName, 50);
+  if (containsProfanity(gameType)) {
+    return NextResponse.json(
+      { error: "Queue name contains inappropriate language" },
+      { status: 400 }
+    );
+  }
 
     if (minElo !== undefined && maxElo !== undefined) {
       if (minElo >= maxElo) {
@@ -111,10 +135,14 @@ async function patchQueueDetailsHandler(
     if (teamSize !== undefined) {
       updateData.$set.teamSize = teamSize;
     }
-    if (eloTier !== undefined) {
-      updateData.$set.eloTier = eloTier;
-    } else {
-      updateData.$unset = { eloTier: "" };
+    if (Object.prototype.hasOwnProperty.call(validated, "eloTier")) {
+      const tierTrim = (validated.eloTier ?? "").trim();
+      if (tierTrim) {
+        updateData.$set.eloTier = sanitizeString(tierTrim, 50);
+      } else {
+        if (!updateData.$unset) updateData.$unset = {};
+        updateData.$unset.eloTier = "";
+      }
     }
     if (minElo !== undefined) {
       updateData.$set.minElo = minElo;
@@ -123,9 +151,18 @@ async function patchQueueDetailsHandler(
       updateData.$set.maxElo = maxElo;
     }
     if (requiredRoles !== undefined) {
-      updateData.$set.requiredRoles = Array.isArray(requiredRoles)
-        ? requiredRoles
-        : [];
+      const raw = Array.isArray(requiredRoles) ? requiredRoles : [];
+      const normalizedIds = normalizeDiscordSnowflakeList(raw);
+      updateData.$set.requiredRoles = normalizedIds;
+      if (normalizedIds.length === 0) {
+        if (!updateData.$unset) updateData.$unset = {};
+        updateData.$unset.requiredRoleNames = "";
+      } else {
+        const roleMap = await getCachedGuildRoleNameById(db);
+        updateData.$set.requiredRoleNames = normalizedIds.map(
+          (rid) => roleMap.get(rid) ?? rid
+        );
+      }
     }
     if (customQueueChannel !== undefined) {
       if (customQueueChannel) {
@@ -149,8 +186,11 @@ async function patchQueueDetailsHandler(
       updateData
     );
 
+    queryCache.invalidate("queues:all");
+
     revalidatePath("/admin/queues");
     revalidatePath(`/admin/queues/${queueId}`);
+    revalidatePath("/matches/queues");
 
     return NextResponse.json({
       success: true,

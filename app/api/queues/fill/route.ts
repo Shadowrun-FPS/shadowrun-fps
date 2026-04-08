@@ -26,12 +26,18 @@ async function postFillHandler(req: NextRequest) {
   // Get all queues
   const queues = await db.collection("Queues").find({}).toArray();
 
-  // Update each queue with random players
+  // Update each queue with random players in the queue's ELO range
   const updatePromises = queues.map(async (queue) => {
-    // Get random players that match the ELO tier
+    const minElo =
+      typeof queue.minElo === "number" ? queue.minElo : 0;
+    const maxElo =
+      typeof queue.maxElo === "number" ? queue.maxElo : 10000;
+
     const eligiblePlayers = players.filter((player) => {
-      const playerElo = player.stats?.[queue.teamSize]?.elo || 1500;
-      const [minElo, maxElo] = queue.eloTier.split("-").map(Number);
+      const playerElo =
+        player.stats?.find(
+          (s: { teamSize: number }) => s.teamSize === queue.teamSize
+        )?.elo ?? 1500;
       return playerElo >= minElo && playerElo <= maxElo;
     });
 
@@ -62,8 +68,6 @@ async function postFillHandler(req: NextRequest) {
     await db
       .collection("Queues")
       .updateOne({ _id: queue._id }, { $set: { players: selectedPlayers } });
-
-    return updatedQueues;
   });
 
   await Promise.all(updatePromises);

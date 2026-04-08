@@ -6,18 +6,19 @@ import { authOptions } from "@/lib/auth";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { triggerModerationLogUpdate } from "@/lib/moderation-log-pusher";
 export const dynamic = "force-dynamic";
 
 async function postRemovePlayerHandler(
   req: NextRequest,
-  { params }: { params: Promise<{ queueId: string }> }
+  { params }: { params: Promise<{ queueId: string }> },
 ) {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     return NextResponse.json(
       { error: "You must be signed in to remove a player" },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
@@ -30,7 +31,7 @@ async function postRemovePlayerHandler(
   if (!isAdminOrMod) {
     return NextResponse.json(
       { error: "You don't have permission to remove players" },
-      { status: 403 }
+      { status: 403 },
     );
   }
 
@@ -39,7 +40,7 @@ async function postRemovePlayerHandler(
   if (!ObjectId.isValid(queueId)) {
     return NextResponse.json(
       { error: "Invalid queue ID format" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -51,7 +52,7 @@ async function postRemovePlayerHandler(
   if (!validation.valid) {
     return NextResponse.json(
       { error: validation.errors?.join(", ") || "Invalid input" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -62,7 +63,9 @@ async function postRemovePlayerHandler(
   const db = client.db("ShadowrunWeb");
   const queueObjectId = new ObjectId(queueId);
 
-  const queueDoc = await db.collection("Queues").findOne({ _id: queueObjectId });
+  const queueDoc = await db
+    .collection("Queues")
+    .findOne({ _id: queueObjectId });
   if (!queueDoc) {
     return NextResponse.json({ error: "Queue not found" }, { status: 404 });
   }
@@ -78,30 +81,33 @@ async function postRemovePlayerHandler(
   if (!removedPlayer) {
     return NextResponse.json(
       { error: "Player not in this queue" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
-  const result = await db.collection("Queues").updateOne(
-    { _id: queueObjectId },
-    {
+  const result = await db
+    .collection("Queues")
+    .updateOne({ _id: queueObjectId }, {
       $pull: {
         players: { discordId: sanitizedPlayerId },
       },
-    } as any
-  );
+    } as any);
 
   if (result.modifiedCount === 0) {
     return NextResponse.json(
       { error: "Failed to remove player" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   const removedName =
-    removedPlayer.discordNickname ||
-    removedPlayer.discordUsername ||
-    "Unknown";
+    removedPlayer.discordNickname || removedPlayer.discordUsername || "Unknown";
+
+  const teamSize = Number(queueDoc.teamSize) || 0;
+  const tierLabel = String(queueDoc.eloTier || "open").toUpperCase();
+  const queueSummary =
+    teamSize > 0 ? `${teamSize}v${teamSize} · ${tierLabel}` : tierLabel;
+  const publicReason = `Removed from ranked ${queueSummary} matchmaking queue`;
 
   try {
     await db.collection("moderation_logs").insertOne({
@@ -110,15 +116,20 @@ async function postRemovePlayerHandler(
       playerName: sanitizeString(removedName, 100),
       moderatorId: session.user.id,
       moderatorName: sanitizeString(session.user?.name || "", 100),
-      reason: sanitizeString(
-        `Removed from ranked matchmaking queue (queue MongoDB id: ${queueId})`,
-        500
-      ),
+      reason: sanitizeString(publicReason, 500),
       queueMongoId: queueId,
+      queueSummary: sanitizeString(queueSummary, 80),
+      queuePublicId: queueDoc.queueId
+        ? sanitizeString(String(queueDoc.queueId), 80)
+        : undefined,
       timestamp: new Date(),
     });
+    triggerModerationLogUpdate();
   } catch (logError) {
-    safeLog.error("remove-player: failed to write moderation_logs entry", logError);
+    safeLog.error(
+      "remove-player: failed to write moderation_logs entry",
+      logError,
+    );
   }
 
   safeLog.info("Queue player removed by staff", {

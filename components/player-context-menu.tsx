@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { playerHistoryHrefFromBrowserLocation } from "@/lib/safe-return-to";
 import { useSession } from "next-auth/react";
 import {
   ContextMenu,
@@ -53,7 +54,9 @@ export function PlayerContextMenu({
   };
 
   const handleViewHistory = () => {
-    router.push(`/admin/players/${player._id}/history`);
+    router.push(
+      playerHistoryHrefFromBrowserLocation(String(player._id)),
+    );
   };
 
   const handleViewModPanel = () => {

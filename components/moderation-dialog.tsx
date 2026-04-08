@@ -35,6 +35,7 @@ import { Player, ModerationActionType, Rule } from "@/types/moderation";
 import { useRouter } from "next/navigation";
 import { Loader2, AlertTriangle, Ban, Clock } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { safeLog } from "@/lib/security";
 
 interface ModerationDialogProps {
   player: Player;
@@ -75,7 +76,7 @@ export function ModerationDialog({
         const data = await response.json();
         setRules(data);
       } catch (error) {
-        console.error("Error fetching rules:", error);
+        safeLog.error("Error fetching rules:", error);
       } finally {
         setIsLoadingRules(false);
       }
@@ -119,7 +120,7 @@ export function ModerationDialog({
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Unban error details:", errorData);
+        safeLog.error("Unban error details:", errorData);
         throw new Error(
           `Failed to ${
             action === "warn" ? "warn" : action === "ban" ? "ban" : "unban"
@@ -150,7 +151,7 @@ export function ModerationDialog({
       router.refresh();
     } catch (error) {
       if (process.env.NODE_ENV === "development") {
-        console.error(`Error ${action}ing player:`, error);
+        safeLog.error(`Error ${action}ing player:`, error);
       }
       toast({
         variant: "destructive",

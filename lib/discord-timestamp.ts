@@ -6,9 +6,10 @@
  */
 export function toDiscordTimestamp(
   date: Date | number,
-  style: "t" | "T" | "d" | "D" | "f" | "F" | "R" = "R"
+  style: "t" | "T" | "d" | "D" | "f" | "F" | "R" = "R",
 ): string {
-  const timestamp = typeof date === "number" ? date : Math.floor(date.getTime() / 1000);
+  const timestamp =
+    typeof date === "number" ? date : Math.floor(date.getTime() / 1000);
   return `<t:${timestamp}:${style}>`;
 }
 
@@ -16,12 +17,15 @@ export function toDiscordTimestamp(
  * Gets the original duration from a duration string
  * Extracts the number and unit (e.g., "7 days" from "7 days" or "7 Days")
  */
-export function parseDuration(duration: string): { value: number; unit: string } | null {
-  if (!duration || duration === "Permanent") {
+export function parseDuration(
+  duration: string,
+): { value: number; unit: string } | null {
+  const normalized = duration?.trim();
+  if (!normalized || normalized.toLowerCase() === "permanent") {
     return null;
   }
 
-  const match = duration.match(/(\d+)\s*(\w+)/i);
+  const match = normalized.match(/(\d+)\s*(\w+)/i);
   if (match) {
     return {
       value: parseInt(match[1], 10),
@@ -36,16 +40,16 @@ export function parseDuration(duration: string): { value: number; unit: string }
  * Formats duration for display
  */
 export function formatDuration(duration: string): string {
-  if (!duration || duration === "Permanent") {
+  const trimmed = duration?.trim() ?? "";
+  if (!trimmed || trimmed.toLowerCase() === "permanent") {
     return "Permanent";
   }
 
   // Normalize the duration string
-  const parsed = parseDuration(duration);
+  const parsed = parseDuration(trimmed);
   if (parsed) {
     return `${parsed.value} ${parsed.unit}${parsed.value !== 1 ? "" : ""}`;
   }
 
-  return duration;
+  return trimmed;
 }
-

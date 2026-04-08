@@ -1,10 +1,10 @@
 "use client";
 
 import { memo, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
+  Lock,
   MoreHorizontal,
   Trash2,
   Copy,
@@ -39,6 +39,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { getQueueTierChip } from "@/lib/queue-tier-config";
+import { normalizeDiscordSnowflakeList } from "@/lib/normalize-discord-snowflake";
 
 interface QueuePlayer {
   discordId: string;
@@ -51,33 +53,26 @@ interface QueuePlayer {
 interface Queue {
   _id: string;
   queueId: string;
-  gameType: "ranked";
+  /** Display label for the queue (admin “Queue Name”, stored as `gameType` in MongoDB). */
+  gameType: string;
   teamSize: number;
   players: QueuePlayer[];
-  eloTier: "low" | "mid" | "high";
+  eloTier?: string | null;
   minElo: number;
   maxElo: number;
   status: "active" | "inactive";
   name?: string;
+  /**
+   * When true (e.g. queue setting), player ELO is hidden at every breakpoint.
+   * TODO(queue-privacy): Persist on `Queues` in MongoDB; edit via Admin → Edit Queue Details
+   * (`app/admin/queues/page.tsx`) and `PATCH /api/admin/queues/[queueId]/details`.
+   */
+  hidePlayerElo?: boolean;
+  /** Discord role IDs allowed to join (whitelist). */
+  requiredRoles?: string[];
+  /** Display names parallel to `requiredRoles` (from GET /api/queues). */
+  requiredRoleNames?: string[];
 }
-
-const TIER_CONFIG = {
-  low: {
-    label: "LOW",
-    className:
-      "bg-emerald-500/10 text-emerald-500 border-emerald-500/20 dark:text-emerald-400",
-  },
-  mid: {
-    label: "MID",
-    className:
-      "bg-amber-500/10 text-amber-500 border-amber-500/20 dark:text-amber-400",
-  },
-  high: {
-    label: "HIGH",
-    className:
-      "bg-rose-500/10 text-rose-500 border-rose-500/20 dark:text-rose-400",
-  },
-} as const;
 
 interface QueueCardProps {
   queue: Queue;
@@ -102,8 +97,15 @@ interface QueueCardProps {
   showAdmin: boolean;
   showDeveloperAdmin: boolean;
   showManageMaps: boolean;
-  /** Link to admin queue bans UI (same roles as /admin/queues) */
+  /** Same access as admin queue bans API */
   showManageQueueBans: boolean;
+  /** Opens queue bans dialog (e.g. on /matches/queues). */
+  onManageQueueBans?: () => void;
+  /**
+   * When false, player ELO is hidden at all breakpoints (future: queue setting).
+   * When true (default), ELO is hidden only below `sm` to give names more room on phones.
+   */
+  showPlayerElo?: boolean;
 }
 
 function QueueCardComponent({
@@ -130,9 +132,21 @@ function QueueCardComponent({
   showDeveloperAdmin,
   showManageMaps,
   showManageQueueBans,
+  onManageQueueBans,
+  showPlayerElo = true,
 }: QueueCardProps) {
   const [removePlayerDialogOpen, setRemovePlayerDialogOpen] = useState(false);
-  const tier = TIER_CONFIG[queue.eloTier] ?? TIER_CONFIG.mid;
+  const eloDisabled =
+    !showPlayerElo || Boolean(queue.hidePlayerElo);
+  const playerEloClass = eloDisabled
+    ? "hidden"
+    : "hidden sm:inline-flex items-center justify-center";
+  const tierChip = getQueueTierChip(queue.eloTier);
+  const rawQueueLabel = (queue.gameType ?? "").trim();
+  const queueDisplayName =
+    rawQueueLabel.toLowerCase() === "ranked"
+      ? "Ranked"
+      : rawQueueLabel;
   const totalSlots = queue.teamSize * 2;
   const isPending = pendingOperations.has(queue._id);
   const isJoining = joiningQueue === queue._id;
@@ -156,6 +170,14 @@ function QueueCardComponent({
     })),
   ];
 
+  const requiredRoleIds = normalizeDiscordSnowflakeList(queue.requiredRoles);
+  const roleWhitelistLabels =
+    Array.isArray(queue.requiredRoleNames) &&
+    queue.requiredRoleNames.length === requiredRoleIds.length
+      ? queue.requiredRoleNames
+      : requiredRoleIds;
+  const roleGateSummary = roleWhitelistLabels.join(" · ");
+
   return (
     <div className="flex flex-col rounded-lg border border-border/50 bg-card overflow-hidden hover:border-border/80 transition-colors duration-150">
       {/* Context menu only on main card area — admin DropdownMenu must NOT sit inside ContextMenuTrigger (breaks Radix nested menus) */}
@@ -163,22 +185,51 @@ function QueueCardComponent({
         <ContextMenuTrigger asChild>
           <div className="flex flex-col flex-1 min-h-0 cursor-context-menu outline-none">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border/40">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-bold tabular-nums tracking-tight">
-                {queue.teamSize}v{queue.teamSize}
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold tracking-widest uppercase border",
-                  tier.className
-                )}
-              >
-                {tier.label}
-              </span>
-              <span className="text-xs text-muted-foreground tabular-nums hidden sm:inline">
-                {queue.minElo.toLocaleString()}–{queue.maxElo.toLocaleString()}
-              </span>
+          <div className="flex items-start justify-between gap-3 border-b border-border/40 px-4 py-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <div className="flex min-w-0 max-w-full items-baseline gap-2">
+                {queueDisplayName ? (
+                  <span className="truncate text-base font-semibold leading-tight text-foreground">
+                    {queueDisplayName}
+                  </span>
+                ) : null}
+                <span
+                  className={cn(
+                    "shrink-0 text-sm font-bold tabular-nums tracking-tight text-muted-foreground",
+                    !queueDisplayName && "text-base font-semibold text-foreground"
+                  )}
+                >
+                  {queue.teamSize}v{queue.teamSize}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {tierChip ? (
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest",
+                      tierChip.className
+                    )}
+                  >
+                    {tierChip.label}
+                  </span>
+                ) : null}
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {queue.minElo.toLocaleString()}–{queue.maxElo.toLocaleString()}
+                </span>
+                {requiredRoleIds.length > 0 ? (
+                  <span
+                    className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border border-border/50 bg-muted/25 px-2 py-0.5 text-[10px] font-medium text-foreground/90"
+                    title={requiredRoleIds.join(", ")}
+                    aria-label={`Role required: ${roleGateSummary}`}
+                  >
+                    <Lock
+                      className="h-3 w-3 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 truncate">{roleGateSummary}</span>
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             {isPlayerInQueue ? (
@@ -213,12 +264,6 @@ function QueueCardComponent({
 
           {/* Body */}
           <div className="p-4 flex-1">
-            {/* ELO range (mobile only, visible here) */}
-            <p className="text-[10px] text-muted-foreground tabular-nums mb-3 sm:hidden">
-              {queue.minElo.toLocaleString()}–{queue.maxElo.toLocaleString()}{" "}
-              ELO
-            </p>
-
             {/* Players label */}
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground">
@@ -253,7 +298,12 @@ function QueueCardComponent({
                           </p>
                         </div>
                       </div>
-                      <span className="text-[11px] font-medium tabular-nums text-muted-foreground shrink-0 rounded-md bg-muted/40 border border-border/30 px-1.5 py-0.5 self-center">
+                      <span
+                        className={cn(
+                          "text-[11px] font-medium tabular-nums text-muted-foreground shrink-0 rounded-md bg-muted/40 border border-border/30 px-1.5 py-0.5 self-center",
+                          playerEloClass,
+                        )}
+                      >
                         {player.elo.toLocaleString()}
                       </span>
                     </>
@@ -310,7 +360,12 @@ function QueueCardComponent({
                               </p>
                             </div>
                           </div>
-                          <span className="text-[11px] tabular-nums text-muted-foreground/70 shrink-0 rounded-md bg-muted/30 border border-border/25 px-1.5 py-0.5 self-center">
+                          <span
+                            className={cn(
+                              "text-[11px] tabular-nums text-muted-foreground/70 shrink-0 rounded-md bg-muted/30 border border-border/25 px-1.5 py-0.5 self-center",
+                              playerEloClass,
+                            )}
+                          >
                             {player.elo.toLocaleString()}
                           </span>
                         </>
@@ -363,7 +418,12 @@ function QueueCardComponent({
                               </p>
                             </div>
                           </div>
-                          <span className="text-sm tabular-nums text-muted-foreground ml-2 shrink-0">
+                          <span
+                            className={cn(
+                              "text-sm tabular-nums text-muted-foreground ml-2 shrink-0",
+                              playerEloClass,
+                            )}
+                          >
                             {player.elo.toLocaleString()}
                           </span>
                         </div>
@@ -464,11 +524,12 @@ function QueueCardComponent({
                 </DropdownMenuItem>
               )}
               {showManageQueueBans && (
-                <DropdownMenuItem asChild>
-                  <Link href={`/admin/queues?openBans=${queue._id}`}>
-                    <Ban className="mr-2 h-3.5 w-3.5" />
-                    Queue bans
-                  </Link>
+                <DropdownMenuItem
+                  onClick={onManageQueueBans}
+                  disabled={!onManageQueueBans}
+                >
+                  <Ban className="mr-2 h-3.5 w-3.5" />
+                  Queue bans
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />

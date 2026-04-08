@@ -38,11 +38,18 @@
     --destructive: 0 72% 48%;
     --destructive-foreground: 210 40% 98%;
 
+    /* Privileged moderation actions (e.g. unban) — maroon, distinct from alert red */
+    --privileged: 350 55% 38%;
+    --privileged-foreground: 210 40% 98%;
+
     --border: 220 13% 88%;
     --input: 220 13% 88%;
     --ring: 207 76% 42%;
 
     --radius: 0.625rem;
+
+    /* Admin /admin/queues cards: floor height so sparse rows match “full” cards (roles + channels) */
+    --admin-queue-card-min-height: 18rem;
 
     --discord-brand: rgb(88, 101, 242);
     /* Xbox marketing green — store / console CTAs */
@@ -82,6 +89,9 @@
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
+    --privileged: 348 48% 30%;
+    --privileged-foreground: 210 40% 98%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;

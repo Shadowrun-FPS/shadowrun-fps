@@ -13,7 +13,9 @@ export default function PublicModerationLogPage() {
   useEffect(() => {
     // Check if page was opened from another page (has referrer)
     // If document.referrer is empty, page was opened directly or in new tab
-    setHasReferrer(!!document.referrer && document.referrer !== window.location.href);
+    setHasReferrer(
+      !!document.referrer && document.referrer !== window.location.href,
+    );
   }, []);
 
   const handleBack = () => {
@@ -27,13 +29,13 @@ export default function PublicModerationLogPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 mx-auto">
-        <div className="flex items-center gap-4 mb-6 sm:mb-8">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
+      <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <div className="mb-6 flex items-center gap-4 sm:mb-8">
           <Button
             variant="outline"
             size="sm"
-            className="gap-2 min-h-[44px] sm:min-h-0"
+            className="gap-2 rounded-xl border-border/60 bg-card/50 min-h-[44px] hover:bg-muted/50 sm:min-h-9"
             onClick={handleBack}
           >
             <ArrowLeft className="w-4 h-4" />

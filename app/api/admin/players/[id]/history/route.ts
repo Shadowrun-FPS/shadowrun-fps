@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
-import { safeLog, sanitizeString } from "@/lib/security";
+import { sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
+import { playersRouteIdFilter } from "@/lib/admin-player-lookup";
 
 // Define interfaces for the player history types
 interface Warning {
@@ -35,7 +35,7 @@ interface HistoryItem {
 
 async function getPlayerHistoryHandler(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
 
@@ -43,8 +43,10 @@ async function getPlayerHistoryHandler(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const playerId = sanitizeString(params.id, 50);
-  if (!ObjectId.isValid(playerId)) {
+  const { id: rawId } = await params;
+  const playerId = sanitizeString(rawId, 50);
+  const lookup = playersRouteIdFilter(playerId);
+  if (!lookup) {
     return NextResponse.json(
       { error: "Invalid player ID" },
       { status: 400 }
@@ -53,9 +55,7 @@ async function getPlayerHistoryHandler(
 
   const { db } = await connectToDatabase();
 
-  const player = await db
-    .collection("Players")
-    .findOne({ _id: new ObjectId(playerId) });
+  const player = await db.collection("Players").findOne(lookup);
 
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });

@@ -1,34 +1,67 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { Suspense, useCallback } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { PlayerHistory } from "@/components/player-history";
-import PublicModerationLog from "@/components/public-moderation-log";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { parseSafeInternalReturnTo } from "@/lib/safe-return-to";
 
-export default function PlayerHistoryPage() {
+function PlayerHistoryPageInner() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const playerId = params?.id
     ? Array.isArray(params.id)
       ? params.id[0]
       : params.id
     : "";
 
+  const returnTo = parseSafeInternalReturnTo(searchParams.get("returnTo"));
+
+  const handleBack = useCallback(() => {
+    if (returnTo) {
+      router.push(returnTo);
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push("/admin/players");
+  }, [returnTo, router]);
+
   return (
-    <div className="container py-6 mx-auto space-y-6">
-      <Button variant="outline" size="sm" asChild className="mb-6">
-        <Link href="/admin/players" className="flex items-center">
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Back to Players
-        </Link>
+    <div className="container mx-auto space-y-6 px-4 py-6 sm:px-6">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="gap-2"
+        onClick={handleBack}
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden />
+        Back
       </Button>
 
-      <Suspense fallback={<div>Loading player history...</div>}>
-        <PlayerHistory playerId={playerId} />
-      </Suspense>
+      <PlayerHistory playerId={playerId} />
     </div>
+  );
+}
+
+export default function PlayerHistoryPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto px-4 py-6 sm:px-6">
+          <div className="py-8 text-center text-muted-foreground">
+            Loading…
+          </div>
+        </div>
+      }
+    >
+      <PlayerHistoryPageInner />
+    </Suspense>
   );
 }

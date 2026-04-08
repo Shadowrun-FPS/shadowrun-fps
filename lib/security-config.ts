@@ -86,6 +86,32 @@ export function hasAdminRole(userRoles: string[] = []): boolean {
   return userRoles.some((role) => ADMIN_ROLE_IDS.includes(role));
 }
 
+/** Legacy co-developer Discord user id (matches queues UI gate). */
+const LEGACY_CO_DEVELOPER_DISCORD_ID = "238329746671271936";
+
+/**
+ * Server/client: developer accounts, session isAdmin, or admin/founder Discord role ids.
+ * Pass `roleIdsForCheck` when the client has fresher role ids from `/api/user/data` than the session.
+ */
+export function isSessionAdminUser(
+  user: { id: string; isAdmin?: boolean; roles?: string[] } | undefined,
+  roleIdsForCheck?: string[],
+): boolean {
+  if (!user?.id) return false;
+  if (
+    user.id === SECURITY_CONFIG.DEVELOPER_ID ||
+    user.id === LEGACY_CO_DEVELOPER_DISCORD_ID
+  ) {
+    return true;
+  }
+  if (user.isAdmin) return true;
+  const roles =
+    roleIdsForCheck && roleIdsForCheck.length > 0
+      ? roleIdsForCheck
+      : (user.roles ?? []);
+  return hasAdminRole(roles);
+}
+
 export function hasModeratorRole(userRoles: string[] = []): boolean {
   return userRoles.some((role) => MODERATOR_ROLE_IDS.includes(role));
 }

@@ -81,6 +81,8 @@ export interface ModerationAction {
   duration?: string;
   expiry?: Date | string | null;
   timestamp: Date | string;
+  playerProfilePicture?: string | null;
+  moderatorProfilePicture?: string | null;
 }
 
 export type ModerationActionType = "warn" | "ban" | "unban";

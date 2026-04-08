@@ -1,5 +1,6 @@
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { triggerModerationLogUpdate } from "@/lib/moderation-log-pusher";
 
 interface ModerationLogData {
   playerId: string;
@@ -42,6 +43,9 @@ export async function createModerationLog(data: {
     // Names are still stored but will be updated in API responses
     const logEntry = {
       ...data,
+      ...(typeof player?.discordId === "string" && player.discordId
+        ? { playerDiscordId: player.discordId }
+        : {}),
       playerName:
         player?.discordNickname || player?.discordUsername || data.playerName,
       moderatorName:
@@ -52,6 +56,7 @@ export async function createModerationLog(data: {
     };
 
     const result = await db.collection("moderation_logs").insertOne(logEntry);
+    triggerModerationLogUpdate();
     return result;
   } catch (error) {
     console.error("Error creating moderation log:", error);

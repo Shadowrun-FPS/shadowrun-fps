@@ -27,13 +27,22 @@ interface Tournament {
 
 interface TournamentCardProps {
   tournament: Tournament;
+  /**
+   * When set, the main status badge shows “Past start” (scheduled time passed but
+   * tournament is still `upcoming` in the database).
+   */
+  pastScheduledStart?: boolean;
 }
 
-export function TournamentCard({ tournament }: TournamentCardProps) {
+export function TournamentCard({
+  tournament,
+  pastScheduledStart = false,
+}: TournamentCardProps) {
   const startDate = new Date(tournament.startDate);
   const isUpcoming = tournament.status === "upcoming";
   const isActive = tournament.status === "active";
   const isCompleted = tournament.status === "completed";
+  const staleUpcoming = Boolean(pastScheduledStart && isUpcoming);
   const teamsCount = tournament.registeredTeams?.length || 0;
   const maxTeams = tournament.maxTeams || 8;
   const teamsProgress = (teamsCount / maxTeams) * 100;
@@ -52,12 +61,22 @@ export function TournamentCard({ tournament }: TournamentCardProps) {
             variant="secondary"
             className={cn(
               "rounded-full px-3 py-1 text-xs font-medium",
-              isUpcoming && "bg-blue-500/20 text-blue-400 border-blue-500/30",
+              staleUpcoming &&
+                "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+              isUpcoming &&
+                !staleUpcoming &&
+                "bg-blue-500/20 text-blue-400 border-blue-500/30",
               isActive && "bg-green-500/20 text-green-400 border-green-500/30",
               isCompleted && "bg-muted text-muted-foreground",
             )}
           >
-            {isUpcoming ? "Upcoming" : isActive ? "Active" : "Completed"}
+            {staleUpcoming
+              ? "Past start"
+              : isUpcoming
+                ? "Upcoming"
+                : isActive
+                  ? "Active"
+                  : "Completed"}
           </Badge>
           <Badge
             variant="outline"

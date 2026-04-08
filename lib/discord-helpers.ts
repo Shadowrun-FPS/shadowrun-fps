@@ -1,5 +1,6 @@
 import clientPromise from "./mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
 
 export async function getGuildData(accessToken: string) {
   try {
@@ -7,7 +8,7 @@ export async function getGuildData(accessToken: string) {
     const guildId = process.env.DISCORD_GUILD_ID;
 
     if (!guildId) {
-      console.error("DISCORD_GUILD_ID is not defined in environment variables");
+      safeLog.error("DISCORD_GUILD_ID is not defined in environment variables");
       return null;
     }
 
@@ -19,7 +20,7 @@ export async function getGuildData(accessToken: string) {
     });
 
     if (!userResponse.ok) {
-      console.error("Invalid Discord access token:", await userResponse.text());
+      safeLog.error("Invalid Discord access token:", await userResponse.text());
       return null;
     }
 
@@ -36,7 +37,7 @@ export async function getGuildData(accessToken: string) {
     );
 
     if (!guildsResponse.ok) {
-      console.error(
+      safeLog.error(
         "Failed to fetch user guilds:",
         await guildsResponse.text()
       );
@@ -65,14 +66,14 @@ export async function getGuildData(accessToken: string) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(
+      safeLog.error(
         `Failed to fetch guild member data (status ${response.status}):`,
         errorText
       );
 
       // If we get a 401/403, we may need the guild.members.read scope
       if (response.status === 401 || response.status === 403) {
-        console.error(
+        safeLog.error(
           "This might be a permissions issue. Check that your Discord app has the guilds.members.read scope."
         );
       }
@@ -94,7 +95,7 @@ export async function getGuildData(accessToken: string) {
       rawData: data,
     };
   } catch (error) {
-    console.error("Error fetching guild data:", error);
+    safeLog.error("Error fetching guild data:", error);
     return null;
   }
 }
@@ -235,7 +236,7 @@ export async function updatePlayerGuildNickname(
 
     return result;
   } catch (error) {
-    console.error("Error updating player guild nickname:", error);
+    safeLog.error("Error updating player guild nickname:", error);
     throw error;
   }
 }

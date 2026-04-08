@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { playersRouteIdFilter } from "@/lib/admin-player-lookup";
 import { createModerationLog } from "@/lib/moderation";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
 import { safeLog, sanitizeString } from "@/lib/security";
@@ -11,7 +12,7 @@ import { revalidatePath } from "next/cache";
 
 async function postWarnPlayerHandler(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
 
@@ -23,8 +24,10 @@ async function postWarnPlayerHandler(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const playerId = sanitizeString(params.id, 50);
-  if (!ObjectId.isValid(playerId)) {
+  const { id: rawId } = await params;
+  const playerId = sanitizeString(rawId, 50);
+  const lookup = playersRouteIdFilter(playerId);
+  if (!lookup) {
     return NextResponse.json(
       { error: "Invalid player ID" },
       { status: 400 }
@@ -58,9 +61,7 @@ async function postWarnPlayerHandler(
       discordId: sanitizeString(session.user.id, 50),
     });
 
-    const player = await db.collection("Players").findOne({
-      _id: new ObjectId(playerId),
-    });
+    const player = await db.collection("Players").findOne(lookup);
 
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
@@ -76,7 +77,7 @@ async function postWarnPlayerHandler(
     );
 
     const result = await db.collection("Players").updateOne(
-      { _id: new ObjectId(playerId) },
+      { _id: player._id as ObjectId },
       {
         $push: {
           warnings: {

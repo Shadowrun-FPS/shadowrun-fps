@@ -136,14 +136,14 @@ const TournamentsLinks: NavLink[] = [
   },
 ];
 
-/** Desktop-only: inset pill rail + shared control chrome */
-const desktopNavRailClass =
+/** Desktop-only: inset pill rail + shared control chrome (exported for admin sub-navs) */
+export const desktopNavRailClass =
   "flex flex-wrap items-center gap-0.5 rounded-full border border-border/40 bg-muted/30 px-1 py-1 shadow-[inset_0_1px_0_0_hsl(var(--border)/0.35)] dark:bg-muted/20";
 
-const desktopNavControlClass =
+export const desktopNavControlClass =
   "relative inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors duration-200 ease-out motion-reduce:transition-none hover:bg-background/85 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
-const desktopNavRouteActiveClass =
+export const desktopNavRouteActiveClass =
   "bg-background/95 text-foreground shadow-sm ring-1 ring-primary/20 dark:bg-background/45 dark:ring-primary/30";
 
 const desktopNavTriggerOpenClass =
@@ -585,8 +585,10 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
           </h4>
           <div className="flex flex-col gap-1">
             {adminLinks.map((link) => {
+              // Dashboard is /admin only — do not treat /admin/players etc. as dashboard
               const isActive =
-                pathname === link.href || pathname?.startsWith(link.href + "/");
+                pathname === link.href ||
+                (link.href !== "/admin" && Boolean(pathname?.startsWith(link.href)));
               return (
                 <Link
                   key={link.title}

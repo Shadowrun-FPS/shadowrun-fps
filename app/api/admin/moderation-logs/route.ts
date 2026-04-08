@@ -4,17 +4,23 @@ import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import {
-  ADMIN_ROLE_IDS,
-  MODERATOR_ROLE_IDS,
   SECURITY_CONFIG,
   hasAdminRole,
   hasModeratorRole,
 } from "@/lib/security-config";
-import { getDiscordUserInfoBatch } from "@/lib/discord-user-info";
-import { safeLog, sanitizeString } from "@/lib/security";
+import { safeLog } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
+import {
+  computeActiveBansFromBanUnbanRows,
+  getActiveBanDocuments,
+} from "@/lib/compute-moderation-stats";
+import { enrichAdminModerationLogs } from "@/lib/enrich-admin-moderation-logs";
 
 export const dynamic = "force-dynamic";
+
+const CACHE_HEADERS = {
+  "Cache-Control": "private, no-cache, no-store, must-revalidate",
+} as const;
 
 async function getModerationLogsHandler(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -24,10 +30,10 @@ async function getModerationLogsHandler(request: NextRequest) {
   }
 
   const DEVELOPER_DISCORD_ID = "238329746671271936";
-  const isDeveloper = 
-    session.user.id === SECURITY_CONFIG.DEVELOPER_ID || 
+  const isDeveloper =
+    session.user.id === SECURITY_CONFIG.DEVELOPER_ID ||
     session.user.id === DEVELOPER_DISCORD_ID;
-  
+
   const userRoles = session.user.roles || [];
   const userHasAdminRole = hasAdminRole(userRoles);
   const userHasModeratorRole = hasModeratorRole(userRoles);
@@ -40,132 +46,97 @@ async function getModerationLogsHandler(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-    // Connect to database
+  try {
     const { db } = await connectToDatabase();
+    const col = db.collection("moderation_logs");
+    const { searchParams } = new URL(request.url);
 
-    // Fetch moderation logs from database
-    const logs = await db
-      .collection("moderation_logs")
-      .find({})
-      .sort({ timestamp: -1 })
-      .toArray();
+    const metaOnly =
+      searchParams.get("metaOnly") === "1" ||
+      searchParams.get("metaOnly") === "true";
 
-    // Get all unique player and moderator Discord IDs from logs
-    const playerDiscordIds = new Set<string>();
-    const moderatorDiscordIds = new Set<string>();
+    let limit = Number.parseInt(searchParams.get("limit") ?? "3000", 10);
+    if (!Number.isFinite(limit) || limit < 1) {
+      limit = 3000;
+    }
+    limit = Math.min(limit, 5000);
 
-    logs.forEach((log) => {
-      // For players, we need to get their Discord ID from the Players collection
-      // For moderators, moderatorId should be the Discord ID
-      if (log.moderatorId) {
-        moderatorDiscordIds.add(log.moderatorId);
-      }
+    let skip = Number.parseInt(searchParams.get("skip") ?? "0", 10);
+    if (!Number.isFinite(skip) || skip < 0) {
+      skip = 0;
+    }
+
+    const [totalActions, warnings, banUnbanProjected, pageLogs] =
+      await Promise.all([
+        col.countDocuments({}),
+        col.countDocuments({ action: "warn" }),
+        col
+          .find({ action: { $in: ["ban", "unban"] } })
+          .project({ action: 1, playerId: 1, timestamp: 1, expiry: 1 })
+          .sort({ timestamp: -1 })
+          .toArray(),
+        metaOnly
+          ? Promise.resolve([])
+          : col
+              .find({})
+              .sort({ timestamp: -1 })
+              .skip(skip)
+              .limit(limit)
+              .toArray(),
+      ]);
+
+    const activeBansCount =
+      computeActiveBansFromBanUnbanRows(banUnbanProjected);
+    const stats = {
+      warnings,
+      activeBans: activeBansCount,
+      totalActions,
+    };
+
+    if (metaOnly) {
+      const response = NextResponse.json({ stats });
+      Object.entries(CACHE_HEADERS).forEach(([k, v]) =>
+        response.headers.set(k, v),
+      );
+      return response;
+    }
+
+    const activeBanStubs = getActiveBanDocuments(banUnbanProjected);
+    const activeBanIds = activeBanStubs
+      .map((r) => r._id)
+      .filter((id): id is ObjectId => id instanceof ObjectId);
+
+    const activeBanFullDocs =
+      activeBanIds.length > 0
+        ? await col
+            .find({ _id: { $in: activeBanIds }, action: "ban" })
+            .toArray()
+        : [];
+
+    const [enrichedPage, enrichedActiveBans] = await Promise.all([
+      enrichAdminModerationLogs(db, pageLogs, banUnbanProjected),
+      enrichAdminModerationLogs(db, activeBanFullDocs, banUnbanProjected),
+    ]);
+
+    const response = NextResponse.json({
+      logs: enrichedPage,
+      activeBans: enrichedActiveBans,
+      stats,
+      total: totalActions,
+      limit,
+      skip,
     });
-
-    // Fetch player Discord IDs from Players collection
-    const playerIds = new Set<string>();
-    logs.forEach((log) => {
-      if (log.playerId) {
-        // playerId might be ObjectId or Discord ID, we'll check both
-        playerIds.add(log.playerId);
-      }
-    });
-
-    // Convert playerIds to an array of valid ObjectIds for Players collection lookup
-    const validPlayerObjectIds = Array.from(playerIds)
-      .filter((id): id is string => typeof id === "string")
-      .filter((id) => ObjectId.isValid(id))
-      .map((id) => new ObjectId(id));
-
-    // Fetch players to get their Discord IDs
-    const players = await db
-      .collection("Players")
-      .find({
-        $or: [
-          { _id: { $in: validPlayerObjectIds } },
-          { discordId: { $in: Array.from(playerIds) } },
-        ],
-      })
-      .toArray();
-
-    // Extract Discord IDs from players
-    players.forEach((player) => {
-      if (player.discordId) {
-        playerDiscordIds.add(player.discordId);
-      }
-    });
-
-    // Also check if any playerId is already a Discord ID
-    playerIds.forEach((id) => {
-      // If it's not a valid ObjectId, assume it's a Discord ID
-      if (!ObjectId.isValid(id)) {
-        playerDiscordIds.add(id);
-      }
-    });
-
-    // Fetch Discord user info for all players and moderators
-    const playerIdsArray = Array.from(playerDiscordIds);
-    const moderatorIdsArray = Array.from(moderatorDiscordIds);
-    const allDiscordIds = Array.from(
-      new Set([...playerIdsArray, ...moderatorIdsArray])
-    );
-    const discordUserInfoMap = await getDiscordUserInfoBatch(allDiscordIds);
-
-    // Create a map from playerId (ObjectId) to Discord ID
-    const playerIdToDiscordId = new Map<string, string>();
-    players.forEach((player) => {
-      if (player._id && player.discordId) {
-        playerIdToDiscordId.set(player._id.toString(), player.discordId);
-      }
-    });
-
-    // Update logs with current Discord info
-    const updatedLogs = logs.map((log) => {
-      // Get Discord ID for player
-      let playerDiscordId: string | null = null;
-      if (log.playerId) {
-        // Check if playerId is already a Discord ID
-        if (!ObjectId.isValid(log.playerId)) {
-          playerDiscordId = log.playerId;
-        } else {
-          // Look up Discord ID from ObjectId
-          playerDiscordId = playerIdToDiscordId.get(log.playerId) || null;
-        }
-      }
-
-      // Get Discord info for player and moderator
-      const playerInfo = playerDiscordId
-        ? discordUserInfoMap.get(playerDiscordId)
-        : null;
-      const moderatorInfo = log.moderatorId
-        ? discordUserInfoMap.get(log.moderatorId)
-        : null;
-
-      return {
-        ...log,
-        // Update player info with current Discord data
-        playerName: playerInfo
-          ? playerInfo.nickname || playerInfo.username
-          : log.playerName,
-        playerNickname: playerInfo?.nickname,
-        playerProfilePicture: playerInfo?.profilePicture || null,
-        playerDiscordId: playerDiscordId,
-        // Update moderator info with current Discord data
-        moderatorName: moderatorInfo
-          ? moderatorInfo.nickname || moderatorInfo.username
-          : log.moderatorName,
-        moderatorNickname: moderatorInfo?.nickname,
-        moderatorProfilePicture: moderatorInfo?.profilePicture || null,
-        moderatorDiscordId: log.moderatorId,
-      };
-    });
-
-    const response = NextResponse.json(updatedLogs);
-    response.headers.set(
-      "Cache-Control",
-      "private, no-cache, no-store, must-revalidate"
+    Object.entries(CACHE_HEADERS).forEach(([k, v]) =>
+      response.headers.set(k, v),
     );
     return response;
+  } catch (err) {
+    safeLog.error("admin moderation-logs GET failed", err);
+    return NextResponse.json(
+      { error: "Failed to load moderation logs" },
+      { status: 500 },
+    );
+  }
 }
 
 export const GET = withApiSecurity(getModerationLogsHandler, {

@@ -47,6 +47,8 @@ type EventRow = {
   href: string;
   status: string;
   sort: number;
+  /** 0 = normal ordering; 1 = stale tournament (listed after future events). */
+  sortBucket: number;
 };
 
 type TeamUpcomingEventsProps = {
@@ -92,6 +94,11 @@ export function TeamUpcomingEvents({
           if (t.status !== "upcoming" && t.status !== "active") continue;
           if (!teamInRegisteredList(t.registeredTeams, teamId)) continue;
           const start = t.startDate ? new Date(t.startDate).getTime() : 0;
+          const hasValidStart = Boolean(t.startDate && !Number.isNaN(start));
+          const staleUpcoming =
+            t.status === "upcoming" &&
+            hasValidStart &&
+            start < now;
           const dateLabel =
             t.startDate && !Number.isNaN(start)
               ? new Date(t.startDate).toLocaleDateString(undefined, {
@@ -100,14 +107,21 @@ export function TeamUpcomingEvents({
                   year: "numeric",
                 })
               : "Date TBD";
+          const statusLabel =
+            t.status === "active"
+              ? "Live"
+              : staleUpcoming
+                ? "Past start"
+                : "Upcoming";
           built.push({
             kind: "tournament",
             id: t._id,
             title: t.name,
             date: dateLabel,
             href: `/tournaments/${t._id}`,
-            status: t.status === "active" ? "Live" : "Upcoming",
+            status: statusLabel,
             sort: Number.isNaN(start) ? 0 : start,
+            sortBucket: staleUpcoming ? 1 : 0,
           });
         }
 
@@ -151,10 +165,14 @@ export function TeamUpcomingEvents({
             href: `/tournaments/scrimmages/${s._id}`,
             status: statusLabel,
             sort: sortT === Number.MAX_SAFE_INTEGER ? now : sortT,
+            sortBucket: 0,
           });
         }
 
-        built.sort((a, b) => a.sort - b.sort);
+        built.sort(
+          (a, b) =>
+            a.sortBucket - b.sortBucket || a.sort - b.sort,
+        );
         setRows(built);
       } catch (e) {
         safeLog.error("Team upcoming events fetch failed:", e);
@@ -315,7 +333,11 @@ export function TeamUpcomingEvents({
                     <div className="flex shrink-0 flex-col items-end gap-1.5 self-center sm:flex-row sm:items-center sm:gap-2 sm:self-start sm:pt-0.5">
                       <Badge
                         variant="secondary"
-                        className="whitespace-nowrap capitalize"
+                        className={cn(
+                          "whitespace-nowrap capitalize",
+                          r.status === "Past start" &&
+                            "border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-400",
+                        )}
                       >
                         {r.status}
                       </Badge>

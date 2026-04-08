@@ -29,7 +29,7 @@ interface Queue extends WithId<Document> {
   minElo: number;
   maxElo: number;
   teamSize: number; // Add this to know which ELO to check
-  eloTier: string;
+  eloTier?: string;
 }
 
 const MAPS = [
@@ -84,7 +84,7 @@ async function createMatch(db: any, queue: any) {
   const match = await db.collection("Matches").insertOne({
     status: "pending",
     gameType: queue.gameType,
-    eloTier: queue.eloTier,
+    eloTier: queue.eloTier?.trim() || "Open",
     team1: {
       players: team1,
       averageElo:

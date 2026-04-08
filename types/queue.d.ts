@@ -3,7 +3,7 @@ export interface Queue {
   queueId: string;
   gameType: string;
   teamSize: number;
-  eloTier: "low" | "medium" | "high";
+  eloTier?: "low" | "medium" | "high" | string;
   minElo: number;
   maxElo: number;
   players: Player[];

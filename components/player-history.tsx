@@ -3,11 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { ModerationAction, Player, Ban } from "@/types/moderation";
-import { formatDate } from "@/lib/utils";
 import { format } from "date-fns";
+import { safeLog } from "@/lib/security";
 import {
   Table,
   TableBody,
@@ -26,6 +25,29 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 interface PlayerHistoryProps {
   playerId: string;
 }
+
+const MODERATION_EMPTY_STATE_VARIANTS = [
+  {
+    title: "Certified drama-free",
+    body: "Zero warnings, zero bans—this file is so empty we're legally obligated to assume they’re either a saint or very good at flying under the radar.",
+  },
+  {
+    title: "Squeaky clean",
+    body: "Not a single strike on record. If good behavior were a stat, they’d be min-maxing it. Respect.",
+  },
+  {
+    title: "Nothing to see here (in a good way)",
+    body: "No moderation history means no stories for the campfire. That’s the boring, beautiful kind of boring we like.",
+  },
+  {
+    title: "Hall of fame material",
+    body: "Clean sheet from top to bottom. The mods have had nothing to write home about—except maybe “please send more players like this one.”",
+  },
+  {
+    title: "Gold star energy",
+    body: "This account hasn’t given the moderation team a single homework assignment. We&aposre not crying, you’re crying.",
+  },
+] as const;
 
 // Define types for history items
 interface HistoryItem {
@@ -53,8 +75,6 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [player, setPlayer] = useState<ExtendedPlayer | null>(null);
-  const router = useRouter();
-
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -62,10 +82,20 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
     try {
       // Fetch player data
       const playerResponse = await fetch(`/api/admin/players/${playerId}`);
+      let playerData: ExtendedPlayer | null = null;
       if (!playerResponse.ok) {
-        throw new Error(`Error: ${playerResponse.status}`);
+        let message = `Request failed (${playerResponse.status})`;
+        try {
+          const errJson = await playerResponse.json();
+          if (typeof errJson?.error === "string") {
+            message = errJson.error;
+          }
+        } catch {
+          /* ignore */
+        }
+        throw new Error(message);
       }
-      const playerData = await playerResponse.json();
+      playerData = await playerResponse.json();
       setPlayer(playerData);
 
       // Create history from player document only
@@ -75,7 +105,7 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
       const moderatorIds = new Set<string>();
       
       // Add warnings from player document
-      if (playerData.warnings && playerData.warnings.length > 0) {
+      if (playerData?.warnings && playerData.warnings.length > 0) {
 
         playerData.warnings.forEach((warning: any) => {
           if (warning.moderatorId) {
@@ -85,7 +115,7 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
       }
 
       // Add bans from player document
-      if (playerData.bans && playerData.bans.length > 0) {
+      if (playerData?.bans && playerData.bans.length > 0) {
 
         playerData.bans.forEach((ban: any) => {
           if (ban.moderatorId) {
@@ -110,12 +140,12 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
             });
           }
         } catch (error) {
-          console.error("Error fetching moderator Discord info:", error);
+          safeLog.error("Error fetching moderator Discord info:", error);
         }
       }
 
       // Add warnings from player document
-      if (playerData.warnings && playerData.warnings.length > 0) {
+      if (playerData?.warnings && playerData.warnings.length > 0) {
         const warningHistory: HistoryItem[] = playerData.warnings.map(
           (warning: any) => {
             const modInfo = warning.moderatorId
@@ -142,7 +172,7 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
       }
 
       // Add bans from player document
-      if (playerData.bans && playerData.bans.length > 0) {
+      if (playerData?.bans && playerData.bans.length > 0) {
         const banHistory: HistoryItem[] = playerData.bans.map((ban: any) => {
           const modInfo = ban.moderatorId
             ? moderatorDiscordInfo.get(ban.moderatorId)
@@ -176,8 +206,10 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
 
       setHistory(combinedHistory);
     } catch (err) {
-      console.error("Error fetching player history:", err);
-      setError("Failed to load player history");
+      safeLog.error("Error fetching player history:", err);
+      setError(
+        err instanceof Error ? err.message : "Failed to load player history",
+      );
     } finally {
       setLoading(false);
     }
@@ -211,12 +243,16 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
   };
 
   if (loading) {
-    return <div className="py-8 text-center">Loading player history...</div>;
+    return (
+      <div className="py-8 text-center text-muted-foreground">
+        Loading player history…
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="py-8 text-center text-red-500">
+      <div className="py-8 text-center text-destructive">
         {error}
         <Button onClick={fetchHistory} variant="outline" className="mt-4">
           Try Again
@@ -229,23 +265,51 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
     ? player.discordNickname || player.discordUsername || "Unknown Player"
     : "Unknown Player";
 
+  const emptyStatePick =
+    MODERATION_EMPTY_STATE_VARIANTS[
+      playerName
+        .split("")
+        .reduce((acc, ch, i) => acc + ch.charCodeAt(0) * (i + 1), 0) %
+        MODERATION_EMPTY_STATE_VARIANTS.length
+    ];
+
   return (
-    <div>
-      <div className="p-6 border rounded-lg bg-card text-card-foreground">
-        <h3 className="mb-2 text-xl font-bold">
+    <div className="space-y-8">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
           {playerName}&apos;s Moderation History
-        </h3>
-        <p className="mb-6 text-muted-foreground">
+        </h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
           A record of warnings and bans associated with this account.
         </p>
+      </div>
 
-        {history.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            No moderation actions found for this player.
-          </div>
-        ) : (
-          <div className="space-y-4 overflow-x-auto">
-            <h2 className="text-xl font-bold">Moderation History</h2>
+      {history.length === 0 ? (
+        <div
+          className="mx-auto max-w-lg rounded-xl  border-border/50 px-6 py-12 text-center shadow-sm"
+          role="status"
+          aria-label="No moderation history"
+        >
+         
+          <p className="text-lg font-semibold text-foreground">
+            {emptyStatePick.title}
+          </p>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            {emptyStatePick.body}
+          </p>
+          <p className="mt-6 text-xs text-muted-foreground/80">
+            No warnings or bans are on file for this account.
+          </p>
+        </div>
+      ) : (
+        <section className="space-y-4" aria-labelledby="moderation-history-heading">
+          <h2
+            id="moderation-history-heading"
+            className="text-lg font-semibold text-foreground"
+          >
+            Moderation History
+          </h2>
+          <div className="overflow-x-auto">
             <div className="min-w-full">
               <Table>
                 <TableHeader>
@@ -317,23 +381,22 @@ export function PlayerHistory({ playerId }: PlayerHistoryProps) {
               </Table>
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {/* Display active ban status if present */}
-        {player && player.isBanned && (
-          <div className="p-4 mt-6 border rounded-md bg-red-950/20 border-red-500/30">
-            <p className="font-medium text-red-400">
-              This player is currently banned
-              {player.banExpiry
-                ? ` until ${format(
-                    new Date(player.banExpiry),
-                    "MM/dd/yyyy, h:mm a"
-                  )}`
-                : " permanently"}
-            </p>
-          </div>
-        )}
-      </div>
+      {player && player.isBanned && (
+        <div className="rounded-md border border-red-500/30 bg-red-950/20 p-4">
+          <p className="font-medium text-red-400">
+            This player is currently banned
+            {player.banExpiry
+              ? ` until ${format(
+                  new Date(player.banExpiry),
+                  "MM/dd/yyyy, h:mm a"
+                )}`
+              : " permanently"}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

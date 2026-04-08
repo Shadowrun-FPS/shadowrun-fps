@@ -9,236 +9,277 @@ import { safeLog, sanitizeString } from "@/lib/security";
 import { cachedQuery } from "@/lib/query-cache";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerModerationLogUpdate } from "@/lib/moderation-log-pusher";
+import { STAFF_ONLY_MODERATION_LOG_ACTIONS } from "@/lib/moderation-log-constants";
 
 async function getModerationLogsHandler(request: Request) {
   const session = await getServerSession(authOptions);
+  const isAdmin =
+    session?.user?.roles?.includes("admin") ||
+    session?.user?.roles?.includes("moderator");
+
   const { searchParams } = new URL(request.url);
   const type = sanitizeString(searchParams.get("type") || "all", 50);
-  const limit = Math.min(100, Math.max(1, Number(sanitizeString(searchParams.get("limit") || "50", 10)) || 50));
-  const skip = Math.max(0, Number(sanitizeString(searchParams.get("skip") || "0", 10)) || 0);
+  const limit = Math.min(
+    100,
+    Math.max(
+      1,
+      Number(sanitizeString(searchParams.get("limit") || "50", 10)) || 50,
+    ),
+  );
+  const skip = Math.max(
+    0,
+    Number(sanitizeString(searchParams.get("skip") || "0", 10)) || 0,
+  );
   const search = sanitizeString(searchParams.get("search") || "", 100);
 
-    const client = await clientPromise;
-    const db = client.db();
-    const collection = db.collection("moderation_logs");
+  const client = await clientPromise;
+  const db = client.db();
+  const collection = db.collection("moderation_logs");
 
-    let query: any = {};
+  let query: any = {};
 
-    // Filter by type if specified
-    if (type) {
-      if (type === "active") {
-        query = {
-          action: "ban",
-          $or: [{ expiry: { $gt: new Date() } }, { duration: "Permanent" }],
-        };
-      } else if (type === "warnings") {
-        query = { action: "warning" };
-      } else if (type === "disputes") {
-        query = { hasDispute: true };
-      } else if (type !== "all") {
-        query = { action: type };
-      }
-    }
-
-    // Add search filter if provided (sanitize regex)
-    if (search) {
-      const sanitizedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      query.$or = [
-        { playerName: { $regex: sanitizedSearch, $options: "i" } },
-        { reason: { $regex: sanitizedSearch, $options: "i" } },
-        { moderatorName: { $regex: sanitizedSearch, $options: "i" } },
-      ];
-    }
-
-    // Get total count
-    const total = await collection.countDocuments(query);
-
-    // Get paginated results
-    const logs = await collection
-      .find(query)
-      .sort({ timestamp: -1 })
-      .skip(skip)
-      .limit(limit)
-      .toArray();
-
-    // Calculate accurate statistics first
-    const warningsCount = await collection.countDocuments({
-      action: "warning",
-    });
-
-    const activeBansCount = await collection.countDocuments({
-      action: "ban",
-      $or: [{ expiry: { $gt: new Date() } }, { duration: "Permanent" }],
-    });
-
-    const totalActionsCount = await collection.countDocuments({});
-
-    // Get month-over-month change by comparing to last month
-    const lastMonthDate = new Date();
-    lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
-
-    const warningsLastMonth = await collection.countDocuments({
-      action: "warning",
-      timestamp: { $lt: lastMonthDate },
-    });
-
-    const activeBansLastMonth = await collection.countDocuments({
-      action: "ban",
-      $or: [{ expiry: { $gt: lastMonthDate } }, { duration: "Permanent" }],
-      timestamp: { $lt: lastMonthDate },
-    });
-
-    const totalActionsLastMonth = await collection.countDocuments({
-      timestamp: { $lt: lastMonthDate },
-    });
-
-    // Calculate change (current - lastMonth)
-    const warningsChange = warningsCount - warningsLastMonth;
-    const activeBansChange = activeBansCount - activeBansLastMonth;
-    const totalActionsChange = totalActionsCount - totalActionsLastMonth;
-
-    // Build stats object
-    const stats = {
-      warnings: {
-        current: warningsCount,
-        change: warningsChange,
-      },
-      activeBans: {
-        current: activeBansCount,
-        change: activeBansChange,
-      },
-      totalActions: {
-        current: totalActionsCount,
-        change: totalActionsChange,
-      },
-    };
-
-    // For public logs, remove moderator information and ensure player names are available for blurring
-    const isAdmin =
-      session?.user?.roles?.includes("admin") ||
-      session?.user?.roles?.includes("moderator");
-
-    const formattedLogs = logs.map((log) => {
-      if (!isAdmin) {
-        // For public logs, include only necessary fields
-        return {
-          _id: log._id,
-          action: log.action,
-          playerName: log.playerName,
-          reason: log.reason,
-          duration: log.duration,
-          timestamp: log.timestamp,
-          expiry: log.expiry,
-        };
-      }
-      return log;
-    });
-
-    // Get all unique player IDs from logs
-    const playerIds = new Set<string>();
-    formattedLogs.forEach((log) => {
-      if (log.playerId) playerIds.add(log.playerId);
-    });
-
-    // Convert playerIds to an array of valid ObjectIds for Players collection lookup
-    const validPlayerObjectIds = Array.from(playerIds)
-      .filter((id): id is string => typeof id === "string")
-      .filter((id) => ObjectId.isValid(id))
-      .map((id) => new ObjectId(id));
-
-    // Fetch players to get their Discord IDs
-    const players = await db
-      .collection("Players")
-      .find({
-        $or: [
-          { _id: { $in: validPlayerObjectIds } },
-          { discordId: { $in: Array.from(playerIds) } },
-        ],
-      })
-      .toArray();
-
-    // Extract Discord IDs from players
-    const playerDiscordIds = new Set<string>();
-    players.forEach((player) => {
-      if (player.discordId) {
-        playerDiscordIds.add(player.discordId);
-      }
-    });
-
-    // Also check if any playerId is already a Discord ID
-    playerIds.forEach((id) => {
-      if (!ObjectId.isValid(id)) {
-        playerDiscordIds.add(id);
-      }
-    });
-
-    // Fetch Discord user info for all players
-    const discordUserInfoMap = await getDiscordUserInfoBatch(
-      Array.from(playerDiscordIds)
-    );
-
-    // Create a map from playerId (ObjectId) to Discord ID
-    const playerIdToDiscordId = new Map<string, string>();
-    players.forEach((player) => {
-      if (player._id && player.discordId) {
-        playerIdToDiscordId.set(player._id.toString(), player.discordId);
-      }
-    });
-
-    // Update logs with current Discord info
-    const updatedLogs = formattedLogs.map((log) => {
-      // Get Discord ID for player
-      let playerDiscordId: string | null = null;
-      if (log.playerId) {
-        if (!ObjectId.isValid(log.playerId)) {
-          playerDiscordId = log.playerId;
-        } else {
-          playerDiscordId = playerIdToDiscordId.get(log.playerId) || null;
-        }
-      }
-
-      const playerInfo = playerDiscordId
-        ? discordUserInfoMap.get(playerDiscordId)
-        : null;
-
-      // Check if this ban was revoked (unbanned)
-      // A ban is considered revoked if there's a more recent unban action for the same player
-      let isRevoked = false;
-      if (log.action === "ban" && playerDiscordId) {
-        const unbanLog = logs.find(
-          (l) =>
-            l.action === "unban" &&
-            l.playerId === log.playerId &&
-            new Date(l.timestamp).getTime() > new Date(log.timestamp).getTime()
-        );
-        isRevoked = !!unbanLog;
-      }
-
-      return {
-        ...log,
-        // Update player info with current Discord data
-        playerName: playerInfo
-          ? playerInfo.nickname || playerInfo.username
-          : log.playerName,
-        playerNickname: playerInfo?.nickname,
-        playerProfilePicture: playerInfo?.profilePicture || null,
-        playerDiscordId: playerDiscordId,
-        revoked: isRevoked,
+  // Filter by type if specified
+  if (type) {
+    if (type === "active") {
+      query = {
+        action: "ban",
+        $or: [{ expiry: { $gt: new Date() } }, { duration: "Permanent" }],
       };
-    });
+    } else if (type === "warnings") {
+      query = { action: "warning" };
+    } else if (type === "disputes") {
+      query = { hasDispute: true };
+    } else if (type !== "all") {
+      query = { action: type };
+    }
+  }
 
-    return NextResponse.json(
-      {
-        logs: updatedLogs,
-        total,
-        stats: isAdmin ? stats : undefined,
-      },
-      {
-        headers: {
-          "Cache-Control": "private, no-cache, no-store, must-revalidate",
-        },
+  // Add search filter if provided (sanitize regex)
+  if (search) {
+    const sanitizedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    query.$or = [
+      { playerName: { $regex: sanitizedSearch, $options: "i" } },
+      { reason: { $regex: sanitizedSearch, $options: "i" } },
+      { moderatorName: { $regex: sanitizedSearch, $options: "i" } },
+    ];
+  }
+
+  // Public moderation log endpoint: never return staff-only actions (admin UI uses /api/admin/moderation-logs).
+  {
+    const staffExclusion = {
+      action: { $nin: [...STAFF_ONLY_MODERATION_LOG_ACTIONS] },
+    };
+    if (Object.keys(query).length === 0) {
+      query = staffExclusion;
+    } else {
+      query = { $and: [query, staffExclusion] };
+    }
+  }
+
+  // Get total count
+  const total = await collection.countDocuments(query);
+
+  // Get paginated results
+  const logs = await collection
+    .find(query)
+    .sort({ timestamp: -1 })
+    .skip(skip)
+    .limit(limit)
+    .toArray();
+
+  // Calculate accurate statistics first
+  const warningsCount = await collection.countDocuments({
+    action: "warning",
+  });
+
+  const activeBansCount = await collection.countDocuments({
+    action: "ban",
+    $or: [{ expiry: { $gt: new Date() } }, { duration: "Permanent" }],
+  });
+
+  const totalActionsCount = await collection.countDocuments({});
+
+  // Get month-over-month change by comparing to last month
+  const lastMonthDate = new Date();
+  lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+
+  const warningsLastMonth = await collection.countDocuments({
+    action: "warning",
+    timestamp: { $lt: lastMonthDate },
+  });
+
+  const activeBansLastMonth = await collection.countDocuments({
+    action: "ban",
+    $or: [{ expiry: { $gt: lastMonthDate } }, { duration: "Permanent" }],
+    timestamp: { $lt: lastMonthDate },
+  });
+
+  const totalActionsLastMonth = await collection.countDocuments({
+    timestamp: { $lt: lastMonthDate },
+  });
+
+  // Calculate change (current - lastMonth)
+  const warningsChange = warningsCount - warningsLastMonth;
+  const activeBansChange = activeBansCount - activeBansLastMonth;
+  const totalActionsChange = totalActionsCount - totalActionsLastMonth;
+
+  // Build stats object
+  const stats = {
+    warnings: {
+      current: warningsCount,
+      change: warningsChange,
+    },
+    activeBans: {
+      current: activeBansCount,
+      change: activeBansChange,
+    },
+    totalActions: {
+      current: totalActionsCount,
+      change: totalActionsChange,
+    },
+  };
+
+  const formattedLogs = logs.map((log) => {
+    if (!isAdmin) {
+      // For public logs, include only necessary fields
+      return {
+        _id: log._id,
+        action: log.action,
+        playerName: log.playerName,
+        reason: log.reason,
+        duration: log.duration,
+        timestamp: log.timestamp,
+        expiry: log.expiry,
+      };
+    }
+    return log;
+  });
+
+  // Get all unique player IDs from logs
+  const playerIds = new Set<string>();
+  formattedLogs.forEach((log) => {
+    if (log.playerId) playerIds.add(log.playerId);
+  });
+
+  // Convert playerIds to an array of valid ObjectIds for Players collection lookup
+  const validPlayerObjectIds = Array.from(playerIds)
+    .filter((id): id is string => typeof id === "string")
+    .filter((id) => ObjectId.isValid(id))
+    .map((id) => new ObjectId(id));
+
+  // Fetch players to get their Discord IDs
+  const players = await db
+    .collection("Players")
+    .find({
+      $or: [
+        { _id: { $in: validPlayerObjectIds } },
+        { discordId: { $in: Array.from(playerIds) } },
+      ],
+    })
+    .toArray();
+
+  // Extract Discord IDs from players
+  const playerDiscordIds = new Set<string>();
+  players.forEach((player) => {
+    if (player.discordId) {
+      playerDiscordIds.add(player.discordId);
+    }
+  });
+
+  // Also check if any playerId is already a Discord ID
+  playerIds.forEach((id) => {
+    if (!ObjectId.isValid(id)) {
+      playerDiscordIds.add(id);
+    }
+  });
+
+  // Fetch Discord user info for all players
+  const discordUserInfoMap = await getDiscordUserInfoBatch(
+    Array.from(playerDiscordIds),
+  );
+
+  // Create a map from playerId (ObjectId) to Discord ID
+  const playerIdToDiscordId = new Map<string, string>();
+  players.forEach((player) => {
+    if (player._id && player.discordId) {
+      playerIdToDiscordId.set(player._id.toString(), player.discordId);
+    }
+  });
+
+  const playerAvatarByDiscordId = new Map<string, string | null>();
+  for (const player of players) {
+    const doc = player as {
+      discordId?: string;
+      discordProfilePicture?: string | null;
+    };
+    if (doc.discordId && doc.discordProfilePicture) {
+      playerAvatarByDiscordId.set(doc.discordId, doc.discordProfilePicture);
+    }
+  }
+
+  // Update logs with current Discord info
+  const updatedLogs = formattedLogs.map((log) => {
+    // Get Discord ID for player
+    let playerDiscordId: string | null = null;
+    if (log.playerId) {
+      if (!ObjectId.isValid(log.playerId)) {
+        playerDiscordId = log.playerId;
+      } else {
+        playerDiscordId = playerIdToDiscordId.get(log.playerId) || null;
       }
-    );
+    }
+
+    const playerInfo = playerDiscordId
+      ? discordUserInfoMap.get(playerDiscordId)
+      : null;
+
+    // Check if this ban was revoked (unbanned)
+    // A ban is considered revoked if there's a more recent unban action for the same player
+    let isRevoked = false;
+    if (log.action === "ban" && playerDiscordId) {
+      const unbanLog = logs.find(
+        (l) =>
+          l.action === "unban" &&
+          l.playerId === log.playerId &&
+          new Date(l.timestamp).getTime() > new Date(log.timestamp).getTime(),
+      );
+      isRevoked = !!unbanLog;
+    }
+
+    const storedAvatar = playerDiscordId
+      ? playerAvatarByDiscordId.get(playerDiscordId)
+      : undefined;
+
+    return {
+      ...log,
+      // Update player info with current Discord data
+      playerName: playerInfo
+        ? playerInfo.nickname || playerInfo.username
+        : log.playerName,
+      playerNickname: playerInfo?.nickname,
+      playerProfilePicture:
+        playerInfo?.profilePicture ??
+        storedAvatar ??
+        (log as { playerProfilePicture?: string | null }).playerProfilePicture ??
+        null,
+      playerDiscordId: playerDiscordId,
+      revoked: isRevoked,
+    };
+  });
+
+  return NextResponse.json(
+    {
+      logs: updatedLogs,
+      total,
+      stats: isAdmin ? stats : undefined,
+    },
+    {
+      headers: {
+        "Cache-Control": "private, no-cache, no-store, must-revalidate",
+      },
+    },
+  );
 }
 
 export const GET = withApiSecurity(getModerationLogsHandler, {
@@ -269,7 +310,7 @@ async function postModerationLogsHandler(request: Request) {
   if (!validation.valid) {
     return NextResponse.json(
       { error: validation.errors?.join(", ") || "Invalid input" },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -281,7 +322,14 @@ async function postModerationLogsHandler(request: Request) {
     duration?: string;
     active?: boolean;
   };
-  const { type, playerId, playerName, reason, duration, active = true } = validationData;
+  const {
+    type,
+    playerId,
+    playerName,
+    reason,
+    duration,
+    active = true,
+  } = validationData;
 
   const client = await clientPromise;
   const db = client.db();
@@ -302,6 +350,7 @@ async function postModerationLogsHandler(request: Request) {
 
   const result = await collection.insertOne(newLog);
 
+  triggerModerationLogUpdate();
   revalidatePath("/moderation-log");
   revalidatePath("/admin/moderation");
 

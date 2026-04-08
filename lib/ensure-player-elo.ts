@@ -1,10 +1,13 @@
 import clientPromise from "@/lib/mongodb";
 
+import { RANKED_TEAM_SIZES } from "@/lib/ranked-team-sizes";
+
 const DEFAULT_ELO = 800;
-const ALL_TEAM_SIZES = [1, 2, 3, 4, 5];
+/** Ranked queue sizes plus 3v3 (teams/scrims) so legacy 3v3 stats stay backfillable. */
+const ALL_TEAM_SIZES = [...RANKED_TEAM_SIZES, 3].sort((a, b) => a - b);
 
 /**
- * Ensures a player has ELO records for all team sizes (1v1, 2v2, 3v3, 4v4, 5v5)
+ * Ensures a player has ELO records for ranked team sizes (and 3v3 where applicable)
  * Priority for ELO value:
  * 1. Use 4v4 ELO if it exists
  * 2. Use highest existing ELO if no 4v4

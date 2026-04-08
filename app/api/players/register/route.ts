@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { RANKED_TEAM_SIZES } from "@/lib/ranked-team-sizes";
 
 // Add this line to explicitly mark the route as dynamic
 export const dynamic = "force-dynamic";
@@ -33,8 +34,7 @@ async function postRegisterPlayerHandler(req: NextRequest) {
     );
   }
 
-  const teamSizes = [1, 2, 4, 5];
-  const stats = teamSizes.map((teamSize) => ({
+  const stats = RANKED_TEAM_SIZES.map((teamSize) => ({
     teamSize,
     elo: 800,
     wins: 0,
@@ -54,6 +54,7 @@ async function postRegisterPlayerHandler(req: NextRequest) {
 
   revalidatePath("/players");
   revalidatePath(`/players/${session.user.id}`);
+  revalidatePath("/matches/queues");
 
   return NextResponse.json({
     success: true,
@@ -64,5 +65,5 @@ async function postRegisterPlayerHandler(req: NextRequest) {
 export const POST = withApiSecurity(postRegisterPlayerHandler, {
   rateLimiter: "api",
   requireAuth: true,
-  revalidatePaths: ["/players"],
+  revalidatePaths: ["/players", "/matches/queues"],
 });

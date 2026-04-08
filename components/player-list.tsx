@@ -64,6 +64,7 @@ import {
 } from "lucide-react";
 import { ModerationDialog } from "@/components/moderation-dialog";
 import { useRouter } from "next/navigation";
+import { playerHistoryHrefFromBrowserLocation } from "@/lib/safe-return-to";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { PlayerContextMenu } from "@/components/player-context-menu";
@@ -270,7 +271,7 @@ export function PlayerList({ onModerationSuccess }: PlayerListProps) {
   };
 
   const handleViewHistory = (player: Player) => {
-    router.push(`/admin/players/${player._id}/history`);
+    router.push(playerHistoryHrefFromBrowserLocation(String(player._id)));
   };
 
   // Helper to get warning and ban counts
@@ -598,7 +599,11 @@ export function PlayerList({ onModerationSuccess }: PlayerListProps) {
                     size="sm"
                     className="flex-1 border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/40 min-h-[44px] sm:min-h-0"
                     onClick={() =>
-                      router.push(`/admin/players/${player._id}/history`)
+                      router.push(
+                        playerHistoryHrefFromBrowserLocation(
+                          String(player._id),
+                        ),
+                      )
                     }
                     aria-label={`View moderation history for ${player.discordNickname || player.discordUsername || "player"}`}
                   >

@@ -371,7 +371,7 @@ async function postLaunchHandler(
       matchId,
       status: "in_progress",
       teamSize: queue.teamSize,
-      eloTier: queue.eloTier,
+      eloTier: queue.eloTier?.trim() || "Open",
       type: "Ranked",
       firstPick: firstPickTeam,
       createdAt: Date.now(),

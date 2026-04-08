@@ -214,7 +214,7 @@ export function InvitePlayerDialog({ teamId }: { teamId: string }) {
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary/40 to-transparent opacity-50" />
               <Users className="relative w-5 h-5 text-primary drop-shadow-sm" />
             </div>
-            <DialogTitle className="text-xl sm:text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-foreground to-foreground/80">
+            <DialogTitle className="text-xl sm:text-2xl font-bold">
               Invite Players to Team
             </DialogTitle>
           </div>

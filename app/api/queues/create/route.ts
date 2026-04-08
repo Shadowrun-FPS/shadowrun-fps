@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { v4 as uuidv4 } from "uuid";
-import { SECURITY_CONFIG } from "@/lib/security-config";
+import { isSessionAdminUser } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
@@ -18,10 +18,7 @@ async function postCreateHandler(req: Request) {
     );
   }
 
-  const isAdmin =
-    session.user.id === SECURITY_CONFIG.DEVELOPER_ID || session.user.isAdmin;
-
-  if (!isAdmin) {
+  if (!isSessionAdminUser(session.user)) {
     return NextResponse.json(
       { error: "You don't have permission to create queues" },
       { status: 403 }
@@ -33,7 +30,7 @@ async function postCreateHandler(req: Request) {
 
   const validation = validateBody(data, {
     teamSize: { type: "number", required: true, min: 1, max: 8 },
-    eloTier: { type: "string", required: true, maxLength: 50 },
+    eloTier: { type: "string", required: false, maxLength: 50 },
     minElo: { type: "number", required: true, min: 0, max: 10000 },
     maxElo: { type: "number", required: true, min: 0, max: 10000 },
     gameType: { type: "string", required: false, maxLength: 50 },
@@ -49,7 +46,7 @@ async function postCreateHandler(req: Request) {
 
   const { teamSize, eloTier, minElo, maxElo, gameType, status } = validation.data! as {
     teamSize: number;
-    eloTier: string;
+    eloTier?: string;
     minElo: number;
     maxElo: number;
     gameType?: string;
@@ -93,12 +90,14 @@ async function postCreateHandler(req: Request) {
       }
     }
 
+    const tierTrim =
+      typeof eloTier === "string" ? eloTier.trim() : "";
+    const newQueueId = uuidv4();
     const queueData = {
-      queueId: uuidv4(),
+      queueId: newQueueId,
       gameType: sanitizeString(gameType || "ranked", 50),
       teamSize,
       players: [],
-      eloTier: sanitizeString(eloTier, 50),
       minElo,
       maxElo,
       status: sanitizeString(status || "active", 50),
@@ -108,6 +107,7 @@ async function postCreateHandler(req: Request) {
         discordId: session.user.id,
         discordNickname: sanitizeString(session.user.name || "Unknown", 100),
       },
+      ...(tierTrim ? { eloTier: sanitizeString(tierTrim, 50) } : {}),
     };
 
     const result = await db.collection("Queues").insertOne(queueData);
@@ -119,7 +119,7 @@ async function postCreateHandler(req: Request) {
     revalidatePath("/admin/queues");
 
     return NextResponse.json(
-      { success: true, queueId: queueData.queueId, _id: result.insertedId },
+      { success: true, queueId: newQueueId, _id: result.insertedId },
       { status: 201 }
     );
 }

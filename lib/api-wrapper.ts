@@ -10,7 +10,7 @@ import { authOptions } from "@/lib/auth";
 import { rateLimiters, getClientIdentifier, safeLog, sanitizeString } from "./security";
 import { handleApiError } from "./error-handling";
 import { revalidatePath } from "next/cache";
-import { SECURITY_CONFIG } from "@/lib/security-config";
+import { isSessionAdminUser } from "@/lib/security-config";
 
 export type ApiHandler = (
   req: NextRequest,
@@ -72,10 +72,7 @@ export function withApiSecurity(
         }
 
         if (options.requireAdmin) {
-          const isAdmin =
-            session.user.roles?.includes("admin") ||
-            session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
-          if (!isAdmin) {
+          if (!isSessionAdminUser(session.user)) {
             return NextResponse.json(
               { error: "Forbidden" },
               { status: 403 }
