@@ -85,6 +85,7 @@ import {
   MODERATION_LOG_PUSHER_EVENT,
 } from "@/lib/moderation-log-realtime-constants";
 import { formatModerationLogDateParts } from "@/lib/moderation-log-date";
+import { isPlayerUnbanned } from "@/lib/moderation-is-player-unbanned";
 import { safeLog } from "@/lib/security";
 import type {
   AdminModerationLog,
@@ -652,7 +653,8 @@ function ModerationPanelContent() {
       filtered = filtered.filter(
         (action) =>
           action.action === "ban" &&
-          (!action.expiry || new Date(action.expiry) > new Date()),
+          (!action.expiry || new Date(action.expiry) > new Date()) &&
+          !isPlayerUnbanned(logs, action.playerId, action),
       );
     }
 
@@ -758,18 +760,6 @@ function ModerationPanelContent() {
   const handleDisputeResolved = () => {
     void fetchData({ bypassCache: true });
     setDisputeDialogOpen(false);
-  };
-
-  const isPlayerUnbanned = (playerId: string, action: AdminModerationLog) => {
-    if (action.action === "ban" && typeof action.banIsActive === "boolean") {
-      return !action.banIsActive;
-    }
-    return logs.some(
-      (log) =>
-        log.action === "unban" &&
-        log.playerId === playerId &&
-        new Date(log.timestamp) > new Date(action.timestamp),
-    );
   };
 
   const handleViewDispute = (dispute: Dispute) => {
@@ -1202,13 +1192,13 @@ function ModerationPanelContent() {
                                 ) : action.action === "ban" ? (
                                   <Badge
                                     variant={
-                                      isPlayerUnbanned(action.playerId, action)
+                                      isPlayerUnbanned(logs, action.playerId, action)
                                         ? "outline"
                                         : "destructive"
                                     }
                                     className="whitespace-nowrap text-[10px] sm:text-xs"
                                   >
-                                    {isPlayerUnbanned(action.playerId, action)
+                                    {isPlayerUnbanned(logs, action.playerId, action)
                                       ? "Unbanned"
                                       : "Ban"}
                                   </Badge>
@@ -1475,7 +1465,7 @@ function ModerationPanelContent() {
                                 )
                               }
                               disabled={
-                                isPlayerUnbanned(action.playerId, action) ||
+                                isPlayerUnbanned(logs, action.playerId, action) ||
                                 unbanInProgressId === action.playerId
                               }
                               className={cn(
@@ -1550,14 +1540,14 @@ function ModerationPanelContent() {
                             variant={
                               action.action === "warn"
                                 ? "warning"
-                                : isPlayerUnbanned(action.playerId, action)
+                                : isPlayerUnbanned(logs, action.playerId, action)
                                   ? "outline"
                                   : "destructive"
                             }
                           >
                             {action.action === "warn"
                               ? "Warning"
-                              : isPlayerUnbanned(action.playerId, action)
+                              : isPlayerUnbanned(logs, action.playerId, action)
                                 ? "Unbanned"
                                 : "Ban"}
                           </Badge>
@@ -1624,7 +1614,7 @@ function ModerationPanelContent() {
                               )
                             }
                             disabled={
-                              isPlayerUnbanned(action.playerId, action) ||
+                              isPlayerUnbanned(logs, action.playerId, action) ||
                               unbanInProgressId === action.playerId
                             }
                             className={cn(
@@ -1797,12 +1787,12 @@ function ModerationPanelContent() {
                           ) : (
                             <Badge
                               variant={
-                                isPlayerUnbanned(action.playerId, action)
+                                isPlayerUnbanned(logs, action.playerId, action)
                                   ? "outline"
                                   : "destructive"
                               }
                             >
-                              {isPlayerUnbanned(action.playerId, action)
+                              {isPlayerUnbanned(logs, action.playerId, action)
                                 ? "Unbanned"
                                 : "Ban"}
                             </Badge>
@@ -1895,6 +1885,7 @@ function ModerationPanelContent() {
                                   }
                                   disabled={
                                     isPlayerUnbanned(
+                                      logs,
                                       action.playerId,
                                       action,
                                     ) || unbanInProgressId === action.playerId
@@ -1960,7 +1951,7 @@ function ModerationPanelContent() {
                               ? "warning"
                               : action.action === "queue_remove_player"
                                 ? "secondary"
-                                : isPlayerUnbanned(action.playerId, action)
+                                : isPlayerUnbanned(logs, action.playerId, action)
                                   ? "outline"
                                   : "destructive"
                           }
@@ -1969,7 +1960,7 @@ function ModerationPanelContent() {
                             ? "Warning"
                             : action.action === "queue_remove_player"
                               ? "Queue removal"
-                              : isPlayerUnbanned(action.playerId, action)
+                              : isPlayerUnbanned(logs, action.playerId, action)
                                 ? "Unbanned"
                                 : "Ban"}
                         </Badge>
@@ -2035,6 +2026,7 @@ function ModerationPanelContent() {
                               }
                               disabled={
                                 isPlayerUnbanned(
+                                  logs,
                                   action.playerId,
                                   action,
                                 ) || unbanInProgressId === action.playerId

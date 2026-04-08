@@ -18,7 +18,7 @@ export type ApiHandler = (
 ) => Promise<NextResponse>;
 
 export interface ApiWrapperOptions {
-  /** Rate limiter to use: 'api', 'auth', 'upload', or 'admin' */
+  /** Rate limiter to use: 'api', 'auth', 'upload', 'admin', or 'publicRead' */
   rateLimiter?: keyof typeof rateLimiters;
   /** Whether this route requires authentication */
   requireAuth?: boolean;

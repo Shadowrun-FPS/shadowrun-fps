@@ -322,6 +322,9 @@ export const rateLimiters = {
   upload: new RateLimiter(60000, 5),
   // Admin endpoints: 40 requests per minute
   admin: new RateLimiter(60000, 40),
+  // Public, cacheable reads (non-sensitive): higher cap so admin navigation + home
+  // do not share the same tight per-user bucket as the general api limiter
+  publicRead: new RateLimiter(60000, 200),
 };
 
 // Cleanup rate limiters every 5 minutes

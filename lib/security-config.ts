@@ -36,6 +36,7 @@ export const SECURITY_CONFIG = {
       "'unsafe-eval'",
       "'unsafe-inline'",
       "https://va.vercel-scripts.com",
+      "https://vercel.live",
     ],
     "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "font-src": ["'self'", "https://fonts.gstatic.com"],

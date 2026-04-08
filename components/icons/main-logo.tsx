@@ -36,6 +36,7 @@ function MainLogo({ className }: MainLogoProps) {
         alt=""
         width={32}
         height={32}
+        priority
         className="hidden sm:block w-8 h-8 sm:w-10 sm:h-10"
         aria-hidden
       />

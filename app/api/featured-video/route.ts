@@ -137,7 +137,7 @@ async function updateFeaturedVideoHandler(req: Request) {
 }
 
 export const GET = withApiSecurity(getFeaturedVideoHandler, {
-  rateLimiter: "api",
+  rateLimiter: "publicRead",
   cacheable: true,
   cacheMaxAge: 10, // Reduced from 60 to 10 seconds for faster updates
 });

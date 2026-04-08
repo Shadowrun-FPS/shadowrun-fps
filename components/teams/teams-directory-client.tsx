@@ -29,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/components/ui/use-toast";
 import { safeLog } from "@/lib/security";
-import { enhanceTeamsWithTournamentRegistrations } from "@/lib/teams-directory-data";
+import { enhanceTeamsWithTournamentRegistrations } from "@/lib/teams-directory-enhance";
 import {
   filterDirectoryTeams,
   sortDirectoryTeams,
@@ -47,6 +47,24 @@ import type { TeamListing, TournamentListing } from "@/types";
 
 const TEAMS_PER_PAGE = 9;
 const SEARCH_DEBOUNCE_MS = 400;
+
+/** Append teams the user is on that are missing from the directory list (GET /api/teams is capped). */
+function mergeMissingUserTeams(
+  directory: TeamListing[],
+  userTeamsExtra: TeamListing[],
+): TeamListing[] {
+  if (!userTeamsExtra.length) return directory;
+  const ids = new Set(directory.map((t) => String(t._id)));
+  const merged = [...directory];
+  for (const t of userTeamsExtra) {
+    const id = String(t._id);
+    if (!ids.has(id)) {
+      merged.push(t);
+      ids.add(id);
+    }
+  }
+  return merged;
+}
 
 type TeamsDirectoryClientProps = {
   initialTeams: TeamListing[];
@@ -82,9 +100,34 @@ export function TeamsDirectoryClient({
   const [urlHydrated, setUrlHydrated] = useState(false);
 
   useEffect(() => {
-    setTeams(initialTeams);
     setTournaments(initialTournaments);
-  }, [initialTeams, initialTournaments]);
+  }, [initialTournaments]);
+
+  useEffect(() => {
+    if (sessionStatus !== "authenticated" || !session?.user?.id) {
+      setTeams(initialTeams);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/teams/my-teams");
+        if (!res.ok || cancelled) {
+          if (!cancelled) setTeams(initialTeams);
+          return;
+        }
+        const mine = (await res.json()) as unknown;
+        if (cancelled) return;
+        const extra = Array.isArray(mine) ? (mine as TeamListing[]) : [];
+        setTeams(mergeMissingUserTeams(initialTeams, extra));
+      } catch {
+        if (!cancelled) setTeams(initialTeams);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialTeams, sessionStatus, session?.user?.id]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(searchQuery), SEARCH_DEBOUNCE_MS);
@@ -150,10 +193,23 @@ export function TeamsDirectoryClient({
       const teamsArray = Array.isArray(teamsData) ? teamsData : [];
       const tournamentsArray = Array.isArray(tournamentData) ? tournamentData : [];
       setTournaments(tournamentsArray);
-      const enhanced = enhanceTeamsWithTournamentRegistrations(
+      let enhanced = enhanceTeamsWithTournamentRegistrations(
         teamsArray,
         tournamentsArray
       );
+
+      try {
+        const mineRes = await fetch("/api/teams/my-teams");
+        if (mineRes.ok) {
+          const mineJson = (await mineRes.json()) as unknown;
+          if (Array.isArray(mineJson)) {
+            enhanced = mergeMissingUserTeams(enhanced, mineJson as TeamListing[]);
+          }
+        }
+      } catch {
+        /* keep directory-only list */
+      }
+
       setTeams(enhanced);
     } catch (error) {
       safeLog.error("Teams directory fetch failed:", error);

@@ -1,14 +1,5 @@
-import Image from "next/image";
 import React from "react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-
-<Image
-  src="/serverIcon.png"
-  alt="Server Icon"
-  width={100}
-  height={100}
-  unoptimized
-/>;
 
 // Add interface for user parameter
 interface UserAvatarProps {

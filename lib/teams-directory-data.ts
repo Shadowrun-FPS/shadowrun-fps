@@ -1,5 +1,14 @@
+import { unstable_cache } from "next/cache";
 import { safeLog } from "@/lib/security";
+import { enhanceTeamsWithTournamentRegistrations } from "@/lib/teams-directory-enhance";
+import { fetchTournamentListingsFromDb } from "@/lib/tournament-listings-from-db";
 import type { TeamListing, TournamentListing } from "@/types";
+
+const getCachedTournamentsForDirectory = unstable_cache(
+  async () => fetchTournamentListingsFromDb(),
+  ["teams-directory-tournament-listings"],
+  { revalidate: 30 },
+);
 
 function getBaseUrl(): string {
   return (
@@ -7,29 +16,6 @@ function getBaseUrl(): string {
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
     "http://localhost:3000"
   );
-}
-
-export function enhanceTeamsWithTournamentRegistrations(
-  teams: TeamListing[],
-  tournaments: TournamentListing[]
-): TeamListing[] {
-  if (!tournaments.length) return teams;
-  const map = new Map<string, string[]>();
-  for (const t of tournaments) {
-    if (!t.registeredTeams?.length) continue;
-    for (const reg of t.registeredTeams) {
-      const teamId =
-        typeof reg === "object" && reg && "_id" in reg
-          ? String((reg as { _id: string })._id)
-          : String(reg);
-      if (!map.has(teamId)) map.set(teamId, []);
-      map.get(teamId)!.push(t._id);
-    }
-  }
-  return teams.map((team) => ({
-    ...team,
-    tournaments: map.get(team._id.toString()) ?? team.tournaments ?? [],
-  }));
 }
 
 async function fetchJsonArray<T>(
@@ -58,7 +44,7 @@ export async function fetchTeamsDirectoryData(): Promise<{
   try {
     const [teamsArray, tournaments] = await Promise.all([
       fetchJsonArray<TeamListing>("/api/teams", 60),
-      fetchJsonArray<TournamentListing>("/api/tournaments", 30),
+      getCachedTournamentsForDirectory(),
     ]);
 
     const enhanced = enhanceTeamsWithTournamentRegistrations(
