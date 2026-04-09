@@ -11,6 +11,7 @@ import { getCachedGuildRoleNameById } from "@/lib/discord-guild-role-names";
 import { normalizeDiscordSnowflakeList } from "@/lib/normalize-discord-snowflake";
 import { queryCache } from "@/lib/query-cache";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 const DEVELOPER_DISCORD_ID = "238329746671271936";
 
@@ -191,6 +192,8 @@ async function patchQueueDetailsHandler(
     revalidatePath("/admin/queues");
     revalidatePath(`/admin/queues/${queueId}`);
     revalidatePath("/matches/queues");
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json({
       success: true,

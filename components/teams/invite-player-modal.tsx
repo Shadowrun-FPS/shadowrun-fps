@@ -3,16 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Users, Search, X, Loader2, AlertTriangle } from "lucide-react";
+import { Search, X, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import Image from "next/image";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DiscordPlayerAvatar } from "@/components/teams/discord-player-avatar";
 
 interface SearchResult {
   id: string;
@@ -22,9 +15,11 @@ interface SearchResult {
   isInvited: boolean;
   inTeam: boolean;
   inTeamOfSameSize: boolean;
+  isMemberOfTargetTeam?: boolean;
   teamName?: string;
   teamSize?: number;
   profilePicture?: string;
+  discordProfilePicture?: string | null;
 }
 
 export function InvitePlayerModal() {
@@ -34,7 +29,6 @@ export function InvitePlayerModal() {
   const [searching, setSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [inviting, setInviting] = useState<Record<string, boolean>>({});
-  const [currentTeamSize, setCurrentTeamSize] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -45,22 +39,6 @@ export function InvitePlayerModal() {
     setSearchTerm("");
     setSearchResults([]);
   }, []);
-
-  // Fetch current team size when modal opens
-  useEffect(() => {
-    if (isOpen && teamId) {
-      fetch(`/api/teams/${teamId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.teamSize) {
-            setCurrentTeamSize(data.teamSize);
-          } else {
-            setCurrentTeamSize(4); // Default to 4
-          }
-        })
-        .catch(() => setCurrentTeamSize(4));
-    }
-  }, [isOpen, teamId]);
 
   // Listen for the custom event to open the modal
   useEffect(() => {
@@ -122,13 +100,17 @@ export function InvitePlayerModal() {
   // Search for players
   const handleSearchPlayer = async (searchText: string) => {
     if (!searchText || searchText.length < 2) return;
+    if (!teamId) {
+      setSearchResults([]);
+      return;
+    }
 
     setSearching(true);
     try {
       const response = await fetch(
         `/api/players/search?term=${encodeURIComponent(
           searchText
-        )}&includeTeamInfo=true`
+        )}&includeTeamInfo=true&forTeamId=${encodeURIComponent(teamId)}`
       );
 
       if (!response.ok) {
@@ -136,48 +118,7 @@ export function InvitePlayerModal() {
       }
 
       const data = await response.json();
-      const players = data.players || [];
-
-      // Check invite status for each player
-      if (!teamId) {
-        setSearchResults([]);
-        return;
-      }
-
-      const inviteCheckPromises = players.map(async (player: any) => {
-        let isInvited = false;
-        try {
-          const inviteResponse = await fetch(
-            `/api/teams/${teamId}/invites/check/${player.id}`
-          );
-          if (inviteResponse.ok) {
-            const inviteData = await inviteResponse.json();
-            isInvited = inviteData.isInvited || false;
-          }
-        } catch (error) {
-          // Silently handle errors - keep isInvited as false
-        }
-
-        // Check if player is in a team of the same size
-        const playerTeamSize = player.team?.teamSize || 4;
-        const inTeamOfSameSize =
-          player.team != null &&
-          currentTeamSize != null &&
-          playerTeamSize === currentTeamSize;
-
-        return {
-          ...player,
-          isInvited: isInvited,
-          inTeam: false, // Don't use this for blocking - only use inTeamOfSameSize
-          inTeamOfSameSize: inTeamOfSameSize,
-          teamName: player.team?.name,
-          teamSize: playerTeamSize,
-          profilePicture: player.profilePicture || player.discordProfilePicture,
-        };
-      });
-
-      const playersWithInviteStatus = await Promise.all(inviteCheckPromises);
-      setSearchResults(playersWithInviteStatus);
+      setSearchResults(data.players || []);
     } catch (error) {
       console.error("Error searching players:", error);
       toast({
@@ -318,17 +259,13 @@ export function InvitePlayerModal() {
                   className="flex justify-between items-center p-3 rounded-md border border-border"
                 >
                   <div className="flex gap-3 items-center">
-                    <Avatar className="w-10 h-10">
-                      {player.profilePicture ? (
-                        <AvatarImage
-                          src={player.profilePicture}
-                          alt={player.name}
-                        />
-                      ) : null}
-                      <AvatarFallback>
-                        {player.name.charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <DiscordPlayerAvatar
+                      className="h-10 w-10"
+                      discordId={player.id}
+                      displayName={player.name}
+                      storedAvatarUrl={player.discordProfilePicture}
+                      resolvedAvatarUrl={player.profilePicture}
+                    />
                     <div>
                       <p className="font-medium">{player.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -336,38 +273,39 @@ export function InvitePlayerModal() {
                       </p>
                     </div>
                   </div>
-                  {player.isInvited ? (
-                    <Button variant="secondary" disabled>
-                      Invited
+                  {player.isMemberOfTargetTeam ? (
+                    <Button variant="secondary" disabled size="sm" className="shrink-0">
+                      Already on this team
+                    </Button>
+                  ) : player.isInvited ? (
+                    <Button variant="secondary" disabled size="sm" className="shrink-0">
+                      Invite pending
                     </Button>
                   ) : player.inTeamOfSameSize ? (
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button
-                              variant="outline"
-                              disabled
-                              className="cursor-not-allowed"
-                              size="sm"
-                            >
-                              <AlertTriangle className="mr-1 w-3 h-3 text-amber-500" />
-                              Invite
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="left"
-                          className="p-2 text-sm bg-secondary text-secondary-foreground"
-                        >
-                          <p>
-                            This player is already in a {player.teamSize}-person
-                            team &quot;
-                            {player.teamName}&quot;
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      variant="outline"
+                      disabled
+                      size="sm"
+                      className="h-auto max-w-[11rem] shrink-0 cursor-not-allowed flex-col gap-0.5 py-2"
+                      title={
+                        player.teamName
+                          ? `Already in ${player.teamSize}v${player.teamSize} roster: ${player.teamName}`
+                          : `Already in another ${player.teamSize}-player team`
+                      }
+                    >
+                      <span className="flex items-center gap-1 text-xs font-medium leading-tight">
+                        <AlertTriangle
+                          className="h-3.5 w-3.5 shrink-0 text-amber-500"
+                          aria-hidden
+                        />
+                        In another team
+                      </span>
+                      {player.teamName ? (
+                        <span className="w-full truncate text-center text-[10px] leading-tight text-muted-foreground">
+                          {player.teamName}
+                        </span>
+                      ) : null}
+                    </Button>
                   ) : (
                     <Button
                       size="sm"

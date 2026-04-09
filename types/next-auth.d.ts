@@ -26,9 +26,7 @@ declare module "next-auth" {
       global_name?: string | null;
       isAdmin?: boolean;
       roles?: string[];
-      accessToken?: string;
     };
-    accessToken?: string;
     expires: string;
   }
 }

@@ -9,6 +9,7 @@ import { findTeamAcrossCollections } from "@/lib/team-collections";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 async function postRegisterHandler(
   request: NextRequest,
@@ -297,6 +298,8 @@ async function postRegisterHandler(
 
     revalidatePath(`/tournaments/${id}`);
     revalidatePath("/tournaments");
+
+    broadcastTournamentChange(id);
 
     return NextResponse.json({
       success: true,

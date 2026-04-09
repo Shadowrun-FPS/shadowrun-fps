@@ -8,6 +8,7 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,8 @@ async function postFillHandler(req: NextRequest) {
 
   revalidatePath("/matches/queues");
   revalidatePath("/admin/queues");
+
+  triggerQueuesListUpdate();
 
   return NextResponse.json({
     success: true,

@@ -43,7 +43,6 @@ declare module "next-auth" {
       isAdmin?: boolean;
       nickname?: string;
       roles?: string[];
-      accessToken?: string;
     };
   }
 }
@@ -88,7 +87,6 @@ export const authOptions: NextAuthOptions = {
         return {
           id: profile.id,
           name: profile.username,
-          email: profile.email,
           image: profile.image_url,
           // Make sure we're capturing global_name
           global_name: profile.global_name || null,
@@ -172,6 +170,10 @@ export const authOptions: NextAuthOptions = {
           token.isAdmin = true;
         }
       }
+
+      // Do not persist email in the JWT (not used by the app; reduces exposure in session)
+      delete (token as { email?: unknown }).email;
+
       return token;
     },
     async session({ session, token }) {
@@ -179,7 +181,6 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.name = token.name;
         session.user.image = token.image as string;
-        session.accessToken = token.accessToken as string;
 
         session.user.nickname = token.nickname;
 
@@ -189,6 +190,9 @@ export const authOptions: NextAuthOptions = {
           session.user.isAdmin = true;
         }
       }
+
+      delete (session.user as { email?: unknown }).email;
+
       return session;
     },
     async signIn({ user, account, profile }) {

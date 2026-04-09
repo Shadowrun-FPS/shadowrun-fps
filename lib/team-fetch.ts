@@ -1,24 +1,10 @@
 import type { Team } from "@/types";
+import { getPublicTeamByIdOrTag } from "@/lib/get-public-team";
 
 /**
- * Fetches team data server-side (for RSC). Uses the same API as the client.
- * Call from Server Components only. Requires absolute URL when running on server.
+ * Fetches team data server-side (for RSC). Uses the database directly so production
+ * does not depend on HTTP self-fetch (NEXTAUTH_URL, rate limits, or network errors).
  */
 export async function getTeamForPage(teamId: string): Promise<Team | null> {
-  const base =
-    process.env.NEXTAUTH_URL ??
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ??
-    "http://localhost:3000";
-  const url = `${base}/api/teams/${encodeURIComponent(teamId)}`;
-  try {
-    const res = await fetch(url, {
-      next: { revalidate: 60 },
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data as Team;
-  } catch {
-    return null;
-  }
+  return getPublicTeamByIdOrTag(teamId);
 }

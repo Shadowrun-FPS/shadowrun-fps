@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 async function postResetTournamentHandler(
   request: NextRequest,
@@ -97,6 +98,8 @@ async function postResetTournamentHandler(
 
     revalidatePath("/tournaments");
     revalidatePath(`/tournaments/${id}`);
+
+    broadcastTournamentChange(id);
 
     return NextResponse.json({
       success: true,

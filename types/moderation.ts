@@ -86,3 +86,61 @@ export interface ModerationAction {
 }
 
 export type ModerationActionType = "warn" | "ban" | "unban";
+
+export interface Dispute {
+  _id: string;
+  moderationLogId: string;
+  playerDiscordId: string;
+  playerName: string;
+  playerId: string;
+  reason: string;
+  status: "pending" | "approved" | "denied";
+  createdAt: string;
+  moderationAction: {
+    _id: string;
+    type: "warning" | "temp_ban" | "perm_ban" | "unban";
+    playerId: string;
+    playerName: string;
+    reason: string;
+    duration: string;
+    active: boolean;
+    moderatorId: string;
+    moderatorName: string;
+    timestamp: string;
+  };
+}
+
+export type ModerationFilterType =
+  | "all"
+  | "warnings"
+  | "bans"
+  | "active"
+  | "queue_removals";
+
+export const MODERATION_TABS = [
+  "overview",
+  "active",
+  "recent",
+  "disputes",
+] as const;
+export type ModerationTabValue = (typeof MODERATION_TABS)[number];
+
+export type ActiveBansSortKey =
+  | "player"
+  | "reason"
+  | "duration"
+  | "moderator"
+  | "date";
+export type RecentActionsSortKey =
+  | "type"
+  | "player"
+  | "reason"
+  | "moderator"
+  | "date";
+
+export type UnbanConfirmPayload = {
+  playerId: string;
+  playerName: string;
+  reason?: string;
+  durationLabel?: string;
+};

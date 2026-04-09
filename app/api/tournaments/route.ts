@@ -11,6 +11,7 @@ import { safeLog, rateLimiters, getClientIdentifier } from "@/lib/security";
 import { cachedQuery } from "@/lib/query-cache";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 async function getTournamentsHandler(request: NextRequest) {
   const client = await clientPromise;
@@ -102,6 +103,8 @@ async function postTournamentsHandler(request: NextRequest) {
   revalidatePath("/tournaments");
   revalidatePath(`/tournaments/${result.insertedId.toString()}`);
 
+  broadcastTournamentChange(result.insertedId.toString());
+
   return NextResponse.json({
     success: true,
     tournamentId: result.insertedId,
@@ -161,6 +164,8 @@ async function deleteTournamentsHandler(request: NextRequest) {
 
   revalidatePath("/tournaments");
   revalidatePath(`/tournaments/${id}`);
+
+  broadcastTournamentChange(id);
 
   return NextResponse.json({
     success: true,

@@ -100,6 +100,9 @@
     "k6": "^0.0.0",
     "tsx": "^4.20.6"
   },
+  "optionalDependencies": {
+    "@emnapi/runtime": "^1.7.0"
+  },
   "overrides": {
     "punycode": "^2.3.1",
     "uri-js": "^4.2.2",

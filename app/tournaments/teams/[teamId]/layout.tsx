@@ -1,6 +1,6 @@
 import { Metadata, ResolvingMetadata } from "next";
-import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
+import { connectToDatabase } from "@/lib/mongodb";
+import { findTeamAcrossCollections } from "@/lib/team-collections";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,21 +18,9 @@ export async function generateMetadata(
 
   try {
     const { teamId } = await params;
-    // Connect to database
-    const client = await clientPromise;
-    const db = client.db();
-
-    // Check if the teamId is a valid MongoDB ObjectId (24 hex characters)
-    const isObjectId = /^[0-9a-fA-F]{24}$/.test(teamId);
-
-    // Fetch team data - handle both ObjectId and team tag
-    const team = isObjectId
-      ? await db.collection("Teams").findOne({
-          _id: new ObjectId(teamId),
-        })
-      : await db.collection("Teams").findOne({
-          tag: teamId,
-        });
+    const { db } = await connectToDatabase();
+    const found = await findTeamAcrossCollections(db, teamId);
+    const team = found?.team ?? null;
 
     // If team exists, use team name in metadata
     if (team) {

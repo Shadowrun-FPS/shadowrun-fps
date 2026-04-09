@@ -6,6 +6,7 @@ import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, rateLimiters, getClientIdentifier, sanitizeString } from "@/lib/security";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 // POST endpoint to fill a tournament with random teams (testing only)
 export async function POST(
@@ -235,6 +236,8 @@ export async function POST(
     // Revalidate tournament pages
     revalidatePath(`/tournaments/${id}`);
     revalidatePath("/tournaments");
+
+    broadcastTournamentChange(id);
 
     return NextResponse.json({
       success: true,

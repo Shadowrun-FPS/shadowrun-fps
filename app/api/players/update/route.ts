@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
+import { getToken } from "next-auth/jwt";
 import { authOptions } from "@/lib/auth";
 import {
   getGuildData,
@@ -18,7 +19,6 @@ interface ExtendedSession {
     nickname?: string | null;
     image?: string | null;
   };
-  accessToken?: string;
   expires: string;
 }
 
@@ -48,7 +48,12 @@ async function postUpdatePlayerHandler(req: NextRequest) {
       });
     }
 
-    const accessToken = session.accessToken;
+    const token = await getToken({
+      req: req,
+      secret: authOptions.secret ?? process.env.NEXTAUTH_SECRET,
+    });
+    const accessToken =
+      typeof token?.accessToken === "string" ? token.accessToken : undefined;
 
     if (!accessToken) {
       safeLog.log("No access token available for user", session.user.id);

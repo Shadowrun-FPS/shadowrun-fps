@@ -14,6 +14,7 @@ import { canManageTournament } from "@/lib/tournament-permissions";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 // Developer ID for special permissions
 const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
@@ -153,6 +154,8 @@ async function putEditTournamentHandler(
 
     revalidatePath("/tournaments");
     revalidatePath(`/tournaments/${tournamentId}`);
+
+    broadcastTournamentChange(tournamentId);
 
     return NextResponse.json({
       success: true,

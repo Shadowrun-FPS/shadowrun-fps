@@ -9,6 +9,7 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 // Add the QueuePlayer interface at the top of the file
 interface QueuePlayer {
@@ -453,6 +454,8 @@ async function postLaunchHandler(
     if (global.io) {
       global.io.emit("queues:update", updatedQueues);
     }
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json({
       success: true,

@@ -7,6 +7,7 @@ import { isSessionAdminUser } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 async function postCreateHandler(req: Request) {
   const session = await getServerSession(authOptions);
@@ -117,6 +118,8 @@ async function postCreateHandler(req: Request) {
 
     revalidatePath("/matches/queues");
     revalidatePath("/admin/queues");
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json(
       { success: true, queueId: newQueueId, _id: result.insertedId },

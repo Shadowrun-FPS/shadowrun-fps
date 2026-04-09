@@ -7,6 +7,7 @@ import { isAdmin } from "@/lib/admin";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 async function postClearHandler(
   req: NextRequest,
@@ -56,6 +57,8 @@ async function postClearHandler(
 
     revalidatePath("/matches/queues");
     revalidatePath("/admin/queues");
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json({
       success: true,

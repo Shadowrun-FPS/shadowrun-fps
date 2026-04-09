@@ -7,6 +7,7 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 async function deleteQueueHandler(
   req: NextRequest,
@@ -56,6 +57,8 @@ async function deleteQueueHandler(
 
     revalidatePath("/matches/queues");
     revalidatePath("/admin/queues");
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json({
       success: true,

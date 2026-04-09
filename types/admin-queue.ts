@@ -1,3 +1,30 @@
+/** Runtime queue player shape used by the queues page (elo + numeric joinedAt). */
+export interface QueuePlayer {
+  discordId: string;
+  discordUsername: string;
+  discordNickname: string;
+  discordProfilePicture?: string;
+  elo: number;
+  joinedAt: number;
+}
+
+/** Runtime queue shape used by the queues page (superset of the REST response). */
+export interface RuntimeQueue {
+  _id: string;
+  queueId: string;
+  gameType: string;
+  teamSize: number;
+  players: QueuePlayer[];
+  eloTier?: string;
+  minElo: number;
+  maxElo: number;
+  status: "active" | "inactive";
+  requiredRoles?: string[];
+  requiredRoleNames?: string[];
+  bannedPlayers?: string[];
+  mapPool?: string[] | null;
+}
+
 /** Admin queue management (`/admin/queues`) — document shape from GET /api/queues + admin fields */
 export interface AdminQueueRecord {
   _id: string;

@@ -7,6 +7,7 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 async function postClearTournamentHandler(
   request: NextRequest,
@@ -82,6 +83,8 @@ async function postClearTournamentHandler(
 
     revalidatePath("/tournaments");
     revalidatePath(`/tournaments/${id}`);
+
+    broadcastTournamentChange(id);
 
     return NextResponse.json({
       success: true,

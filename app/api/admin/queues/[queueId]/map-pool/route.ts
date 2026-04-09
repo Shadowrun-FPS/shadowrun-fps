@@ -8,6 +8,7 @@ import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { queryCache } from "@/lib/query-cache";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 const DEVELOPER_DISCORD_ID = "238329746671271936";
 
@@ -156,6 +157,8 @@ async function patchQueueMapPoolHandler(
     revalidatePath("/admin/queues");
     revalidatePath(`/admin/queues/${queueId}`);
     revalidatePath("/matches/queues");
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json({
       success: true,

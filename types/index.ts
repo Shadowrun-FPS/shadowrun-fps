@@ -3,6 +3,7 @@ export * from "./player";
 export * from "./team-directory";
 export * from "./rankings";
 export * from "./moderation-log";
+export * from "./moderation";
 
 export interface User {
   _id: string;

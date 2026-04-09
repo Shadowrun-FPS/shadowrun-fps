@@ -50,11 +50,16 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { canManageTournament } from "@/lib/tournament-permissions";
 import { safeLog } from "@/lib/security";
 import { TournamentWinnerBanner } from "@/components/tournaments/tournament-winner-banner";
-import { TournamentDetailHero } from "@/components/tournaments/tournament-detail-hero";
+import { TournamentDetailHero, type CoHostProfile } from "@/components/tournaments/tournament-detail-hero";
 import { TournamentAdminControls } from "@/components/tournaments/tournament-admin-controls";
 import { TournamentTabEmpty } from "@/components/tournaments/tournament-tab-empty";
 import { TournamentSeedBadge } from "@/components/tournaments/tournament-seed-badge";
 import { TournamentMemberAvatar } from "@/components/tournaments/tournament-member-avatar";
+import { usePusherInvalidate } from "@/hooks/usePusherInvalidate";
+import {
+  TOURNAMENT_PUSHER_EVENT,
+  tournamentChannelName,
+} from "@/lib/tournament-realtime-constants";
 
 // Types
 interface Tournament {
@@ -81,7 +86,7 @@ interface Tournament {
   teamStandings?: { team: Team; wins: number; losses: number }[];
   completedAt?: string;
   updatedAt?: string;
-  coHosts?: string[]; // Array of player IDs
+  coHosts?: CoHostProfile[];
   createdBy?: { userId?: string; discordId?: string; name?: string };
 }
 
@@ -159,10 +164,11 @@ export default function TournamentDetailsPage() {
   const [isFillDialogOpen, setIsFillDialogOpen] = useState(false);
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false);
 
-  const fetchTournament = async () => {
+  const fetchTournament = async (bustCache = false, silent = false) => {
     try {
-      setLoading(true);
-      const response = await fetch(`/api/tournaments/${params?.id || ""}`);
+      if (!silent) setLoading(true);
+      const url = `/api/tournaments/${params?.id || ""}`;
+      const response = await fetch(url, bustCache ? { cache: "no-store" } : {});
 
       if (!response.ok) {
         if (response.status === 404) {
@@ -226,9 +232,19 @@ export default function TournamentDetailsPage() {
       safeLog.error("Tournament detail fetch failed:", error);
       setError("Failed to fetch tournament");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  usePusherInvalidate(
+    typeof params?.id === "string"
+      ? tournamentChannelName(params.id)
+      : null,
+    TOURNAMENT_PUSHER_EVENT,
+    () => {
+      void fetchTournament(true, true);
+    },
+  );
 
   useEffect(() => {
     if (params?.id) {
@@ -387,8 +403,7 @@ export default function TournamentDetailsPage() {
         throw new Error(errorData.error || "Failed to register team");
       }
 
-      // Refresh tournament data
-      await fetchTournament();
+      await fetchTournament(true, true);
       setIsRegisterDialogOpen(false);
     } catch (error) {
       safeLog.error("Tournament register team failed:", error);
@@ -425,8 +440,7 @@ export default function TournamentDetailsPage() {
         throw new Error(data.error || "Failed to unregister team");
       }
 
-      // Update the tournament data
-      await fetchTournament();
+      await fetchTournament(true, true);
 
       // Close the dialog if it was open
       setIsUnregisterDialogOpen(false);
@@ -511,8 +525,7 @@ export default function TournamentDetailsPage() {
         throw new Error("Failed to pre-seed tournament");
       }
 
-      // Refresh tournament data
-      await fetchTournament();
+      await fetchTournament(true);
     } catch (error) {
       safeLog.error("Tournament pre-seed failed:", error);
     } finally {
@@ -534,8 +547,7 @@ export default function TournamentDetailsPage() {
         throw new Error("Failed to fill tournament");
       }
 
-      // Refresh tournament data
-      await fetchTournament();
+      await fetchTournament(true);
 
       toast({
         title: "Success",
@@ -576,7 +588,7 @@ export default function TournamentDetailsPage() {
         description: "Tournament teams cleared",
       });
 
-      await fetchTournament();
+      await fetchTournament(true);
     } catch (error) {
       safeLog.error("Tournament clear failed:", error);
       toast({
@@ -630,8 +642,7 @@ export default function TournamentDetailsPage() {
         throw new Error(data.error || "Failed to launch tournament");
       }
 
-      // Refresh tournament data
-      await fetchTournament();
+      await fetchTournament(true);
 
       toast({
         title: "Tournament Launched",
@@ -674,8 +685,7 @@ export default function TournamentDetailsPage() {
         description: "Tournament bracket has been reset",
       });
 
-      // Refresh tournament data
-      await fetchTournament();
+      await fetchTournament(true);
     } catch (error) {
       safeLog.error("Tournament unseed failed:", error);
       toast({
@@ -690,8 +700,7 @@ export default function TournamentDetailsPage() {
   };
 
   const handleEditSuccess = async () => {
-    // Fetch the updated tournament data
-    await fetchTournament();
+    await fetchTournament(true);
 
     // Show success toast
     toast({
@@ -715,8 +724,7 @@ export default function TournamentDetailsPage() {
         throw new Error(data.error || "Failed to reset tournament");
       }
 
-      // Refresh tournament data
-      await fetchTournament();
+      await fetchTournament(true);
 
       toast({
         title: "Tournament Reset",
@@ -1102,10 +1110,10 @@ export default function TournamentDetailsPage() {
                   <Button
                     onClick={() => {
                       if (userRegisteredTeam) {
-                        // If team is registered, unregister it
-                        unregisterTeam(userRegisteredTeam._id);
+                        setSelectedTeamId(userRegisteredTeam._id);
+                        setUnregisterError(null);
+                        setIsUnregisterDialogOpen(true);
                       } else {
-                        // Otherwise, open register dialog
                         setIsRegisterDialogOpen(true);
                       }
                     }}
@@ -1185,6 +1193,7 @@ export default function TournamentDetailsPage() {
                                 className="shrink-0 h-8 w-8 p-0 text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
                                 onClick={() => {
                                   setSelectedTeamId(team._id);
+                                  setUnregisterError(null);
                                   setIsUnregisterDialogOpen(true);
                                 }}
                                 disabled={unregistering}
@@ -1473,8 +1482,8 @@ export default function TournamentDetailsPage() {
             <DialogHeader>
               <DialogTitle>Unregister Team</DialogTitle>
               <DialogDescription>
-                Are you sure you want to unregister your team from this
-                tournament?
+                This removes the team from the tournament. If the bracket was
+                seeded, seeding may be cleared. Continue?
               </DialogDescription>
             </DialogHeader>
 
@@ -1562,7 +1571,11 @@ export default function TournamentDetailsPage() {
         {/* Edit Tournament Dialog */}
         {tournament && (
           <EditTournamentDialog
-            tournament={tournament}
+            tournament={{
+              ...tournament,
+              // EditTournamentDialog uses coHosts as plain Discord ID strings
+              coHosts: (tournament.coHosts ?? []).map((c) => c.discordId),
+            }}
             open={isEditDialogOpen}
             onOpenChange={setIsEditDialogOpen}
             onSuccess={handleEditSuccess}

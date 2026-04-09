@@ -29,6 +29,11 @@ import {
 } from "@/components/ui/collapsible";
 import { safeLog } from "@/lib/security";
 import { cn } from "@/lib/utils";
+import { usePusherInvalidate } from "@/hooks/usePusherInvalidate";
+import {
+  TOURNAMENTS_LIST_PUSHER_CHANNEL,
+  TOURNAMENTS_LIST_PUSHER_EVENT,
+} from "@/lib/tournament-realtime-constants";
 
 interface Tournament {
   _id: string;
@@ -114,12 +119,15 @@ function TournamentsOverviewContent() {
   tabParamRef.current = tabParam;
   const { toast } = useToast();
 
-  const fetchTournaments = useCallback(async () => {
+  const fetchTournaments = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const { deduplicatedFetch } = await import("@/lib/request-deduplication");
       const data = await deduplicatedFetch<Tournament[]>("/api/tournaments", {
         ttl: 30000,
+        useCache: !silent,
+        ...(silent ? { cache: "no-store" as RequestCache } : {}),
       });
       setTournaments(Array.isArray(data) ? data : []);
 
@@ -165,9 +173,13 @@ function TournamentsOverviewContent() {
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [toast, status]);
+
+  usePusherInvalidate(TOURNAMENTS_LIST_PUSHER_CHANNEL, TOURNAMENTS_LIST_PUSHER_EVENT, () => {
+    void fetchTournaments({ silent: true });
+  });
 
   useEffect(() => {
     void fetchTournaments();

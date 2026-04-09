@@ -215,6 +215,37 @@ async function getTournamentHandler(
       tournament.registeredTeams = [];
     }
 
+    // Enrich co-hosts with player display names
+    type CoHostProfile = {
+      discordId: string;
+      name: string;
+      profilePicture: string | null;
+    };
+    let enrichedCoHosts: CoHostProfile[] = [];
+    if (Array.isArray(tournament.coHosts) && tournament.coHosts.length > 0) {
+      try {
+        const coHostDocs = await db
+          .collection("Players")
+          .find({ discordId: { $in: tournament.coHosts } })
+          .toArray();
+        enrichedCoHosts = (tournament.coHosts as string[]).map((id) => {
+          const p = coHostDocs.find((doc: any) => doc.discordId === id);
+          return {
+            discordId: id,
+            name: p?.discordNickname || p?.discordUsername || "Unknown",
+            profilePicture: p?.discordProfilePicture ?? null,
+          };
+        });
+      } catch (err) {
+        safeLog.error("Failed to enrich co-hosts:", err);
+        enrichedCoHosts = (tournament.coHosts as string[]).map((id) => ({
+          discordId: id,
+          name: "Unknown",
+          profilePicture: null,
+        }));
+      }
+    }
+
     // Convert ObjectId to string for the entire object
     const formattedTournament = {
       ...tournament,
@@ -227,18 +258,20 @@ async function getTournamentHandler(
         : [],
       // Use the fixed registeredTeams we created above
       registeredTeams: tournament.registeredTeams,
+      // Replace raw ID array with enriched co-host profiles
+      coHosts: enrichedCoHosts,
     };
 
     const response = NextResponse.json(formattedTournament);
     response.headers.set(
       "Cache-Control",
-      "public, s-maxage=300, stale-while-revalidate=1800"
+      "public, s-maxage=30, stale-while-revalidate=60"
     );
     return response;
 }
 
 export const GET = withApiSecurity(getTournamentHandler, {
-  rateLimiter: "api",
+  rateLimiter: "publicRead",
   cacheable: true,
-  cacheMaxAge: 300,
+  cacheMaxAge: 30,
 });

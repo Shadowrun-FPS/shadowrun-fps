@@ -7,6 +7,7 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 async function postUnseedTournamentHandler(
   request: NextRequest,
@@ -90,6 +91,8 @@ async function postUnseedTournamentHandler(
 
     revalidatePath("/tournaments");
     revalidatePath(`/tournaments/${tournamentId}`);
+
+    broadcastTournamentChange(tournamentId);
 
     return NextResponse.json({
       success: true,

@@ -18,7 +18,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+
+export type CoHostProfile = {
+  discordId: string;
+  name: string;
+  profilePicture?: string | null;
+};
 
 export type TournamentHeroModel = {
   name: string;
@@ -27,7 +34,8 @@ export type TournamentHeroModel = {
   format: "single_elimination" | "double_elimination";
   teamSize: number;
   status: "upcoming" | "active" | "completed";
-  coHosts?: string[];
+  /** Enriched co-host profiles returned by the tournament API. */
+  coHosts?: CoHostProfile[];
   registrationDeadline?: string;
   registeredTeamsCount: number;
   maxTeams: number;
@@ -149,11 +157,30 @@ export function TournamentDetailHero({
                 Co-hosts ({tournament.coHosts.length}) — roles & permissions
               </span>
             </AccordionTrigger>
-            <AccordionContent className="!pb-4 !pt-0">
-              <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
+            <AccordionContent className="px-4 pb-4 pt-3 sm:px-5">
+              <p className="mb-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                 Co-hosts can help manage this tournament: edit details, pre-seed
                 teams, launch the bracket, and manage team registrations.
               </p>
+              <ul className="flex flex-col gap-2">
+                {tournament.coHosts.map((coHost) => (
+                  <li key={coHost.discordId} className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8 shrink-0">
+                      {coHost.profilePicture ? (
+                        <AvatarImage
+                          src={coHost.profilePicture}
+                          alt={coHost.name}
+                          loading="lazy"
+                        />
+                      ) : null}
+                      <AvatarFallback className="text-xs">
+                        {coHost.name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{coHost.name}</span>
+                  </li>
+                ))}
+              </ul>
             </AccordionContent>
           </AccordionItem>
         </Accordion>

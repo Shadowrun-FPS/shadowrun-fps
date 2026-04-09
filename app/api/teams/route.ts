@@ -92,7 +92,7 @@ async function getTeamsHandler(req: NextRequest) {
 }
 
 export const GET = withApiSecurity(getTeamsHandler, {
-  rateLimiter: "api",
+  rateLimiter: "publicRead",
   cacheable: true,
   cacheMaxAge: 120,
 });

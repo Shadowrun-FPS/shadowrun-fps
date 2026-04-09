@@ -9,6 +9,7 @@ import { notifyTournamentLaunch, getGuildId } from "@/lib/discord-bot-api";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 // First, add a proper interface for tournament matches
 interface TournamentMatch {
@@ -258,6 +259,8 @@ async function postLaunchTournamentHandler(
 
     revalidatePath("/tournaments");
     revalidatePath(`/tournaments/${id}`);
+
+    broadcastTournamentChange(id);
 
     return NextResponse.json({
       success: true,

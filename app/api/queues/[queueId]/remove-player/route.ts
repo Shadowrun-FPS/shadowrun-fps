@@ -7,6 +7,7 @@ import { SECURITY_CONFIG } from "@/lib/security-config";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { triggerModerationLogUpdate } from "@/lib/moderation-log-pusher";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 export const dynamic = "force-dynamic";
 
 async function postRemovePlayerHandler(
@@ -137,6 +138,8 @@ async function postRemovePlayerHandler(
     targetDiscordId: sanitizedPlayerId,
     moderatorId: session.user.id,
   });
+
+  triggerQueuesListUpdate();
 
   return NextResponse.json({
     success: true,

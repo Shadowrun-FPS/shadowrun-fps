@@ -20,6 +20,11 @@ import type {
   AdminQueuePlayerSearchHit,
   AdminQueueRecord,
 } from "@/types/admin-queue";
+import { usePusherInvalidate } from "@/hooks/usePusherInvalidate";
+import {
+  QUEUES_LIST_PUSHER_CHANNEL,
+  QUEUES_LIST_PUSHER_EVENT,
+} from "@/lib/queues-realtime-constants";
 
 interface MapPoolItem {
   _id: string; // Base map ObjectId for validation
@@ -187,9 +192,12 @@ export default function AdminQueuesPage() {
       const [queuesData, mapsData] = await Promise.all([
         deduplicatedFetch<any[]>("/api/queues", {
           ttl: 10000,
+          useCache: !silent,
+          ...(silent ? { cache: "no-store" as RequestCache } : {}),
         }),
         deduplicatedFetch<any[]>("/api/maps", {
           ttl: 60000,
+          useCache: !silent,
         }),
       ]);
 
@@ -257,6 +265,14 @@ export default function AdminQueuesPage() {
   },
   [toast]
 );
+
+  usePusherInvalidate(
+    status === "authenticated" ? QUEUES_LIST_PUSHER_CHANNEL : null,
+    QUEUES_LIST_PUSHER_EVENT,
+    () => {
+      void fetchQueuesAndMaps({ silent: true });
+    }
+  );
 
   useEffect(() => {
     if (status === "authenticated") {

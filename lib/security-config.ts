@@ -42,7 +42,12 @@ export const SECURITY_CONFIG = {
     "font-src": ["'self'", "https://fonts.gstatic.com"],
     "img-src": ["'self'", "data:", "https:", "blob:"],
     "media-src": ["'self'", "https://www.youtube.com", "https://youtube.com"],
-    "frame-src": ["'self'", "https://www.youtube.com", "https://youtube.com"],
+    "frame-src": [
+      "'self'",
+      "https://www.youtube.com",
+      "https://youtube.com",
+      "https://vercel.live",
+    ],
     "connect-src": [
       "'self'",
       "https://discord.com",

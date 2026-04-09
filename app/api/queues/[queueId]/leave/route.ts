@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { triggerQueuesListUpdate } from "@/lib/queues-pusher";
 
 interface QueuePlayer {
   discordId: string;
@@ -74,6 +75,8 @@ async function postLeaveHandler(
 
     revalidatePath("/matches/queues");
     revalidatePath("/admin/queues");
+
+    triggerQueuesListUpdate();
 
     return NextResponse.json({ success: true });
 }

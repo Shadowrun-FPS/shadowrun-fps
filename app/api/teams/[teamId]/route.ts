@@ -6,11 +6,10 @@ import { authOptions } from "@/lib/auth";
 import { Session } from "next-auth";
 import { connectToDatabase } from "@/lib/mongodb";
 import { containsProfanity } from "@/lib/profanity-filter";
-import { getMemberElosForTeamSize, recalculateTeamElo } from "@/lib/team-elo-calculator";
-import { getAllTeamCollectionNames, getTeamCollectionName } from "@/lib/team-collections";
+import { getAllTeamCollectionNames } from "@/lib/team-collections";
 import { safeLog, sanitizeString } from "@/lib/security";
-import { cachedQuery } from "@/lib/query-cache";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
+import { getPublicTeamByIdOrTag } from "@/lib/get-public-team";
 import { revalidatePath } from "next/cache";
 
 interface TeamMember {
@@ -32,103 +31,11 @@ async function getTeamHandler(
   { params }: { params: Promise<{ teamId: string }> }
 ) {
   const { teamId: rawTeamId } = await params;
-  const teamId = sanitizeString(rawTeamId, 50);
-  const { db } = await connectToDatabase();
+  const enriched = await getPublicTeamByIdOrTag(rawTeamId);
 
-  const result = await cachedQuery(
-    `team:${teamId}`,
-    async () => {
-      const allCollections = getAllTeamCollectionNames();
-      let team = null;
-
-      if (ObjectId.isValid(teamId)) {
-        for (const collectionName of allCollections) {
-          try {
-            team = await db
-              .collection(collectionName)
-              .findOne({ _id: new ObjectId(teamId) });
-            if (team) break;
-          } catch (error) {
-            // Continue to next collection
-          }
-        }
-      }
-
-      if (!team) {
-        for (const collectionName of allCollections) {
-          team = await db.collection(collectionName).findOne({ tag: teamId });
-          if (team) break;
-        }
-      }
-
-      if (!team) {
-        return null;
-      }
-
-      if (team.members && team.members.length > 0) {
-        try {
-          const updatedElo = await recalculateTeamElo(team._id.toString());
-          team.teamElo = updatedElo;
-        } catch (error) {
-          safeLog.error("Failed to auto-calculate team ELO:", error);
-        }
-      }
-
-      return {
-        ...team,
-        _id: team._id.toString(),
-      };
-    },
-    60 * 1000 // Cache for 1 minute
-  );
-
-  if (!result) {
+  if (!enriched) {
     return NextResponse.json({ error: "Team not found" }, { status: 404 });
   }
-
-  type TeamEnrich = {
-    teamSize?: number;
-    members?: { discordId: string; role?: string; joinedAt?: string }[];
-    captain?: { discordId: string; joinedAt?: string };
-    [key: string]: unknown;
-  };
-  const team = result as TeamEnrich;
-
-  // Enrich captain and members with joinedAt (from members) and ELO for team size
-  const teamSize = team.teamSize ?? 4;
-  const memberIds: string[] = Array.from(
-    new Set(
-      [
-        ...(team.members?.map((m) => m.discordId) ?? []),
-        team.captain?.discordId,
-      ].filter((id): id is string => Boolean(id))
-    )
-  );
-  const captainMember = team.members?.find(
-    (m) =>
-      m.discordId === team.captain?.discordId ||
-      (m.role?.toLowerCase() ?? "") === "captain"
-  );
-  let elos: Record<string, number> = {};
-  if (memberIds.length > 0) {
-    try {
-      elos = await getMemberElosForTeamSize(memberIds, teamSize);
-    } catch (err) {
-      safeLog.error("Failed to resolve member ELOs for team response:", err);
-    }
-  }
-  const enriched = {
-    ...result,
-    captain: {
-      ...team.captain,
-      joinedAt: team.captain?.joinedAt ?? captainMember?.joinedAt,
-      elo: team.captain?.discordId ? elos[team.captain.discordId] : undefined,
-    },
-    members: (team.members ?? []).map((m) => ({
-      ...m,
-      elo: elos[m.discordId],
-    })),
-  };
 
   return NextResponse.json(enriched, {
     headers: {
@@ -138,7 +45,7 @@ async function getTeamHandler(
 }
 
 export const GET = withApiSecurity(getTeamHandler, {
-  rateLimiter: "api",
+  rateLimiter: "publicRead",
   cacheable: true,
   cacheMaxAge: 60,
 });

@@ -8,6 +8,7 @@ import { canManageTournament } from "@/lib/tournament-permissions";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { broadcastTournamentChange } from "@/lib/tournament-pusher";
 
 async function postPreseedTournamentHandler(
   request: NextRequest,
@@ -347,6 +348,8 @@ async function postPreseedTournamentHandler(
 
     revalidatePath("/tournaments");
     revalidatePath(`/tournaments/${tournamentId}`);
+
+    broadcastTournamentChange(tournamentId);
 
     return NextResponse.json({
       success: true,
