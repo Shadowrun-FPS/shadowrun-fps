@@ -186,9 +186,9 @@ export function Navbar() {
   const showTournamentsMenu = filteredTournamentsLinks.length > 0;
 
   return (
-    <nav className="flex flex-1 items-center">
+    <nav className="flex items-center">
       {/* Desktop Navigation only - mobile menu is rendered by Header (MobileNavMenu) */}
-      <div className="hidden xl:flex xl:items-center xl:justify-start">
+      <div className="hidden xl:flex xl:items-center xl:justify-center">
         <div className={desktopNavRailClass}>
           <Link
             href="/docs/events"

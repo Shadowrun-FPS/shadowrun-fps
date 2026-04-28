@@ -379,9 +379,9 @@ export default function PlayerTrackerBanner({
   return (
     <div className="w-full min-h-[47px] sm:min-h-[49px] flex flex-col justify-center bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#1a1a2e] border-b border-primary/20 transition-all duration-300">
       <div className="pl-4 pr-2.5 sm:px-4 md:px-6 lg:px-8 mx-auto w-full max-w-screen-2xl">
-        <div className="flex items-center justify-between gap-1.5 sm:gap-4 py-1.5 sm:py-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-4 py-1.5 sm:py-2">
           {/* Left: Status Indicator + Title */}
-          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 relative flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 relative justify-self-start">
             <div
               className={`w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-300 ${
                 isApiOnline
@@ -413,7 +413,7 @@ export default function PlayerTrackerBanner({
           </div>
 
           {/* Center: Stats — compact pills on mobile */}
-          <div className="flex gap-1.5 sm:gap-4 items-center min-w-0 flex-shrink">
+          <div className="flex gap-1.5 sm:gap-4 items-center min-w-0 justify-self-center">
               {/* Total Online */}
               <div
                 className="flex items-center gap-1 sm:gap-2 bg-black/30 px-1.5 py-1.5 sm:px-3 sm:py-1.5 rounded-md border border-primary/30 transition-all duration-500 hover:bg-black/40 hover:border-primary/50 relative cursor-default"
@@ -494,7 +494,7 @@ export default function PlayerTrackerBanner({
           </div>
 
           {/* Right: Refresh + Timestamp (md) + Info */}
-          <div className="flex gap-2 items-center min-w-0 flex-shrink-0">
+          <div className="flex gap-2 items-center min-w-0 justify-self-end">
             <button
               onClick={handleManualRefresh}
               disabled={isRefreshing}
