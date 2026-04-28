@@ -13,11 +13,24 @@ import {
   Copy,
   Check,
   Package,
+  ScrollText,
 } from "lucide-react";
 
+import { ChangelogDialogSkeleton } from "@/components/changelog-dialog-skeleton";
+import { ChangelogNoteItem } from "@/components/changelog-note-item";
 import VirusTotalWidget from "@/components/VirusTotalWidget";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { PORTABLE_LAUNCHER_ZIP_URL } from "@/lib/download-urls";
 import { safeLog } from "@/lib/security";
+import type { LauncherChangelogEntry } from "@/types/launcher";
 
 interface LauncherVersion {
   version: string;
@@ -26,15 +39,18 @@ interface LauncherVersion {
   releaseDate: string;
 }
 
-const PORTABLE_LAUNCHER_ZIP_URL =
-  "https://pub-8a9c9dccd2fa45dea562e2e02706c5ec.r2.dev/Shadowrun%20FPS%20Launcher.zip";
-
 export default function DownloadPage() {
   const [downloading, setDownloading] = useState(false);
   const [versionInfo, setVersionInfo] = useState<LauncherVersion | null>(null);
   const [loadingVersion, setLoadingVersion] = useState(true);
   const [versionError, setVersionError] = useState<string | null>(null);
   const [copiedHash, setCopiedHash] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
+  const [changelogEntries, setChangelogEntries] = useState<
+    LauncherChangelogEntry[] | null
+  >(null);
+  const [changelogLoading, setChangelogLoading] = useState(false);
+  const [changelogError, setChangelogError] = useState<string | null>(null);
 
   // Fetch latest version info - using deduplication to prevent duplicate calls
   useEffect(() => {
@@ -59,9 +75,9 @@ export default function DownloadPage() {
         );
         // Fallback to default version
         setVersionInfo({
-          version: "0.9.92",
-          path: "Shadowrun FPS Launcher Setup 0.9.92.exe",
-          size: 83436397,
+          version: "0.9.107",
+          path: "Shadowrun FPS Launcher Setup 0.9.107.exe",
+          size: 194002854,
           releaseDate: new Date().toISOString(),
         });
       } finally {
@@ -71,6 +87,42 @@ export default function DownloadPage() {
 
     fetchVersionInfo();
   }, []);
+
+  useEffect(() => {
+    if (!changelogOpen) return;
+    if (changelogEntries !== null) return;
+
+    let cancelled = false;
+    (async () => {
+      setChangelogLoading(true);
+      setChangelogError(null);
+      try {
+        const { deduplicatedFetch } = await import(
+          "@/lib/request-deduplication"
+        );
+        const data = await deduplicatedFetch<{ entries: LauncherChangelogEntry[] }>(
+          "/api/launcher/changelog",
+          { ttl: 5 * 60 * 1000 }
+        );
+        if (!cancelled) {
+          setChangelogEntries(data.entries);
+        }
+      } catch (error) {
+        safeLog.error("Failed to load changelog:", error);
+        if (!cancelled) {
+          setChangelogError("Couldn't load changelog. Try again later.");
+        }
+      } finally {
+        if (!cancelled) {
+          setChangelogLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [changelogOpen, changelogEntries]);
 
   // Format file size with decimals
   const formatFileSize = (bytes: number): string => {
@@ -96,7 +148,7 @@ export default function DownloadPage() {
     setDownloading(true);
     // Use our secure HTTPS API route which redirects to R2 presigned URL
     const fileName =
-      versionInfo?.path || "Shadowrun FPS Launcher Setup 0.9.92.exe";
+      versionInfo?.path || "Shadowrun FPS Launcher Setup 0.9.107.exe";
     const downloadUrl = `/api/launcher/download?file=${encodeURIComponent(
       fileName
     )}`;
@@ -178,25 +230,116 @@ export default function DownloadPage() {
               installation for Shadowrun FPS.
             </p>
 
-            <div className="flex flex-col gap-3 justify-start sm:justify-center sm:flex-row sm:gap-4">
-              <Button
-                size="lg"
-                className="w-full min-h-[44px] overflow-hidden relative group animate-pulse-slow border-0 focus-visible:ring-0 sm:w-auto"
-                onClick={handleDownload}
-                disabled={downloading || loadingVersion}
+            <div className="flex flex-col gap-2 justify-start items-stretch sm:items-center sm:gap-3">
+              <div className="flex flex-col gap-3 justify-start sm:justify-center sm:flex-row sm:gap-4">
+                <Button
+                  size="lg"
+                  className="w-full min-h-[44px] overflow-hidden relative group animate-pulse-slow border-0 focus-visible:ring-0 sm:w-auto"
+                  onClick={handleDownload}
+                  disabled={downloading || loadingVersion}
+                >
+                  <span className="flex relative z-10 items-center">
+                    <Download className="mr-2 w-5 h-5" />
+                    {downloading
+                      ? "Downloading..."
+                      : loadingVersion
+                      ? "Loading..."
+                      : "Download Launcher"}
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-primary to-primary/90 group-hover:scale-110" />
+                  <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
+                </Button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChangelogOpen(true)}
+                className="flex gap-1.5 justify-center items-center self-center text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/90 focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md px-2 py-1 min-h-[44px] sm:min-h-0"
               >
-                <span className="flex relative z-10 items-center">
-                  <Download className="mr-2 w-5 h-5" />
-                  {downloading
-                    ? "Downloading..."
-                    : loadingVersion
-                    ? "Loading..."
-                    : "Download Launcher"}
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-primary to-primary/90 group-hover:scale-110" />
-                <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
-              </Button>
+                <ScrollText className="w-4 h-4 shrink-0 opacity-70" aria-hidden />
+                View changelog
+              </button>
             </div>
+
+            <Dialog
+              open={changelogOpen}
+              onOpenChange={(open) => {
+                setChangelogOpen(open);
+                if (!open && changelogError) {
+                  setChangelogEntries(null);
+                  setChangelogError(null);
+                }
+              }}
+            >
+              <DialogContent className="gap-0 overflow-hidden border-border/50 p-0 shadow-lg max-w-[min(calc(100vw-1rem),40rem)] sm:max-w-xl">
+                <DialogHeader className="gap-1 px-6 pt-6 pb-4 pr-14 space-y-0">
+                  <DialogTitle className="text-lg font-semibold tracking-tight">
+                    Launcher changelog
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground">
+                    Recent updates from the Shadowrun FPS Launcher releases.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-[min(75vh,32rem)] px-6 pb-6 pt-1">
+                  <div className="pr-3">
+                    {changelogLoading && <ChangelogDialogSkeleton />}
+                    {!changelogLoading && changelogError && (
+                      <p className="text-sm text-destructive">{changelogError}</p>
+                    )}
+                    {!changelogLoading &&
+                      !changelogError &&
+                      changelogEntries &&
+                      changelogEntries.length === 0 && (
+                        <p className="text-sm text-muted-foreground">
+                          No entries yet.
+                        </p>
+                      )}
+                    {!changelogLoading &&
+                      changelogEntries &&
+                      changelogEntries.length > 0 && (
+                        <div className="space-y-12">
+                          {changelogEntries.map((entry, releaseIndex) => (
+                            <section
+                              key={entry.version}
+                              className="space-y-5"
+                              aria-labelledby={`changelog-${entry.version}`}
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h3
+                                    id={`changelog-${entry.version}`}
+                                    className="text-[15px] font-semibold text-sky-300"
+                                  >
+                                    v{entry.version}
+                                  </h3>
+                                  {releaseIndex === 0 && (
+                                    <span className="rounded bg-emerald-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                                      Latest
+                                    </span>
+                                  )}
+                                </div>
+                                <time
+                                  className="text-xs tabular-nums text-muted-foreground sm:text-sm"
+                                  dateTime={entry.date}
+                                >
+                                  {entry.date}
+                                </time>
+                              </div>
+                              <ul className="m-0 list-none space-y-5 p-0">
+                                {entry.notes.map((note, idx) => (
+                                  <ChangelogNoteItem
+                                    key={`${entry.version}-${idx}`}
+                                    note={note}
+                                  />
+                                ))}
+                              </ul>
+                            </section>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Key Features Section */}

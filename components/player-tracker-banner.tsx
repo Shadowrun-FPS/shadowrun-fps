@@ -16,6 +16,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 interface PlayerStats {
   totalOnline: number;
@@ -370,6 +371,11 @@ export default function PlayerTrackerBanner({
     [state.stats?.inGame]
   );
 
+  /** Spin while manually refreshing or during first fetch with no cached stats yet. */
+  const isRefreshIconSpinning =
+    isRefreshing ||
+    (state.status === "loading" && state.stats === null);
+
   return (
     <div className="w-full min-h-[47px] sm:min-h-[49px] flex flex-col justify-center bg-gradient-to-r from-[#1a1a2e] via-[#16213e] to-[#1a1a2e] border-b border-primary/20 transition-all duration-300">
       <div className="pl-4 pr-2.5 sm:px-4 md:px-6 lg:px-8 mx-auto w-full max-w-screen-2xl">
@@ -494,17 +500,22 @@ export default function PlayerTrackerBanner({
               disabled={isRefreshing}
               className="hidden md:flex p-1 rounded transition-colors hover:bg-black/30 disabled:opacity-50 disabled:cursor-wait"
               aria-label={
-                isRefreshing
+                isRefreshIconSpinning
                   ? "Refreshing player stats..."
                   : "Refresh player stats"
               }
-              title={isRefreshing ? "Refreshing..." : "Refresh player stats"}
+              title={
+                isRefreshIconSpinning ? "Refreshing..." : "Refresh player stats"
+              }
               type="button"
             >
               <RefreshCw
-                className={`w-3.5 h-3.5 text-gray-400 transition-all ${
-                  isRefreshing ? "animate-spin" : "hover:text-gray-300"
-                }`}
+                className={cn(
+                  "w-3.5 h-3.5 shrink-0 text-gray-400 transition-colors duration-150",
+                  isRefreshIconSpinning &&
+                    "animate-spin [animation-duration:0.85s] motion-reduce:animate-none",
+                  !isRefreshIconSpinning && "hover:text-gray-300"
+                )}
                 aria-hidden="true"
               />
             </button>

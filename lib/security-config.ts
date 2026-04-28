@@ -54,7 +54,7 @@ export const SECURITY_CONFIG = {
       "https://api.discord.com",
       "https://playertracker-production.up.railway.app",
       "https://vitals.vercel-insights.com",
-      "http://157.245.214.234", // Launcher version API
+      "https://downloads.shadowrunfps.com",
       "wss:",
     ],
     "object-src": ["'none'"],

@@ -262,6 +262,12 @@ export function sanitizeMarkdownHtml(text: string): string {
   // First escape all HTML
   let sanitized = escapeHtml(text);
 
+  // Inline code (before bold so paths like `file.js` stay intact)
+  sanitized = sanitized.replace(
+    /`([^`]+)`/g,
+    "<code>$1</code>"
+  );
+
   // Then convert markdown to HTML (safe because we've already escaped)
   sanitized = sanitized
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PORTABLE_LAUNCHER_ZIP_URL } from "@/lib/download-urls";
 import { safeLog } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 
@@ -6,9 +7,7 @@ export const dynamic = "force-dynamic";
 
 async function getDownloadHandler(request: NextRequest) {
   try {
-    const response = await fetch(
-      "http://157.245.214.234/releases/ShadowrunLauncher.zip"
-    );
+    const response = await fetch(PORTABLE_LAUNCHER_ZIP_URL);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch file: ${response.statusText}`);
@@ -19,7 +18,8 @@ async function getDownloadHandler(request: NextRequest) {
     return new NextResponse(fileBuffer, {
       headers: {
         "Content-Type": "application/zip",
-        "Content-Disposition": 'attachment; filename="ShadowrunLauncher.zip"',
+        "Content-Disposition":
+          'attachment; filename="Shadowrun FPS Launcher.zip"',
         "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
       },
     });

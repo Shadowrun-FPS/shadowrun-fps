@@ -14,9 +14,9 @@ interface LauncherVersion {
 
 // Hardcoded fallback version (last resort)
 const FALLBACK_VERSION: LauncherVersion = {
-  version: "0.9.92",
-  path: "Shadowrun FPS Launcher Setup 0.9.92.exe",
-  size: 83436397,
+  version: "0.9.107",
+  path: "Shadowrun FPS Launcher Setup 0.9.107.exe",
+  size: 194002854,
   releaseDate: new Date().toISOString(),
 };
 

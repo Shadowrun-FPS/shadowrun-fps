@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { LAUNCHER_INSTALLER_SCHEMA_URL } from "@/lib/download-urls";
+
 export const metadata: Metadata = {
   title: "Download Shadowrun FPS Launcher | Shadowrun FPS",
   description:
@@ -50,8 +52,7 @@ export default function DownloadLayout({
               price: "0",
               priceCurrency: "USD",
             },
-            downloadUrl:
-              "http://157.245.214.234/releases/Shadowrun%20FPS%20Launcher.exe",
+            downloadUrl: LAUNCHER_INSTALLER_SCHEMA_URL,
           }),
         }}
       />
