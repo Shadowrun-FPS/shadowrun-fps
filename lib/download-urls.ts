@@ -1,7 +1,7 @@
 /** Public CDN / custom domain for launcher artifacts (Cloudflare R2). */
 export const DOWNLOADS_ORIGIN = "https://downloads.shadowrunfps.com" as const;
 
-export const PORTABLE_LAUNCHER_ZIP_URL = `${DOWNLOADS_ORIGIN}/Shadowrun%20FPS%20Launcher.exe`;
+export const PORTABLE_LAUNCHER_URL = `${DOWNLOADS_ORIGIN}/Shadowrun%20FPS%20Launcher.exe`;
 
 /** Windows — paste into File Explorer address bar to open `main.log` for launcher support. */
 export const LAUNCHER_MAIN_LOG_PATH =

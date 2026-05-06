@@ -32,7 +32,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   LAUNCHER_MAIN_LOG_PATH,
-  PORTABLE_LAUNCHER_ZIP_URL,
+  PORTABLE_LAUNCHER_URL,
 } from "@/lib/download-urls";
 import { safeLog } from "@/lib/security";
 import type { LauncherChangelogEntry } from "@/types/launcher";
@@ -683,7 +683,7 @@ export default function DownloadPage() {
             </div>
           </div>
 
-          {/* Portable launcher (ZIP) — no full install */}
+          {/* Portable launcher (.exe) — no full install */}
           <div className="px-2 py-4 mb-5 rounded-xl bg-card/50 sm:p-6 sm:mb-8">
             <div className="flex items-center mb-3 sm:mb-4">
               <Package className="mr-2 w-5 h-5 shrink-0 text-primary" />
@@ -692,9 +692,9 @@ export default function DownloadPage() {
               </h2>
             </div>
             <p className="mb-4 text-sm text-muted-foreground sm:text-base">
-              Prefer not to run the full installer? Download a portable ZIP
-              that contains the launcher executable. Extract it anywhere you
-              like and run it from there.
+              Prefer not to run the full installer? Download the portable
+              launcher executable. Save it anywhere you like and run it from
+              there.
             </p>
             <div className="flex flex-col gap-3 justify-start sm:flex-row sm:gap-4">
               <Button
@@ -704,12 +704,12 @@ export default function DownloadPage() {
                 asChild
               >
                 <a
-                  href={PORTABLE_LAUNCHER_ZIP_URL}
-                  download="Shadowrun FPS Launcher.zip"
+                  href={PORTABLE_LAUNCHER_URL}
+                  download="Shadowrun FPS Launcher.exe"
                   rel="noopener noreferrer"
                 >
                   <Download className="mr-2 w-5 h-5" aria-hidden />
-                  Download portable ZIP
+                  Download portable launcher
                 </a>
               </Button>
             </div>
@@ -720,7 +720,7 @@ export default function DownloadPage() {
                 built-in updater and install a new version, that process will
                 perform a full install of the launcher on your PC. To stay on a
                 portable-only setup, you must not use in-app updater; instead,
-                download a new portable ZIP from this page when a new release is
+                download a new portable build from this page when a new release is
                 available and replace your old files.
               </p>
             </div>
