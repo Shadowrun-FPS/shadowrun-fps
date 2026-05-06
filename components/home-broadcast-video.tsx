@@ -5,15 +5,15 @@ import { BroadcastEmbed } from "@/components/broadcast-embed";
 import {
   buildFeaturedEmbedUrl,
   extractYouTubeVideoId,
-  fetchFeaturedVideoSettings,
 } from "@/lib/featured-video";
+import { fetchFeaturedVideoSettingsServer } from "@/lib/featured-video-server";
 
 const DEFAULT_WATCH_MORE_HREF =
   process.env.NEXT_PUBLIC_FEATURED_VIDEO_MORE_URL ||
   "https://www.youtube.com/results?search_query=shadowrun+fps+community";
 
 export async function HomeBroadcastVideo() {
-  const settings = await fetchFeaturedVideoSettings();
+  const settings = await fetchFeaturedVideoSettingsServer();
   const embedUrl = buildFeaturedEmbedUrl(settings);
 
   if (!embedUrl) {

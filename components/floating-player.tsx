@@ -131,7 +131,8 @@ export function FloatingPlayer({
         className
       )}
     >
-      <audio ref={audioRef} src={audioSrc} preload="metadata" />
+      {/* preload="none" — duration is provided via prop, so metadata fetch is unnecessary */}
+      <audio ref={audioRef} src={audioSrc} preload="none" />
 
       <div
         className={cn(

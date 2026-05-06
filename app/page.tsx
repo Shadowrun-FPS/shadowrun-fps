@@ -9,7 +9,10 @@ import { HomeBroadcastVideo } from "@/components/home-broadcast-video";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { ScrollReveal } from "@/components/scroll-reveal";
 
-export const dynamic = "force-dynamic";
+// ISR: revalidate every 5 minutes as a fallback.
+// On-demand revalidation via revalidatePath("/") fires immediately when
+// an admin updates the featured broadcast, so stale HTML is rarely served.
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: {
@@ -28,7 +31,7 @@ export const metadata: Metadata = {
       "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.png",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Hero Image",
@@ -42,7 +45,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - FASA Studios' 2007 Multiplayer Shooter",
     description:
       "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
-    images: ["https://www.shadowrunfps.com/hero.png"],
+    images: ["https://www.shadowrunfps.com/hero.webp"],
   },
 };
 
@@ -66,6 +69,18 @@ const schemaData = {
 export default async function Home() {
   return (
     <>
+      {/*
+        Explicitly preload the hero background image so the browser's preload
+        scanner discovers it immediately — CSS background-image is invisible
+        to it otherwise, which delays LCP on mobile.
+      */}
+      <link
+        rel="preload"
+        as="image"
+        href="/hero.webp"
+        type="image/webp"
+        fetchPriority="high"
+      />
       <div className="relative right-1/2 left-1/2 -mx-0 -mt-6 w-screen -translate-x-1/2 sm:-mx-0 md:-mx-0 lg:-mx-0">
         <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-79px)] sm:min-h-[calc(100vh-89px)] py-12 sm:py-16 md:py-20">
           <div className="absolute inset-0 w-full h-full">

@@ -289,5 +289,5 @@ export function getPlayerAvatarUrl(player: any, baseUrl: string): string {
   }
 
   // Fallback to default image
-  return `${baseUrl}/hero.png`;
+  return `${baseUrl}/hero.webp`;
 }

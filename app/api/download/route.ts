@@ -15,11 +15,18 @@ async function getDownloadHandler(request: NextRequest) {
 
     const fileBuffer = await response.arrayBuffer();
 
+    const isPortableExe = /\.exe(\?|$)/i.test(PORTABLE_LAUNCHER_ZIP_URL);
+    const filename = isPortableExe
+      ? "Shadowrun FPS Launcher.exe"
+      : "Shadowrun FPS Launcher.zip";
+    const contentType = isPortableExe
+      ? "application/octet-stream"
+      : "application/zip";
+
     return new NextResponse(fileBuffer, {
       headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition":
-          'attachment; filename="Shadowrun FPS Launcher.zip"',
+        "Content-Type": contentType,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
       },
     });

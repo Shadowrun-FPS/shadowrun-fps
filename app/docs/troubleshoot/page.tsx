@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/hero.png",
+        url: "/hero.webp",
         width: 1200,
         height: 630,
         alt: "Troubleshooting Shadowrun FPS",
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
       "Fix activation, performance, controllers, and networking for Shadowrun FPS on PC.",
     images: [
       {
-        url: "/hero.png",
+        url: "/hero.webp",
         width: 1200,
         height: 630,
         alt: "Troubleshooting Shadowrun FPS",

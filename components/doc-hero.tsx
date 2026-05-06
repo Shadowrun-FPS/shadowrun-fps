@@ -45,7 +45,7 @@ export function DocHero() {
       {/* Hero Image with improved styling */}
       <div
         className="relative h-72 bg-center bg-no-repeat bg-cover sm:h-80 md:h-96 lg:h-[32rem] xl:h-[36rem]"
-        style={{ backgroundImage: "url('/hero.png')" }}
+        style={{ backgroundImage: "url('/hero.webp')" }}
       >
         {/* Enhanced gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />

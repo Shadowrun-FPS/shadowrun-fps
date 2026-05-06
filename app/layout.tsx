@@ -63,7 +63,7 @@ export const metadata: Metadata = {
     siteName: "Shadowrun FPS",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.png",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Gameplay",
@@ -77,7 +77,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
       "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
-    images: ["https://www.shadowrunfps.com/hero.png"],
+    images: ["https://www.shadowrunfps.com/hero.webp"],
     creator: "@ShadowrunFPS",
   },
   robots: {
@@ -162,18 +162,13 @@ export default function RootLayout({
               "@type": "WebSite",
               name: "Shadowrun FPS",
               url: "https://www.shadowrunfps.com",
-              image: "https://www.shadowrunfps.com/hero.png",
+              image: "https://www.shadowrunfps.com/hero.webp",
               description:
                 "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
             }),
           }}
         />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
+        {/* next/font self-hosts Inter and Space Grotesk — no external font requests */}
       </head>
       <body
         className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className} ${spaceGrotesk.variable}`}

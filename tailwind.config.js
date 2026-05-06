@@ -39,7 +39,7 @@ module.exports = {
         "accordion-up": "accordion-up 0.2s ease-out",
       },
       backgroundImage: {
-        "hero-image": "url('/hero.png')",
+        "hero-image": "url('/hero.webp')",
       },
       colors: {
         border: "hsl(var(--border))",

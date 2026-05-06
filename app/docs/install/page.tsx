@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/hero.png",
+        url: "/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Installation Guide",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
       "Follow our simple step-by-step guide to install Shadowrun FPS on PC. Get download links, setup tips, and join the community!",
     images: [
       {
-        url: "/hero.png",
+        url: "/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Installation Guide",
