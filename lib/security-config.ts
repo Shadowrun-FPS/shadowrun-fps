@@ -24,7 +24,7 @@ export const SECURITY_CONFIG = {
   // CORS Configuration
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(",") || [
     "http://localhost:3000",
-    "https://shadowrunfps.com",
+    "https://www.shadowrunfps.com",
     process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   ],
 
@@ -41,11 +41,18 @@ export const SECURITY_CONFIG = {
     "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "font-src": ["'self'", "https://fonts.gstatic.com"],
     "img-src": ["'self'", "data:", "https:", "blob:"],
-    "media-src": ["'self'", "https://www.youtube.com", "https://youtube.com"],
+    "media-src": [
+      "'self'",
+      "https://www.youtube.com",
+      "https://youtube.com",
+      "https://www.youtube-nocookie.com",
+    ],
     "frame-src": [
       "'self'",
       "https://www.youtube.com",
       "https://youtube.com",
+      "https://www.youtube-nocookie.com",
+      "https://player.twitch.tv",
       "https://vercel.live",
     ],
     "connect-src": [
@@ -92,8 +99,30 @@ export function hasAdminRole(userRoles: string[] = []): boolean {
   return userRoles.some((role) => ADMIN_ROLE_IDS.includes(role));
 }
 
-/** Legacy co-developer Discord user id (matches queues UI gate). */
-const LEGACY_CO_DEVELOPER_DISCORD_ID = "238329746671271936";
+/** Legacy co-developer Discord user id (matches admin / developer gates). */
+export const LEGACY_CO_DEVELOPER_DISCORD_ID = "238329746671271936";
+
+export function isDeveloperDiscordUser(userId: string): boolean {
+  return (
+    userId === SECURITY_CONFIG.DEVELOPER_ID ||
+    userId === LEGACY_CO_DEVELOPER_DISCORD_ID
+  );
+}
+
+/**
+ * Home broadcast editor + PUT /api/featured-video: staff roles from env
+ * ({@link MODERATOR_ROLE_IDS}), primary/co-developer Discord user ids, or NextAuth isAdmin.
+ */
+export function canManageFeaturedBroadcast(
+  userId: string | undefined,
+  discordRoleIds: string[],
+  sessionIsAdmin?: boolean,
+): boolean {
+  if (!userId) return false;
+  if (isDeveloperDiscordUser(userId)) return true;
+  if (sessionIsAdmin) return true;
+  return hasModeratorRole(discordRoleIds);
+}
 
 /**
  * Server/client: developer accounts, session isAdmin, or admin/founder Discord role ids.

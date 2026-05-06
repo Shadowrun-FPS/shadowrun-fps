@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DocCallout } from "@/components/docs/doc-callout";
 
 export function InstallStepsTimeline() {
@@ -70,6 +71,25 @@ export function InstallStepsTimeline() {
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
               <span>
+                This package is set up for{" "}
+                <strong className="text-foreground">AntHill LIVE (AHL)</strong>{" "}
+                by default. To use classic Xbox GFWL instead, edit{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground sm:text-sm">
+                  patcher_conf.ini
+                </code>{" "}
+                — see{" "}
+                <Link
+                  href="/docs/install#ant-hill-live"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  AntHill LIVE &amp; manual switching
+                </Link>
+                .
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>
                 Drag and drop or extract the Shadowrun folder to your desired
                 location.
               </span>
@@ -98,7 +118,7 @@ export function InstallStepsTimeline() {
           <ul className="space-y-2.5 text-muted-foreground">
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
-              <span>Double click the Shadowrun.exe to launch the game.</span>
+              <span>Double-click Shadowrun.exe to launch the game.</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
@@ -114,7 +134,34 @@ export function InstallStepsTimeline() {
             <li className="flex items-start gap-2">
               <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
               <span>
-                Click &quot;Use existing LIVE profile&quot; to sign in to your
+                <strong className="text-foreground">Online on AHL:</strong>{" "}
+                Create an AntHill LIVE account and gamertag, then sign in with
+                that email and password (full steps in{" "}
+                <Link
+                  href="/docs/install#ant-hill-live"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  AntHill LIVE
+                </Link>
+                ).
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>
+                <strong className="text-foreground">Offline / bots only:</strong>{" "}
+                Use a Local Profile — no AHL account needed.
+              </span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />
+              <span>
+                <strong className="text-foreground">Classic GFWL (Xbox):</strong>{" "}
+                Point the game at Xbox endpoints via{" "}
+                <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs text-foreground sm:text-sm">
+                  patcher_conf.ini
+                </code>
+                , then use &quot;Use existing LIVE profile&quot; with your
                 Microsoft account.
               </span>
             </li>

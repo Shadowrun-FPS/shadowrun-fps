@@ -1,10 +1,10 @@
-import { hasFeaturedVideo } from "./featured-videos";
 import { ChevronDown } from "lucide-react";
 import { Metadata } from "next";
 import { FloatingPlayer } from "@/components/floating-player";
 import DownloadButton from "@/components/download-button";
 import { HomeBento } from "@/components/home-bento";
 import { HomeAboutSection } from "@/components/home-about-section";
+import { FeaturedBroadcastEditor } from "@/components/featured-broadcast-editor";
 import { HomeBroadcastVideo } from "@/components/home-broadcast-video";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { ScrollReveal } from "@/components/scroll-reveal";
@@ -12,7 +12,13 @@ import { ScrollReveal } from "@/components/scroll-reveal";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Shadowrun FPS - FASA Studios' 2007 First Person Multiplayer Shooter",
+  title: {
+    absolute:
+      "Shadowrun FPS - FASA Studios' 2007 First Person Multiplayer Shooter",
+  },
+  alternates: {
+    canonical: "/",
+  },
   description:
     "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
   openGraph: {
@@ -22,13 +28,13 @@ export const metadata: Metadata = {
       "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
     images: [
       {
-        url: "https://ShadowrunFPS.com/hero.png",
+        url: "https://www.shadowrunfps.com/hero.png",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Hero Image",
       },
     ],
-    url: "https://ShadowrunFPS.com",
+    url: "https://www.shadowrunfps.com",
     type: "website",
   },
   twitter: {
@@ -36,7 +42,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - FASA Studios' 2007 Multiplayer Shooter",
     description:
       "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
-    images: ["https://ShadowrunFPS.com/hero.png"],
+    images: ["https://www.shadowrunfps.com/hero.png"],
   },
 };
 
@@ -45,63 +51,19 @@ const schemaData = {
   "@type": "VideoGame",
   name: "Shadowrun FPS",
   genre: ["First-Person Shooter", "Multiplayer"],
-  potentialAction: {
-    "@type": "SearchAction",
-    target: "https://ShadowrunFPS.com/search?q={search_term_string}",
-    "query-input": "required name=search_term_string",
-  },
   publisher: {
     "@type": "Organization",
     name: "FASA Studios",
-    image: "https://ShadowrunFPS.com/shadowrun_invite_banner.png",
+    image: "https://www.shadowrunfps.com/shadowrun_invite_banner.png",
     datePublished: "2007-05-29",
   },
   description:
     "Shadowrun FPS is a 2007 multiplayer shooter by FASA Studios for Xbox 360 and PC. Join the fan community and keep the game alive!",
   platform: ["Xbox 360", "PC"],
-  url: "https://ShadowrunFPS.com",
-};
-
-const breadcrumbSchema = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    {
-      "@type": "ListItem",
-      position: 1,
-      name: "Home",
-      item: "https://ShadowrunFPS.com",
-    },
-    {
-      "@type": "ListItem",
-      position: 2,
-      name: "Events",
-      item: "https://www.shadowrunfps.com/docs/events",
-    },
-    {
-      "@type": "ListItem",
-      position: 3,
-      name: "Shadowrun PC Install Guide",
-      item: "https://www.shadowrunfps.com/docs/install",
-    },
-    {
-      "@type": "ListItem",
-      position: 4,
-      name: "Shadowrun PC Troubleshooting Guide",
-      item: "https://www.shadowrunfps.com/docs/troubleshoot",
-    },
-    {
-      "@type": "ListItem",
-      position: 5,
-      name: "Join the Discord Community",
-      item: "discord://discord.com/servers/this-is-shadowrun-930362820627943495",
-    },
-  ],
+  url: "https://www.shadowrunfps.com",
 };
 
 export default async function Home() {
-  const showFeaturedVideo = await hasFeaturedVideo();
-
   return (
     <>
       <div className="relative right-1/2 left-1/2 -mx-0 -mt-6 w-screen -translate-x-1/2 sm:-mx-0 md:-mx-0 lg:-mx-0">
@@ -128,7 +90,8 @@ export default async function Home() {
             </div>
 
             <div className="flex flex-col gap-2 justify-center items-center duration-1000 delay-300 animate-in fade-in">
-              <div className="w-full sm:w-auto">
+              {/* px-6 mirrors BentoCard horizontal padding so width matches Getting Started on phones */}
+              <div className="mx-auto w-full max-w-md px-6 sm:mx-0 sm:w-auto sm:max-w-none sm:px-0">
                 <DownloadButton />
               </div>
               <p className="text-sm text-gray-300/90 [text-shadow:_0_1px_8px_rgba(0,0,0,0.5)]">
@@ -166,7 +129,7 @@ export default async function Home() {
             aria-hidden
           />
           <div className="relative mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
-            <div className="rounded-3xl bg-card/5 p-5 backdrop-blur-sm sm:p-8 md:p-10">
+            <div className="rounded-3xl bg-card/5 py-6 backdrop-blur-sm sm:py-8 md:py-10">
               <HomeBento />
             </div>
           </div>
@@ -193,24 +156,30 @@ export default async function Home() {
           </div>
         </section>
 
-        {showFeaturedVideo && (
-          <section className="relative py-14 sm:py-16 md:py-20">
-            <div
-              className="pointer-events-none absolute inset-x-0 -top-px z-10 h-16 bg-gradient-to-b from-background to-transparent sm:h-24"
-              aria-hidden
-            />
-            <div className="relative z-20 px-3 mx-auto max-w-7xl sm:px-4 md:px-6 lg:px-8">
-              <div className="mx-auto max-w-4xl">
-                <ScrollReveal>
-                  <HomeSectionHeading>Broadcast</HomeSectionHeading>
-                </ScrollReveal>
-                <div className="mt-2 sm:mt-4">
-                  <HomeBroadcastVideo />
+        <section
+          id="broadcast"
+          className="relative py-14 sm:py-16 md:py-20"
+        >
+          <div
+            className="pointer-events-none absolute inset-x-0 -top-px z-10 h-16 bg-gradient-to-b from-background to-transparent sm:h-24"
+            aria-hidden
+          />
+          <div className="relative z-20 px-3 mx-auto max-w-7xl sm:px-4 md:px-6 lg:px-8">
+            <div className="mx-auto max-w-4xl">
+              <ScrollReveal>
+                <div className="mb-8 flex flex-col items-center gap-1.5 text-center sm:mb-10">
+                  <HomeSectionHeading className="mb-0 w-full">
+                    Broadcast
+                  </HomeSectionHeading>
+                  <FeaturedBroadcastEditor />
                 </div>
+              </ScrollReveal>
+              <div className="mt-2 sm:mt-4">
+                <HomeBroadcastVideo />
               </div>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
       </div>
 
       <FloatingPlayer
@@ -222,7 +191,7 @@ export default async function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify([schemaData, breadcrumbSchema]),
+          __html: JSON.stringify([schemaData]),
         }}
       />
     </>

@@ -27,7 +27,19 @@ export function InstallGameKeySection() {
           </a>
           . Both avoid buying a Steam title just for a legacy GFWL key. The Steam
           key steps below are here if you still want a retail key or need a
-          fallback.
+          fallback.{" "}
+          <strong className="text-foreground">AntHill LIVE</strong> accounts are
+          separate — register on our service for online on AHL (see{" "}
+          <Link
+            href="/docs/install#ant-hill-live"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            AntHill LIVE
+          </Link>
+          ), not via Steam keys.{" "}
+          <strong className="text-foreground">AHL does not require activation or
+          a retail game key</strong> — those steps below are for classic Games for
+          Windows LIVE only.
         </p>
       </DocCallout>
 

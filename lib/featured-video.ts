@@ -32,18 +32,58 @@ export function extractYouTubeVideoId(url: string): string {
 export function getYouTubeEmbedUrl(url: string): string {
   const videoId = extractYouTubeVideoId(url);
   if (!videoId) return "";
-  return `https://www.youtube.com/embed/${videoId}?rel=0`;
+  return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0`;
+}
+
+/** Hostnames allowed as Twitch `parent` (hostname only, no port). */
+export function getTwitchParentHostnames(hostname: string): string[] {
+  const normalized = hostname.split(":")[0]?.toLowerCase() ?? "shadowrunfps.com";
+  const parents = new Set<string>([normalized]);
+  if (process.env.NODE_ENV === "development") {
+    parents.add("localhost");
+    parents.add("127.0.0.1");
+  }
+  return Array.from(parents);
+}
+
+/**
+ * Used when the user activates the click-to-play facade so the embedded player
+ * starts immediately (same gesture), avoiding a second click inside YouTube/Twitch.
+ */
+export function withEmbedAutoplayOnActivation(
+  embedUrl: string,
+  type: "youtube" | "twitch"
+): string {
+  try {
+    const url = new URL(embedUrl);
+    if (type === "youtube") {
+      url.searchParams.set("autoplay", "1");
+      url.searchParams.set("playsinline", "1");
+    } else {
+      url.searchParams.set("autoplay", "true");
+    }
+    return url.toString();
+  } catch {
+    return embedUrl;
+  }
 }
 
 export function getTwitchEmbedUrl(
   channel: string,
-  hostname: string = "shadowrunfps.com"
+  hostname: string = "www.shadowrunfps.com"
 ): string {
   if (!channel) return "";
   const cleanChannel = channel
     .replace(/^https?:\/\/(www\.)?twitch\.tv\//, "")
     .replace(/\/$/, "");
-  return `https://player.twitch.tv/?channel=${cleanChannel}&parent=${hostname}&muted=false`;
+  const parents = getTwitchParentHostnames(hostname);
+  const params = new URLSearchParams();
+  params.set("channel", cleanChannel);
+  params.set("muted", "false");
+  for (const parent of parents) {
+    params.append("parent", parent);
+  }
+  return `https://player.twitch.tv/?${params.toString()}`;
 }
 
 export async function fetchFeaturedVideoSettings(): Promise<FeaturedVideoSettings> {
@@ -82,7 +122,7 @@ export function buildFeaturedEmbedUrl(
   if (settings.type === "twitch" && settings.twitchChannel) {
     const hostname = process.env.NEXT_PUBLIC_SITE_URL
       ? new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname
-      : "shadowrunfps.com";
+      : "www.shadowrunfps.com";
     return getTwitchEmbedUrl(settings.twitchChannel, hostname);
   }
   return "";

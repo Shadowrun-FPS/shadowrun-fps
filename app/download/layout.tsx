@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { LAUNCHER_INSTALLER_SCHEMA_URL } from "@/lib/download-urls";
 
 export const metadata: Metadata = {
-  title: "Download Shadowrun FPS Launcher | Shadowrun FPS",
+  title: "Download Shadowrun FPS Launcher",
+  alternates: {
+    canonical: "/download",
+  },
   description:
     "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
   openGraph: {
@@ -18,7 +21,7 @@ export const metadata: Metadata = {
         alt: "Shadowrun FPS Download Page",
       },
     ],
-    url: "https://ShadowrunFPS.com/download",
+    url: "https://www.shadowrunfps.com/download",
     type: "website",
   },
   twitter: {

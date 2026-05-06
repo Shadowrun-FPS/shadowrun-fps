@@ -1,5 +1,7 @@
+import { BroadcastEmbed } from "@/components/broadcast-embed";
 import {
   buildFeaturedEmbedUrl,
+  extractYouTubeVideoId,
   fetchFeaturedVideoSettings,
 } from "@/lib/featured-video";
 
@@ -22,15 +24,22 @@ export default async function FeaturedVideos() {
   }
 
   const title = settings.title || "Featured Video";
+  const youtubeVideoId =
+    settings.type === "youtube"
+      ? extractYouTubeVideoId(settings.youtubeUrl)
+      : "";
 
   return (
     <div className="relative mx-4 md:mx-8">
-      <iframe
-        className="aspect-video w-full rounded-md"
-        src={embedUrl}
+      <BroadcastEmbed
+        type={settings.type === "youtube" ? "youtube" : "twitch"}
+        embedUrl={embedUrl}
         title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-        allowFullScreen
+        youtubeVideoId={youtubeVideoId || undefined}
+        twitchChannel={
+          settings.type === "twitch" ? settings.twitchChannel : undefined
+        }
+        className="rounded-md"
       />
       {title && (
         <div className="mt-4 text-center text-white not-prose">

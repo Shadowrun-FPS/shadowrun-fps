@@ -26,7 +26,7 @@ export function InstallPageHero() {
             <span className="font-medium text-foreground">30–45 minutes</span>
             {" · "}
             <span className="font-medium text-foreground">Intermediate</span>{" "}
-            (external downloads, GFWL, file extraction)
+            (external downloads, GFWL/AHL, file extraction)
           </p>
         </div>
 

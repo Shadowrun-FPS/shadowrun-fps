@@ -84,18 +84,6 @@
         </section>
 
         <section>
-          <h2>Leaderboard &amp; community</h2>
-          <table>
-            <thead><tr><th>Page</th><th>Last modified</th><th>Priority</th></tr></thead>
-            <tbody>
-              <xsl:for-each select="sitemap:urlset/sitemap:url[contains(sitemap:loc,'/leaderboard') or contains(sitemap:loc,'/moderation-log')]">
-                <xsl:call-template name="row"/>
-              </xsl:for-each>
-            </tbody>
-          </table>
-        </section>
-
-        <section>
           <h2>Legal</h2>
           <table>
             <thead><tr><th>Page</th><th>Last modified</th><th>Priority</th></tr></thead>

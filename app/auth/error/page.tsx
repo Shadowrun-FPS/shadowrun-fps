@@ -39,7 +39,7 @@ function AuthErrorContent() {
       </CardContent>
       <CardFooter className="flex justify-end">
         <Button asChild>
-          <Link href="/auth/signin">Back to Sign In</Link>
+          <Link href="/login">Back to Sign In</Link>
         </Button>
       </CardFooter>
     </Card>

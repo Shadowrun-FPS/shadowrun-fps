@@ -23,15 +23,6 @@ export function TroubleshootPageHero() {
             <strong className="font-medium text-foreground">Common errors</strong>{" "}
             if you have a specific message or code.
           </p>
-          <p className="text-sm text-muted-foreground/90">
-            Estimated read:{" "}
-            <span className="font-medium text-foreground">12–18 minutes</span>
-            {" · "}
-            Covers{" "}
-            <span className="font-medium text-foreground">
-              GFWL, FPS limits, input, NAT
-            </span>
-          </p>
         </div>
 
         <DocCallout variant="note" title="Quick navigation">

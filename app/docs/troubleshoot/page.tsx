@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FAQsSection } from "./faqs-section";
+import { LAUNCHER_MAIN_LOG_PATH } from "@/lib/download-urls";
 
 const ENABLE_DOWNLOAD_PAGE =
   process.env.NEXT_PUBLIC_ENABLE_DOWNLOAD_PAGE === "true";
@@ -23,6 +24,9 @@ export const metadata: Metadata = {
   title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
   description:
     "Fix Shadowrun FPS (2007) on PC: GFWL activation, FPS limits, controllers, NAT, and connection issues. Step-by-step fixes and community support.",
+  alternates: {
+    canonical: "/docs/troubleshoot",
+  },
   keywords: [
     "Shadowrun FPS troubleshooting",
     "Shadowrun GFWL activation",
@@ -35,7 +39,7 @@ export const metadata: Metadata = {
     title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
     description:
       "Fix activation, performance, controllers, and networking for Shadowrun FPS on PC. Common errors, registry tips, and where to get help.",
-    url: "https://ShadowrunFPS.com/docs/troubleshoot",
+    url: "https://www.shadowrunfps.com/docs/troubleshoot",
     type: "website",
     images: [
       {
@@ -343,6 +347,23 @@ export default function TroubleshootPage() {
                 </CardContent>
               </Card>
             </div>
+          </DocSection>
+
+          <DocSection
+            id="launcher-logs"
+            eyebrow="Launcher"
+            title="Community launcher issues"
+          >
+            <p className="text-sm text-muted-foreground sm:text-base">
+              If the launcher crashes or won&apos;t download updates, send{" "}
+              <span className="font-medium text-foreground">main.log</span> when
+              you ask for help. The log lives at{" "}
+              <code className="break-all rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground sm:text-sm">
+                {LAUNCHER_MAIN_LOG_PATH}
+              </code>{" "}
+              — paste that into File Explorer&apos;s address bar to jump straight
+              to the file.
+            </p>
           </DocSection>
 
           <DocSection

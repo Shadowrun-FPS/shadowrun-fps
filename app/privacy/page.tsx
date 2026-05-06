@@ -1,7 +1,10 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Shadowrun FPS",
+  title: "Privacy Policy",
+  alternates: {
+    canonical: "/privacy",
+  },
   description: "Privacy policy for Shadowrun FPS platform users",
 };
 

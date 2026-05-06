@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { ExternalLink, Radio } from "lucide-react";
+import { BroadcastEmbed } from "@/components/broadcast-embed";
 import {
   buildFeaturedEmbedUrl,
+  extractYouTubeVideoId,
   fetchFeaturedVideoSettings,
 } from "@/lib/featured-video";
 
@@ -23,6 +25,10 @@ export async function HomeBroadcastVideo() {
   }
 
   const iframeTitle = settings.title?.trim() || "Featured Shadowrun FPS video";
+  const youtubeVideoId =
+    settings.type === "youtube"
+      ? extractYouTubeVideoId(settings.youtubeUrl)
+      : "";
   const lastUpdated = settings.lastUpdated
     ? new Date(settings.lastUpdated)
     : null;
@@ -63,15 +69,15 @@ export async function HomeBroadcastVideo() {
       </div>
 
       <div className="relative bg-black">
-        <div className="aspect-video w-full">
-          <iframe
-            className="h-full w-full"
-            src={embedUrl}
-            title={iframeTitle}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-            allowFullScreen
-          />
-        </div>
+        <BroadcastEmbed
+          type={settings.type === "youtube" ? "youtube" : "twitch"}
+          embedUrl={embedUrl}
+          title={iframeTitle}
+          youtubeVideoId={youtubeVideoId || undefined}
+          twitchChannel={
+            settings.type === "twitch" ? settings.twitchChannel : undefined
+          }
+        />
       </div>
     </div>
   );

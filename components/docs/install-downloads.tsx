@@ -13,14 +13,16 @@ const DOWNLOADS = [
   {
     step: 2,
     title: "Game service",
-    description: "Required for game activation and online play.",
+    description:
+      "Games for Windows LIVE client — required for the overlay and activation. Online services use AntHill LIVE (AHL) when your game points at our endpoints.",
     href: "https://community.pcgamingwiki.com/files/file/1012-microsoft-games-for-windows-live/",
     cta: "Download GFWL",
   },
   {
     step: 3,
     title: "Game files",
-    description: "Pre-installed and updated game package.",
+    description:
+      "Shadowrun DXVK package — pre-configured for AntHill LIVE (AHL) for community online play.",
     href: "https://mega.nz/file/5LdjgJQY#XMIClDPN0j0p7FrjNTGL3518OU3nrJl-xCA5W5jZZcg",
     cta: "Download Shadowrun files",
   },

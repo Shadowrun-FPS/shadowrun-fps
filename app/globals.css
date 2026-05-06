@@ -185,9 +185,9 @@
   display: none;
 }
 
-/* Better tap targets on mobile */
+/* Better tap targets on mobile (exclude Radix radios — they stay visually small; inner dot scales separately) */
 @media (max-width: 640px) {
-  button,
+  button:not([role="radio"]),
   a {
     @apply min-h-[44px] min-w-[44px];
   }

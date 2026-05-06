@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
   Search,
   ExternalLink,
   GripVertical,
+  X,
 } from "lucide-react";
 import { PostDialog } from "./post-dialog";
 import {
@@ -39,14 +40,28 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 interface PostManagerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Show Edit/Delete row (e.g. admin). Row 1 always shows reorder + optional Visit link. */
+  canManagePosts?: boolean;
 }
 
-export function PostManager({ open, onOpenChange }: PostManagerProps) {
+export function PostManager({
+  open,
+  onOpenChange,
+  canManagePosts = true,
+}: PostManagerProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [posts, setPosts] = useState<any[]>([]);
@@ -332,8 +347,20 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
       return orderA - orderB;
   });
 
-  // Get unique post types for filter
-  const postTypes = Array.from(new Set(posts.map((post) => post.type).filter(Boolean)));
+  // Get unique post types for filter (stable order)
+  const postTypes = Array.from(new Set(posts.map((post) => post.type).filter(Boolean))).sort(
+    (a, b) => String(a).localeCompare(String(b))
+  );
+
+  const globalOrderSorted = useMemo(
+    () =>
+      [...posts].sort((a, b) => {
+        const orderA = a.order ?? 0;
+        const orderB = b.order ?? 0;
+        return orderA - orderB;
+      }),
+    [posts]
+  );
 
   // Refresh posts after edit dialog closes
   useEffect(() => {
@@ -348,27 +375,22 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[900px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6">
-          <DialogHeader className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4 border-b border-border/40 pr-12 sm:pr-16 md:pr-20">
-            <div className="flex flex-col gap-3 justify-between items-start sm:flex-row sm:items-center sm:gap-4">
-              <div className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0">
-                <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
-                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <DialogTitle className="text-base font-bold leading-tight break-words sm:text-lg md:text-xl lg:text-2xl">
-                    Manage Posts
-                  </DialogTitle>
-                  <DialogDescription className="mt-1 text-xs break-words sm:text-sm text-muted-foreground">
-                    Drag to reorder • Click arrows to move • Edit or delete posts
-                  </DialogDescription>
-                </div>
+        <DialogContent className="w-[calc(100vw-1rem)] max-w-[min(100vw-1rem,900px)] rounded-2xl border-border/60 shadow-xl sm:max-w-[900px] max-h-[min(100dvh-1rem,calc(100vh-2rem))] sm:max-h-[85vh] overflow-y-auto overflow-x-hidden p-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:p-4 md:p-6">
+          <DialogHeader className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4 border-b border-border/40 pr-12 sm:pr-16 md:pr-20 text-left">
+            <div className="flex flex-col gap-3 justify-between items-stretch sm:flex-row sm:items-center sm:gap-4">
+              <div className="flex-1 min-w-0">
+                <DialogTitle className="text-base font-bold leading-tight break-words sm:text-lg md:text-xl lg:text-2xl">
+                  Manage Posts
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-xs break-words sm:text-sm text-muted-foreground">
+                  Drag to reorder • Tap arrows to move • Edit or delete posts
+                </DialogDescription>
               </div>
               <Button
                 variant="outline"
                 onClick={fetchPosts}
                 disabled={isLoading}
-                className="flex-shrink-0 gap-2 px-4 h-10 sm:px-5 sm:h-9 touch-manipulation"
+                className="w-full shrink-0 gap-2 rounded-xl px-4 h-11 sm:h-9 sm:w-auto sm:px-5 touch-manipulation"
                 title="Refresh posts"
               >
                 {isLoading ? (
@@ -381,39 +403,56 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
             </div>
           </DialogHeader>
 
-          {/* Search and Filter Bar */}
+          {/* Search + post type filter (dropdown below search) */}
           {!isLoading && posts.length > 0 && (
-            <div className="flex flex-col sm:flex-row gap-3 pt-3 sm:pt-4 border-b border-border/40 pb-3 sm:pb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <div className="flex flex-col gap-3 pt-3 sm:pt-4 border-b border-border/40 pb-3 sm:pb-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
                   type="text"
                   placeholder="Search posts by title, description, or author..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 sm:h-10"
+                  className={cn(
+                    "rounded-xl pl-9 h-11 sm:h-10",
+                    searchQuery.trim() ? "pr-10" : "pr-3"
+                  )}
+                  aria-label="Search posts"
                 />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={filterType === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setFilterType("all")}
-                  className="h-9 sm:h-10"
-                >
-                  All ({posts.length})
-                </Button>
-                {postTypes.map((type) => (
-                  <Button
-                    key={type}
-                    variant={filterType === type ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setFilterType(type)}
-                    className="h-9 sm:h-10"
+                {searchQuery.trim() ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                    aria-label="Clear search"
                   >
-                    {type} ({posts.filter((p) => p.type === type).length})
-                  </Button>
-                ))}
+                    <X className="h-4 w-4" aria-hidden />
+                  </button>
+                ) : null}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <Label
+                  htmlFor="post-type-filter"
+                  className="text-sm font-medium text-muted-foreground shrink-0 sm:min-w-[5.5rem]"
+                >
+                  Post type
+                </Label>
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger
+                    id="post-type-filter"
+                    className="h-11 rounded-xl sm:h-10 w-full min-w-0 sm:w-fit sm:min-w-[10rem] sm:max-w-[13rem]"
+                  >
+                    <SelectValue placeholder="Filter by post type" />
+                  </SelectTrigger>
+                  <SelectContent position="popper" className="z-[100]">
+                    <SelectItem value="all">All ({posts.length})</SelectItem>
+                    {postTypes.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type} ({posts.filter((p) => p.type === type).length})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -429,7 +468,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
             ) : (
               <div className="space-y-2 min-[375px]:space-y-2.5 sm:space-y-3 md:space-y-4">
                 {filteredPosts.length === 0 && posts.length > 0 ? (
-                  <Card className="border-2 border-dashed">
+                  <Card className="rounded-2xl border border-dashed border-border/60 bg-muted/5">
                     <CardContent className="flex flex-col justify-center items-center py-6 min-[375px]:py-8 sm:py-12 md:py-16 text-center px-2.5 min-[375px]:px-3 sm:px-4">
                       <div className="p-2.5 min-[375px]:p-3 sm:p-4 rounded-full bg-muted/50 mb-3 min-[375px]:mb-4">
                         <Search className="w-7 h-7 min-[375px]:w-8 min-[375px]:h-8 sm:w-10 sm:h-10 text-muted-foreground" />
@@ -443,7 +482,7 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                     </CardContent>
                   </Card>
                 ) : posts.length === 0 ? (
-                  <Card className="border-2 border-dashed">
+                  <Card className="rounded-2xl border border-dashed border-border/60 bg-muted/5">
                     <CardContent className="flex flex-col justify-center items-center py-6 min-[375px]:py-8 sm:py-12 md:py-16 text-center px-2.5 min-[375px]:px-3 sm:px-4">
                       <div className="p-2.5 min-[375px]:p-3 sm:p-4 rounded-full bg-muted/50 mb-3 min-[375px]:mb-4">
                         <FileText className="w-7 h-7 min-[375px]:w-8 min-[375px]:h-8 sm:w-10 sm:h-10 text-muted-foreground" />
@@ -463,7 +502,11 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                       // filteredPosts is already sorted by order, so index matches order position
                       // Use the post's order field as the source of truth for display
                       const displayOrder = post.order ?? index;
-                      const originalIndex = index;
+                      const externalUrl =
+                        post.link || post.linkAddress || "";
+                      const globalIndex = globalOrderSorted.findIndex(
+                        (p) => p._id === post._id
+                      );
                       const isDragging = draggedIndex === index;
                       const isDragOver = dragOverIndex === index;
                       return (
@@ -476,41 +519,50 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                         onDrop={(e) => handleDrop(e, index)}
                         onDragEnd={handleDragEnd}
                         className={cn(
-                          "border-2 transition-all duration-200 touch-manipulation w-full max-w-full overflow-hidden",
-                          !isDragging && "hover:border-primary/50 hover:shadow-md",
-                          isDragging && "opacity-40 scale-95 shadow-2xl border-primary rotate-1",
-                          isDragOver && "border-primary border-2 shadow-lg scale-[1.02] bg-primary/5"
+                          "rounded-2xl border border-border/70 shadow-sm transition-all duration-200 touch-manipulation w-full max-w-full overflow-hidden",
+                          !isDragging &&
+                            "hover:border-primary/35 hover:shadow-md",
+                          isDragging &&
+                            "opacity-50 scale-[0.98] shadow-lg border-primary/80 rotate-[0.5deg]",
+                          isDragOver &&
+                            "border-primary/70 shadow-md scale-[1.01] bg-primary/5"
                         )}
                       >
                         <CardContent className="p-2.5 min-[375px]:p-3 sm:p-4 md:p-5 lg:p-6 w-full max-w-full overflow-hidden">
                           <div className="flex flex-col gap-2.5 min-[375px]:gap-3 sm:gap-4 md:gap-5 w-full max-w-full">
                             {/* Post Info */}
                             <div className="flex-1 min-w-0 space-y-1.5 min-[375px]:space-y-2 sm:space-y-2.5 w-full max-w-full overflow-hidden">
-                              <div className="flex flex-col min-[375px]:flex-row min-[375px]:flex-wrap items-start min-[375px]:items-center gap-1.5 min-[375px]:gap-2 sm:gap-2.5 w-full max-w-full">
-                                <div className="flex items-center gap-2 flex-1 min-w-0 w-full max-w-full group/drag">
-                                  <div className="flex-shrink-0 p-1 -ml-1 rounded hover:bg-muted/50 transition-colors" title="Drag to reorder">
+                              {/* Mobile: two rows (title block, then badges). sm+: title left / meta right */}
+                              <div className="flex w-full max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                                <div className="flex w-full min-w-0 items-start gap-0 sm:gap-2 group/drag sm:flex-1">
+                                  <div
+                                    className="mt-0.5 hidden flex-shrink-0 self-start p-1 -ml-1 rounded-full hover:bg-muted/50 transition-colors sm:block"
+                                    title="Drag to reorder"
+                                  >
                                     <GripVertical className="w-4 h-4 text-muted-foreground/50 group-hover/drag:text-muted-foreground cursor-grab active:cursor-grabbing transition-colors" />
                                   </div>
-                                  <h3 className="font-semibold text-xs min-[375px]:text-sm sm:text-base md:text-lg lg:text-xl break-words flex-1 min-w-0 overflow-hidden">
+                                  <h3 className="min-w-0 flex-1 font-semibold text-xs min-[375px]:text-sm sm:text-base md:text-lg lg:text-xl break-words leading-snug">
                                     {post.title}
                                   </h3>
                                 </div>
-                                <div className="flex items-center gap-1 min-[375px]:gap-1.5 sm:gap-2 flex-shrink-0 w-full min-[375px]:w-auto">
-                                  <Badge
-                                    variant={
-                                      post.type === "EVENT"
-                                        ? "default"
-                                        : post.type === "NEWS"
-                                        ? "secondary"
-                                        : "outline"
-                                    }
-                                    className="whitespace-nowrap text-[10px] min-[375px]:text-xs sm:text-sm"
-                                  >
-                                    {post.type}
-                                  </Badge>
-                                  <span className="text-[10px] min-[375px]:text-xs sm:text-sm text-muted-foreground font-medium px-1.5 min-[375px]:px-2 py-0.5 rounded bg-muted/50">
-                                    #{displayOrder + 1}
-                                  </span>
+                                <div className="flex w-full shrink-0 items-center justify-start gap-2 sm:w-auto sm:gap-3 sm:pt-0.5">
+                                  <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+                                    <span className="text-[10px] min-[375px]:text-xs sm:text-sm text-muted-foreground font-medium px-1.5 min-[375px]:px-2 py-0.5 rounded bg-muted/50 tabular-nums">
+                                      #{displayOrder + 1}
+                                    </span>
+                                    <Badge
+                                      variant={
+                                        post.type === "EVENT"
+                                          ? "default"
+                                          : post.type === "NEWS"
+                                          ? "secondary"
+                                          : "outline"
+                                      }
+                                      className="whitespace-nowrap text-[10px] min-[375px]:text-xs sm:text-sm"
+                                    >
+                                      {post.type}
+                                    </Badge>
+                                  </div>
                                 </div>
                               </div>
                               <p className="text-xs min-[375px]:text-sm md:text-base text-muted-foreground line-clamp-2 sm:line-clamp-3 leading-relaxed break-words">
@@ -534,79 +586,124 @@ export function PostManager({ open, onOpenChange }: PostManagerProps) {
                               </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pt-2 sm:pt-3 border-t border-border/40 w-full max-w-full">
-                              {/* Top row on small screens: Edit, Delete, View Post */}
-                              <div className="flex gap-2 items-center flex-shrink-0 min-w-0">
+                            {/* Row 1: reorder + optional link (full width). Row 2: Edit/Delete when canManagePosts. */}
+                            <div className="flex w-full max-w-full flex-col gap-3 border-t border-border/40 pt-3">
+                              <div
+                                className="grid w-full min-h-[44px] grid-cols-4 gap-2 sm:gap-3 items-stretch"
+                                role="group"
+                                aria-label={
+                                  externalUrl
+                                    ? "Reorder post or open external link"
+                                    : "Reorder post"
+                                }
+                              >
                                 <Button
-                                  variant="ghost"
-                                  onClick={() => setEditPost(post)}
-                                  className="gap-2 px-4 h-10 sm:h-9 touch-manipulation flex-shrink-0 min-w-0"
-                                  title="Edit post"
-                                >
-                                  <Edit className="flex-shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
-                                  <span className="text-sm whitespace-nowrap">Edit</span>
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  onClick={() => setDeletePostId(post._id)}
-                                  className="gap-2 px-4 h-10 sm:h-9 text-destructive hover:text-destructive/90 hover:bg-destructive/10 touch-manipulation flex-shrink-0 min-w-0"
-                                  title="Delete post"
-                                >
-                                  <Trash2 className="flex-shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
-                                  <span className="text-sm whitespace-nowrap">Delete</span>
-                                </Button>
-                                {post.linkAddress && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    asChild
-                                    className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
-                                    title="View post"
-                                  >
-                                    <a
-                                      href={post.linkAddress}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                    >
-                                      <ExternalLink className="w-4 h-4 sm:h-5 sm:w-5" />
-                                    </a>
-                                  </Button>
-                                )}
-                              </div>
-                              {/* Bottom row on small screens: Up/Down arrows */}
-                              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 sm:justify-end">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleReorder(post._id, "up")}
-                                  disabled={originalIndex === 0 || originalIndex === -1 || reorderingPostId !== null}
-                                  className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
-                                  title={originalIndex === 0 ? "Already at top" : "Move up (Shift + ↑)"}
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleReorder(post._id, "up")
+                                  }
+                                  disabled={
+                                    globalIndex <= 0 ||
+                                    globalIndex === -1 ||
+                                    reorderingPostId !== null
+                                  }
+                                  className="col-span-1 flex h-10 min-h-[44px] w-full min-w-0 shrink-0 items-center justify-center rounded-xl px-0 touch-manipulation sm:h-9 sm:min-h-0 sm:rounded-md"
+                                  title={
+                                    globalIndex <= 0
+                                      ? "Already at top"
+                                      : "Move up"
+                                  }
                                 >
                                   {reorderingPostId !== null ? (
                                     <Loader2 className="w-4 h-4 sm:h-5 sm:w-5 animate-spin" />
                                   ) : (
-                                  <ArrowUp className="w-4 h-4 sm:h-5 sm:w-5" />
+                                    <ArrowUp className="w-4 h-4 sm:h-5 sm:w-5" />
                                   )}
                                 </Button>
                                 <Button
-                                  variant="ghost"
-                                  size="icon"
+                                  variant="outline"
                                   onClick={() =>
                                     handleReorder(post._id, "down")
                                   }
-                                  disabled={originalIndex === posts.length - 1 || originalIndex === -1 || reorderingPostId !== null}
-                                  className="w-10 h-10 sm:h-9 sm:w-9 touch-manipulation flex-shrink-0"
-                                  title={originalIndex === posts.length - 1 ? "Already at bottom" : "Move down (Shift + ↓)"}
+                                  disabled={
+                                    globalIndex >=
+                                      globalOrderSorted.length - 1 ||
+                                    globalIndex === -1 ||
+                                    reorderingPostId !== null
+                                  }
+                                  className="col-span-1 flex h-10 min-h-[44px] w-full min-w-0 shrink-0 items-center justify-center rounded-xl px-0 touch-manipulation sm:h-9 sm:min-h-0 sm:rounded-md"
+                                  title={
+                                    globalIndex >=
+                                    globalOrderSorted.length - 1
+                                      ? "Already at bottom"
+                                      : "Move down"
+                                  }
                                 >
                                   {reorderingPostId !== null ? (
                                     <Loader2 className="w-4 h-4 sm:h-5 sm:w-5 animate-spin" />
                                   ) : (
-                                  <ArrowDown className="w-4 h-4 sm:h-5 sm:w-5" />
+                                    <ArrowDown className="w-4 h-4 sm:h-5 sm:w-5" />
                                   )}
                                 </Button>
+                                {externalUrl ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    asChild
+                                    className="col-span-2 h-10 min-h-0 w-full min-w-0 gap-1.5 rounded-xl px-2 touch-manipulation sm:h-9 sm:rounded-md sm:px-3"
+                                  >
+                                    <a
+                                      href={externalUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      title="Open linked page in a new tab"
+                                      aria-label={`Visit link for ${post.title}`}
+                                      className="flex h-full min-h-0 w-full min-w-0 items-center justify-center gap-1.5 no-underline"
+                                    >
+                                      <ExternalLink
+                                        className="h-4 w-4 shrink-0"
+                                        aria-hidden
+                                      />
+                                      <span className="inline min-[360px]:hidden">
+                                        Link
+                                      </span>
+                                      <span className="hidden min-[360px]:inline">
+                                        Visit link
+                                      </span>
+                                    </a>
+                                  </Button>
+                                ) : (
+                                  <div
+                                    className="col-span-2 min-h-[44px] min-w-0 sm:min-h-9"
+                                    aria-hidden
+                                  />
+                                )}
                               </div>
+
+                              {canManagePosts ? (
+                                <div className="flex w-full gap-2 border-t border-border/40 pt-3">
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() => setEditPost(post)}
+                                    className="h-11 min-h-[44px] flex-1 gap-2 rounded-xl px-3 touch-manipulation sm:h-10 sm:rounded-md"
+                                    title="Edit post"
+                                  >
+                                    <Edit className="shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
+                                    <span className="text-sm">Edit</span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    onClick={() =>
+                                      setDeletePostId(post._id)
+                                    }
+                                    className="h-11 min-h-[44px] flex-1 gap-2 rounded-xl px-3 text-destructive hover:text-destructive/90 hover:bg-destructive/10 touch-manipulation sm:h-10 sm:rounded-md"
+                                    title="Delete post"
+                                  >
+                                    <Trash2 className="shrink-0 w-4 h-4 sm:h-5 sm:w-5" />
+                                    <span className="text-sm">Delete</span>
+                                  </Button>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         </CardContent>

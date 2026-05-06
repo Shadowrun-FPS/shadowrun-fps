@@ -1,7 +1,10 @@
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Use | Shadowrun FPS",
+  title: "Terms of Use",
+  alternates: {
+    canonical: "/terms",
+  },
   description: "Terms of use for Shadowrun FPS platform",
 };
 

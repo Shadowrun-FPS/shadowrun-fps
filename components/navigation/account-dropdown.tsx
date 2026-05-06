@@ -13,22 +13,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
-import Link from "next/link";
-import { Bell, Shield, Users, BarChart2, LogOut } from "lucide-react";
-import { useNotifications } from "@/contexts/NotificationsContext";
+import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { isFeatureEnabled } from "@/lib/features";
 import { UserPermissions, UserRoleInfo } from "@/lib/client-config";
 import { deduplicatedFetch } from "@/lib/request-deduplication";
 import { safeLog } from "@/lib/security";
 
 interface UserData {
-  permissions: {
-    isAdmin: boolean;
-    isModerator: boolean;
-    canCreateTournament: boolean;
-    isDeveloper: boolean;
-  };
+  permissions: UserPermissions;
   roles: string[];
   guildNickname: string | null;
   roleDisplay: Array<{
@@ -42,10 +34,6 @@ interface UserData {
     discordNickname?: string;
     discordProfilePicture?: string;
   } | null;
-  teams: {
-    captainTeams: any[];
-    memberTeams: any[];
-  };
 }
 
 export default function AccountDropdown() {
@@ -55,9 +43,6 @@ export default function AccountDropdown() {
   const [userRoleDisplay, setUserRoleDisplay] = useState<UserRoleInfo[]>([]);
   const [guildNickname, setGuildNickname] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [userTeams, setUserTeams] = useState<any[]>([]);
-  const { unreadCount } = useNotifications();
-  const [discordUsername, setDiscordUsername] = useState<string | null>(null);
   const fetchUserDataRef = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
 
@@ -103,45 +88,6 @@ export default function AccountDropdown() {
               session.user.name ||
               null
           );
-          setDiscordUsername(userData.player?.discordUsername || null);
-
-          // Process teams
-          const allTeams: any[] = [];
-          const captainTeamIds = new Set(
-            (userData.teams.captainTeams || []).map(
-              (t: any) => t._id?.toString() || t.id
-            )
-          );
-
-          // Add captain teams
-          if (userData.teams.captainTeams && Array.isArray(userData.teams.captainTeams)) {
-            userData.teams.captainTeams.forEach((team: any) => {
-              const teamId = team._id?.toString() || team.id;
-              allTeams.push({
-                id: teamId,
-                name: team.name,
-                tag: team.tag,
-                isCaptain: true,
-              });
-            });
-          }
-
-          // Add member teams (excluding duplicates where user is already captain)
-          if (userData.teams.memberTeams && Array.isArray(userData.teams.memberTeams)) {
-            userData.teams.memberTeams.forEach((team: any) => {
-              const teamId = team._id?.toString() || team.id;
-              if (!captainTeamIds.has(teamId)) {
-                allTeams.push({
-                  id: teamId,
-                  name: team.name,
-                  tag: team.tag,
-                  isCaptain: false,
-                });
-              }
-            });
-          }
-
-          setUserTeams(allTeams);
         } catch (error) {
           // If API fails, use fallback data from session
           const fallbackName =
@@ -157,23 +103,11 @@ export default function AccountDropdown() {
     fetchUserData();
   }, [session?.user?.id, session?.user]); // Only refetch when user ID changes
 
-  // Check permissions using server response
-  const hasModAccess = (): boolean => {
-    return userPermissions?.isModerator || userPermissions?.isAdmin || false;
-  };
-
-  const isDeveloper = (): boolean => {
-    return userPermissions?.isDeveloper || false;
-  };
-
   // Handle sign out
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" });
   };
 
-  // Check if player stats is enabled
-  const playerStatsEnabled = isFeatureEnabled("playerStats");
-  const teamsEnabled = isFeatureEnabled("teams");
 
   // Display login button if not authenticated (Rumble-style pill outline)
   if (status === "unauthenticated") {
@@ -197,26 +131,6 @@ export default function AccountDropdown() {
   // Display user account dropdown when authenticated
   return (
     <div className="flex gap-1.5 items-center">
-      {/* Notifications button - hidden on small screens (shown in dropdown instead) */}
-      <Link
-        href="/notifications"
-        className="relative hidden md:inline-flex"
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-9 w-9 rounded-full border border-transparent text-muted-foreground transition-colors hover:border-border/50 hover:bg-muted/40 hover:text-foreground"
-        >
-          <Bell className="w-5 h-5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-semibold text-white shadow-lg border-2 border-background animate-pulse">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
-          )}
-        </Button>
-      </Link>
-
-      {/* User dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -257,109 +171,6 @@ export default function AccountDropdown() {
               <DropdownMenuSeparator className="my-1 bg-border/60" />
             </>
           )}
-
-          <div className="md:hidden">
-            <DropdownMenuItem asChild>
-              <Link
-                href="/notifications"
-                className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
-              >
-                <Bell className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span>Notifications</span>
-                {unreadCount > 0 && (
-                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </Link>
-            </DropdownMenuItem>
-          </div>
-
-          {playerStatsEnabled && (
-            <DropdownMenuItem asChild>
-              <Link
-                href={
-                  discordUsername
-                    ? `/player/stats?playerName=${discordUsername}`
-                    : "/profile"
-                }
-                className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
-              >
-                <BarChart2 className="h-4 w-4 shrink-0 text-muted-foreground" />
-                Player Stats
-              </Link>
-            </DropdownMenuItem>
-          )}
-
-          {teamsEnabled &&
-            (userTeams.length === 0 ? (
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/tournaments/teams"
-                  className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
-                >
-                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  Find Team
-                </Link>
-              </DropdownMenuItem>
-            ) : userTeams.length === 1 ? (
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`/tournaments/teams/${userTeams[0].id}`}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
-                >
-                  <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  My Team
-                </Link>
-              </DropdownMenuItem>
-            ) : (
-              <>
-                {userTeams.map((team) => (
-                  <DropdownMenuItem key={team.id} asChild>
-                    <Link
-                      href={`/tournaments/teams/${team.id}`}
-                      className="flex min-w-0 cursor-pointer items-center justify-between gap-2 rounded-xl py-2.5"
-                    >
-                      <span className="truncate">
-                        {team.tag ? `[${team.tag}] ` : ""}
-                        {team.name}
-                      </span>
-                      {team.isCaptain && (
-                        <Badge
-                          variant="secondary"
-                          className="ml-2 shrink-0 text-xs"
-                        >
-                          Captain
-                        </Badge>
-                      )}
-                    </Link>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuItem asChild>
-                  <Link
-                    href="/tournaments/teams"
-                    className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5 text-muted-foreground"
-                  >
-                    <Users className="h-4 w-4 shrink-0" />
-                    Browse All Teams
-                  </Link>
-                </DropdownMenuItem>
-              </>
-            ))}
-
-          {(hasModAccess() || isDeveloper()) && (
-            <DropdownMenuItem asChild>
-              <Link
-                href="/admin"
-                className="flex cursor-pointer items-center gap-3 rounded-xl py-2.5"
-              >
-                <Shield className="h-4 w-4 shrink-0 text-muted-foreground" />
-                Admin
-              </Link>
-            </DropdownMenuItem>
-          )}
-
-          <DropdownMenuSeparator className="my-1 bg-border/60" />
 
           <DropdownMenuItem
             className="cursor-pointer gap-3 rounded-xl py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive"

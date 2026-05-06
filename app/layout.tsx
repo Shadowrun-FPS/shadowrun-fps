@@ -6,8 +6,6 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientLayout } from "@/components/ClientLayout";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { OnlineStatus } from "@/components/online-status";
-import { NotificationsProvider } from "@/contexts/NotificationsContext";
-import { PlayerUpdater } from "@/components/player-updater";
 
 const inter = Inter({ subsets: ["latin"] });
 const spaceGrotesk = Space_Grotesk({
@@ -17,6 +15,9 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.shadowrunfps.com"),
+  alternates: {
+    canonical: "/",
+  },
   title: {
     default: "Shadowrun FPS - Classic Multiplayer Shooter",
     template: "%s | Shadowrun FPS",
@@ -58,7 +59,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
       "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
-    url: "https://shadowrunfps.com",
+    url: "https://www.shadowrunfps.com",
     siteName: "Shadowrun FPS",
     images: [
       {
@@ -133,6 +134,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
+
   return (
     <html
       lang="en"
@@ -143,12 +146,12 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#020617" />
-        <link rel="canonical" href="https://www.shadowrunfps.com" />
-        <meta
-          name="google-site-verification"
-          content="your-verification-code"
-        />
-        <meta property="og:site_name" content="Shadowrun FPS" />
+        {googleSiteVerification ? (
+          <meta
+            name="google-site-verification"
+            content={googleSiteVerification}
+          />
+        ) : null}
         <meta name="application-name" content="Shadowrun FPS" />
         <link rel="manifest" href="/manifest.json" />
         <script
@@ -162,12 +165,6 @@ export default function RootLayout({
               image: "https://www.shadowrunfps.com/hero.png",
               description:
                 "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
-              potentialAction: {
-                "@type": "SearchAction",
-                target:
-                  "https://www.shadowrunfps.com/search?q={search_term_string}",
-                "query-input": "required name=search_term_string",
-              },
             }),
           }}
         />
@@ -182,11 +179,8 @@ export default function RootLayout({
         className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className} ${spaceGrotesk.variable}`}
       >
         <AuthProvider>
-          <NotificationsProvider>
-            <OnlineStatus />
-            <PlayerUpdater />
-            <ClientLayout>{children}</ClientLayout>
-          </NotificationsProvider>
+          <OnlineStatus />
+          <ClientLayout>{children}</ClientLayout>
         </AuthProvider>
 
         <Analytics />

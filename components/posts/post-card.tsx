@@ -105,7 +105,10 @@ export function PostCard({ post }: { post: Post }) {
 
   // Now hasLink will only be true if there's an actual link
   const hasLink = Boolean(getLink());
-  const hasImage = !!getImageUrl() && !imageError;
+  const imageSrc = getImageUrl();
+  const isRemoteImage =
+    imageSrc.startsWith("http://") || imageSrc.startsWith("https://");
+  const hasImage = !!imageSrc && !imageError;
 
   const title = post.title || "Untitled";
   const CardWrapper = ({ children }: { children: React.ReactNode }) => {
@@ -140,12 +143,13 @@ export function PostCard({ post }: { post: Post }) {
           {hasImage && !imageError ? (
             <>
               <Image
-                src={getImageUrl()}
+                src={imageSrc}
                 alt={post.title || "Post image"}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 priority={false}
                 loading="lazy"
+                unoptimized={isRemoteImage}
                 className={`object-cover transition-transform duration-700 ${hasLink ? "group-hover:scale-105" : ""}`}
                 onError={() => setImageError(true)}
                 style={{ objectPosition: "center center" }}

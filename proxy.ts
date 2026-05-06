@@ -3,27 +3,24 @@ import type { NextRequest } from "next/server";
 import { rateLimit, adminRateLimit, authRateLimit } from "./lib/rate-limiting";
 import { generateCSPHeader } from "./lib/security-config";
 
+const criticalAuthPaths = [
+  "/api/auth/session",
+  "/api/auth/csrf",
+  "/api/auth/providers",
+  "/api/auth/signin",
+  "/api/auth/callback",
+];
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip rate limiting for critical auth endpoints to prevent OAuth flow interruption
-  const criticalAuthPaths = [
-    "/api/auth/session",
-    "/api/auth/csrf",
-    "/api/auth/providers",
-    "/api/auth/signin",
-    "/api/auth/callback",
-  ];
-
-  // Skip rate limiting for notifications API (frequently polled by frontend)
   const shouldSkipRateLimit = criticalAuthPaths.some((path) =>
     pathname.startsWith(path)
-  ) || pathname.startsWith("/api/notifications");
-
-  // Apply rate limiting based on route (but skip critical auth paths and notifications)
-  let rateLimitResult;
+  );
 
   if (!shouldSkipRateLimit) {
+    let rateLimitResult;
+
     if (pathname.startsWith("/api/admin/")) {
       rateLimitResult = adminRateLimit(request);
     } else if (
@@ -35,49 +32,29 @@ export function proxy(request: NextRequest) {
       rateLimitResult = rateLimit(request);
     }
 
-    // Return rate limit error if exceeded
     if (rateLimitResult && !rateLimitResult.success) {
       return rateLimitResult.error!;
     }
   }
 
-  // Handle Socket.IO paths in Edge Runtime
-  if (pathname.startsWith("/api/socketio")) {
-    return NextResponse.json(
-      { error: "Socket.IO is only available through the custom server" },
-      { status: 501 }
-    );
-  }
-
-  // Get response (continue with request)
   const response = NextResponse.next();
 
-  // Add security headers
-  const headers = new Headers();
+  response.headers.set("Content-Security-Policy", generateCSPHeader());
+  response.headers.set("X-DNS-Prefetch-Control", "off");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("Referrer-Policy", "origin-when-cross-origin");
+  response.headers.set("X-XSS-Protection", "1; mode=block");
+  response.headers.set("Server", "");
 
-  // Content Security Policy
-  headers.set("Content-Security-Policy", generateCSPHeader());
-
-  // Other security headers
-  headers.set("X-DNS-Prefetch-Control", "off");
-  headers.set("X-Frame-Options", "DENY");
-  headers.set("X-Content-Type-Options", "nosniff");
-  headers.set("Referrer-Policy", "origin-when-cross-origin");
-  headers.set("X-XSS-Protection", "1; mode=block");
-
-  // Remove server information
-  headers.set("Server", "");
-
-  // HTTPS enforcement in production
   if (process.env.NODE_ENV === "production") {
-    headers.set(
+    response.headers.set(
       "Strict-Transport-Security",
       "max-age=31536000; includeSubDomains; preload"
     );
   }
 
-  // Permissions Policy (restrict access to sensitive APIs)
-  headers.set(
+  response.headers.set(
     "Permissions-Policy",
     [
       "camera=()",
@@ -89,22 +66,16 @@ export function proxy(request: NextRequest) {
       "magnetometer=()",
       "gyroscope=()",
       "accelerometer=()",
+      "picture-in-picture=()",
     ].join(", ")
   );
-
-  // Apply headers to response
-  headers.forEach((value, key) => {
-    response.headers.set(key, value);
-  });
 
   return response;
 }
 
 export const config = {
   matcher: [
-    // Apply to all API routes
     "/api/:path*",
-    // Apply to all pages (for security headers)
     "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 };

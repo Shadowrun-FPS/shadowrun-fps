@@ -6,10 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { isFeatureEnabled, FeatureFlag } from "@/lib/features";
-import { useSession } from "next-auth/react";
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { UserPermissions } from "@/lib/client-config";
+import { useEffect, useState, useCallback } from "react";
 import {
   Sheet,
   SheetContent,
@@ -19,39 +16,15 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Book,
-  Trophy,
-  Clock,
-  HeartHandshake,
-  BarChart3,
   Menu,
   X,
   Download,
   HelpCircle,
   Home,
-  Users,
-  PanelLeft,
   Calendar,
-  LayoutDashboard,
-  Shield,
-  ExternalLink,
   ChevronDown,
-  MapPin,
 } from "lucide-react";
 
-interface NavLink {
-  title: string;
-  href: string;
-  description: string;
-  icon: React.ReactNode;
-  feature?: FeatureFlag;
-}
 
 // Feature flag check
 const ENABLE_DOWNLOAD_PAGE =
@@ -62,7 +35,9 @@ const DocLinks = [
     title: "Events",
     href: "/docs/events",
     description: "Upcoming community events and tournaments",
-    icon: <Calendar className="mr-2 w-5 h-5 text-primary" />,
+    icon: (
+      <Calendar className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
   },
   ...(ENABLE_DOWNLOAD_PAGE
     ? [
@@ -70,75 +45,25 @@ const DocLinks = [
           title: "Download Launcher",
           href: "/download",
           description: "Download the Shadowrun FPS Launcher",
-          icon: <Download className="mr-2 w-5 h-5 text-primary" />,
+          icon: (
+            <Download className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+          ),
         },
       ]
     : []),
   {
-    title: "Manual Install",
-    href: "/docs/install",
-    description: "How to install and set up the game",
-    icon: <Book className="mr-2 w-5 h-5 text-primary" />,
-  },
-  {
     title: "Troubleshoot",
     href: "/docs/troubleshoot",
     description: "Solutions for common issues and problems",
-    icon: <HelpCircle className="mr-2 w-5 h-5 text-primary" />,
+    icon: (
+      <HelpCircle className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
   },
 ];
 
-const MatchesLinks: NavLink[] = [
-  {
-    title: "Queues",
-    href: "/matches/queues#4v4",
-    description: "Join active match queues",
-    icon: <Clock className="mr-2 w-5 h-5 text-primary" />,
-    feature: "queues",
-  },
-  {
-    title: "Match History",
-    href: "/matches/history",
-    description: "View your previous matches",
-    icon: <PanelLeft className="mr-2 w-5 h-5 text-primary" />,
-    feature: "matches",
-  },
-];
 
-const TournamentsLinks: NavLink[] = [
-  {
-    title: "Overview",
-    href: "/tournaments/overview",
-    description: "View upcoming and ongoing tournaments",
-    icon: <Trophy className="mr-2 w-5 h-5 text-primary" />,
-    feature: "tournaments",
-  },
-  {
-    title: "Teams",
-    href: "/tournaments/teams",
-    description: "Manage your teams and recruitment",
-    icon: <Users className="mr-2 w-5 h-5 text-primary" />,
-    feature: "teams",
-  },
-  {
-    title: "Scrimmages",
-    href: "/tournaments/scrimmages",
-    description: "View scrimmage matches with other teams",
-    icon: <HeartHandshake className="mr-2 w-5 h-5 text-primary" />,
-    feature: "scrimmage",
-  },
-  {
-    title: "Rankings",
-    href: "/tournaments/rankings",
-    description: "Team rankings and tournament standings",
-    icon: <BarChart3 className="mr-2 w-5 h-5 text-primary" />,
-    feature: "rankings",
-  },
-];
-
-/** Desktop-only: inset pill rail + shared control chrome (exported for admin sub-navs) */
-export const desktopNavRailClass =
-  "flex flex-wrap items-center gap-0.5 rounded-full border border-border/40 bg-muted/30 px-1 py-1 shadow-[inset_0_1px_0_0_hsl(var(--border)/0.35)] dark:bg-muted/20";
+/** Desktop-only: nav link row (shared chrome — exported for consistency) */
+export const desktopNavRailClass = "flex flex-wrap items-center gap-1";
 
 export const desktopNavControlClass =
   "relative inline-flex h-9 shrink-0 items-center justify-center rounded-full px-3.5 text-sm font-medium text-muted-foreground transition-colors duration-200 ease-out motion-reduce:transition-none hover:bg-background/85 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
@@ -163,27 +88,6 @@ const mobileSheetNavActiveClass =
 
 export function Navbar() {
   const pathname = usePathname();
-
-  // Memoize filtered links to prevent unnecessary re-renders
-  const filteredMatchesLinks = useMemo(
-    () =>
-      MatchesLinks.filter((link) =>
-        link.feature ? isFeatureEnabled(link.feature) : true
-      ),
-    []
-  );
-
-  const filteredTournamentsLinks = useMemo(
-    () =>
-      TournamentsLinks.filter((link) =>
-        link.feature ? isFeatureEnabled(link.feature) : true
-      ),
-    []
-  );
-
-  // Only show the dropdown if there are enabled links
-  const showMatchesMenu = filteredMatchesLinks.length > 0;
-  const showTournamentsMenu = filteredTournamentsLinks.length > 0;
 
   return (
     <nav className="flex items-center">
@@ -217,18 +121,6 @@ export function Navbar() {
           )}
 
           <Link
-            href="/docs/install"
-            className={cn(
-              desktopNavControlClass,
-              pathname === "/docs/install" && desktopNavRouteActiveClass
-            )}
-            aria-current={pathname === "/docs/install" ? "page" : undefined}
-          >
-            <Book className="mr-2 h-4 w-4 shrink-0 opacity-90" />
-            Manual Install
-          </Link>
-
-          <Link
             href="/docs/troubleshoot"
             className={cn(
               desktopNavControlClass,
@@ -239,136 +131,6 @@ export function Navbar() {
             <HelpCircle className="mr-2 h-4 w-4 shrink-0 opacity-90" />
             Troubleshoot
           </Link>
-
-          {isFeatureEnabled("leaderboard") && (
-            <Link
-              href="/leaderboard"
-              className={cn(
-                desktopNavControlClass,
-                pathname === "/leaderboard" && desktopNavRouteActiveClass
-              )}
-              aria-current={pathname === "/leaderboard" ? "page" : undefined}
-            >
-              <BarChart3 className="mr-2 h-4 w-4 shrink-0 opacity-90" />
-              Leaderboard
-            </Link>
-          )}
-
-          {showMatchesMenu && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={cn(
-                  "group",
-                  desktopNavControlClass,
-                  desktopNavTriggerOpenClass,
-                  pathname?.startsWith("/matches") && desktopNavRouteActiveClass
-                )}
-              >
-                <Clock className="mr-2 h-4 w-4 shrink-0 opacity-90" />
-                Matches
-                <ChevronDown
-                  className="ml-0.5 h-4 w-4 shrink-0 opacity-70 transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
-                  aria-hidden
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
-                onCloseAutoFocus={(e) => e.preventDefault()}
-              >
-                <div className="border-b border-border/50 bg-muted/35 px-4 py-2.5 dark:bg-muted/25">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">
-                    Matches
-                  </p>
-                </div>
-                <div className="flex flex-col gap-0.5 p-2">
-                  {filteredMatchesLinks.map((link) => {
-                    const isActive =
-                      pathname === link.href ||
-                      pathname?.startsWith(link.href.split("#")[0] + "/") ||
-                      pathname === link.href.split("#")[0];
-                    return (
-                      <Link
-                        key={link.title}
-                        href={link.href}
-                        className={cn(
-                          desktopMegaLinkClass,
-                          isActive && desktopMegaLinkActiveClass
-                        )}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <div className="mt-0.5 shrink-0">{link.icon}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium">{link.title}</div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {link.description}
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          {showTournamentsMenu && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                className={cn(
-                  "group",
-                  desktopNavControlClass,
-                  desktopNavTriggerOpenClass,
-                  pathname?.startsWith("/tournaments") &&
-                    desktopNavRouteActiveClass
-                )}
-              >
-                <Trophy className="mr-2 h-4 w-4 shrink-0 opacity-90" />
-                Tournaments
-                <ChevronDown
-                  className="ml-0.5 h-4 w-4 shrink-0 opacity-70 transition-transform duration-200 ease-out motion-reduce:transition-none group-data-[state=open]:rotate-180"
-                  aria-hidden
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="start"
-                className="w-[min(22rem,calc(100vw-2rem))] overflow-hidden p-0"
-                onCloseAutoFocus={(e) => e.preventDefault()}
-              >
-                <div className="border-b border-border/50 bg-muted/35 px-4 py-2.5 dark:bg-muted/25">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-widest text-muted-foreground">
-                    Tournaments
-                  </p>
-                </div>
-                <div className="flex flex-col gap-0.5 p-2">
-                  {filteredTournamentsLinks.map((link) => {
-                    const isActive =
-                      pathname === link.href ||
-                      pathname?.startsWith(link.href + "/");
-                    return (
-                      <Link
-                        key={link.title}
-                        href={link.href}
-                        className={cn(
-                          desktopMegaLinkClass,
-                          isActive && desktopMegaLinkActiveClass
-                        )}
-                        aria-current={isActive ? "page" : undefined}
-                      >
-                        <div className="mt-0.5 shrink-0">{link.icon}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium">{link.title}</div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {link.description}
-                          </div>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
       </div>
     </nav>
@@ -377,96 +139,10 @@ export function Navbar() {
 
 function MobileNav({ onNavigate }: { onNavigate: () => void }) {
   const pathname = usePathname();
-  const { data: session } = useSession();
-  const [userPermissions, setUserPermissions] =
-    useState<UserPermissions | null>(null);
-  const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
-
-  // Memoize filtered links to prevent unnecessary re-renders
-  const filteredMatchesLinks = useMemo(
-    () =>
-      MatchesLinks.filter((link) =>
-        link.feature ? isFeatureEnabled(link.feature) : true
-      ),
-    []
-  );
-
-  const filteredTournamentsLinks = useMemo(
-    () =>
-      TournamentsLinks.filter((link) =>
-        link.feature ? isFeatureEnabled(link.feature) : true
-      ),
-    []
-  );
-
-  // Only show the sections if there are enabled links
-  const showMatchesSection = filteredMatchesLinks.length > 0;
-  const showTournamentsSection = filteredTournamentsLinks.length > 0;
-
-  // Optimize permission fetching - use unified endpoint with deduplication
-  useEffect(() => {
-    const fetchPermissions = async () => {
-      if (session?.user?.id && !userPermissions && !isLoadingPermissions) {
-        setIsLoadingPermissions(true);
-        try {
-          // ✅ NEW: Use unified endpoint with deduplication
-          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-          const userData = await deduplicatedFetch<{
-            permissions: {
-              isAdmin: boolean;
-              isModerator: boolean;
-              canCreateTournament: boolean;
-              isDeveloper: boolean;
-            };
-          }>("/api/user/data", { ttl: 60000 });
-          setUserPermissions(userData.permissions);
-        } catch (error) {
-          // Silently handle errors
-        } finally {
-          setIsLoadingPermissions(false);
-        }
-      }
-    };
-
-    fetchPermissions();
-  }, [session?.user?.id, userPermissions, isLoadingPermissions]);
-
-  // Check if user has admin/mod access
-  const hasModAccess =
-    userPermissions?.isModerator || userPermissions?.isAdmin || false;
 
   const handleLinkClick = useCallback(() => {
     onNavigate();
   }, [onNavigate]);
-
-  // Admin links
-  const adminLinks = [
-    {
-      title: "Dashboard",
-      href: "/admin",
-      icon: <LayoutDashboard className="mr-2 w-5 h-5 text-primary" />,
-    },
-    {
-      title: "Moderation",
-      href: "/admin/moderation",
-      icon: <Shield className="mr-2 w-5 h-5 text-primary" />,
-    },
-    {
-      title: "Players",
-      href: "/admin/players",
-      icon: <Users className="mr-2 w-5 h-5 text-primary" />,
-    },
-    {
-      title: "Rules",
-      href: "/admin/rules",
-      icon: <Book className="mr-2 w-5 h-5 text-primary" />,
-    },
-    {
-      title: "Queues",
-      href: "/admin/queues",
-      icon: <MapPin className="mr-2 w-5 h-5 text-primary" />,
-    },
-  ];
 
   return (
     <div className="flex flex-col gap-1 pt-2 pb-4">
@@ -479,7 +155,7 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
         onClick={handleLinkClick}
         aria-current={pathname === "/" ? "page" : undefined}
       >
-        <Home className="flex-shrink-0 mr-3 w-5 h-5" />
+        <Home className="mr-3 h-5 w-5 shrink-0 text-foreground" />
         <span>Home</span>
       </Link>
 
@@ -496,134 +172,11 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
             onClick={handleLinkClick}
             aria-current={isActive ? "page" : undefined}
           >
-            <span className="flex-shrink-0">{link.icon}</span>
-            <span className="ml-3">{link.title}</span>
+            <span className="shrink-0">{link.icon}</span>
+            <span>{link.title}</span>
           </Link>
         );
       })}
-      {isFeatureEnabled("leaderboard") && (
-        <Link
-          href="/leaderboard"
-          className={cn(
-            "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
-            pathname === "/leaderboard"
-              ? mobileSheetNavActiveClass
-              : mobileSheetNavIdleClass
-          )}
-          onClick={handleLinkClick}
-          aria-current={pathname === "/leaderboard" ? "page" : undefined}
-        >
-          <BarChart3 className="mr-2 h-5 w-5 flex-shrink-0 text-primary" />
-          <span className="ml-3">Leaderboard</span>
-        </Link>
-      )}
-
-      {showMatchesSection && (
-        <div className="border-t border-border/50 pt-3">
-          <h4 className="mx-2 mb-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-            Matches
-          </h4>
-          <div className="flex flex-col gap-1">
-            {filteredMatchesLinks.map((link) => {
-              const hrefPath = link.href.split("#")[0];
-              const isActive =
-                pathname === hrefPath ||
-                pathname?.startsWith(`${hrefPath}/`);
-              return (
-                <Link
-                  key={link.title}
-                  href={link.href}
-                  className={cn(
-                    "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
-                    isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
-                  )}
-                  onClick={handleLinkClick}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <span className="flex-shrink-0">{link.icon}</span>
-                  <span className="ml-3">{link.title}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {showTournamentsSection && (
-        <div className="border-t border-border/50 pt-3">
-          <h4 className="mx-2 mb-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-            Tournaments
-          </h4>
-          <div className="flex flex-col gap-1">
-            {filteredTournamentsLinks.map((link) => {
-              const isActive =
-                pathname === link.href || pathname?.startsWith(link.href + "/");
-              return (
-                <Link
-                  key={link.title}
-                  href={link.href}
-                  className={cn(
-                    "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
-                    isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
-                  )}
-                  onClick={handleLinkClick}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <span className="flex-shrink-0">{link.icon}</span>
-                  <span className="ml-3">{link.title}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {hasModAccess && (
-        <div className="mt-2 border-t border-border/50 pt-3">
-          <h4 className="mx-2 mb-3 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:px-6">
-            Admin
-          </h4>
-          <div className="flex flex-col gap-1">
-            {adminLinks.map((link) => {
-              // Dashboard is /admin only — do not treat /admin/players etc. as dashboard
-              const isActive =
-                pathname === link.href ||
-                (link.href !== "/admin" && Boolean(pathname?.startsWith(link.href)));
-              return (
-                <Link
-                  key={link.title}
-                  href={link.href}
-                  className={cn(
-                    "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
-                    isActive ? mobileSheetNavActiveClass : mobileSheetNavIdleClass
-                  )}
-                  onClick={handleLinkClick}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <span className="flex-shrink-0">{link.icon}</span>
-                  <span className="ml-3">{link.title}</span>
-                </Link>
-              );
-            })}
-            <Link
-              href="/moderation-log"
-              className={cn(
-                "relative mx-2 flex min-h-[44px] items-center rounded-xl px-4 py-3 text-base transition-colors duration-200 ease-out motion-reduce:transition-none touch-manipulation focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-6",
-                pathname === "/moderation-log"
-                  ? mobileSheetNavActiveClass
-                  : mobileSheetNavIdleClass
-              )}
-              onClick={handleLinkClick}
-              aria-current={pathname === "/moderation-log" ? "page" : undefined}
-            >
-              <span className="flex-shrink-0">
-                <ExternalLink className="mr-2 w-5 h-5 text-primary" />
-              </span>
-              <span className="ml-3">Public Mod Log</span>
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

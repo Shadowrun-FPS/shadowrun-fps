@@ -43,10 +43,6 @@ interface UserData {
     discordNickname?: string;
     discordProfilePicture?: string;
   } | null;
-  teams: {
-    captainTeams: any[];
-    memberTeams: any[];
-  };
 }
 
 async function getUserDataHandler(req: NextRequest) {
@@ -64,12 +60,7 @@ async function getUserDataHandler(req: NextRequest) {
     session.user.id === DEVELOPER_ID ||
     session.user.id === DEVELOPER_DISCORD_ID;
 
-  // Fetch all data in parallel
-  const [
-    discordRolesResult,
-    playerResult,
-    teamsResult,
-  ] = await Promise.allSettled([
+  const [discordRolesResult, playerResult] = await Promise.allSettled([
     // Fetch Discord roles and guild nickname
     (async () => {
       if (isDeveloper) {
@@ -135,61 +126,6 @@ async function getUserDataHandler(req: NextRequest) {
         return null;
       }
     })(),
-    // Fetch user teams from all collections
-    (async () => {
-      try {
-        const client = await clientPromise;
-        const db = client.db("ShadowrunWeb");
-        const { getAllTeamCollectionNames } = await import("@/lib/team-collections");
-        const collections = getAllTeamCollectionNames();
-
-        const allCaptainTeams: any[] = [];
-        const allMemberTeams: any[] = [];
-
-        // Fetch from all team collections in parallel
-        const teamPromises = collections.map(async (collectionName) => {
-          const [captainTeams, memberTeams] = await Promise.all([
-            db
-              .collection(collectionName)
-              .find({ "captain.discordId": userId })
-              .toArray(),
-            db
-              .collection(collectionName)
-              .find({
-                "members.discordId": userId,
-                "captain.discordId": { $ne: userId },
-              })
-              .toArray(),
-          ]);
-
-          return { captainTeams, memberTeams };
-        });
-
-        const results = await Promise.all(teamPromises);
-        results.forEach(({ captainTeams, memberTeams }) => {
-          allCaptainTeams.push(...captainTeams);
-          allMemberTeams.push(...memberTeams);
-        });
-
-        return {
-          captainTeams: allCaptainTeams.map((team) => ({
-            _id: team._id.toString(),
-            id: team._id.toString(),
-            name: team.name,
-            tag: team.tag,
-          })),
-          memberTeams: allMemberTeams.map((team) => ({
-            _id: team._id.toString(),
-            id: team._id.toString(),
-            name: team.name,
-            tag: team.tag,
-          })),
-        };
-      } catch (error) {
-        safeLog.error("Error fetching teams:", error);
-        return { captainTeams: [], memberTeams: [] };
-      }
-    })(),
   ]);
 
   // Extract results
@@ -199,10 +135,6 @@ async function getUserDataHandler(req: NextRequest) {
       : { roles: [], guildNickname: null };
   const player =
     playerResult.status === "fulfilled" ? playerResult.value : null;
-  const teams =
-    teamsResult.status === "fulfilled"
-      ? teamsResult.value
-      : { captainTeams: [], memberTeams: [] };
 
   // Calculate permissions
   const userRoles = discordData.roles || [];
@@ -229,7 +161,6 @@ async function getUserDataHandler(req: NextRequest) {
     guildNickname: discordData.guildNickname,
     roleDisplay,
     player,
-    teams,
   };
 
   const response = NextResponse.json(userData);

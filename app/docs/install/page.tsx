@@ -7,6 +7,7 @@ import { DocSection } from "@/components/docs/doc-section";
 import { InstallDownloadsGrid } from "@/components/docs/install-downloads";
 import { InstallGameKeySection } from "@/components/docs/install-game-key";
 import { InstallPageHero } from "@/components/docs/install-hero";
+import { InstallAntHillLiveSection } from "@/components/docs/install-ahl-live-section";
 import { InstallStepsTimeline } from "@/components/docs/install-steps-timeline";
 import {
   Card,
@@ -19,18 +20,23 @@ export const metadata: Metadata = {
   title: "How to Install Shadowrun FPS on PC | Step-by-Step Guide",
   description:
     "Learn how to install the 2007 Shadowrun FPS on PC with our detailed guide. Download links, setup instructions, and troubleshooting tips.",
+  alternates: {
+    canonical: "/docs/install",
+  },
   keywords: [
     "Shadowrun FPS Install",
     "How to install Shadowrun PC",
     "Shadowrun 2007 game setup",
     "Shadowrun troubleshooting",
     "Games for Windows Live Shadowrun",
+    "AntHill LIVE",
+    "Shadowrun FPS AHL",
   ],
   openGraph: {
     title: "Install Shadowrun FPS on PC | Easy Setup Guide",
     description:
       "Follow our simple step-by-step guide to install Shadowrun FPS on PC. Get download links, setup tips, and join the community!",
-    url: "https://ShadowrunFPS.com/docs/install",
+    url: "https://www.shadowrunfps.com/docs/install",
     type: "website",
     images: [
       {
@@ -80,6 +86,14 @@ export default function InstallPage() {
             <div className="rounded-2xl border border-border/50 bg-card/25 p-4 shadow-sm sm:p-6 md:p-8">
               <InstallStepsTimeline />
             </div>
+          </DocSection>
+
+          <DocSection
+            id="ant-hill-live"
+            eyebrow="Online"
+            title="AntHill LIVE (AHL)"
+          >
+            <InstallAntHillLiveSection />
           </DocSection>
 
           <DocSection
@@ -182,7 +196,7 @@ export default function InstallPage() {
                       "DirectX 9.0c",
                       "10GB available space",
                       "Internet connection for multiplayer",
-                      "Microsoft account",
+                      "AntHill LIVE account for online (AHL), or Microsoft account for classic GFWL",
                     ].map((line) => (
                       <li key={line} className="flex items-start gap-2">
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary/60" />

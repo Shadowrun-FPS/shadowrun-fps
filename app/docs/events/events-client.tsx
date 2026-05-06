@@ -129,7 +129,11 @@ export default function EventsClient() {
 
       {/* Post Manager Dialog */}
       {isManagerOpen && (
-        <PostManager open={isManagerOpen} onOpenChange={setIsManagerOpen} />
+        <PostManager
+          open={isManagerOpen}
+          onOpenChange={setIsManagerOpen}
+          canManagePosts={isAdmin}
+        />
       )}
     </article>
   );

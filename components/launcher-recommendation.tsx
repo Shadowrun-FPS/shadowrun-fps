@@ -28,9 +28,10 @@ export default function LauncherRecommendation() {
         >
           custom launcher
         </Link>
-        . It automates most of the setup process and handles key generation
-        automatically. This manual guide is provided for advanced users or those
-        who prefer manual installation.
+        . It automates most of the setup process, downloads an AHL-ready game
+        ZIP, and includes a toggle to switch between AntHill LIVE and classic
+        Xbox GFWL. This manual guide is for advanced users or those who prefer
+        manual installation.
       </AlertDescription>
     </Alert>
   );

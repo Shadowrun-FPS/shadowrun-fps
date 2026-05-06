@@ -50,9 +50,3 @@ export function hasPermission(
   if (!permissions) return false;
   return permissions[requiredPermission] === true;
 }
-
-// Safe API endpoints for checking permissions
-export const API_ENDPOINTS = {
-  USER_PERMISSIONS: "/api/user/permissions",
-  USER_ROLES: "/api/discord/user-roles",
-} as const;

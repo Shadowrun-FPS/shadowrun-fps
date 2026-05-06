@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyKey } from "discord-interactions";
-import clientPromise from "@/lib/mongodb";
 import { safeLog, sanitizeString } from "@/lib/security";
 
 // Configure for serverless environment
@@ -64,65 +63,13 @@ export async function POST(request: NextRequest) {
 
     if (body.type === 3) {
       const customId = sanitizeString(body.data?.custom_id || "", 100);
-      const userId = sanitizeString(
-        body.member?.user?.id || body.user?.id || "",
-        50
-      );
-
-      safeLog.log("Button interaction received", { customId, userId });
-
-      if (!userId) {
-        return NextResponse.json(
-          { error: "User ID not found" },
-          { status: 400 }
-        );
-      }
-
-      const db = (await clientPromise).db();
-
-      if (customId === "join_match") {
-        const queue = await db.collection("Queues").findOne({
-          "players.discordId": userId,
-          status: "full",
-        });
-
-        if (queue) {
-          await db
-            .collection("Queues")
-            .updateOne(
-              { _id: queue._id, "players.discordId": userId },
-              { $set: { "players.$.ready": true } }
-            );
-
-          return NextResponse.json({
-            type: 4,
-            data: {
-              content: "✅ You've been marked as ready!",
-              flags: 64,
-            },
-          });
-        }
-      } else if (customId === "decline_match") {
-        await db
-          .collection("Queues")
-          .updateOne(
-            { "players.discordId": userId },
-            { $pull: { players: { discordId: userId } } as any }
-          );
-
-        return NextResponse.json({
-          type: 4,
-          data: {
-            content: "You've been removed from the queue.",
-            flags: 64,
-          },
-        });
-      }
+      safeLog.log("Message component interaction", { customId });
 
       return NextResponse.json({
         type: 4,
         data: {
-          content: "Please visit the website to manage your queue status.",
+          content:
+            "That action is no longer available. Please use the website for matchmaking and updates.",
           flags: 64,
         },
       });

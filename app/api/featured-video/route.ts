@@ -5,7 +5,7 @@ import clientPromise from "@/lib/mongodb";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { canManageFeaturedBroadcast } from "@/lib/security-config";
 
 export const dynamic = 'force-dynamic';
 
@@ -53,13 +53,14 @@ async function updateFeaturedVideoHandler(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if user is admin
-  const isDeveloper = session.user.id === SECURITY_CONFIG.DEVELOPER_ID;
   const userRoles = session.user.roles || [];
-  const userHasAdminRole = hasAdminRole(userRoles);
-  const isAdminUser = session.user.isAdmin;
-
-  if (!isDeveloper && !isAdminUser && !userHasAdminRole) {
+  if (
+    !canManageFeaturedBroadcast(
+      session.user.id,
+      userRoles,
+      session.user.isAdmin,
+    )
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -128,9 +129,7 @@ async function updateFeaturedVideoHandler(req: Request) {
       { upsert: true }
     );
 
-  // Revalidate all caches
   revalidatePath("/");
-  revalidatePath("/admin/featured-video");
   revalidateTag("featured-video", "max");
 
   return NextResponse.json({ success: true, settings });

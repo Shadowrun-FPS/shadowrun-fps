@@ -12,6 +12,7 @@ import {
 
 import { SECURITY_CONFIG } from "./security-config";
 import { safeLog } from "./security";
+import { getDiscordDefaultAvatarUrl } from "./discord-default-avatar";
 
 // Grant admin access to this specific user regardless of roles
 const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
@@ -20,7 +21,7 @@ const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
 interface DiscordProfile {
   id: string;
   username: string;
-  avatar: string;
+  avatar: string | null;
   discriminator: string;
   public_flags: number;
   flags: number;
@@ -77,8 +78,7 @@ export const authOptions: NextAuthOptions = {
       },
       profile(profile) {
         if (profile.avatar === null) {
-          const defaultAvatarNumber = parseInt(profile.discriminator) % 5;
-          profile.image_url = `https://cdn.discordapp.com/embed/avatars/${defaultAvatarNumber}.png`;
+          profile.image_url = getDiscordDefaultAvatarUrl(profile.id);
         } else {
           const format = profile.avatar.startsWith("a_") ? "gif" : "png";
           profile.image_url = `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.${format}`;
@@ -124,7 +124,12 @@ export const authOptions: NextAuthOptions = {
 
           token.id = discordProfile.id;
           token.name = discordProfile.username;
-          token.image = `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.png`;
+          token.image =
+            discordProfile.avatar == null
+              ? getDiscordDefaultAvatarUrl(discordProfile.id)
+              : `https://cdn.discordapp.com/avatars/${discordProfile.id}/${discordProfile.avatar}.${
+                  discordProfile.avatar.startsWith("a_") ? "gif" : "png"
+                }`;
 
           // Store basic info with global username
           await upsertPlayerDiscordData(

@@ -46,7 +46,7 @@ CSP headers are implemented with YouTube video support:
 
 ### 4. CORS Configuration
 
-- Socket.io CORS restricted to allowed origins only
+- API CORS restricted to allowed origins only
 - No more `origin: "*"` wildcard usage
 - Credentials support enabled for authenticated requests
 
@@ -160,7 +160,7 @@ export const GET = withErrorHandling(async (req) => {
 - [x] Secure error handling without information disclosure
 - [x] Sensitive information redacted from logs
 - [x] Security headers implemented
-- [x] Socket.io CORS configuration secured
+- [x] CORS restricted to allowed origins on all API endpoints
 
 ## 🚨 Important Notes
 
