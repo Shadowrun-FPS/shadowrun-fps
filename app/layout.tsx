@@ -154,18 +154,39 @@ export default function RootLayout({
         ) : null}
         <meta name="application-name" content="Shadowrun FPS" />
         <link rel="manifest" href="/manifest.json" />
+        <link
+          rel="alternate"
+          type="text/markdown"
+          href="/llms.txt"
+          title="Shadowrun FPS — documentation for AI crawlers"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebSite",
-              name: "Shadowrun FPS",
-              url: "https://www.shadowrunfps.com",
-              image: "https://www.shadowrunfps.com/hero.webp",
-              description:
-                "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
-            }),
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                name: "Shadowrun FPS",
+                url: "https://www.shadowrunfps.com",
+                image: "https://www.shadowrunfps.com/hero.webp",
+                description:
+                  "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                name: "Shadowrun FPS Community",
+                url: "https://www.shadowrunfps.com",
+                logo: "https://www.shadowrunfps.com/android-chrome-192x192.png",
+                sameAs: [
+                  process.env.NEXT_PUBLIC_SOCIAL_DISCORD,
+                  process.env.NEXT_PUBLIC_SOCIAL_TWITTER,
+                  process.env.NEXT_PUBLIC_SOCIAL_YOUTUBE,
+                  process.env.NEXT_PUBLIC_SOCIAL_TWITCH,
+                ].filter(Boolean),
+              },
+            ]),
           }}
         />
         {/* next/font self-hosts Inter and Space Grotesk — no external font requests */}

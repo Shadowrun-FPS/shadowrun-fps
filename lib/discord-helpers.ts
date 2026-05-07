@@ -2,6 +2,53 @@ import clientPromise from "./mongodb";
 import { connectToDatabase } from "@/lib/mongodb";
 import { safeLog } from "@/lib/security";
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Discord returns 429 with Retry-After header or JSON { retry_after } (seconds).
+ * Retries a few times to absorb bursts (e.g. duplicate callbacks hitting /guilds).
+ */
+async function discordFetchWithRetry(
+  url: string,
+  init: RequestInit,
+  maxAttempts = 4
+): Promise<Response> {
+  let lastResponse: Response | undefined;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await fetch(url, init);
+    lastResponse = response;
+
+    if (response.status !== 429 || attempt === maxAttempts) {
+      return response;
+    }
+
+    let waitMs = 800 * attempt;
+    const retryAfterHeader = response.headers.get("retry-after");
+    if (retryAfterHeader) {
+      waitMs = Math.ceil(parseFloat(retryAfterHeader) * 1000);
+    } else {
+      try {
+        const body = (await response.clone().json()) as {
+          retry_after?: number;
+        };
+        if (typeof body.retry_after === "number") {
+          waitMs = Math.ceil(body.retry_after * 1000);
+        }
+      } catch {
+        // keep backoff default
+      }
+    }
+
+    waitMs = Math.min(Math.max(waitMs, 100), 10_000);
+    await sleep(waitMs);
+  }
+
+  return lastResponse!;
+}
+
 export async function getGuildData(accessToken: string) {
   try {
     // Get the guild ID from environment variables
@@ -12,27 +59,30 @@ export async function getGuildData(accessToken: string) {
       return null;
     }
 
+    const authHeaders = {
+      Authorization: `Bearer ${accessToken}`,
+    };
+
     // First verify the access token is valid
-    const userResponse = await fetch("https://discord.com/api/users/@me", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    const userResponse = await discordFetchWithRetry(
+      "https://discord.com/api/users/@me",
+      {
+        headers: authHeaders,
+      }
+    );
 
     if (!userResponse.ok) {
       safeLog.error("Invalid Discord access token:", await userResponse.text());
       return null;
     }
 
-    const userData = await userResponse.json();
+    void (await userResponse.json());
 
     // Now check if user is in the guild with the provided token
-    const guildsResponse = await fetch(
+    const guildsResponse = await discordFetchWithRetry(
       "https://discord.com/api/users/@me/guilds",
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: authHeaders,
       }
     );
 
@@ -55,12 +105,10 @@ export async function getGuildData(accessToken: string) {
     }
 
     // Direct endpoint for guild member data with proper authorization
-    const response = await fetch(
+    const response = await discordFetchWithRetry(
       `https://discord.com/api/v10/users/@me/guilds/${guildId}/member`,
       {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+        headers: authHeaders,
       }
     );
 

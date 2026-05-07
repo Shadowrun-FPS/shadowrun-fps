@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SECURITY_CONFIG } from "./security-config";
 
-// In-memory store for rate limiting (consider Redis for production)
+// In-memory store — limits are per server instance (Vercel: per warm lambda).
+// For strict abuse protection at scale, add Vercel Firewall / edge rules or a shared store (Redis).
 const requestCounts = new Map<string, { count: number; resetTime: number }>();
 
 // Clean up old entries every 5 minutes

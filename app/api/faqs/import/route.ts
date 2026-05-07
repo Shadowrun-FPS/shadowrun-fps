@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { isAuthorizedAdmin } from "@/lib/admin-auth";
-import { withErrorHandling, createError } from "@/lib/error-handling";
+import { createError } from "@/lib/error-handling";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
 const errorAccordions = [
   {
@@ -110,26 +111,36 @@ const errorAccordions = [
   },
 ];
 
-// GET endpoint to check status
-export const GET = withErrorHandling(async (req: NextRequest) => {
+async function getFaqsImportStatusHandler(_req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!isAuthorizedAdmin(session)) {
+    throw createError.forbidden("Only admins can check FAQ import status");
+  }
+
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
   const existingCount = await db.collection("FAQs").countDocuments();
-  
+
   return NextResponse.json({
     exists: existingCount > 0,
     count: existingCount,
-    message: existingCount > 0 
-      ? `There are ${existingCount} FAQs in the database. Use POST to import (will only work if collection is empty).`
-      : "No FAQs found. Use POST to import FAQs.",
+    message:
+      existingCount > 0
+        ? `There are ${existingCount} FAQs in the database. Use POST to import (will only work if collection is empty).`
+        : "No FAQs found. Use POST to import FAQs.",
   });
+}
+
+export const GET = withApiSecurity(getFaqsImportStatusHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
 });
 
-// POST endpoint to import FAQs
-export const POST = withErrorHandling(async (req: NextRequest) => {
+async function postFaqsImportHandler(_req: NextRequest) {
   const session = await getServerSession(authOptions);
-  
+
   if (!isAuthorizedAdmin(session)) {
     throw createError.forbidden("Only admins can import FAQs");
   }
@@ -137,17 +148,16 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  // Check if FAQs already exist
   const existingCount = await db.collection("FAQs").countDocuments();
   if (existingCount > 0) {
     return NextResponse.json({
       success: false,
-      message: "FAQs already exist. Delete existing FAQs first or use the update endpoint.",
+      message:
+        "FAQs already exist. Delete existing FAQs first or use the update endpoint.",
       count: existingCount,
     });
   }
 
-  // Transform the FAQs to match our schema
   const faqs = errorAccordions.map((faq, index) => ({
     title: faq.title,
     content: faq.content || "",
@@ -160,7 +170,6 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     updatedAt: new Date(),
   }));
 
-  // Insert FAQs into the collection
   const result = await db.collection("FAQs").insertMany(faqs);
 
   return NextResponse.json({
@@ -168,4 +177,9 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     message: `Successfully imported ${result.insertedCount} FAQs`,
     count: result.insertedCount,
   });
+}
+
+export const POST = withApiSecurity(postFaqsImportHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
 });

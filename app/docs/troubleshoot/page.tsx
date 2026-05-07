@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FAQsSection } from "./faqs-section";
 import { LAUNCHER_MAIN_LOG_PATH } from "@/lib/download-urls";
+import clientPromise from "@/lib/mongodb";
 
 const ENABLE_DOWNLOAD_PAGE =
   process.env.NEXT_PUBLIC_ENABLE_DOWNLOAD_PAGE === "true";
@@ -23,27 +24,38 @@ const ENABLE_DOWNLOAD_PAGE =
 export const metadata: Metadata = {
   title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
   description:
-    "Fix Shadowrun FPS (2007) on PC: GFWL activation, FPS limits, controllers, NAT, and connection issues. Step-by-step fixes and community support.",
+    "Fix Shadowrun FPS (2007) on PC: Games for Windows Live activation, key errors, FPS caps, NAT, controllers, and crashes. Community-tested fixes for legacy GFWL and preserved multiplayer.",
   alternates: {
     canonical: "/docs/troubleshoot",
   },
   keywords: [
     "Shadowrun FPS troubleshooting",
     "Shadowrun GFWL activation",
+    "Games for Windows Live errors",
+    "GFWL key activation Shadowrun",
+    "Games for Windows LIVE Shadowrun",
     "Shadowrun FPS errors",
     "Shadowrun PC performance",
-    "Games for Windows Live Shadowrun",
-    "Shadowrun NAT connection",
+    "Shadowrun NAT strict",
+    "Shadowrun controller not working",
+    "legacy PC game fixes",
+    "game preservation support",
+    "Shadowrun multiplayer connection",
+    "Shadowrun frame rate cap",
+    "Shadowrun xlive",
+    "dead game multiplayer fix",
   ],
   openGraph: {
     title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
     description:
-      "Fix activation, performance, controllers, and networking for Shadowrun FPS on PC. Common errors, registry tips, and where to get help.",
+      "GFWL activation, networking, performance, and controller fixes for Shadowrun FPS — plus community support for this preserved classic.",
     url: "https://www.shadowrunfps.com/docs/troubleshoot",
+    siteName: "Shadowrun FPS",
+    locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/hero.webp",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Troubleshooting Shadowrun FPS",
@@ -54,10 +66,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
     description:
-      "Fix activation, performance, controllers, and networking for Shadowrun FPS on PC.",
+      "GFWL, NAT, FPS, and crash fixes for Shadowrun FPS on PC — community preservation guide.",
     images: [
       {
-        url: "/hero.webp",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Troubleshooting Shadowrun FPS",
@@ -66,9 +78,50 @@ export const metadata: Metadata = {
   },
 };
 
-export default function TroubleshootPage() {
+async function getFaqsForSchema(): Promise<{ title: string; content: string }[]> {
+  try {
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
+    const faqs = await db
+      .collection("FAQs")
+      .find({ category: "errors" })
+      .sort({ order: 1 })
+      .limit(20)
+      .project({ title: 1, content: 1 })
+      .toArray();
+    return faqs as unknown as { title: string; content: string }[];
+  } catch {
+    return [];
+  }
+}
+
+export default async function TroubleshootPage() {
+  const faqs = await getFaqsForSchema();
+
+  const faqSchema =
+    faqs.length > 0
+      ? {
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          mainEntity: faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.title,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: faq.content || faq.title,
+            },
+          })),
+        }
+      : null;
+
   return (
     <DocLayout>
+      {faqSchema && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        />
+      )}
       <article>
         <TroubleshootPageHero />
 
@@ -252,7 +305,12 @@ export default function TroubleshootPage() {
                 </div>
                 <div>
                   <p className="mb-2 font-semibold text-foreground">
-                    PlayStation controllers
+                    PlayStation and other controllers
+                  </p>
+                  <p className="mb-3 text-muted-foreground">
+                    Any non-Xbox gamepad uses the steps below — Xbox controllers are
+                    native once enabled in the main menu (Switch Pro, generic PC
+                    pads, etc. follow the same workflow as PlayStation).
                   </p>
                   <ol className="space-y-2">
                     <li className="flex items-start gap-2">

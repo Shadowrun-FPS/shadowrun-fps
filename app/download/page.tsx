@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Download,
   AlertCircle,
@@ -20,6 +21,7 @@ import {
 
 import { ChangelogDialogSkeleton } from "@/components/changelog-dialog-skeleton";
 import { ChangelogNoteItem } from "@/components/changelog-note-item";
+import { TroubleshootDiscordCta } from "@/components/docs/troubleshoot-discord-cta";
 import VirusTotalWidget from "@/components/VirusTotalWidget";
 import { Button } from "@/components/ui/button";
 import {
@@ -193,12 +195,11 @@ export default function DownloadPage() {
 
   // Download page content
   return (
-    <div className="w-full min-w-0 px-2 py-8 mx-auto sm:px-4 sm:py-12 md:container">
-      <div className="mx-auto max-w-4xl min-w-0">
+    <div className="mx-auto w-full min-w-0 max-w-7xl px-3 pb-8 pt-4 sm:px-4 sm:pb-12 sm:pt-6 md:px-6 lg:px-8">
         <div className="px-2 py-4 mb-5 rounded-2xl shadow-xl backdrop-blur-sm bg-card/30 border-0 sm:p-6 sm:mb-8 md:p-8">
-          <h1 className="mb-5 text-2xl font-bold text-left text-foreground break-words sm:text-3xl md:mb-6 md:text-center md:text-4xl">
+          <h2 className="mb-5 text-2xl font-bold text-left text-foreground break-words sm:text-3xl md:mb-6 md:text-center md:text-4xl">
             Download Shadowrun FPS Launcher
-          </h1>
+          </h2>
 
           <div className="px-2 py-4 mb-5 rounded-xl bg-card/50 border-0 sm:p-6 sm:mb-8">
             {versionError && (
@@ -281,12 +282,25 @@ export default function DownloadPage() {
                       ? "Downloading..."
                       : loadingVersion
                       ? "Loading..."
-                      : "Download Launcher"}
+                      : "Download full installer"}
                   </span>
                   <div className="absolute inset-0 bg-gradient-to-r transition-transform duration-300 -z-10 from-primary to-primary/90 group-hover:scale-110" />
                   <div className="absolute inset-0 z-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500" />
                 </Button>
               </div>
+              <p className="max-w-xl px-1 mx-auto mt-2 text-xs text-center text-muted-foreground sm:mt-3">
+                This downloads the{" "}
+                <strong className="font-medium text-foreground">
+                  NSIS setup installer
+                </strong>{" "}
+                listed under &quot;File&quot; above (from{" "}
+                <code className="text-[11px] sm:text-xs">launcher/</code> on the
+                CDN). For the single-file portable{" "}
+                <code className="text-[11px] sm:text-xs">
+                  Shadowrun FPS Launcher.exe
+                </code>{" "}
+                at bucket root, use the section below.
+              </p>
               <button
                 type="button"
                 onClick={() => setChangelogOpen(true)}
@@ -454,66 +468,50 @@ export default function DownloadPage() {
               <h2 className="text-lg font-bold sm:text-xl">Installation Instructions</h2>
             </div>
 
-            <div className="px-2 py-3 mb-4 rounded-lg bg-background/50 sm:p-4">
-              <ol className="space-y-2.5 list-decimal list-outside pl-5 text-sm text-muted-foreground sm:space-y-3 sm:list-inside sm:pl-0">
-                <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">Prerequisites:</strong>{" "}
-                  <a
-                    href="https://dotnet.microsoft.com/download/dotnet/6.0"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                    aria-label=".NET Desktop Runtime 6.0 (opens in new window)"
-                  >
-                    .NET Desktop Runtime 6.0
-                  </a>
-                </li>
-
+            <div className="px-2 py-3 mb-4 rounded-lg bg-background/50 sm:p-4 text-base leading-relaxed">
+              <p className="mb-3 text-muted-foreground">
+                <strong className="text-foreground">Prerequisites:</strong>{" "}
+                <a
+                  href="https://dotnet.microsoft.com/download/dotnet/6.0"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                  aria-label=".NET Desktop Runtime 6.0 (opens in new window)"
+                >
+                  .NET Desktop Runtime 6.0
+                </a>
+              </p>
+              <ol className="space-y-2.5 list-decimal list-outside pl-5 text-muted-foreground sm:space-y-3 sm:list-inside sm:pl-0">
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">
-                    Download the Installer:
+                    Download the installer:
                   </strong>{" "}
-                  Click the &quot;Download Launcher&quot; button above to
-                  download the installer.
+                  Use the Download button above.
+                  <span className="mt-1 block text-sm text-muted-foreground/90">
+                    Browser may warn — keep or allow the download.
+                  </span>
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">
-                    Install the Launcher:
+                    Install the launcher:
                   </strong>{" "}
-                  Run the installer and follow the prompts to install the
-                  launcher.
+                  Run the installer.
+                  <span className="mt-1 block text-sm text-muted-foreground/90">
+                    SmartScreen may block → More info → Run anyway.
+                  </span>
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">
-                    Download Game Files:
+                    Download game files:
                   </strong>{" "}
-                  Open the launcher and press &quot;Download&quot; to fetch the
-                  ZIP — it ships{" "}
-                  <strong className="text-foreground">
-                    pre-configured for AntHill LIVE (AHL)
-                  </strong>
-                  .
+                  In the launcher, press Download.
+                  <span className="mt-1 block text-sm text-muted-foreground/90">
+                    ZIP is pre-configured for AntHill LIVE (AHL).
+                  </span>
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">
-                    Optional — Activate Game (classic GFWL online only):
-                  </strong>{" "}
-                  Only if you play <strong className="text-foreground">online</strong>{" "}
-                  on standard Xbox Games for Windows LIVE (after switching the
-                  launcher off AntHill LIVE): when your downloads are complete,
-                  press &quot;Activate Game&quot; in the launcher.{" "}
-                  <strong className="text-foreground">Skip</strong> this when using
-                  AntHill LIVE (AHL).
-                </li>
-                <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">AntHill LIVE (AHL):</strong>{" "}
-                  Playing online on our servers does not use the &quot;Activate
-                  Game&quot; button or retail game keys — only the account steps
-                  below.
-                </li>
-                <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">
-                    AntHill LIVE account (online):
+                    AntHill LIVE account (for online play):
                   </strong>
                   <ol className="mt-2 list-[lower-alpha] space-y-2 pl-6 text-muted-foreground marker:text-muted-foreground [&>li]:pl-1">
                     <li className="transition-all duration-200 hover:text-foreground">
@@ -541,62 +539,99 @@ export default function DownloadPage() {
                       </a>
                     </li>
                   </ol>
-                  <p className="mt-2">
-                    You don&apos;t need a real email — only one you can use to
-                    sign in.
-                  </p>
-                </li>
-                <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">Launch & sign in:</strong>{" "}
-                  Start Shadowrun and sign in with your new AHL email and
-                  password. For offline play or bots only, choose a{" "}
-                  <strong className="text-foreground">Local Profile</strong>{" "}
-                  instead — no AHL account needed.
-                </li>
-                <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">Classic Xbox GFWL:</strong>{" "}
-                  Use the launcher setting to switch to standard Games for Windows
-                  LIVE and sign in with your Microsoft / Xbox account. For manual
-                  installs without the toggle, edit{" "}
-                  <span className="font-mono text-[0.85rem] text-foreground">
-                    patcher_conf.ini
-                  </span>{" "}
-                  — see the{" "}
-                  <a
-                    href="/docs/install#ant-hill-live"
-                    className="text-primary hover:underline"
+                  <aside
+                    className="mt-3 rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5 text-sm leading-relaxed text-muted-foreground shadow-sm sm:px-4 sm:py-3 sm:text-base"
+                    aria-label="AntHill LIVE account tips"
                   >
-                    install guide
-                  </a>
-                  . Classic GFWL may still prompt for activation or a key — follow
-                  on-screen prompts if so.
+                    <ul className="list-disc space-y-1.5 pl-5 marker:text-muted-foreground/80">
+                      <li>Email is case-sensitive in-game.</li>
+                      <li>
+                        Password{" "}
+                        <strong className="font-semibold text-foreground">
+                          MUST
+                        </strong>{" "}
+                        be 15 characters or less.
+                      </li>
+                    </ul>
+                    <p className="mt-2 border-t border-border/40 pt-2.5">
+                      Save email/password — no recovery. Any email address works if you
+                      can remember it at login.
+                    </p>
+                  </aside>
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">Finish & play:</strong>{" "}
-                  Close Shadowrun completely if you changed launcher or profile
-                  settings, then launch again. You&apos;re ready to play on AHL
-                  without an Activate Game step.
+                  <strong className="text-foreground">Launch & Sign in:</strong>{" "}
+                  Press Play → Sign in with your new AHL email/password. For Offline/bots only:{" "}
+                  <strong className="text-foreground">Create Local Profile</strong>.
+                </li>
+                <li className="transition-all duration-200 hover:text-foreground">
+                  <strong className="text-foreground">
+                    GFWL only — Activate Game:
+                  </strong>{" "}
+                  Classic Xbox LIVE online only: launch Shadowrun → sign in until the
+                  activation screen appears →{" "}
+                  <strong className="text-foreground">then</strong> click Activate
+                  Game in the launcher (not sooner). When fully signed in online,{" "}
+                  <strong className="text-foreground">quit Shadowrun fully</strong> and
+                  relaunch.
+                  <span className="mt-1 block text-sm text-muted-foreground/90">
+                    Skip if you only use AHL.
+                  </span>
+                </li>
+                <li className="transition-all duration-200 hover:text-foreground">
+                  <strong className="text-foreground">Finish & play:</strong>{" "} Before jumping into a match, change these settings:{" "}
+                  <strong className="text-foreground">Video</strong> →{" "}
+                  <strong className="text-foreground">Advanced</strong> → turn{" "}
+                  <strong className="text-foreground">V-Sync off</strong> (on = 30 FPS
+                  cap). Set <strong className="text-foreground">Input</strong> to{" "}
+                  <strong className="text-foreground">Default</strong> (mouse/keyboard)
+                  or <strong className="text-foreground">Gamepad</strong>. Non-Xbox
+                  controllers, see:{" "}
+                  <Link
+                    href="/docs/troubleshoot#controller"
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                  >
+                    controller setup
+                  </Link>
+                  .
+                  <span className="mt-1 block text-sm text-muted-foreground/90">
+                    Main menu only — these settings aren&apos;t available mid-match.
+                  </span>
                 </li>
               </ol>
               <br />
-              <p className="text-sm text-muted-foreground">
-                <strong>Dedicated server:</strong> In-game, go to Public Matches →
-                Dedicated Servers → the Find All tab, and look for{" "}
-                <strong className="text-foreground">Shadowrun Official Server</strong>
-                .
+              <p className="text-muted-foreground">
+                <strong>Dedicated server:</strong> Public Matches → Dedicated Servers
+                → Find All →{" "}
+                <strong className="text-foreground">Shadowrun Official Server</strong>.
               </p>
-              <p className="mt-3 text-sm text-muted-foreground">
-                <strong>Note (classic GFWL only):</strong> If you switch to
-                standard Xbox Games for Windows LIVE and use activation or a
-                retail key, that flow can occasionally need repeating — follow
-                any on-screen prompts or see the{" "}
+              <p className="mt-3 text-muted-foreground">
+                <strong>Classic GFWL only:</strong> Launcher{" "}
+                <strong className="text-foreground">Settings</strong> →{" "}
+                <strong className="text-foreground">Open Diagnostics</strong> — toggle
+                AHL vs classic GFWL at the top. Xbox sign-in for classic
+                GFWL. No toggle? Edit{" "}
+                <span className="font-mono text-[0.85rem] text-foreground">
+                  patcher_conf.ini
+                </span>{" "} 
+                (
+                <a
+                  href="/docs/install#ant-hill-live"
+                  className="text-primary hover:underline"
+                >
+                  install guide
+                </a>
+                ){" "} in your Shadowrun folder. GFWL Activation can be temporary, repeat —{" "}
                 <a
                   href="/docs/install#game-key"
                   className="text-primary hover:underline"
                 >
-                  game key section
-                </a>
-                . AntHill LIVE does not use Activate Game.
+                  game keys
+                </a>{" "}
+                if needed.{" "}
+                <strong className="text-foreground">
+                  AHL does not use Activate Game process.
+                </strong>
               </p>
             </div>
 
@@ -692,9 +727,11 @@ export default function DownloadPage() {
               </h2>
             </div>
             <p className="mb-4 text-sm text-muted-foreground sm:text-base">
-              Prefer not to run the full installer? Download the portable
-              launcher executable. Save it anywhere you like and run it from
-              there.
+              Prefer not to run the full installer? This link goes straight to the
+              portable launcher on{" "}
+              <code className="text-xs sm:text-sm">downloads.shadowrunfps.com</code>{" "}
+              (bucket root — same as opening the direct CDN URL in your browser).
+              Save it anywhere you like and run it from there.
             </p>
             <div className="flex flex-col gap-3 justify-start sm:flex-row sm:gap-4">
               <Button
@@ -705,7 +742,6 @@ export default function DownloadPage() {
               >
                 <a
                   href={PORTABLE_LAUNCHER_URL}
-                  download="Shadowrun FPS Launcher.exe"
                   rel="noopener noreferrer"
                 >
                   <Download className="mr-2 w-5 h-5" aria-hidden />
@@ -793,8 +829,16 @@ export default function DownloadPage() {
               </div>
             </div>
           </div>
+
+          <div className="mt-6 sm:mt-8">
+            <TroubleshootDiscordCta
+              title="Still having issues?"
+              description="If the launcher or install isn't working, open a thread in our Discord support-ticket channel — include main.log from the path above when you can."
+              buttonLabel="Open support ticket on Discord"
+              href="https://discord.com/channels/930362820627943495/1042564057481363476"
+            />
+          </div>
         </div>
-      </div>
     </div>
   );
 }

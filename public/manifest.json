@@ -1,7 +1,7 @@
 {
   "name": "Shadowrun FPS",
   "short_name": "Shadowrun",
-  "description": "Shadowrun FPS Tournament Manager",
+  "description": "The community hub for Shadowrun FPS — download the classic 2007 multiplayer shooter, get installation guides, and connect with players.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

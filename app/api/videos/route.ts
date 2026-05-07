@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
+import { safeLog } from "@/lib/security";
+import { withApiSecurity } from "@/lib/api-wrapper";
 
-export async function GET(request: NextRequest) {
+async function getVideosHandler(_request: NextRequest) {
   try {
     const client = await clientPromise;
     const db = client.db("ShadowrunWeb");
@@ -16,10 +18,19 @@ export async function GET(request: NextRequest) {
       status: 201,
     });
   } catch (error) {
-    return NextResponse.json({
-      ok: false,
-      message: "Error getting video list: " + error,
-      status: 500,
-    });
+    safeLog.error("GET /api/videos:", error);
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Unable to load videos.",
+      },
+      { status: 500 }
+    );
   }
 }
+
+export const GET = withApiSecurity(getVideosHandler, {
+  rateLimiter: "publicRead",
+  cacheable: true,
+  cacheMaxAge: 300,
+});

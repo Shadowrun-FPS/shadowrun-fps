@@ -19,28 +19,39 @@ import {
 export const metadata: Metadata = {
   title: "How to Install Shadowrun FPS on PC | Step-by-Step Guide",
   description:
-    "Learn how to install the 2007 Shadowrun FPS on PC with our detailed guide. Download links, setup instructions, and troubleshooting tips.",
+    "Install Shadowrun FPS (2007) on modern Windows with the community launcher, DXVK build, Games for Windows Live (GFWL) sign-in, and AntHill LIVE — a preservation-focused setup guide for this legacy multiplayer shooter.",
   alternates: {
     canonical: "/docs/install",
   },
   keywords: [
-    "Shadowrun FPS Install",
-    "How to install Shadowrun PC",
-    "Shadowrun 2007 game setup",
-    "Shadowrun troubleshooting",
-    "Games for Windows Live Shadowrun",
-    "AntHill LIVE",
+    "Shadowrun FPS install",
+    "install Shadowrun 2007 PC",
+    "Shadowrun Games for Windows Live",
+    "GFWL Shadowrun setup",
+    "Games for Windows Live guide",
+    "AntHill LIVE Shadowrun",
     "Shadowrun FPS AHL",
+    "Shadowrun DXVK",
+    "Shadowrun community launcher",
+    "legacy PC game installation",
+    "game preservation Shadowrun",
+    "abandoned game multiplayer setup",
+    "Shadowrun Windows 10 Windows 11",
+    "FASA Studios Shadowrun PC",
+    "Shadowrun Vista compatibility",
+    "xlive Shadowrun",
   ],
   openGraph: {
     title: "Install Shadowrun FPS on PC | Easy Setup Guide",
     description:
-      "Follow our simple step-by-step guide to install Shadowrun FPS on PC. Get download links, setup tips, and join the community!",
+      "Step-by-step PC install for Shadowrun FPS: community launcher, GFWL/AntHill LIVE online play, DXVK, and preservation tips for this classic 2007 shooter.",
     url: "https://www.shadowrunfps.com/docs/install",
+    siteName: "Shadowrun FPS",
+    locale: "en_US",
     type: "website",
     images: [
       {
-        url: "/hero.webp",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Installation Guide",
@@ -51,10 +62,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Install Shadowrun FPS on PC | Easy Setup Guide",
     description:
-      "Follow our simple step-by-step guide to install Shadowrun FPS on PC. Get download links, setup tips, and join the community!",
+      "Community launcher, GFWL/AntHill LIVE, and DXVK — full PC setup for Shadowrun FPS game preservation.",
     images: [
       {
-        url: "/hero.webp",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Installation Guide",
@@ -63,9 +74,42 @@ export const metadata: Metadata = {
   },
 };
 
+const howToSchema = {
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  name: "How to Install Shadowrun FPS on PC",
+  description:
+    "Step-by-step guide to install the 2007 Shadowrun FPS on Windows PC using the community DXVK build.",
+  url: "https://www.shadowrunfps.com/docs/install",
+  step: [
+    {
+      "@type": "HowToStep",
+      position: 1,
+      name: "Install Games For Windows Live",
+      text: "Download and extract the GFWL package, then run gfwllivesetup.exe as administrator. The connection error shown after install is normal and can be ignored.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 2,
+      name: "Install Shadowrun DXVK",
+      text: "Extract the Shadowrun DXVK zip using 7-Zip and place the Shadowrun folder in your desired location. Install any required DirectX components if prompted.",
+    },
+    {
+      "@type": "HowToStep",
+      position: 3,
+      name: "First launch and sign-in",
+      text: "Double-click Shadowrun.exe, press Home to open the GFWL overlay, then sign in with an AntHill LIVE account for online play, or use a Local Profile for offline/bots. Enter your game key when prompted.",
+    },
+  ],
+};
+
 export default function InstallPage() {
   return (
     <DocLayout>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
+      />
       <article>
         <InstallPageHero />
 

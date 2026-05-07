@@ -125,8 +125,8 @@ export function canManageFeaturedBroadcast(
 }
 
 /**
- * Server/client: developer accounts, session isAdmin, or admin/founder Discord role ids.
- * Pass `roleIdsForCheck` when the client has fresher role ids from `/api/user/data` than the session.
+ * Developer / `isAdmin` / **admin & founder** Discord roles only (not moderator/GM).
+ * For routes where moderators should pass, use {@link isAuthorizedAdmin} in `lib/admin-auth.ts`.
  */
 export function isSessionAdminUser(
   user: { id: string; isAdmin?: boolean; roles?: string[] } | undefined,

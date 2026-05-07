@@ -2,13 +2,8 @@ import { AuthOptions, DefaultSession } from "next-auth";
 import DiscordProvider from "next-auth/providers/discord";
 import type { DefaultJWT } from "next-auth/jwt";
 import { connectToDatabase } from "@/lib/mongodb";
-import { signIn } from "next-auth/react";
 import { NextAuthOptions } from "next-auth";
-import {
-  upsertPlayerDiscordData,
-  getGuildData,
-  updatePlayerGuildNickname,
-} from "./discord-helpers";
+import { getGuildData, updatePlayerGuildNickname } from "./discord-helpers";
 
 import { SECURITY_CONFIG } from "./security-config";
 import { safeLog } from "./security";
@@ -117,9 +112,8 @@ export const authOptions: NextAuthOptions = {
       if (account) {
         token.accessToken = account.access_token;
 
-        // Get basic Discord data
+        // Get basic Discord data (single getGuildData — signIn must not call Discord APIs)
         if (profile) {
-          // Cast profile to DiscordProfile type
           const discordProfile = profile as unknown as DiscordProfile;
 
           token.id = discordProfile.id;
@@ -131,42 +125,68 @@ export const authOptions: NextAuthOptions = {
                   discordProfile.avatar.startsWith("a_") ? "gif" : "png"
                 }`;
 
-          // Store basic info with global username
-          await upsertPlayerDiscordData(
-            discordProfile.id,
-            discordProfile.username,
-            token.image as string
-          );
+          let guildData: Awaited<ReturnType<typeof getGuildData>> = null;
 
-          // Now get and update the guild-specific nickname and roles
           if (account.access_token) {
-            const guildData = await getGuildData(account.access_token);
+            guildData = await getGuildData(account.access_token);
 
             if (guildData) {
-              // Set roles from guild data
               token.roles = guildData.roles || [];
 
               if (guildData.nick) {
-                // Use the guild nickname if available
                 token.nickname = guildData.nick;
               } else if (discordProfile.global_name) {
-                // Fallback to global display name
                 token.nickname = discordProfile.global_name;
               } else {
-                // Final fallback to username
                 token.nickname = discordProfile.username;
               }
             } else {
-              // No guild data available, set empty roles
               token.roles = [];
 
-              // Set nickname from profile
               if (discordProfile.global_name) {
                 token.nickname = discordProfile.global_name;
               } else {
                 token.nickname = discordProfile.username;
               }
             }
+          }
+
+          try {
+            const { db } = await connectToDatabase();
+            const now = new Date();
+            await db.collection("Players").updateOne(
+              { discordId: discordProfile.id },
+              {
+                $set: {
+                  discordNickname: token.nickname as string,
+                  discordUsername: discordProfile.username,
+                  discordProfilePicture: token.image as string,
+                  updatedAt: now,
+                },
+                $setOnInsert: {
+                  stats: [],
+                  createdAt: now,
+                  joinedAt: now,
+                },
+              },
+              { upsert: true }
+            );
+
+            if (guildData?.nick) {
+              try {
+                await updatePlayerGuildNickname(
+                  discordProfile.id,
+                  guildData.nick
+                );
+              } catch (teamSyncError) {
+                safeLog.error(
+                  "Guild nickname team sync failed after OAuth:",
+                  teamSyncError
+                );
+              }
+            }
+          } catch (e) {
+            safeLog.error("Players sync after Discord OAuth:", e);
           }
         }
 
@@ -200,57 +220,9 @@ export const authOptions: NextAuthOptions = {
 
       return session;
     },
-    async signIn({ user, account, profile }) {
-      if (account?.provider === "discord") {
-        try {
-          const { id: discordId, name, image } = user;
-
-          const accessToken = account.access_token;
-
-          let discordNickname = null;
-
-          if (accessToken) {
-            const guildData = await getGuildData(accessToken);
-
-            if (guildData && guildData.nick) {
-              discordNickname = guildData.nick;
-            } else if (user.global_name) {
-              discordNickname = user.global_name;
-            } else {
-              discordNickname = name;
-            }
-          } else {
-            discordNickname = name;
-          }
-
-          const discordUsername = name;
-          const discordProfilePicture = image;
-
-          const { db } = await connectToDatabase();
-
-          const now = new Date();
-          await db.collection("Players").updateOne(
-            { discordId },
-            {
-              $set: {
-                discordNickname,
-                discordUsername,
-                discordProfilePicture,
-                updatedAt: now,
-              },
-              $setOnInsert: {
-                stats: [],
-                createdAt: now,
-                joinedAt: now,
-              },
-            },
-            { upsert: true }
-          );
-        } catch (error) {
-          safeLog.error("Error updating player document:", error);
-        }
-      }
-
+    async signIn() {
+      // Players collection + guild nickname are updated in jwt after a single
+      // getGuildData call (avoids Discord /users/@me/guilds rate limits).
       return true;
     },
   },

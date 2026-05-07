@@ -5,7 +5,30 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/terms",
   },
-  description: "Terms of use for Shadowrun FPS platform",
+  description:
+    "Review the Shadowrun FPS terms of use governing access to our platform, community features, and game launcher.",
+  openGraph: {
+    title: "Terms of Use | Shadowrun FPS",
+    description:
+      "Review the Shadowrun FPS terms of use governing access to our platform, community features, and game launcher.",
+    url: "https://www.shadowrunfps.com/terms",
+    type: "website",
+    images: [
+      {
+        url: "https://www.shadowrunfps.com/hero.webp",
+        width: 1200,
+        height: 630,
+        alt: "Shadowrun FPS",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms of Use | Shadowrun FPS",
+    description:
+      "Review the Shadowrun FPS terms of use governing access to our platform, community features, and game launcher.",
+    images: ["https://www.shadowrunfps.com/hero.webp"],
+  },
 };
 
 export default function TermsOfUse() {

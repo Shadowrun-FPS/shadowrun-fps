@@ -1,5 +1,11 @@
-// Helper function to check admin authorization
-// This can be used across all admin API routes
+/**
+ * Staff authorization for CMS-style routes (FAQs import, etc.).
+ *
+ * **Use `isAuthorizedAdmin`** when moderators/GMs should act (matches POST /api/faqs/import).
+ *
+ * **Use `isSessionAdminUser` from `@/lib/security-config`** for destructive or
+ * highly sensitive actions (e.g. some routes use admin/founder-only checks via `withApiSecurity` `requireAdmin`).
+ */
 import { Session } from "next-auth";
 import { SECURITY_CONFIG, hasAdminRole, hasModeratorRole } from "./security-config";
 

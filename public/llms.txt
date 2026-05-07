@@ -1,0 +1,22 @@
+# Shadowrun FPS
+
+> Community hub for Shadowrun FPS — the 2007 multiplayer first-person shooter developed by FASA Studios for Xbox 360 and PC. This site provides a free PC launcher, installation guides, troubleshooting documentation, and community events.
+
+## Key pages
+
+- [Home](https://www.shadowrunfps.com/): Community hub with download links and broadcast content
+- [Download](https://www.shadowrunfps.com/download): Free community launcher for Windows 10+, VirusTotal-verified
+- [Install Guide](https://www.shadowrunfps.com/docs/install): Step-by-step installation walkthrough (GFWL, DXVK, AntHill LIVE)
+- [Troubleshooting](https://www.shadowrunfps.com/docs/troubleshoot): Fixes for GFWL activation, FPS limits, NAT, and controller issues
+- [Events](https://www.shadowrunfps.com/docs/events): Community tournaments and scheduled matches
+
+## About the game
+
+Shadowrun FPS (2007) is a cross-platform multiplayer shooter that blends cyberpunk and fantasy settings. Players choose between humans and shadowrunners who can use magic abilities and technology augmentations. The game supports asymmetric team-based play and was notable for early Xbox 360 / Windows Vista cross-platform multiplayer.
+
+## About this site
+
+- Not affiliated with or endorsed by FASA, Microsoft, or the current Shadowrun IP holders
+- Community-maintained platform to keep the game alive
+- The launcher and game files are provided free of charge
+- Contact and community support available via Discord

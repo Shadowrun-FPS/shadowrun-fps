@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { DocHero } from "@/components/doc-hero";
 import { LAUNCHER_INSTALLER_SCHEMA_URL } from "@/lib/download-urls";
 
 export const metadata: Metadata = {
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
       "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
     images: [
       {
-        url: "/hero.webp",
+        url: "https://www.shadowrunfps.com/hero.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Download Page",
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
     title: "Download Shadowrun FPS Launcher",
     description:
       "Download the community-made Shadowrun FPS Launcher to play the classic 2007 multiplayer shooter. Verified safe with VirusTotal.",
-    images: ["/hero.webp"],
+    images: ["https://www.shadowrunfps.com/hero.webp"],
   },
 };
 
@@ -40,6 +41,7 @@ export default function DownloadLayout({
 }) {
   return (
     <>
+      <DocHero />
       {/* Schema data for the download page */}
       <script
         type="application/ld+json"

@@ -5,7 +5,30 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/privacy",
   },
-  description: "Privacy policy for Shadowrun FPS platform users",
+  description:
+    "Read the Shadowrun FPS privacy policy to understand how we collect, use, and protect your personal data when you use our platform.",
+  openGraph: {
+    title: "Privacy Policy | Shadowrun FPS",
+    description:
+      "Read the Shadowrun FPS privacy policy to understand how we collect, use, and protect your personal data when you use our platform.",
+    url: "https://www.shadowrunfps.com/privacy",
+    type: "website",
+    images: [
+      {
+        url: "https://www.shadowrunfps.com/hero.webp",
+        width: 1200,
+        height: 630,
+        alt: "Shadowrun FPS",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy | Shadowrun FPS",
+    description:
+      "Read the Shadowrun FPS privacy policy to understand how we collect, use, and protect your personal data when you use our platform.",
+    images: ["https://www.shadowrunfps.com/hero.webp"],
+  },
 };
 
 export default function PrivacyPolicy() {

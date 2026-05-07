@@ -1,13 +1,22 @@
 import { ChevronDown } from "lucide-react";
 import { Metadata } from "next";
-import { FloatingPlayer } from "@/components/floating-player";
+import dynamic from "next/dynamic";
 import DownloadButton from "@/components/download-button";
 import { HomeBento } from "@/components/home-bento";
 import { HomeAboutSection } from "@/components/home-about-section";
-import { FeaturedBroadcastEditor } from "@/components/featured-broadcast-editor";
 import { HomeBroadcastVideo } from "@/components/home-broadcast-video";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { ScrollReveal } from "@/components/scroll-reveal";
+
+const FloatingPlayer = dynamic(() =>
+  import("@/components/floating-player").then((m) => m.FloatingPlayer)
+);
+
+const FeaturedBroadcastEditor = dynamic(() =>
+  import("@/components/featured-broadcast-editor").then(
+    (m) => m.FeaturedBroadcastEditor
+  )
+);
 
 // ISR: revalidate every 5 minutes as a fallback.
 // On-demand revalidation via revalidatePath("/") fires immediately when
