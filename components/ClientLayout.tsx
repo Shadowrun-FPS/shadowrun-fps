@@ -1,15 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import PlayerTrackerBanner from "@/components/player-tracker-banner";
+import { IdleMount } from "@/components/idle-mount";
 import { useVisualViewportOffset } from "@/hooks/useVisualViewportOffset";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
 }
+
+const PlayerTrackerBanner = dynamic(
+  () => import("@/components/player-tracker-banner"),
+  { ssr: false }
+);
 
 export function ClientLayout({ children }: ClientLayoutProps) {
   const visualViewportOffsetTop = useVisualViewportOffset();
@@ -36,7 +42,9 @@ export function ClientLayout({ children }: ClientLayoutProps) {
             transform: `translateY(${visualViewportOffsetTop}px)`,
           }}
         >
-          <PlayerTrackerBanner />
+          <IdleMount delayMs={250}>
+            <PlayerTrackerBanner />
+          </IdleMount>
           <Header />
         </div>
         {/* Spacer: banner + header (56px/64px) */}

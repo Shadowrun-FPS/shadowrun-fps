@@ -1,10 +1,7 @@
-"use client";
-
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BookOpen, ChevronRight, Gamepad2, Wrench } from "lucide-react";
 import DownloadButton from "@/components/download-button";
-import { ScrollReveal } from "@/components/scroll-reveal";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { cn } from "@/lib/utils";
 
@@ -17,36 +14,30 @@ const XBOX_STORE_HREF =
 function BentoCard({
   className,
   children,
-  staggerIndex,
 }: {
   className?: string;
   children: ReactNode;
-  staggerIndex: number;
 }) {
   return (
-    <ScrollReveal staggerIndex={staggerIndex}>
-      <div
-        className={cn(
-          "relative flex h-full flex-col overflow-hidden rounded-2xl bg-card/20 p-6 backdrop-blur-sm transition-all duration-300 hover:bg-card/28 sm:p-8",
-          className
-        )}
-      >
-        {children}
-      </div>
-    </ScrollReveal>
+    <div
+      className={cn(
+        "relative flex h-full flex-col overflow-hidden rounded-2xl bg-card/20 p-6 backdrop-blur-sm transition-all duration-300 hover:bg-card/28 sm:p-8",
+        className
+      )}
+    >
+      {children}
+    </div>
   );
 }
 
 export function HomeBento() {
   return (
     <div className="mx-auto max-w-5xl">
-      <ScrollReveal>
-        <HomeSectionHeading>Getting Started</HomeSectionHeading>
-      </ScrollReveal>
+      <HomeSectionHeading>Getting Started</HomeSectionHeading>
 
       <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
         <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-5">
-          <BentoCard staggerIndex={0} className="justify-between">
+          <BentoCard className="justify-between">
             <div>
               <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-primary/90">
                 Play on PC
@@ -68,7 +59,6 @@ export function HomeBento() {
           </BentoCard>
 
           <BentoCard
-            staggerIndex={1}
             className="justify-between bg-gradient-to-b from-[var(--xbox-brand)]/8 to-card/22"
           >
             <div>
@@ -104,7 +94,7 @@ export function HomeBento() {
           </BentoCard>
         </div>
 
-        <BentoCard staggerIndex={2} className="w-full min-w-0">
+        <BentoCard className="w-full min-w-0">
           <div>
             <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Documentation
@@ -151,28 +141,26 @@ export function HomeBento() {
           </div>
         </BentoCard>
 
-        <ScrollReveal staggerIndex={3}>
-          <div className="mx-auto flex max-w-lg flex-col items-center rounded-2xl bg-gradient-to-b from-[var(--discord-brand)]/6 to-card/20 px-6 py-8 text-center backdrop-blur-sm sm:px-8">
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--discord-brand)]/90">
-              Community
-            </p>
-            <h3 className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              Discord
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground sm:text-base">
-              The main hub for finding matches and support.
-            </p>
-            <Link
-              href={DISCORD_HREF}
-              className="group mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--discord-brand)]/14 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-[var(--discord-brand)]/22 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--discord-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <span className="underline-offset-4 decoration-transparent transition-[text-decoration-color] group-hover:underline group-hover:decoration-foreground/70">
-                Join the server
-              </span>
-              <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-          </div>
-        </ScrollReveal>
+        <div className="mx-auto flex max-w-lg flex-col items-center rounded-2xl bg-gradient-to-b from-[var(--discord-brand)]/6 to-card/20 px-6 py-8 text-center backdrop-blur-sm sm:px-8">
+          <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--discord-brand)]/90">
+            Community
+          </p>
+          <h3 className="mt-2 font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Discord
+          </h3>
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
+            The main hub for finding matches and support.
+          </p>
+          <Link
+            href={DISCORD_HREF}
+            className="group mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--discord-brand)]/14 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-[var(--discord-brand)]/22 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--discord-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span className="underline-offset-4 decoration-transparent transition-[text-decoration-color] group-hover:underline group-hover:decoration-foreground/70">
+              Join the server
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );

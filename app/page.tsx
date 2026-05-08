@@ -1,22 +1,17 @@
 import { ChevronDown } from "lucide-react";
 import { Metadata } from "next";
-import dynamic from "next/dynamic";
+import { getServerSession } from "next-auth";
 import DownloadButton from "@/components/download-button";
 import { HomeBento } from "@/components/home-bento";
 import { HomeAboutSection } from "@/components/home-about-section";
 import { HomeBroadcastVideo } from "@/components/home-broadcast-video";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { ScrollReveal } from "@/components/scroll-reveal";
-
-const FloatingPlayer = dynamic(() =>
-  import("@/components/floating-player").then((m) => m.FloatingPlayer)
-);
-
-const FeaturedBroadcastEditor = dynamic(() =>
-  import("@/components/featured-broadcast-editor").then(
-    (m) => m.FeaturedBroadcastEditor
-  )
-);
+import { VisibleMount } from "@/components/visible-mount";
+import { HomeClientExtras } from "@/components/home/home-client-extras";
+import { HomeFloatingPlayer } from "@/components/home/home-floating-player";
+import { authOptions } from "@/lib/auth";
+import { canManageFeaturedBroadcast } from "@/lib/security-config";
 
 // ISR: revalidate every 5 minutes as a fallback.
 // On-demand revalidation via revalidatePath("/") fires immediately when
@@ -76,6 +71,15 @@ const schemaData = {
 };
 
 export default async function Home() {
+  const session = await getServerSession(authOptions);
+  const canEditBroadcast =
+    session?.user?.id != null &&
+    canManageFeaturedBroadcast(
+      session.user.id,
+      session.user.roles ?? [],
+      session.user.isAdmin
+    );
+
   return (
     <>
       {/*
@@ -195,22 +199,45 @@ export default async function Home() {
                   <HomeSectionHeading className="mb-0 w-full">
                     Broadcast
                   </HomeSectionHeading>
-                  <FeaturedBroadcastEditor />
+                  <HomeClientExtras canEditBroadcast={canEditBroadcast} />
                 </div>
               </ScrollReveal>
               <div className="mt-2 sm:mt-4">
-                <HomeBroadcastVideo />
+                <VisibleMount
+                  rootMargin="600px 0px"
+                  fallback={
+                    <div className="overflow-hidden rounded-2xl bg-[hsl(220_16%_8%)] shadow-xl shadow-black/25">
+                      <div className="flex flex-col gap-3 bg-gradient-to-r from-[hsl(220_20%_12%)] to-[hsl(220_16%_10%)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div
+                            className="h-10 w-10 shrink-0 rounded-lg bg-primary/12"
+                            aria-hidden
+                          />
+                          <div className="min-w-0">
+                            <div className="h-4 w-40 rounded bg-white/10" />
+                            <div className="mt-2 h-3 w-24 rounded bg-white/10" />
+                          </div>
+                        </div>
+                        <div className="h-9 w-28 rounded-lg bg-white/10" />
+                      </div>
+                      <div className="relative aspect-video w-full bg-black">
+                        <div
+                          className="absolute inset-0 animate-pulse bg-white/5"
+                          aria-hidden
+                        />
+                      </div>
+                    </div>
+                  }
+                >
+                  <HomeBroadcastVideo />
+                </VisibleMount>
               </div>
             </div>
           </div>
         </section>
       </div>
 
-      <FloatingPlayer
-        audioSrc="/baiana.mp3"
-        trackTitle="Baiana"
-        duration={29}
-      />
+      <HomeFloatingPlayer />
 
       <script
         type="application/ld+json"

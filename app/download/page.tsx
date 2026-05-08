@@ -568,15 +568,15 @@ export default function DownloadPage() {
                   <strong className="text-foreground">
                     GFWL only — Activate Game:
                   </strong>{" "}
+                  <span className="mt-1 block text-sm text-muted-foreground/90">
+                    Skip this step if you only use AHL.
+                  </span>
                   Classic Xbox LIVE online only: launch Shadowrun → sign in until the
                   activation screen appears →{" "}
                   <strong className="text-foreground">then</strong> click Activate
                   Game in the launcher (not sooner). When fully signed in online,{" "}
                   <strong className="text-foreground">quit Shadowrun fully</strong> and
                   relaunch.
-                  <span className="mt-1 block text-sm text-muted-foreground/90">
-                    Skip if you only use AHL.
-                  </span>
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">Finish & play:</strong>{" "} Before jumping into a match, change these settings:{" "}
