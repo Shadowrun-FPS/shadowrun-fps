@@ -15,7 +15,6 @@ import {
   Check,
   Package,
   ScrollText,
-  Settings2,
   FileText,
 } from "lucide-react";
 
@@ -258,12 +257,7 @@ export default function DownloadPage() {
             )}
             <p className="mb-5 text-sm text-muted-foreground sm:mb-6 sm:text-base">
               Full NSIS installer with automatic update capabilities. The launcher
-              downloads an updated game ZIP{" "}
-              <strong className="font-medium text-foreground">
-                pre-configured for AntHill LIVE (AHL)
-              </strong>{" "}
-              — our private Games for Windows LIVE–compatible service for
-              community online play.
+              downloads and installs the game files for you.
             </p>
 
             <div className="flex flex-col gap-2 justify-start items-stretch sm:items-center sm:gap-3">
@@ -418,21 +412,7 @@ export default function DownloadPage() {
                     One-Click Game Installation
                   </h3>
                   <p className="text-xs text-muted-foreground sm:text-sm">
-                    Automatically downloads and installs Shadowrun FPS (AHL-ready
-                    game files)
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-lg transition-all duration-200 bg-background/50 hover:bg-background/70 sm:p-4">
-                <Settings2 className="flex-shrink-0 w-5 h-5 text-primary" />
-                <div className="min-w-0">
-                  <h3 className="mb-0.5 text-sm font-semibold sm:mb-1 sm:text-base">
-                    AHL ↔ classic GFWL toggle
-                  </h3>
-                  <p className="text-xs text-muted-foreground sm:text-sm">
-                    Switch between AntHill LIVE and Xbox GFWL in the launcher — no
-                    config file edits.
+                    Automatically downloads and installs Shadowrun FPS game files
                   </p>
                 </div>
               </div>
@@ -505,74 +485,17 @@ export default function DownloadPage() {
                     Download game files:
                   </strong>{" "}
                   In the launcher, press Download.
-                  <span className="mt-1 block text-sm text-muted-foreground/90">
-                    ZIP is pre-configured for AntHill LIVE (AHL).
-                  </span>
-                </li>
-                <li className="transition-all duration-200 hover:text-foreground">
-                  <strong className="text-foreground">
-                    AntHill LIVE account (for online play):
-                  </strong>
-                  <ol className="mt-2 list-[lower-alpha] space-y-2 pl-6 text-muted-foreground marker:text-muted-foreground [&>li]:pl-1">
-                    <li className="transition-all duration-200 hover:text-foreground">
-                      <strong className="text-foreground">First Sign up:</strong>{" "}
-                      <a
-                        href="https://login.shadowrunfps.com/signup.srf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        login.shadowrunfps.com/signup.srf
-                      </a>
-                    </li>
-                    <li className="transition-all duration-200 hover:text-foreground">
-                      <strong className="text-foreground">
-                        Create your gamertag:
-                      </strong>{" "}
-                      <a
-                        href="http://xbox.shadowrunfps.com:8090/NewGamertag.srf"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline break-all"
-                      >
-                        xbox.shadowrunfps.com:8090/NewGamertag.srf
-                      </a>
-                    </li>
-                  </ol>
-                  <aside
-                    className="mt-3 rounded-xl border border-border/60 bg-muted/15 px-3 py-2.5 text-sm leading-relaxed text-muted-foreground shadow-sm sm:px-4 sm:py-3 sm:text-base"
-                    aria-label="AntHill LIVE account tips"
-                  >
-                    <ul className="list-disc space-y-1.5 pl-5 marker:text-muted-foreground/80">
-                      <li>Email is case-sensitive in-game.</li>
-                      <li>
-                        Password{" "}
-                        <strong className="font-semibold text-foreground">
-                          MUST
-                        </strong>{" "}
-                        be 15 characters or less.
-                      </li>
-                    </ul>
-                    <p className="mt-2 border-t border-border/40 pt-2.5">
-                      Save email/password — no recovery. Any email address works if you
-                      can remember it at login.
-                    </p>
-                  </aside>
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">Launch & Sign in:</strong>{" "}
-                  Press Play → Sign in with your new AHL email/password. For Offline/bots only:{" "}
+                  Press Play → Sign in with your account, or for Offline/bots only use{" "}
                   <strong className="text-foreground">Create Local Profile</strong>.
                 </li>
                 <li className="transition-all duration-200 hover:text-foreground">
                   <strong className="text-foreground">
-                    GFWL only — Activate Game:
+                    Activate Game (if prompted):
                   </strong>{" "}
-                  <span className="mt-1 block text-sm text-muted-foreground/90">
-                    Skip this step if you only use AHL.
-                  </span>
-                  Classic Xbox LIVE online only: launch Shadowrun → sign in until the
-                  activation screen appears →{" "}
+                  Launch Shadowrun → sign in until the activation screen appears →{" "}
                   <strong className="text-foreground">then</strong> click Activate
                   Game in the launcher (not sooner). When fully signed in online,{" "}
                   <strong className="text-foreground">quit Shadowrun fully</strong> and
@@ -606,32 +529,14 @@ export default function DownloadPage() {
                 <strong className="text-foreground">Shadowrun Official Server</strong>.
               </p>
               <p className="mt-3 text-muted-foreground">
-                <strong>Classic GFWL only:</strong> Launcher{" "}
-                <strong className="text-foreground">Settings</strong> →{" "}
-                <strong className="text-foreground">Open Diagnostics</strong> — toggle
-                AHL vs classic GFWL at the top. Xbox sign-in for classic
-                GFWL. No toggle? Edit{" "}
-                <span className="font-mono text-[0.85rem] text-foreground">
-                  patcher_conf.ini
-                </span>{" "} 
-                (
-                <a
-                  href="/docs/install#ant-hill-live"
-                  className="text-primary hover:underline"
-                >
-                  install guide
-                </a>
-                ){" "} in your Shadowrun folder. GFWL Activation can be temporary, repeat —{" "}
+                Activation can be temporary and may need to be repeated — see{" "}
                 <a
                   href="/docs/install#game-key"
                   className="text-primary hover:underline"
                 >
                   game keys
                 </a>{" "}
-                if needed.{" "}
-                <strong className="text-foreground">
-                  AHL does not use Activate Game process.
-                </strong>
+                if needed.
               </p>
             </div>
 

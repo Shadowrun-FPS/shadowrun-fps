@@ -115,13 +115,14 @@ export default async function TroubleshootPage() {
       : null;
 
   return (
-    <DocLayout>
+    <>
       {faqSchema && (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
+      <DocLayout>
       <article>
         <TroubleshootPageHero />
 
@@ -571,5 +572,6 @@ export default async function TroubleshootPage() {
         </div>
       </article>
     </DocLayout>
+    </>
   );
 }

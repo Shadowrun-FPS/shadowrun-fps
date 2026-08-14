@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, type DragEvent } from "react";
-import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+import { getSession } from "next-auth/react";
 import { safeLog } from "@/lib/security";
 import {
   Accordion,
@@ -44,7 +45,7 @@ interface UserPermissions {
 }
 
 export function FAQsSection() {
-  const { data: session } = useSession();
+  const [session, setSession] = useState<Session | null>(null);
   const [faqs, setFaqs] = useState<FAQ[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -56,6 +57,22 @@ export function FAQsSection() {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const { toast } = useToast();
+
+  // Fetch session client-side — avoids SSR requiring SessionProvider context
+  // when this section is composed under DocLayout from a Server Component.
+  useEffect(() => {
+    let cancelled = false;
+    getSession()
+      .then((nextSession) => {
+        if (!cancelled) setSession(nextSession);
+      })
+      .catch((error) => {
+        safeLog.error("Error fetching session:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Check if user is admin
   useEffect(() => {

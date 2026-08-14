@@ -10,25 +10,36 @@ import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
 
 async function getFaqsHandler(req: NextRequest) {
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
+  try {
+    const client = await clientPromise;
+    const db = client.db("ShadowrunWeb");
 
-  const categoryParam = req.nextUrl.searchParams.get("category");
-  const category = categoryParam ? sanitizeString(categoryParam, 50) : null;
+    const categoryParam = req.nextUrl.searchParams.get("category");
+    const category = categoryParam ? sanitizeString(categoryParam, 50) : null;
 
-  const query = category ? { category } : {};
-  const faqs = await db
-    .collection("FAQs")
-    .find(query)
-    .sort({ order: 1, createdAt: -1 })
-    .toArray();
+    const query = category ? { category } : {};
+    const faqs = await db
+      .collection("FAQs")
+      .find(query)
+      .sort({ order: 1, createdAt: -1 })
+      .toArray();
 
-  const response = NextResponse.json(faqs);
-  response.headers.set(
-    "Cache-Control",
-    "public, s-maxage=3600, stale-while-revalidate=86400"
-  );
-  return response;
+    const response = NextResponse.json(faqs);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=3600, stale-while-revalidate=86400"
+    );
+    return response;
+  } catch (error) {
+    // Soft-fail reads when Mongo is unreachable so docs pages still render
+    safeLog.error("Failed to fetch FAQs:", error);
+    const response = NextResponse.json([]);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=60, stale-while-revalidate=300"
+    );
+    return response;
+  }
 }
 
 export const GET = withApiSecurity(getFaqsHandler, {
