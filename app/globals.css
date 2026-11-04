@@ -100,14 +100,14 @@
 }
 
 @layer base {
-  /* Fixed header (banner + nav spacer) — hash links and scrollIntoView align below it */
+  /* Fixed header — hash links and scrollIntoView align just below it */
   html {
-    scroll-padding-top: 103px;
+    scroll-padding-top: calc(3.5rem + env(safe-area-inset-top) + 0.75rem);
     scroll-behavior: smooth;
   }
   @media (min-width: 640px) {
     html {
-      scroll-padding-top: 113px;
+      scroll-padding-top: calc(4rem + env(safe-area-inset-top) + 1rem);
     }
   }
   @media (prefers-reduced-motion: reduce) {

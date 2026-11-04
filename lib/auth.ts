@@ -66,6 +66,9 @@ export const authOptions: NextAuthOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
+      // Discord sends iss=https://discord.com on the callback. openid-client
+      // rejects the callback unless this matches the configured issuer.
+      issuer: "https://discord.com",
       authorization: {
         params: {
           scope: "identify guilds guilds.members.read",

@@ -155,8 +155,7 @@ async function postPostsHandler(req: NextRequest) {
   queryCache.invalidate("posts:all");
 
   revalidatePath("/");
-  revalidatePath("/docs");
-  revalidatePath("/docs/events");
+  revalidatePath("/events");
 
   return NextResponse.json({
     success: true,
@@ -168,7 +167,7 @@ export const POST = withApiSecurity(postPostsHandler, {
   rateLimiter: "admin",
   requireAuth: true,
   requireAdmin: true,
-  revalidatePaths: ["/", "/docs"],
+  revalidatePaths: ["/", "/events"],
 });
 
 // PUT update post
@@ -241,8 +240,7 @@ async function putPostsHandler(req: NextRequest) {
   });
 
   revalidatePath("/");
-  revalidatePath("/docs");
-  revalidatePath(`/docs/${_id}`);
+  revalidatePath("/events");
 
   return NextResponse.json({ success: true });
 }
@@ -251,5 +249,5 @@ export const PUT = withApiSecurity(putPostsHandler, {
   rateLimiter: "admin",
   requireAuth: true,
   requireAdmin: true,
-  revalidatePaths: ["/", "/docs"],
+  revalidatePaths: ["/", "/events"],
 });

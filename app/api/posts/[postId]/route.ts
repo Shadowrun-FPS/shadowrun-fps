@@ -78,8 +78,7 @@ async function deletePostHandler(
   });
 
   revalidatePath("/");
-  revalidatePath("/docs");
-  revalidatePath(`/docs/${postId}`);
+  revalidatePath("/events");
 
   return NextResponse.json({ success: true });
 }
@@ -88,5 +87,5 @@ export const DELETE = withApiSecurity(deletePostHandler, {
   rateLimiter: "admin",
   requireAuth: true,
   requireAdmin: true,
-  revalidatePaths: ["/", "/docs"],
+  revalidatePaths: ["/", "/events"],
 });

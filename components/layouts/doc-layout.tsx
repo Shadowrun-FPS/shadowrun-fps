@@ -17,22 +17,9 @@ interface QuickLink {
 function getQuickLinks(pathname: string | null): QuickLink[] {
   if (!pathname) return []; // Return empty array if pathname is null
 
-  if (pathname.includes("/install")) {
-    return [
-      { title: "Required tools", href: "#getting-started" },
-      { title: "Installation Steps", href: "#installation-steps" },
-      { title: "Post-Installation Tips", href: "#post-install" },
-      { title: "Getting a Game Key", href: "#game-key" },
-      { title: "Matchmaking Preferences", href: "#matchmaking" },
-      { title: "System Requirements", href: "#requirements" },
-    ];
-  }
-
-  if (pathname.includes("/troubleshoot")) {
+  if (pathname === "/troubleshoot" || pathname.startsWith("/troubleshoot/")) {
     return [
       { title: "Common errors", href: "#errors" },
-      { title: "Activation issues", href: "#activation" },
-      { title: "Performance settings", href: "#performance" },
       { title: "Controller setup", href: "#controller" },
       { title: "Getting the game", href: "#getting-game" },
       { title: "Connection issues", href: "#connection" },
@@ -46,7 +33,7 @@ export function DocLayout({ children, className }: DocLayoutProps) {
   const pathname = usePathname();
   const quickLinks = getQuickLinks(pathname);
   const showQuickLinks =
-    pathname?.includes("/install") || pathname?.includes("/troubleshoot");
+    pathname === "/troubleshoot" || pathname?.startsWith("/troubleshoot/");
 
   return (
     <div className="min-h-screen bg-background">

@@ -147,23 +147,20 @@ export default async function Home() {
       </div>
 
       <div className="flex flex-col">
-        <section
-          id="getting-started"
-          className="relative py-14 sm:py-16 md:py-20"
-        >
+        <section className="relative pt-14 pb-4 sm:pt-16 sm:pb-6 md:pt-20 md:pb-6">
           {/* Soften transition from hero / page bg */}
           <div
             className="pointer-events-none absolute inset-x-0 -top-px z-10 h-20 bg-gradient-to-b from-background to-transparent sm:h-28"
             aria-hidden
           />
           <div className="relative mx-auto max-w-7xl px-3 sm:px-4 md:px-6 lg:px-8">
-            <div className="rounded-3xl bg-card/5 py-6 backdrop-blur-sm sm:py-8 md:py-10">
+            <div className="rounded-3xl bg-card/5 pt-6 pb-2 backdrop-blur-sm sm:pt-8 sm:pb-3 md:pt-10 md:pb-4">
               <HomeBento />
             </div>
           </div>
         </section>
 
-        <section className="relative overflow-hidden py-16 sm:py-20 md:py-24">
+        <section className="relative overflow-hidden py-8 sm:py-10 md:py-12">
           {/* Base tint */}
           <div
             className="pointer-events-none absolute inset-0 bg-muted/10"
@@ -171,12 +168,12 @@ export default async function Home() {
           />
           {/* Feather into page background — top */}
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-32 bg-gradient-to-b from-background via-background/85 to-transparent sm:h-40"
+            className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-background via-background/85 to-transparent sm:h-12"
             aria-hidden
           />
           {/* Feather into page background — bottom */}
           <div
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 bg-gradient-to-t from-background via-background/85 to-transparent sm:h-40"
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-10 bg-gradient-to-t from-background via-background/85 to-transparent sm:h-12"
             aria-hidden
           />
           <div className="relative z-20 px-3 mx-auto max-w-7xl sm:px-4 md:px-6 lg:px-8">
@@ -186,10 +183,10 @@ export default async function Home() {
 
         <section
           id="broadcast"
-          className="relative py-14 sm:py-16 md:py-20"
+          className="relative pt-4 pb-14 sm:pt-6 sm:pb-16 md:pt-6 md:pb-20"
         >
           <div
-            className="pointer-events-none absolute inset-x-0 -top-px z-10 h-16 bg-gradient-to-b from-background to-transparent sm:h-24"
+            className="pointer-events-none absolute inset-x-0 -top-px z-10 h-8 bg-gradient-to-b from-background to-transparent sm:h-10"
             aria-hidden
           />
           <div className="relative z-20 px-3 mx-auto max-w-7xl sm:px-4 md:px-6 lg:px-8">

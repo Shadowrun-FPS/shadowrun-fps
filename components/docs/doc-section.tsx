@@ -19,7 +19,7 @@ export function DocSection({
   return (
     <section
       id={id}
-      className={cn("scroll-mt-28 space-y-4 sm:space-y-5", className)}
+      className={cn("space-y-4 sm:space-y-5", className)}
     >
       {eyebrow ? (
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">

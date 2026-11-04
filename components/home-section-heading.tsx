@@ -6,16 +6,18 @@ import { cn } from "@/lib/utils";
 type HomeSectionHeadingProps = {
   children: ReactNode;
   className?: string;
+  id?: string;
   as?: "h2" | "h3";
 };
 
 export function HomeSectionHeading({
   children,
   className,
+  id,
   as: Tag = "h2",
 }: HomeSectionHeadingProps) {
   return (
-    <div className={cn("mb-8 text-center sm:mb-10", className)}>
+    <div id={id} className={cn("mb-8 text-center sm:mb-10", className)}>
       <Tag className="font-display relative inline-block text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
         {children}
         <span

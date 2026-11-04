@@ -1,21 +1,14 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
-import { IdleMount } from "@/components/idle-mount";
 import { useVisualViewportOffset } from "@/hooks/useVisualViewportOffset";
 
 interface ClientLayoutProps {
   children: React.ReactNode;
 }
-
-const PlayerTrackerBanner = dynamic(
-  () => import("@/components/player-tracker-banner"),
-  { ssr: false }
-);
 
 export function ClientLayout({ children }: ClientLayoutProps) {
   const visualViewportOffsetTop = useVisualViewportOffset();
@@ -35,20 +28,20 @@ export function ClientLayout({ children }: ClientLayoutProps) {
         >
           Skip to main content
         </a>
-        {/* Banner + Header in one fixed block; pinned to visual viewport on iOS when URL bar hides */}
+        {/* Header pinned to the visual viewport on iOS when the URL bar hides */}
         <div
           className="fixed top-0 left-0 right-0 z-50 flex flex-col bg-background"
           style={{
             transform: `translateY(${visualViewportOffsetTop}px)`,
           }}
         >
-          <IdleMount delayMs={250}>
-            <PlayerTrackerBanner />
-          </IdleMount>
           <Header />
         </div>
-        {/* Spacer: banner + header (56px/64px) */}
-        <div className="h-[103px] sm:h-[113px]" aria-hidden />
+        {/* Spacer matches the fixed header, including the iOS safe-area inset */}
+        <div
+          className="h-[calc(3.5rem+env(safe-area-inset-top))] sm:h-[calc(4rem+env(safe-area-inset-top))]"
+          aria-hidden
+        />
         <div className="relative flex-1 w-full">
           <main id="main-content" className="flex-1 w-full" tabIndex={-1}>
             {children}

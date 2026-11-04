@@ -109,7 +109,7 @@ function LoginContent() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-background to-muted/20 px-4 relative overflow-hidden">
+    <div className="relative flex min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] items-center justify-center overflow-hidden bg-gradient-to-br from-background via-background to-muted/20 px-4 py-10 sm:min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] sm:py-16">
       {/* Static background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
@@ -250,7 +250,7 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-background via-background to-muted/20 px-4">
+      <div className="flex min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 px-4 py-10 sm:min-h-[calc(100dvh-4rem-env(safe-area-inset-top))] sm:py-16">
         <div className="w-full max-w-md">
           <div className="text-center mb-8 space-y-4">
             <div className="flex justify-center mb-4">

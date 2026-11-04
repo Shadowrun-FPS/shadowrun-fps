@@ -79,5 +79,12 @@
     "ajv": {
       "uri-js": "^4.2.2"
     }
+  },
+  "allowScripts": {
+    "@vercel/speed-insights@1.2.0": true,
+    "esbuild@0.25.12": true,
+    "fsevents@2.3.3": true,
+    "sharp@0.35.5": true,
+    "unrs-resolver@1.11.1": true
   }
 }

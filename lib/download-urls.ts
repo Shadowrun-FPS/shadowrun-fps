@@ -18,11 +18,12 @@ export const PORTABLE_LAUNCHER_URL =
     ? `${DOWNLOADS_ORIGIN}/Shadowrun%20FPS%20Launcher.exe?v=${encodeURIComponent(portableLauncherCacheBust)}`
     : `${DOWNLOADS_ORIGIN}/Shadowrun%20FPS%20Launcher.exe`;
 
-/** Windows — paste into File Explorer address bar to open `main.log` for launcher support. */
-export const LAUNCHER_MAIN_LOG_PATH =
-  "%APPDATA%\\Shadowrun FPS Launcher\\logs\\main.log" as const;
+export const GAME_VERSION = "1.5" as const;
+export const LAUNCHER_VERSION = "1.0" as const;
 
-/**
- * Canonical installer URL for JSON-LD. Bump the version segment when you ship a new stable.
- */
-export const LAUNCHER_INSTALLER_SCHEMA_URL = `${DOWNLOADS_ORIGIN}/launcher/Shadowrun%20FPS%20Launcher%20Setup%200.9.112.exe`;
+/** Current launcher setup. One file; the installer handles game download, updates, and repair. */
+export const LAUNCHER_SETUP_URL =
+  "https://download.shadowrunfps.com/Shadowrun-Launcher-Setup.exe" as const;
+
+/** Canonical installer URL for JSON-LD. */
+export const LAUNCHER_INSTALLER_SCHEMA_URL = LAUNCHER_SETUP_URL;

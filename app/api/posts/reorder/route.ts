@@ -83,8 +83,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     // Invalidate cache and revalidate paths
     queryCache.invalidate("posts:all");
     revalidatePath("/");
-    revalidatePath("/docs");
-    revalidatePath("/docs/events");
+    revalidatePath("/events");
 
     secureLogger.info("Posts bulk reordered successfully", {
       postCount: reorderedPosts.length,
@@ -137,8 +136,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     // Invalidate cache and revalidate paths
     queryCache.invalidate("posts:all");
     revalidatePath("/");
-    revalidatePath("/docs");
-    revalidatePath("/docs/events");
+    revalidatePath("/events");
 
     secureLogger.info("Post reordered successfully", {
       postId,

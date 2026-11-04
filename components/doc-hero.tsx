@@ -5,36 +5,15 @@ import { usePathname } from "next/navigation";
 const pageTitles: Record<string, { title: string; description: string }> = {
   "/download": {
     title: "Download",
-    description:
-      "Community launcher, verified builds, and installation resources",
+    description: "Download the launcher, sign in with Discord, and play.",
   },
-  "/docs/events": {
+  "/events": {
     title: "Events",
     description: "Community events, tournaments, and gatherings",
   },
-  "/docs/install": {
-    title: "Installation Guide",
-    description: "Step-by-step instructions to get Shadowrun FPS running",
-  },
-  "/docs/troubleshoot": {
+  "/troubleshoot": {
     title: "Troubleshooting",
-    description: "Solutions to common issues and performance tips",
-  },
-  "/docs/introduction": {
-    title: "Introduction",
-    description: "Welcome to Shadowrun FPS documentation",
-  },
-  "/docs/rules": {
-    title: "Rules",
-    description: "Community rules and guidelines",
-  },
-  "/docs/support": {
-    title: "Support",
-    description: "Get help and support from the community",
-  },
-  "/docs/tutorials": {
-    title: "Tutorials",
-    description: "Learn how to play and improve your skills",
+    description: "Fixes for common errors, controllers, and networking.",
   },
 };
 

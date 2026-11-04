@@ -9,7 +9,7 @@ const ENABLE_DOWNLOAD_PAGE =
 
 export default function DownloadButton() {
   const downloadEnabled = ENABLE_DOWNLOAD_PAGE;
-  const href = downloadEnabled ? "/download" : "/docs/install";
+  const href = "/download";
   const buttonText = downloadEnabled ? "Download Launcher" : "PC Install Guide";
 
   return (

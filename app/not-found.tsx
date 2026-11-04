@@ -34,7 +34,7 @@ export default function NotFoundPage() {
           </Link>
         </Button>
         <Button asChild variant="outline" className="gap-2 rounded-full">
-          <Link href="/docs/troubleshoot">
+          <Link href="/troubleshoot">
             <HelpCircle className="h-4 w-4" />
             Troubleshoot
           </Link>

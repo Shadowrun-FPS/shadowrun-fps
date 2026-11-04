@@ -21,7 +21,6 @@ import {
   Download,
   HelpCircle,
   Home,
-  Calendar,
   ChevronDown,
 } from "lucide-react";
 
@@ -31,14 +30,6 @@ const ENABLE_DOWNLOAD_PAGE =
   process.env.NEXT_PUBLIC_ENABLE_DOWNLOAD_PAGE === "true";
 
 const DocLinks = [
-  {
-    title: "Events",
-    href: "/docs/events",
-    description: "Upcoming community events and tournaments",
-    icon: (
-      <Calendar className="mr-3 h-5 w-5 shrink-0 text-foreground" />
-    ),
-  },
   ...(ENABLE_DOWNLOAD_PAGE
     ? [
         {
@@ -53,7 +44,7 @@ const DocLinks = [
     : []),
   {
     title: "Troubleshoot",
-    href: "/docs/troubleshoot",
+    href: "/troubleshoot",
     description: "Solutions for common issues and problems",
     icon: (
       <HelpCircle className="mr-3 h-5 w-5 shrink-0 text-foreground" />
@@ -94,18 +85,6 @@ export function Navbar() {
       {/* Desktop Navigation only - mobile menu is rendered by Header (MobileNavMenu) */}
       <div className="hidden xl:flex xl:items-center xl:justify-center">
         <div className={desktopNavRailClass}>
-          <Link
-            href="/docs/events"
-            className={cn(
-              desktopNavControlClass,
-              pathname === "/docs/events" && desktopNavRouteActiveClass
-            )}
-            aria-current={pathname === "/docs/events" ? "page" : undefined}
-          >
-            <Calendar className="mr-2 h-4 w-4 shrink-0 opacity-90" />
-            Events
-          </Link>
-
           {ENABLE_DOWNLOAD_PAGE && (
             <Link
               href="/download"
@@ -121,12 +100,12 @@ export function Navbar() {
           )}
 
           <Link
-            href="/docs/troubleshoot"
+            href="/troubleshoot"
             className={cn(
               desktopNavControlClass,
-              pathname === "/docs/troubleshoot" && desktopNavRouteActiveClass
+              pathname === "/troubleshoot" && desktopNavRouteActiveClass
             )}
-            aria-current={pathname === "/docs/troubleshoot" ? "page" : undefined}
+            aria-current={pathname === "/troubleshoot" ? "page" : undefined}
           >
             <HelpCircle className="mr-2 h-4 w-4 shrink-0 opacity-90" />
             Troubleshoot

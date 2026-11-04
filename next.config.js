@@ -39,6 +39,40 @@ const nextConfig = {
     turbopack: {
         root: __dirname, // Explicitly set workspace root to silence multiple lockfiles warning
     },
+    async redirects() {
+        return [
+            {
+                source: "/docs/troubleshoot",
+                destination: "/troubleshoot",
+                permanent: true,
+            },
+            {
+                source: "/docs/troubleshoot/:path*",
+                destination: "/troubleshoot/:path*",
+                permanent: true,
+            },
+            {
+                source: "/docs/install",
+                destination: "/download",
+                permanent: true,
+            },
+            {
+                source: "/docs/install/:path*",
+                destination: "/download",
+                permanent: true,
+            },
+            {
+                source: "/docs/events",
+                destination: "/events",
+                permanent: true,
+            },
+            {
+                source: "/docs/events/:path*",
+                destination: "/events/:path*",
+                permanent: true,
+            },
+        ];
+    },
     webpack: (config, { isServer }) => {
         // Keep webpack config for backwards compatibility when using --webpack flag
         // Replace Node's built-in punycode with the npm package to avoid deprecation warnings

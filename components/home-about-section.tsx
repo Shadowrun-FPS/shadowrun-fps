@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { ScrollReveal } from "@/components/scroll-reveal";
 
@@ -59,15 +57,6 @@ export function HomeAboutSection() {
               </div>
             </ScrollReveal>
           ))}
-        </div>
-        <div className="mt-10 flex justify-center pt-2">
-          <Link
-            href="/docs/install"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
-          >
-            Read the install guide
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     </div>

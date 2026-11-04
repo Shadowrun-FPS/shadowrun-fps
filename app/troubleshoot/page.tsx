@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { ChevronRight, Download, Gauge } from "lucide-react";
+import { ChevronRight, Download } from "lucide-react";
 import { DocLayout } from "@/components/layouts/doc-layout";
 import { DocBulletItem, DocBulletList } from "@/components/docs/doc-bullet-list";
 import { DocCallout } from "@/components/docs/doc-callout";
@@ -13,20 +13,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { FAQsSection } from "./faqs-section";
-import { LAUNCHER_MAIN_LOG_PATH } from "@/lib/download-urls";
 import clientPromise from "@/lib/mongodb";
-
-const ENABLE_DOWNLOAD_PAGE =
-  process.env.NEXT_PUBLIC_ENABLE_DOWNLOAD_PAGE === "true";
 
 export const metadata: Metadata = {
   title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
   description:
     "Fix Shadowrun FPS (2007) on PC: Games for Windows Live activation, key errors, FPS caps, NAT, controllers, and crashes. Community-tested fixes for legacy GFWL and preserved multiplayer.",
   alternates: {
-    canonical: "/docs/troubleshoot",
+    canonical: "/troubleshoot",
   },
   keywords: [
     "Shadowrun FPS troubleshooting",
@@ -49,7 +44,7 @@ export const metadata: Metadata = {
     title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
     description:
       "GFWL activation, networking, performance, and controller fixes for Shadowrun FPS — plus community support for this preserved classic.",
-    url: "https://www.shadowrunfps.com/docs/troubleshoot",
+    url: "https://www.shadowrunfps.com/troubleshoot",
     siteName: "Shadowrun FPS",
     locale: "en_US",
     type: "website",
@@ -139,154 +134,6 @@ export default async function TroubleshootPage() {
             </div>
           </DocSection>
 
-          <DocSection id="activation" eyebrow="GFWL" title="Activation issues">
-            <div className="space-y-5">
-              <DocCallout variant="warning" title="First launch can be slow">
-                <p>
-                  First-time activation may take up to 20 minutes to load the
-                  key entry page after logging in.
-                </p>
-              </DocCallout>
-              <div className="space-y-3 text-sm sm:text-base">
-                <p className="font-semibold text-foreground">
-                  If you get &quot;This key has been used too many times&quot;:
-                </p>
-                <ol className="space-y-2.5">
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                      1
-                    </span>
-                    <span className="text-muted-foreground">Click &apos;Retry&apos;</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                      2
-                    </span>
-                    <span className="text-muted-foreground">
-                      Wait 5-10 minutes for the key entry window
-                    </span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                      3
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-muted-foreground">
-                        If it appears frozen:
-                      </span>
-                      <DocBulletList className="ml-4 mt-2 space-y-1.5">
-                        <DocBulletItem>Use Win-Key + Tab</DocBulletItem>
-                        <DocBulletItem>Drag Shadowrun to a second desktop</DocBulletItem>
-                        <DocBulletItem>
-                          Open Task Manager to end the process if needed
-                        </DocBulletItem>
-                      </DocBulletList>
-                    </div>
-                  </li>
-                </ol>
-              </div>
-            </div>
-          </DocSection>
-
-          <DocSection
-            id="performance"
-            eyebrow="Graphics"
-            title="Performance settings"
-          >
-            <div className="space-y-4">
-              <Card className="border-border/60 bg-card/40 shadow-sm">
-                <CardHeader className="px-4 sm:px-6">
-                  <CardTitle className="text-lg sm:text-xl">
-                    FPS limitations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 px-4 text-sm sm:px-6 sm:text-base">
-                  <DocCallout variant="warning" title="Limit your FPS">
-                    <p className="mb-2">
-                      Parts of the game malfunction when FPS is not limited:
-                    </p>
-                    <DocBulletList>
-                      <DocBulletItem>Firing rate of guns (minigun/smg)</DocBulletItem>
-                      <DocBulletItem>In-game physics (gusting/jumping)</DocBulletItem>
-                      <DocBulletItem>
-                        Gust grenades only work if server host is at 50fps or
-                        under
-                      </DocBulletItem>
-                    </DocBulletList>
-                  </DocCallout>
-                  <div>
-                    <p className="mb-2 font-semibold text-foreground">
-                      Recommended FPS limit: 50–98 fps
-                    </p>
-                    <p className="mb-2 text-sm text-muted-foreground">
-                      Set this in{" "}
-                      <code className="font-mono text-xs">dxvk.conf</code>
-                      {" "}
-                      next to the game executable folder.
-                    </p>
-                    <pre className="mb-3 overflow-x-auto rounded-xl border border-border/50 bg-muted p-3 font-mono text-xs sm:text-sm">
-                      <code>
-                        dxgi.maxFrameRate = 85{"\n"}d3d9.maxFrameRate = 85
-                      </code>
-                    </pre>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Community release defaults may differ from the example
-                      above. Edit values to stay within 50–98 fps if needed.
-                    </p>
-                    <Button variant="outline" size="default" asChild className="w-full mt-4 sm:w-auto">
-                      <a
-                        href="/api/docs/dxvk-conf"
-                        download="dxvk.conf"
-                        className="inline-flex items-center justify-center gap-2"
-                      >
-                        <Download className="h-4 w-4 shrink-0" aria-hidden />
-                        Download dxvk.conf
-                      </a>
-                    </Button>
-                    
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-border/60 bg-card/40 shadow-sm">
-                <CardHeader className="px-4 sm:px-6">
-                  <CardTitle className="text-lg sm:text-xl">
-                    NVIDIA settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 px-4 text-sm sm:px-6 sm:text-base">
-                  <div>
-                    <p className="mb-2 font-semibold text-foreground">
-                      Required settings
-                    </p>
-                    <DocBulletList>
-                      <DocBulletItem>
-                        Background Max Frame Rate — same as Max Frame Rate
-                      </DocBulletItem>
-                      <DocBulletItem>Max Frame Rate — up to 98</DocBulletItem>
-                      <DocBulletItem>Vertical Sync — Off</DocBulletItem>
-                    </DocBulletList>
-                  </div>
-                  <div>
-                    <p className="mb-2 font-semibold text-foreground">
-                      Quality settings
-                    </p>
-                    <DocBulletList>
-                      <DocBulletItem>Anisotropic Filtering — 16x</DocBulletItem>
-                      <DocBulletItem>
-                        Antialiasing Mode — Enhance application setting
-                      </DocBulletItem>
-                      <DocBulletItem>Antialiasing Setting — 8x</DocBulletItem>
-                      <DocBulletItem>
-                        Antialiasing Transparency — 8x supersample
-                      </DocBulletItem>
-                    </DocBulletList>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </DocSection>
-
           <DocSection id="controller" eyebrow="Input" title="Controller setup">
             <Card className="border-border/60 bg-card/40 shadow-sm">
               <CardHeader className="px-4 sm:px-6">
@@ -362,19 +209,27 @@ export default async function TroubleshootPage() {
                 </CardHeader>
                 <CardContent className="space-y-2.5 px-4 text-sm sm:px-6 sm:text-base">
                   <p className="text-muted-foreground">
-                    Follow our{" "}
+                    Install from the{" "}
                     <Link
-                      href="/docs/install"
+                      href="/download"
                       className="font-medium text-primary underline-offset-4 hover:underline"
                     >
-                      installation guide
-                    </Link>{" "}
-                    for PC setup.
+                      download page
+                    </Link>
+                    .
                   </p>
                   <DocBulletList>
-                    <DocBulletItem>No Xbox Live Gold membership required</DocBulletItem>
                     <DocBulletItem>
-                      Only needs key activation and Xbox.com account
+                      Download the launcher and run the installer
+                    </DocBulletItem>
+                    <DocBulletItem>
+                      Open the launcher and sign in with Discord
+                    </DocBulletItem>
+                    <DocBulletItem>
+                      Follow the setup prompts, then click Play
+                    </DocBulletItem>
+                    <DocBulletItem>
+                      Discord server membership is required
                     </DocBulletItem>
                   </DocBulletList>
                 </CardContent>
@@ -406,23 +261,6 @@ export default async function TroubleshootPage() {
                 </CardContent>
               </Card>
             </div>
-          </DocSection>
-
-          <DocSection
-            id="launcher-logs"
-            eyebrow="Launcher"
-            title="Community launcher issues"
-          >
-            <p className="text-sm text-muted-foreground sm:text-base">
-              If the launcher crashes or won&apos;t download updates, send{" "}
-              <span className="font-medium text-foreground">main.log</span> when
-              you ask for help. The log lives at{" "}
-              <code className="break-all rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground sm:text-sm">
-                {LAUNCHER_MAIN_LOG_PATH}
-              </code>{" "}
-              — paste that into File Explorer&apos;s address bar to jump straight
-              to the file.
-            </p>
           </DocSection>
 
           <DocSection
@@ -502,38 +340,20 @@ export default async function TroubleshootPage() {
 
           <DocSection eyebrow="Continue" title="What's next?">
             <p className="text-sm text-muted-foreground sm:text-base">
-              If you are set up and stable, use these shortcuts to finish tuning
-              or get into matches.
+              If you still need the game, start with the launcher.
             </p>
-            <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+            <div className="grid max-w-xl gap-3">
               <Link
-                href="/docs/install"
-                className="group flex min-h-[4.5rem] items-center gap-3 rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-5"
-              >
-                <div className="min-w-0 flex-1 text-left">
-                  <h3 className="font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[color,text-decoration-color] group-hover:text-primary group-hover:underline group-hover:decoration-primary/60">
-                    Review install steps
-                  </h3>
-                  <p className="mt-1 text-sm leading-snug text-muted-foreground">
-                    Downloads, GFWL, matchmaking preferences, and requirements
-                  </p>
-                </div>
-                <ChevronRight
-                  className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-hidden
-                />
-              </Link>
-              <Link
-                href="/docs/troubleshoot#performance"
+                href="/download"
                 className="group flex min-h-[4.5rem] items-center gap-3 rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-5"
               >
                 <div className="min-w-0 flex-1 text-left">
                   <h3 className="flex items-center gap-2 font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[color,text-decoration-color] group-hover:text-primary group-hover:underline group-hover:decoration-primary/60">
-                    <Gauge className="h-4 w-4 shrink-0 text-primary/80" aria-hidden />
-                    Performance settings
+                    <Download className="h-4 w-4 shrink-0 text-primary/80" aria-hidden />
+                    Download launcher
                   </h3>
                   <p className="mt-1 text-sm leading-snug text-muted-foreground">
-                    FPS limits, dxvk.conf, and NVIDIA control panel
+                    Install the launcher, sign in with Discord, then click Play
                   </p>
                 </div>
                 <ChevronRight
@@ -541,26 +361,6 @@ export default async function TroubleshootPage() {
                   aria-hidden
                 />
               </Link>
-              {ENABLE_DOWNLOAD_PAGE ? (
-                <Link
-                  href="/download"
-                  className="group flex min-h-[4.5rem] items-center gap-3 rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-5"
-                >
-                  <div className="min-w-0 flex-1 text-left">
-                    <h3 className="flex items-center gap-2 font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[color,text-decoration-color] group-hover:text-primary group-hover:underline group-hover:decoration-primary/60">
-                      <Download className="h-4 w-4 shrink-0 text-primary/80" aria-hidden />
-                      Launcher install
-                    </h3>
-                    <p className="mt-1 text-sm leading-snug text-muted-foreground">
-                      Get the community launcher and latest build
-                    </p>
-                  </div>
-                  <ChevronRight
-                    className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                    aria-hidden
-                  />
-                </Link>
-              ) : null}
             </div>
           </DocSection>
 

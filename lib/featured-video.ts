@@ -9,14 +9,6 @@ export interface FeaturedVideoSettings {
   lastUpdated?: string | null;
 }
 
-const defaultSettings: FeaturedVideoSettings = {
-  type: "none",
-  youtubeUrl: "",
-  twitchChannel: "",
-  title: "",
-  lastUpdated: null,
-};
-
 export function extractYouTubeVideoId(url: string): string {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
@@ -84,33 +76,6 @@ export function getTwitchEmbedUrl(
     params.append("parent", parent);
   }
   return `https://player.twitch.tv/?${params.toString()}`;
-}
-
-export async function fetchFeaturedVideoSettings(): Promise<FeaturedVideoSettings> {
-  try {
-    const baseUrl =
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
-    const url = baseUrl.startsWith("http")
-      ? `${baseUrl}/api/featured-video`
-      : `http://localhost:3000/api/featured-video`;
-
-    const response = await fetch(url, {
-      next: {
-        revalidate: 10,
-        tags: ["featured-video"],
-      },
-    });
-
-    if (response.ok) {
-      return (await response.json()) as FeaturedVideoSettings;
-    }
-  } catch {
-    // fall through
-  }
-
-  return { ...defaultSettings };
 }
 
 export function buildFeaturedEmbedUrl(

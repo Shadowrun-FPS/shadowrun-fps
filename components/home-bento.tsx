@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { BookOpen, ChevronRight, Gamepad2, Wrench } from "lucide-react";
+import { ChevronRight, Gamepad2 } from "lucide-react";
 import DownloadButton from "@/components/download-button";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,9 @@ function BentoCard({
 export function HomeBento() {
   return (
     <div className="mx-auto max-w-5xl">
-      <HomeSectionHeading>Getting Started</HomeSectionHeading>
+      <HomeSectionHeading id="getting-started">
+        Getting Started
+      </HomeSectionHeading>
 
       <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
         <div className="grid min-w-0 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-5">
@@ -93,53 +95,6 @@ export function HomeBento() {
             </Link>
           </BentoCard>
         </div>
-
-        <BentoCard className="w-full min-w-0">
-          <div>
-            <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-              Documentation
-            </p>
-            <h3 className="mt-1 font-display text-xl font-bold text-foreground sm:text-2xl">
-              Guides & fixes
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Step-by-step install and troubleshooting—bookmark these for when
-              you need them.
-            </p>
-          </div>
-          <div className="mt-6 grid min-w-0 grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
-            <Link
-              href="/docs/install"
-              className="group flex min-h-[4.5rem] items-center gap-3 rounded-xl bg-muted/10 px-4 py-4 transition-colors hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-5 sm:py-5"
-            >
-              <BookOpen className="h-5 w-5 shrink-0 text-primary" />
-              <div className="min-w-0 flex-1 text-left">
-                <div className="font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[text-decoration-color] group-hover:underline group-hover:decoration-primary/60">
-                  Manual Installation guide
-                </div>
-                <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
-                  From download to first match
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-            </Link>
-            <Link
-              href="/docs/troubleshoot"
-              className="group flex min-h-[4.5rem] items-center gap-3 rounded-xl bg-muted/10 px-4 py-4 transition-colors hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:px-5 sm:py-5"
-            >
-              <Wrench className="h-5 w-5 shrink-0 text-primary" />
-              <div className="min-w-0 flex-1 text-left">
-                <div className="font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[text-decoration-color] group-hover:underline group-hover:decoration-primary/60">
-                  Troubleshooting
-                </div>
-                <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
-                  Performance, errors, and fixes
-                </div>
-              </div>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-            </Link>
-          </div>
-        </BentoCard>
 
         <div className="mx-auto flex max-w-lg flex-col items-center rounded-2xl bg-gradient-to-b from-[var(--discord-brand)]/6 to-card/20 px-6 py-8 text-center backdrop-blur-sm sm:px-8">
           <p className="font-display text-xs font-semibold uppercase tracking-[0.2em] text-[var(--discord-brand)]/90">

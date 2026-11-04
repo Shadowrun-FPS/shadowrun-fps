@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description:
     "Shadowrun FPS (2007) tournaments, community nights, and competitive schedules from the preservation community. Find upcoming matches, fan-run events, and legacy multiplayer meetups.",
   alternates: {
-    canonical: "/docs/events",
+    canonical: "/events",
   },
   keywords: [
     "Shadowrun FPS events",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS Community Events & Tournaments",
     description:
       "Tournaments, community nights, and schedules for Shadowrun FPS — the fan-led game preservation hub for this classic competitive shooter.",
-    url: "https://www.shadowrunfps.com/docs/events",
+    url: "https://www.shadowrunfps.com/events",
     siteName: "Shadowrun FPS",
     locale: "en_US",
     type: "website",

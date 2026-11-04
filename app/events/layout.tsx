@@ -1,19 +1,15 @@
 import type { Metadata } from "next";
 import { DocHero } from "@/components/doc-hero";
 
-const DOCS_SITE_URL = "https://www.shadowrunfps.com";
+const SITE_URL = "https://www.shadowrunfps.com";
 
-/**
- * Baseline metadata for all `/docs/*` routes. Each doc page exports its own
- * `metadata` (title, description, keywords, OG) which merges with this layout.
- */
 export const metadata: Metadata = {
-  authors: [{ name: "Shadowrun FPS Community", url: DOCS_SITE_URL }],
+  authors: [{ name: "Shadowrun FPS Community", url: SITE_URL }],
   creator: "Shadowrun FPS Community",
   publisher: "Shadowrun FPS Community",
 };
 
-export default function DocsLayout({
+export default function EventsLayout({
   children,
 }: {
   children: React.ReactNode;

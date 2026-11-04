@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BookOpen, ChevronRight, MessageCircle } from "lucide-react";
+import { ChevronRight, Download, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocCallout } from "@/components/docs/doc-callout";
 
@@ -18,8 +18,7 @@ export function TroubleshootPageHero() {
             Troubleshooting
           </h1>
           <p className="text-base text-muted-foreground sm:text-lg">
-            Fixes for common errors, activation, performance, controllers, and
-            networking. Start with{" "}
+            Fixes for common errors, controllers, and networking. Start with{" "}
             <strong className="font-medium text-foreground">Common errors</strong>{" "}
             if you have a specific message or code.
           </p>
@@ -34,14 +33,15 @@ export function TroubleshootPageHero() {
             >
               Common errors
             </a>{" "}
-            for fast answers, or review the{" "}
+            for fast answers, or use the{" "}
             <Link
-              href="/docs/install"
+              href="/download"
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
-              install guide
+              download page
             </Link>{" "}
-            if setup is still in progress.
+            if you still need to install: download the launcher, sign in with
+            Discord, then click Play.
           </p>
         </DocCallout>
 
@@ -53,9 +53,9 @@ export function TroubleshootPageHero() {
             </a>
           </Button>
           <Button variant="outline" size="default" asChild className="w-full sm:w-auto">
-            <Link href="/docs/install" className="gap-2">
-              <BookOpen className="h-4 w-4" aria-hidden />
-              Install guide
+            <Link href="/download" className="gap-2">
+              <Download className="h-4 w-4" aria-hidden />
+              Download launcher
             </Link>
           </Button>
           <Button variant="secondary" size="default" asChild className="w-full sm:w-auto">
