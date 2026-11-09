@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "og:images": "tsx scripts/generate-og-images.ts",
     "upload:r2": "node --env-file=.env.local ./node_modules/tsx/dist/cli.mjs scripts/upload-to-r2.ts"
   },
   "dependencies": {
@@ -59,6 +60,8 @@
     "@tailwindcss/typography": "^0.5.10",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.2",
+    "fontkit": "^2.0.4",
+    "sharp": "^0.35.5",
     "tsx": "^4.20.6"
   },
   "optionalDependencies": {

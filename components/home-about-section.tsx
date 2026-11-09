@@ -15,7 +15,7 @@ const TIMELINE = [
   {
     year: "Today",
     title: "This Is Shadowrun",
-    body: "This hub preserves the game, surfaces guides, and connects you to ranked play and to the community.",
+    body: "This hub keeps the 2007 multiplayer shooter playable. It is not Shadowrun Returns, Dragonfall, or Hong Kong.",
   },
 ] as const;
 
@@ -29,13 +29,13 @@ export function HomeAboutSection() {
       <ScrollReveal staggerIndex={1}>
         <p className="mx-auto mb-10 max-w-3xl text-center text-lg font-medium leading-relaxed text-foreground sm:text-xl md:text-2xl">
           <span className="text-balance">
-            One place for{" "}
-            <strong className="font-semibold text-primary">preservation</strong>
+            One place for the{" "}
+            <strong className="font-semibold text-primary">free launcher</strong>
             ,{" "}
             <strong className="font-semibold text-primary">matchmaking</strong>
-            , and{" "}
-            <strong className="font-semibold text-primary">clear docs</strong>{" "}
-            so Shadowrun FPS stays playable and competitive.
+            , and the{" "}
+            <strong className="font-semibold text-primary">community</strong>{" "}
+            that keeps Shadowrun FPS playable.
           </span>
         </p>
       </ScrollReveal>

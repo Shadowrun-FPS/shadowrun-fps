@@ -6,6 +6,7 @@ import {
   LegalPage,
   LegalSection,
 } from "@/components/legal-page";
+import { ogImages } from "@/lib/og-images";
 
 const DESCRIPTION =
   "Terms of use for the Shadowrun FPS community website and launcher.";
@@ -21,20 +22,13 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     url: "https://www.shadowrunfps.com/terms",
     type: "website",
-    images: [
-      {
-        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
-        width: 1200,
-        height: 630,
-        alt: "Shadowrun FPS",
-      },
-    ],
+    images: ogImages("terms"),
   },
   twitter: {
     card: "summary_large_image",
     title: "Terms of Use | Shadowrun FPS",
     description: DESCRIPTION,
-    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
+    images: ogImages("terms"),
   },
 };
 

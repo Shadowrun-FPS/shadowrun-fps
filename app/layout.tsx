@@ -6,6 +6,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientLayout } from "@/components/ClientLayout";
 import { AuthProvider } from "@/components/providers/auth-provider";
 import { OnlineStatus } from "@/components/online-status";
+import { ogImages } from "@/lib/og-images";
 
 const inter = Inter({ subsets: ["latin"] });
 const cinzel = Cinzel({
@@ -24,28 +25,11 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   title: {
-    default: "Shadowrun FPS - Classic Multiplayer Shooter",
+    default: "Shadowrun FPS (2007) — Download and Play on PC",
     template: "%s | Shadowrun FPS",
   },
   description:
-    "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
-  keywords: [
-    "Shadowrun FPS",
-    "competitive FPS",
-    "multiplayer shooter",
-    "cyberpunk FPS",
-    "fantasy FPS",
-    "FASA Studios",
-    "classic FPS games",
-    "team-based shooter",
-    "esports",
-    "gaming community",
-    "cross-platform FPS",
-    "Xbox 360 FPS",
-    "PC FPS games",
-    "tactical shooter",
-    "hero shooter",
-  ],
+    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -61,28 +45,21 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Shadowrun FPS - Classic Multiplayer Shooter",
+    title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
+      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
     url: "https://www.shadowrunfps.com",
     siteName: "Shadowrun FPS",
-    images: [
-      {
-        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
-        width: 1200,
-        height: 630,
-        alt: "Shadowrun FPS Gameplay",
-      },
-    ],
+    images: ogImages("home"),
     locale: "en-US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shadowrun FPS - Classic Multiplayer Shooter",
+    title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
-    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
+      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+    images: ogImages("home"),
     creator: "@ShadowrunFPS",
   },
   robots: {
@@ -178,9 +155,9 @@ export default function RootLayout({
                   "@type": "WebSite",
                   name: "Shadowrun FPS",
                   url: "https://www.shadowrunfps.com",
-                  image: "https://www.shadowrunfps.com/hero-logo-bg.webp",
+                  image: ogImages("home")[0].url,
                   description:
-                    "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
+                    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. This is not Shadowrun Returns.",
                 },
                 {
                   "@type": "Organization",

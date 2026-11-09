@@ -13,63 +13,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { FAQsSection } from "./faqs-section";
+import { ogImages } from "@/lib/og-images";
 import clientPromise from "@/lib/mongodb";
+import { FAQsSection } from "./faqs-section";
 
 export const metadata: Metadata = {
-  title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
+  title: "GFWL and PC Fixes",
   description:
-    "Fix Shadowrun FPS (2007) on PC: Games for Windows Live activation, key errors, FPS caps, NAT, controllers, and crashes. Community-tested fixes for legacy GFWL and preserved multiplayer.",
+    "Fix Shadowrun FPS (2007) on PC: Games for Windows Live activation, key errors, FPS caps, NAT, controllers, and crashes.",
   alternates: {
     canonical: "/troubleshoot",
   },
-  keywords: [
-    "Shadowrun FPS troubleshooting",
-    "Shadowrun GFWL activation",
-    "Games for Windows Live errors",
-    "GFWL key activation Shadowrun",
-    "Games for Windows LIVE Shadowrun",
-    "Shadowrun FPS errors",
-    "Shadowrun PC performance",
-    "Shadowrun NAT strict",
-    "Shadowrun controller not working",
-    "legacy PC game fixes",
-    "game preservation support",
-    "Shadowrun multiplayer connection",
-    "Shadowrun frame rate cap",
-    "Shadowrun xlive",
-    "dead game multiplayer fix",
-  ],
   openGraph: {
-    title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
+    title: "Shadowrun FPS GFWL and PC Fixes",
     description:
-      "GFWL activation, networking, performance, and controller fixes for Shadowrun FPS — plus community support for this preserved classic.",
+      "GFWL activation, networking, performance, and controller fixes for Shadowrun FPS on PC.",
     url: "https://www.shadowrunfps.com/troubleshoot",
     siteName: "Shadowrun FPS",
     locale: "en_US",
     type: "website",
-    images: [
-      {
-        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
-        width: 1200,
-        height: 630,
-        alt: "Troubleshooting Shadowrun FPS",
-      },
-    ],
+    images: ogImages("troubleshooting"),
   },
   twitter: {
     card: "summary_large_image",
-    title: "Troubleshooting Shadowrun FPS | Common Errors & Fixes",
+    title: "Shadowrun FPS GFWL and PC Fixes",
     description:
-      "GFWL, NAT, FPS, and crash fixes for Shadowrun FPS on PC — community preservation guide.",
-    images: [
-      {
-        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
-        width: 1200,
-        height: 630,
-        alt: "Troubleshooting Shadowrun FPS",
-      },
-    ],
+      "GFWL, NAT, FPS, and crash fixes for Shadowrun FPS on PC.",
+    images: ogImages("troubleshooting"),
   },
 };
 

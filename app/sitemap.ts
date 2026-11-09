@@ -2,43 +2,44 @@ import { MetadataRoute } from "next";
 
 const BASE_URL = "https://www.shadowrunfps.com";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
+/** Last content revision. A fresh `new Date()` would mark every URL as changed on each request. */
+const LAST_UPDATED = new Date("2026-11-09");
 
+export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: `${BASE_URL}/`,
-      lastModified: now,
+      lastModified: LAST_UPDATED,
       changeFrequency: "monthly",
       priority: 1.0,
     },
     {
       url: `${BASE_URL}/download`,
-      lastModified: now,
+      lastModified: LAST_UPDATED,
       changeFrequency: "yearly",
       priority: 0.9,
     },
     {
       url: `${BASE_URL}/troubleshoot`,
-      lastModified: now,
+      lastModified: LAST_UPDATED,
       changeFrequency: "yearly",
       priority: 0.8,
     },
     {
       url: `${BASE_URL}/events`,
-      lastModified: now,
+      lastModified: LAST_UPDATED,
       changeFrequency: "monthly",
       priority: 0.8,
     },
     {
       url: `${BASE_URL}/privacy`,
-      lastModified: now,
+      lastModified: LAST_UPDATED,
       changeFrequency: "yearly",
       priority: 0.5,
     },
     {
       url: `${BASE_URL}/terms`,
-      lastModified: now,
+      lastModified: LAST_UPDATED,
       changeFrequency: "yearly",
       priority: 0.5,
     },

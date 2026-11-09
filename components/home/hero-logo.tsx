@@ -20,7 +20,7 @@ export function HeroLogo({
   return (
     <Image
       src={src}
-      alt="Shadowrun"
+      alt="Shadowrun FPS"
       width={width}
       height={height}
       priority

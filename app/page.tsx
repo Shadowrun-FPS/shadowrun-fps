@@ -13,6 +13,7 @@ import { HomeFloatingPlayer } from "@/components/home/home-floating-player";
 import { HeroLogo } from "@/components/home/hero-logo";
 import { authOptions } from "@/lib/auth";
 import { HERO_BACKGROUND_SRC } from "@/lib/hero-assets";
+import { ogImages } from "@/lib/og-images";
 import { canManageFeaturedBroadcast } from "@/lib/security-config";
 
 // ISR: revalidate every 5 minutes as a fallback.
@@ -22,36 +23,27 @@ export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: {
-    absolute:
-      "Shadowrun FPS - FASA Studios' 2007 First Person Multiplayer Shooter",
+    absolute: "Shadowrun FPS (2007) — Download and Play on PC",
   },
   alternates: {
     canonical: "/",
   },
   description:
-    "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
+    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
   openGraph: {
-    title:
-      "Shadowrun FPS - FASA Studios' 2007 First Person Multiplayer Shooter",
+    title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
-    images: [
-      {
-        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
-        width: 1200,
-        height: 630,
-        alt: "Shadowrun FPS Hero Image",
-      },
-    ],
+      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+    images: ogImages("home"),
     url: "https://www.shadowrunfps.com",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shadowrun FPS - FASA Studios' 2007 Multiplayer Shooter",
+    title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
-    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
+      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+    images: ogImages("home"),
   },
 };
 
@@ -59,17 +51,18 @@ const schemaData = {
   "@context": "https://schema.org",
   "@type": "VideoGame",
   name: "Shadowrun FPS",
-  genre: ["First-Person Shooter", "Multiplayer"],
+  alternateName: "Shadowrun (2007)",
+  genre: ["First-person shooter", "Multiplayer"],
+  datePublished: "2007-05-29",
+  gamePlatform: ["Xbox 360", "PC"],
   publisher: {
     "@type": "Organization",
     name: "FASA Studios",
-    image: "https://www.shadowrunfps.com/key-art-banner.png",
-    datePublished: "2007-05-29",
   },
   description:
-    "Shadowrun FPS is a 2007 multiplayer shooter by FASA Studios for Xbox 360 and PC. Join the fan community and keep the game alive!",
-  platform: ["Xbox 360", "PC"],
+    "Shadowrun FPS is the 2007 multiplayer shooter by FASA Studios for Xbox 360 and Windows. It is not Shadowrun Returns, Dragonfall, or Hong Kong. The fan community keeps it playable on PC with a free launcher.",
   url: "https://www.shadowrunfps.com",
+  image: "https://www.shadowrunfps.com/og/home.jpg",
 };
 
 export default async function Home() {
@@ -111,7 +104,7 @@ export default async function Home() {
 
           <div className="relative z-10 flex flex-col gap-24 px-3 mx-auto w-full max-w-7xl text-center sm:px-4 md:px-6 lg:px-8 sm:gap-16">
             <div>
-              <h1 className="sr-only">Shadowrun FPS</h1>
+              <h1 className="sr-only">Shadowrun FPS (2007)</h1>
               <HeroLogo />
             </div>
 
@@ -120,9 +113,6 @@ export default async function Home() {
               <div className="mx-auto w-full max-w-md px-6 sm:mx-0 sm:w-auto sm:max-w-none sm:px-0">
                 <DownloadButton />
               </div>
-              <p className="text-sm text-gray-300/90 [text-shadow:_0_1px_8px_rgba(0,0,0,0.5)]">
-                Compatible with Windows 10 or newer.
-              </p>
             </div>
           </div>
 
@@ -237,7 +227,7 @@ export default async function Home() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify([schemaData]),
+            __html: JSON.stringify(schemaData),
         }}
       />
     </>

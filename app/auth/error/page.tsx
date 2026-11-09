@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
@@ -38,8 +38,8 @@ function AuthErrorContent() {
         <p>{errorMessage}</p>
       </CardContent>
       <CardFooter className="flex justify-end">
-        <Button asChild>
-          <Link href="/login">Back to Sign In</Link>
+        <Button onClick={() => void signIn("discord", { callbackUrl: "/" })}>
+          Back to Sign In
         </Button>
       </CardFooter>
     </Card>

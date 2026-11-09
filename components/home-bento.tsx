@@ -47,11 +47,7 @@ export function HomeBento() {
                 Install & jump in
               </h3>
               <p className="mt-2 max-w-xl text-sm text-muted-foreground sm:text-base">
-                Grab the launcher or follow the install guide—everything you
-                need to run Shadowrun FPS on Windows 10+.
-              </p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground/90">
-                Note: Manual installation supports Windows Vista and newer.
+                Grab the launcher - all you need to run Shadowrun FPS.
               </p>
             </div>
             <div className="mt-6 w-full max-w-md">
@@ -71,7 +67,7 @@ export function HomeBento() {
               </h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 Purchase Shadowrun for Xbox consoles through the Microsoft
-                Store—backward compatible on modern Xbox hardware.
+                Store - backward compatible on modern Xbox hardware.
               </p>
               <p className="mt-2 text-xs leading-relaxed text-muted-foreground/90">
                 Note: The Xbox release is capped at 30 FPS, including on all newer

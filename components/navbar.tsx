@@ -18,10 +18,10 @@ import {
 import {
   Menu,
   X,
+  Calendar,
   Download,
   HelpCircle,
   Home,
-  ChevronDown,
 } from "lucide-react";
 
 
@@ -42,6 +42,14 @@ const DocLinks = [
         },
       ]
     : []),
+  {
+    title: "Events",
+    href: "/events",
+    description: "Community events and tournaments",
+    icon: (
+      <Calendar className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
+  },
   {
     title: "Troubleshoot",
     href: "/troubleshoot",
@@ -98,6 +106,18 @@ export function Navbar() {
               Download
             </Link>
           )}
+
+          <Link
+            href="/events"
+            className={cn(
+              desktopNavControlClass,
+              pathname === "/events" && desktopNavRouteActiveClass
+            )}
+            aria-current={pathname === "/events" ? "page" : undefined}
+          >
+            <Calendar className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Events
+          </Link>
 
           <Link
             href="/troubleshoot"
