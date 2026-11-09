@@ -1,8 +1,7 @@
 import { MessageCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const DEFAULT_DISCORD_HREF =
-  "discord://discord.com/servers/this-is-shadowrun-930362820627943495";
+import { DISCORD_SERVER_HREF as DEFAULT_DISCORD_HREF } from "@/lib/community-links";
 
 interface TroubleshootDiscordCtaProps {
   title: string;

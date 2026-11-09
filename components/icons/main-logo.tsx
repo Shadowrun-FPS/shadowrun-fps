@@ -31,7 +31,7 @@ function MainLogo({ className }: MainLogoProps) {
     >
       {/* Circular icon: hidden on smallest mobile, show from sm (with title) */}
       <Image
-        src="/serverIcon.png"
+        src="/ability-wheel-magic.gif"
         unoptimized
         alt=""
         width={32}
@@ -43,7 +43,7 @@ function MainLogo({ className }: MainLogoProps) {
       {/* Title: only logo on small mobile; from sm shown next to icon */}
       <Image
         className="w-auto h-6 sm:h-8 xl:h-10 max-h-8 sm:max-h-none"
-        src="/title.png"
+        src="/title-wordmark.webp"
         alt="Shadowrun"
         width={240}
         height={170}

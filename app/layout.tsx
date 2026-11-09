@@ -1,6 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Cinzel, Inter, Space_Grotesk } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ClientLayout } from "@/components/ClientLayout";
@@ -8,6 +8,11 @@ import { AuthProvider } from "@/components/providers/auth-provider";
 import { OnlineStatus } from "@/components/online-status";
 
 const inter = Inter({ subsets: ["latin"] });
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  // Variable font: lets the title use heavier weights than Semibold.
+  variable: "--font-cinzel",
+});
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
   variable: "--font-display",
@@ -63,7 +68,7 @@ export const metadata: Metadata = {
     siteName: "Shadowrun FPS",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.webp",
+        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Gameplay",
@@ -77,7 +82,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - Classic Multiplayer Shooter",
     description:
       "Join the active Shadowrun FPS community. Experience unique gameplay combining magic and technology in this classic competitive shooter.",
-    images: ["https://www.shadowrunfps.com/hero.webp"],
+    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
     creator: "@ShadowrunFPS",
   },
   robots: {
@@ -99,7 +104,7 @@ if (typeof window !== "undefined") {
   console.error = (...args) => {
     const errorMessage = args[0]?.toString() || "";
     const fullMessage = args.join(" ");
-    
+
     // Suppress YouTube and Google Play errors blocked by browser extensions
     if (
       errorMessage.includes("ERR_BLOCKED_BY_CLIENT") ||
@@ -113,7 +118,7 @@ if (typeof window !== "undefined") {
     ) {
       return;
     }
-    
+
     // Suppress React warnings in production
     if (
       process.env.NODE_ENV === "production" &&
@@ -124,7 +129,7 @@ if (typeof window !== "undefined") {
     ) {
       return;
     }
-    
+
     originalConsoleError(...args);
   };
 }
@@ -134,7 +139,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const googleSiteVerification = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
+  const googleSiteVerification =
+    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 
   return (
     <html
@@ -163,36 +169,39 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify([
-              {
-                "@context": "https://schema.org",
-                "@type": "WebSite",
-                name: "Shadowrun FPS",
-                url: "https://www.shadowrunfps.com",
-                image: "https://www.shadowrunfps.com/hero.webp",
-                description:
-                  "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
-              },
-              {
-                "@context": "https://schema.org",
-                "@type": "Organization",
-                name: "Shadowrun FPS Community",
-                url: "https://www.shadowrunfps.com",
-                logo: "https://www.shadowrunfps.com/android-chrome-192x192.png",
-                sameAs: [
-                  process.env.NEXT_PUBLIC_SOCIAL_DISCORD,
-                  process.env.NEXT_PUBLIC_SOCIAL_TWITTER,
-                  process.env.NEXT_PUBLIC_SOCIAL_YOUTUBE,
-                  process.env.NEXT_PUBLIC_SOCIAL_TWITCH,
-                ].filter(Boolean),
-              },
-            ]),
+            // One @context with an @graph: some JSON-LD readers can't handle a
+            // top-level array of separate contexts.
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "WebSite",
+                  name: "Shadowrun FPS",
+                  url: "https://www.shadowrunfps.com",
+                  image: "https://www.shadowrunfps.com/hero-logo-bg.webp",
+                  description:
+                    "Experience the unique blend of cyberpunk and fantasy in Shadowrun FPS (2007). Join our active community, find matches, and master this classic competitive shooter combining magic and technology.",
+                },
+                {
+                  "@type": "Organization",
+                  name: "Shadowrun FPS Community",
+                  url: "https://www.shadowrunfps.com",
+                  logo: "https://www.shadowrunfps.com/android-chrome-192x192.png",
+                  sameAs: [
+                    process.env.NEXT_PUBLIC_SOCIAL_DISCORD,
+                    process.env.NEXT_PUBLIC_SOCIAL_TWITTER,
+                    process.env.NEXT_PUBLIC_SOCIAL_YOUTUBE,
+                    process.env.NEXT_PUBLIC_SOCIAL_TWITCH,
+                  ].filter(Boolean),
+                },
+              ],
+            }),
           }}
         />
-        {/* next/font self-hosts Inter and Space Grotesk — no external font requests */}
+        {/* next/font self-hosts Inter, Space Grotesk, and Cinzel — no external font requests */}
       </head>
       <body
-        className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className} ${spaceGrotesk.variable}`}
+        className={`min-h-screen flex flex-col overflow-x-hidden ${inter.className} ${spaceGrotesk.variable} ${cinzel.variable}`}
       >
         <AuthProvider>
           <OnlineStatus />

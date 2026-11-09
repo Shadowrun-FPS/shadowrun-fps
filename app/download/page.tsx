@@ -3,9 +3,11 @@ import { Download } from "lucide-react";
 import { DownloadVersions } from "@/components/download-versions";
 import { Button } from "@/components/ui/button";
 import {
+  CHANGELOG_CHANNEL_URL,
   GAME_VERSION,
   LAUNCHER_SETUP_URL,
   LAUNCHER_VERSION,
+  PORTABLE_LAUNCHER_URL,
 } from "@/lib/download-urls";
 
 const installSteps = [
@@ -53,6 +55,7 @@ export default function DownloadPage() {
         </h2>
         <DownloadVersions
           className="mt-2"
+          changelogHref={CHANGELOG_CHANNEL_URL}
           gameVersion={GAME_VERSION}
           launcherVersion={LAUNCHER_VERSION}
         />
@@ -85,6 +88,23 @@ export default function DownloadPage() {
           <strong className="font-semibold">Discord server membership</strong> is
           required. Updates and repair tools are built in.
         </p>
+      </section>
+
+      <section className="mt-10 border-t border-border/40 pt-6">
+        <h3 className="text-base font-semibold text-foreground">
+          Prefer the old launcher?
+        </h3>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          The previous community launcher, which uses GFWL (Games for Windows
+          Live), is still available if you would rather not use the new
+          launcher, which removes GFWL.
+        </p>
+        <Button asChild variant="outline" size="sm" className="mt-3">
+          <a href={PORTABLE_LAUNCHER_URL}>
+            <Download aria-hidden />
+            Download old community launcher
+          </a>
+        </Button>
       </section>
     </div>
   );

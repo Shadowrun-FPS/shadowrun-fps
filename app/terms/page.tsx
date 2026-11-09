@@ -1,21 +1,29 @@
 import { Metadata } from "next";
 
+import {
+  LegalContactSection,
+  LegalList,
+  LegalPage,
+  LegalSection,
+} from "@/components/legal-page";
+
+const DESCRIPTION =
+  "Terms of use for the Shadowrun FPS community website and launcher.";
+
 export const metadata: Metadata = {
   title: "Terms of Use",
   alternates: {
     canonical: "/terms",
   },
-  description:
-    "Review the Shadowrun FPS terms of use governing access to our platform, community features, and game launcher.",
+  description: DESCRIPTION,
   openGraph: {
     title: "Terms of Use | Shadowrun FPS",
-    description:
-      "Review the Shadowrun FPS terms of use governing access to our platform, community features, and game launcher.",
+    description: DESCRIPTION,
     url: "https://www.shadowrunfps.com/terms",
     type: "website",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.webp",
+        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS",
@@ -25,265 +33,160 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Terms of Use | Shadowrun FPS",
-    description:
-      "Review the Shadowrun FPS terms of use governing access to our platform, community features, and game launcher.",
-    images: ["https://www.shadowrunfps.com/hero.webp"],
+    description: DESCRIPTION,
+    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
   },
 };
 
 export default function TermsOfUse() {
   return (
-    <div className="container max-w-4xl py-12">
-      <h1 className="mb-8 text-4xl font-bold tracking-tight">Terms of Use</h1>
-
-      <div className="prose prose-invert max-w-none">
-        <p className="mb-8 text-xl text-muted-foreground">
-          Last Updated:{" "}
-          {new Date().toLocaleDateString("en-US", {
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+    <LegalPage title="Terms of Use" logo="terms" lastUpdated="November 9, 2026">
+      <LegalSection title="1. Acceptance of Terms">
+        <p>
+          By using the Shadowrun FPS website or launcher (together, the
+          &quot;Platform&quot;), you agree to these Terms of Use. If you do not
+          agree, do not use the Platform.
         </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">
-            1. Acceptance of Terms
-          </h2>
-          <p>
-            By accessing or using the Shadowrun FPS platform
-            (&quot;Platform&quot;), you agree to be bound by these Terms of Use
-            and all applicable laws and regulations. If you do not agree with
-            any of these terms, you are prohibited from using or accessing this
-            site.
-          </p>
-        </section>
+      <LegalSection title="2. About This Project">
+        <p>
+          Shadowrun FPS is a community-run fan project. It is not affiliated
+          with, endorsed by, or sponsored by FASA Studios, Microsoft, or the
+          owners of the Shadowrun trademarks. Shadowrun and related names and
+          marks belong to their respective owners.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">2. Use License</h2>
-          <p>
-            Permission is granted to temporarily use the Platform for personal,
-            non-commercial transitory viewing and participation in tournaments.
-            This is the grant of a license, not a transfer of title, and under
-            this license you may not:
-          </p>
-          <ul className="pl-6 mt-2 mb-4 list-disc">
-            <li>Modify or copy the materials</li>
-            <li>Use the materials for any commercial purpose</li>
-            <li>
-              Attempt to decompile or reverse engineer any software contained on
-              the Platform
-            </li>
-            <li>
-              Remove any copyright or other proprietary notations from the
-              materials
-            </li>
-            <li>
-              Transfer the materials to another person or &quot;mirror&quot; the
-              materials on any other server
-            </li>
-          </ul>
-          <p>
-            This license shall automatically terminate if you violate any of
-            these restrictions and may be terminated by Shadowrun FPS at any
-            time.
-          </p>
-        </section>
+      <LegalSection title="3. Use of the Platform">
+        <p>
+          You may use the website and launcher for personal, non-commercial
+          purposes. You may not:
+        </p>
+        <LegalList>
+          <li>Use the Platform for any commercial purpose</li>
+          <li>
+            Copy, redistribute, or mirror Platform files or content on another
+            server without permission
+          </li>
+          <li>
+            Decompile or reverse engineer Platform software, except where the
+            law allows it
+          </li>
+          <li>Remove copyright or other ownership notices</li>
+        </LegalList>
+        <p>
+          This permission ends automatically if you break these terms and may be
+          ended by us at any time.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">3. User Accounts</h2>
-          <p>
-            To access certain features of the Platform, you may be required to
-            create an account. You are responsible for maintaining the
-            confidentiality of your account information, including your
-            password, and for all activity that occurs under your account. You
-            agree to notify us immediately of any unauthorized use of your
-            account.
-          </p>
-          <p className="mt-2">
-            When creating an account, you agree to provide accurate, current,
-            and complete information. You also agree not to impersonate anyone,
-            misrepresent your identity or affiliation with any person or entity,
-            or create a false identity.
-          </p>
-        </section>
+      <LegalSection title="4. Sign-In and Discord Membership">
+        <p>
+          You sign in with your Discord account. You are responsible for
+          activity under your account and for following Discord&apos;s Terms of
+          Service. Joining the Shadowrun FPS Discord server is required to use
+          the launcher.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">
-            4. Tournament Rules and Conduct
-          </h2>
-          <p>
-            Participants in tournaments must adhere to the specific rules and
-            guidelines for each tournament. Shadowrun FPS reserves the right to
-            disqualify any participant from a tournament for misconduct,
-            cheating, or violation of tournament rules.
-          </p>
-          <p className="mt-2">
-            We expect all participants to maintain good sportsmanship and
-            respectful behavior towards other players, spectators, and
-            tournament officials. Harassment, hate speech, or any form of
-            discriminatory behavior will not be tolerated.
-          </p>
-        </section>
+      <LegalSection title="5. Community Conduct">
+        <p>
+          Follow the rules of the Discord server and treat other players with
+          respect. Harassment, hate speech, and discrimination are not
+          tolerated. Cheating or exploiting bugs to gain an unfair advantage may
+          lead to removal from the community.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">5. User Content</h2>
-          <p>
-            Users may post content such as team profiles, tournament comments,
-            and forum posts. You retain ownership of all content you submit, but
-            grant Shadowrun FPS a worldwide, non-exclusive, royalty-free license
-            to use, reproduce, modify, adapt, publish, translate, and distribute
-            your content in any existing or future media.
-          </p>
-          <p className="mt-2">
-            You represent and warrant that your content does not violate any
-            third-party rights, including copyright, trademark, privacy, or
-            other personal or proprietary rights.
-          </p>
-          <p className="mt-2">
-            Shadowrun FPS reserves the right to remove any content that violates
-            these Terms or is otherwise objectionable at our sole discretion.
-          </p>
-        </section>
+      <LegalSection title="6. Prohibited Activities">
+        <p>You agree not to:</p>
+        <LegalList>
+          <li>Break any local, state, national, or international law</li>
+          <li>Harass, threaten, or intimidate other users</li>
+          <li>Pretend to be another person or group</li>
+          <li>Disrupt the Platform or the servers connected to it</li>
+          <li>
+            Try to gain unauthorized access to the Platform, other accounts, or
+            connected systems
+          </li>
+          <li>
+            Use bots, scrapers, or other automated tools to access the website
+          </li>
+          <li>Cheat or exploit bugs in the game</li>
+        </LegalList>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">
-            6. Prohibited Activities
-          </h2>
-          <p>You agree not to engage in any of the following activities:</p>
-          <ul className="pl-6 mt-2 mb-4 list-disc">
-            <li>
-              Using the service for any illegal purpose or in violation of any
-              local, state, national, or international law
-            </li>
-            <li>Harassing, threatening, or intimidating other users</li>
-            <li>
-              Impersonating any person or entity, or falsely stating or
-              otherwise misrepresenting your affiliation with a person or entity
-            </li>
-            <li>
-              Interfering with or disrupting the Platform or servers or networks
-              connected to the Platform
-            </li>
-            <li>
-              Attempting to gain unauthorized access to parts of the Platform,
-              other accounts, computer systems, or networks connected to the
-              Platform
-            </li>
-            <li>
-              Using any robot, spider, scraper, or other automated means to
-              access the Platform
-            </li>
-            <li>Cheating or exploiting bugs in tournaments or games</li>
-            <li>
-              Engaging in any activity that could disable, overburden, or impair
-              the functioning of the Platform
-            </li>
-          </ul>
-        </section>
+      <LegalSection title="7. Your Feedback">
+        <p>
+          If you send us feedback or suggestions, you allow us to use them to
+          improve the project without payment or credit. You are responsible for
+          anything you submit.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">7. Disclaimer</h2>
-          <p>
-            The materials on the Platform are provided on an &apos;as is&apos;
-            basis. Shadowrun FPS makes no warranties, expressed or implied, and
-            hereby disclaims and negates all other warranties including, without
-            limitation, implied warranties or conditions of merchantability,
-            fitness for a particular purpose, or non-infringement of
-            intellectual property or other violation of rights.
-          </p>
-          <p className="mt-2">
-            Shadowrun FPS does not warrant or make any representations
-            concerning the accuracy, likely results, or reliability of the use
-            of the materials on the Platform or otherwise relating to such
-            materials or on any resources linked to this Platform.
-          </p>
-        </section>
+      <LegalSection title="8. Downloads and Third-Party Software">
+        <p>
+          The launcher and game files are provided for the community&apos;s use.
+          Some components come from third parties, and older versions of the
+          launcher rely on legacy software such as Games for Windows Live. You
+          download and run all files at your own risk.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">8. Limitations</h2>
-          <p>
-            In no event shall Shadowrun FPS or its suppliers be liable for any
-            damages (including, without limitation, damages for loss of data or
-            profit, or due to business interruption) arising out of the use or
-            inability to use the materials on the Platform, even if Shadowrun
-            FPS or a Shadowrun FPS authorized representative has been notified
-            orally or in writing of the possibility of such damage.
-          </p>
-        </section>
+      <LegalSection title="9. Disclaimer">
+        <p>
+          The Platform is provided &quot;as is&quot; and &quot;as
+          available.&quot; We make no warranties of any kind, including
+          warranties of merchantability, fitness for a particular purpose, or
+          non-infringement. We do not promise that the Platform will be
+          available, accurate, or free of errors.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">
-            9. Revisions and Errata
-          </h2>
-          <p>
-            The materials appearing on the Platform could include technical,
-            typographical, or photographic errors. Shadowrun FPS does not
-            warrant that any of the materials on the Platform are accurate,
-            complete, or current. Shadowrun FPS may make changes to the
-            materials contained on the Platform at any time without notice.
-          </p>
-        </section>
+      <LegalSection title="10. Limitation of Liability">
+        <p>
+          To the fullest extent the law allows, Shadowrun FPS and its volunteers
+          are not liable for any damages, including loss of data or profit,
+          arising from your use of or inability to use the Platform.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">10. Links</h2>
-          <p>
-            Shadowrun FPS has not reviewed all of the sites linked to its
-            Platform and is not responsible for the contents of any such linked
-            site. The inclusion of any link does not imply endorsement by
-            Shadowrun FPS of the site. Use of any such linked website is at the
-            user&apos;s own risk.
-          </p>
-        </section>
+      <LegalSection title="11. Links">
+        <p>
+          We link to other sites we do not control and are not responsible for
+          their content. A link is not an endorsement. Use linked sites at your
+          own risk.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">
-            11. Modifications to Terms of Use
-          </h2>
-          <p>
-            Shadowrun FPS may revise these Terms of Use for the Platform at any
-            time without notice. By using this Platform, you are agreeing to be
-            bound by the then current version of these Terms of Use.
-          </p>
-        </section>
+      <LegalSection title="12. Changes to These Terms">
+        <p>
+          We may update these terms at any time. The current version is always
+          posted on this page, and continuing to use the Platform means you
+          accept it.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">12. Governing Law</h2>
-          <p>
-            These terms and conditions are governed by and construed in
-            accordance with the laws and you irrevocably submit to the exclusive
-            jurisdiction of the courts in that location.
-          </p>
-        </section>
+      <LegalSection title="13. Governing Law">
+        <p>
+          These terms are governed by the laws of the State of California,
+          United States, without regard to its conflict of law rules. Any
+          dispute will be heard in the state or federal courts located in
+          California.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          <h2 className="mb-4 text-2xl font-semibold">13. Termination</h2>
-          <p>
-            We may terminate or suspend your account and bar access to the
-            Platform immediately, without prior notice or liability, under our
-            sole discretion, for any reason whatsoever and without limitation,
-            including but not limited to a breach of the Terms.
-          </p>
-          <p className="mt-2">
-            If you wish to terminate your account, you may simply discontinue
-            using the Platform or contact us to request account deletion.
-          </p>
-        </section>
+      <LegalSection title="14. Termination">
+        <p>
+          We may suspend or end your access to the Platform at any time, without
+          notice, including for breaking these terms. You may stop using the
+          Platform at any time, or ask us to delete your account data through
+          Discord.
+        </p>
+      </LegalSection>
 
-        <section className="mb-8">
-          {/* <h2 className="mb-4 text-2xl font-semibold">14. Contact Us</h2>
-          <p>
-            If you have any questions about these Terms, please contact us
-            through our Discord server or by email at:{" "}
-            <a
-              href="mailto:terms@shadowrunfps.com"
-              className="text-primary hover:underline"
-            >
-              terms@shadowrunfps.com
-            </a>
-          </p> */}
-        </section>
-      </div>
-    </div>
+      <LegalContactSection subject="these terms" />
+    </LegalPage>
   );
 }

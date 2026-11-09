@@ -20,7 +20,7 @@ export const metadata: Metadata = {
       "Download the Shadowrun FPS launcher, sign in with Discord, and play. Discord server membership is required.",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.webp",
+        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Download Page",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: "Download Shadowrun FPS Launcher",
     description:
       "Download the Shadowrun FPS launcher, sign in with Discord, and play. Discord server membership is required.",
-    images: ["https://www.shadowrunfps.com/hero.webp"],
+    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
   },
 };
 

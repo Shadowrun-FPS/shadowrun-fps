@@ -42,7 +42,7 @@
       </head>
       <body>
         <header class="header">
-          <a class="logo-link" href="{$base}/"><img src="/title.png" alt="Shadowrun FPS"/></a>
+          <a class="logo-link" href="{$base}/"><img src="/title-wordmark.webp" alt="Shadowrun FPS"/></a>
           <p class="back"><a href="{$base}/">← Back to site</a></p>
           <p class="intro">Indexable pages. Crawlers use the raw XML; this view is for humans.</p>
         </header>

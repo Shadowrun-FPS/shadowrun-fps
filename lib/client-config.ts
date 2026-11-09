@@ -15,6 +15,7 @@ export const CLIENT_CONFIG = {
   FEATURES: {
     PLAYER_STATS: process.env.NEXT_PUBLIC_FEATURE_PLAYER_STATS === "true",
     MODERATION: process.env.NEXT_PUBLIC_FEATURE_MODERATION === "true",
+    MATCHES: process.env.NEXT_PUBLIC_FEATURE_MATCHES === "true",
   },
 } as const;
 
@@ -45,7 +46,7 @@ export function hasPermission(
   requiredPermission: keyof Pick<
     UserPermissions,
     "isAdmin" | "isModerator" | "canCreateTournament" | "isDeveloper"
-  >
+  >,
 ): boolean {
   if (!permissions) return false;
   return permissions[requiredPermission] === true;

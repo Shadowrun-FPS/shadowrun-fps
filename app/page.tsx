@@ -10,7 +10,9 @@ import { ScrollReveal } from "@/components/scroll-reveal";
 import { VisibleMount } from "@/components/visible-mount";
 import { HomeClientExtras } from "@/components/home/home-client-extras";
 import { HomeFloatingPlayer } from "@/components/home/home-floating-player";
+import { HeroLogo } from "@/components/home/hero-logo";
 import { authOptions } from "@/lib/auth";
+import { HERO_BACKGROUND_SRC } from "@/lib/hero-assets";
 import { canManageFeaturedBroadcast } from "@/lib/security-config";
 
 // ISR: revalidate every 5 minutes as a fallback.
@@ -35,7 +37,7 @@ export const metadata: Metadata = {
       "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.webp",
+        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Hero Image",
@@ -49,7 +51,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS - FASA Studios' 2007 Multiplayer Shooter",
     description:
       "Join the Shadowrun community and download the classic 2007 FPS for PC. Get installation guides, troubleshooting support, and more!",
-    images: ["https://www.shadowrunfps.com/hero.webp"],
+    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
   },
 };
 
@@ -61,7 +63,7 @@ const schemaData = {
   publisher: {
     "@type": "Organization",
     name: "FASA Studios",
-    image: "https://www.shadowrunfps.com/shadowrun_invite_banner.png",
+    image: "https://www.shadowrunfps.com/key-art-banner.png",
     datePublished: "2007-05-29",
   },
   description:
@@ -77,7 +79,7 @@ export default async function Home() {
     canManageFeaturedBroadcast(
       session.user.id,
       session.user.roles ?? [],
-      session.user.isAdmin
+      session.user.isAdmin,
     );
 
   return (
@@ -90,31 +92,27 @@ export default async function Home() {
       <link
         rel="preload"
         as="image"
-        href="/hero.webp"
+        href={HERO_BACKGROUND_SRC}
         type="image/webp"
         fetchPriority="high"
       />
       <div className="relative right-1/2 left-1/2 -mx-0 -mt-6 w-screen -translate-x-1/2 sm:-mx-0 md:-mx-0 lg:-mx-0">
         <section className="relative flex flex-col items-center justify-center min-h-[calc(100vh-79px)] sm:min-h-[calc(100vh-89px)] py-12 sm:py-16 md:py-20">
           <div className="absolute inset-0 w-full h-full">
-            <div className="absolute inset-0 bg-center bg-cover bg-hero-image md:bg-fixed" />
+            <div
+              className="absolute inset-0 bg-center bg-cover md:bg-fixed"
+              style={{ backgroundImage: `url('${HERO_BACKGROUND_SRC}')` }}
+            />
           </div>
 
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-background" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent opacity-70" />
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_0%,rgba(0,0,0,0.8)_100%)]" />
+          {/* Light scrim: keeps the background art visible while text stays readable */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/25 to-background" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-black/35 via-transparent to-transparent" />
 
           <div className="relative z-10 flex flex-col gap-24 px-3 mx-auto w-full max-w-7xl text-center sm:px-4 md:px-6 lg:px-8 sm:gap-16">
-            <div className="duration-1000 animate-in slide-in-from-top">
-              <h1 className="mb-3 sm:mb-4 text-3xl font-bold tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl [text-shadow:_0_4px_24px_rgba(0,0,0,0.5)]">
-                <span className="inline-block bg-clip-text">Shadowrun</span>{" "}
-                <span className="inline-block text-primary [text-shadow:_0_4px_24px_rgba(var(--primary),0.5)]">
-                  FPS
-                </span>
-              </h1>
-              <p className="px-2 mx-auto max-w-3xl text-base sm:text-lg md:text-xl lg:text-2xl text-gray-200 [text-shadow:_0_2px_12px_rgba(0,0,0,0.5)] duration-1000 delay-300 animate-in fade-in sm:px-0">
-                Welcome to the community hub for the Shadowrun FPS
-              </p>
+            <div>
+              <h1 className="sr-only">Shadowrun FPS</h1>
+              <HeroLogo />
             </div>
 
             <div className="flex flex-col gap-2 justify-center items-center duration-1000 delay-300 animate-in fade-in">

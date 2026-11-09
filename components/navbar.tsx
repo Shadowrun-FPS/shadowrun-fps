@@ -202,7 +202,7 @@ export function MobileNavMenu() {
           </SheetDescription>
           <div className="flex min-h-[2.5rem] items-center pr-12 sm:pr-14">
             <Image
-              src="/title.png"
+              src="/title-wordmark.webp"
               alt="Shadowrun"
               width={240}
               height={170}

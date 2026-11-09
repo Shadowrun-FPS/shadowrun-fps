@@ -337,5 +337,5 @@ export function getPlayerAvatarUrl(player: any, baseUrl: string): string {
   }
 
   // Fallback to default image
-  return `${baseUrl}/hero.webp`;
+  return `${baseUrl}/hero-logo-bg.webp`;
 }

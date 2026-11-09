@@ -3,8 +3,7 @@ import { ChevronRight, Download, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DocCallout } from "@/components/docs/doc-callout";
 
-const DISCORD_HREF =
-  "discord://discord.com/servers/this-is-shadowrun-930362820627943495";
+import { DISCORD_SERVER_HREF as DISCORD_HREF } from "@/lib/community-links";
 
 export function TroubleshootPageHero() {
   return (
@@ -14,9 +13,9 @@ export function TroubleshootPageHero() {
           <p className="text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             Support
           </p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-[2.5rem] md:leading-tight">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-[2.5rem] md:leading-tight">
             Troubleshooting
-          </h1>
+          </h2>
           <p className="text-base text-muted-foreground sm:text-lg">
             Fixes for common errors, controllers, and networking. Start with{" "}
             <strong className="font-medium text-foreground">Common errors</strong>{" "}

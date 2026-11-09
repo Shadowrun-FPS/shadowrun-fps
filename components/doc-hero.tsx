@@ -2,17 +2,33 @@
 
 import { usePathname } from "next/navigation";
 
-const pageTitles: Record<string, { title: string; description: string }> = {
+import { PageTitle } from "@/components/page-title";
+import { HERO_BACKGROUND_SRC } from "@/lib/hero-assets";
+import type { PageTitleLogoKey } from "@/types";
+
+const pageTitles: Record<
+  string,
+  { title: string; logo?: PageTitleLogoKey; description: string }
+> = {
   "/download": {
     title: "Download",
+    logo: "download",
     description: "Download the launcher, sign in with Discord, and play.",
   },
   "/events": {
     title: "Events",
+    logo: "events",
     description: "Community events, tournaments, and gatherings",
+  },
+  "/matches": {
+    title: "Matches",
+    logo: "matches",
+    description:
+      "Search ranked best-of-three series and open any game to see its scoreboard.",
   },
   "/troubleshoot": {
     title: "Troubleshooting",
+    logo: "troubleshooting",
     description: "Fixes for common errors, controllers, and networking.",
   },
 };
@@ -29,27 +45,24 @@ export function DocHero() {
       {/* Hero Image with improved styling */}
       <div
         className="relative h-72 bg-center bg-no-repeat bg-cover sm:h-80 md:h-96 lg:h-[32rem] xl:h-[36rem]"
-        style={{ backgroundImage: "url('/hero.webp')" }}
+        style={{ backgroundImage: `url('${HERO_BACKGROUND_SRC}')` }}
       >
-        {/* Enhanced gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/50 to-black/70" />
-        <div className="absolute inset-0 bg-gradient-to-r via-transparent from-black/40 to-black/40" />
+        {/* Light scrim: keeps the background visible while text stays readable */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/25 to-black/60" />
 
         {/* Decorative shape overlay */}
         <div className="absolute inset-0">
           <div className="absolute right-0 bottom-0 left-0 h-1/3 bg-gradient-to-t to-transparent from-background via-background/80" />
         </div>
 
-        {/* Content — pinned low; flush bottom on narrow screens so title sits near hero edge */}
-        <div className="relative z-10 flex h-full flex-col justify-end px-4 pb-0 pt-2 sm:px-6 sm:pb-2 md:px-8 md:pb-8 lg:pb-12">
-          <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-[0_2px_24px_rgba(0,0,0,0.85)] [text-shadow:_0_2px_16px_rgb(0_0_0_/_0.75)] lg:text-4xl">
-              {pageInfo.title}
-            </h1>
-            <p className="mt-2.5 text-sm leading-snug text-gray-100 drop-shadow-md md:mt-3 md:text-base lg:text-lg">
-              {pageInfo.description}
-            </p>
+        {/* Content: page wordmark centered in the hero, description pinned low */}
+        <div className="relative z-10 flex h-full flex-col justify-end px-4 pb-3 pt-2 sm:px-6 sm:pb-4 md:px-8 md:pb-8 lg:pb-12">
+          <div className="flex min-h-0 flex-1 items-center justify-center">
+            <PageTitle logo={pageInfo.logo}>{pageInfo.title}</PageTitle>
           </div>
+          <p className="mx-auto max-w-2xl text-center text-sm leading-snug text-gray-100 drop-shadow-md md:text-base lg:text-lg">
+            {pageInfo.description}
+          </p>
         </div>
       </div>
     </div>

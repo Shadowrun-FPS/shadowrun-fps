@@ -5,8 +5,7 @@ import DownloadButton from "@/components/download-button";
 import { HomeSectionHeading } from "@/components/home-section-heading";
 import { cn } from "@/lib/utils";
 
-const DISCORD_HREF =
-  "discord://discord.com/servers/this-is-shadowrun-930362820627943495";
+import { DISCORD_SERVER_HREF as DISCORD_HREF } from "@/lib/community-links";
 
 const XBOX_STORE_HREF =
   "https://www.xbox.com/en-us/games/store/Shadowrun/BSNJBK3GBDT3";

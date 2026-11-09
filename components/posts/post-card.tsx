@@ -171,7 +171,7 @@ export function PostCard({ post }: { post: Post }) {
           ) : (
             <div className="relative w-full h-full">
               <Image
-                src="/shadowrun_invite_banner.png"
+                src="/key-art-banner.png"
                 alt="Shadowrun FPS Banner"
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

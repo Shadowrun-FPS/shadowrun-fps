@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://www.shadowrunfps.com/hero.webp",
+        url: "https://www.shadowrunfps.com/hero-logo-bg.webp",
         width: 1200,
         height: 630,
         alt: "Shadowrun FPS Community Events",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     title: "Shadowrun FPS Community Events & Tournaments",
     description:
       "Tournaments, community nights, and schedules from the Shadowrun FPS preservation community.",
-    images: ["https://www.shadowrunfps.com/hero.webp"],
+    images: ["https://www.shadowrunfps.com/hero-logo-bg.webp"],
   },
 };
 
