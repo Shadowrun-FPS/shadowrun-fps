@@ -1,227 +1,151 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
-import { format } from "date-fns";
 import { ExternalLink } from "lucide-react";
-import { useState } from "react";
+import { memo } from "react";
+import { PostCoverImage } from "@/components/posts/post-cover-image";
+import { PostTypeBadge } from "@/components/posts/post-type-badge";
+import { formatPostDate } from "@/lib/post-date";
+import { cn } from "@/lib/utils";
+import type { Post } from "@/types";
 
-// Update the Post interface to include all properties used in the component
-interface Post {
-  _id: string;
-  title: string;
-  content?: string;
-  description?: string;
-  imageUrl?: string;
-  image?: string;
-  thumbnail?: string;
-  featuredImage?: string;
-  slug?: string;
-  type?: string;
-  date?: string;
-  eventDate?: string;
-  datePublished?: string;
-  author?: string;
-  authorNickname?: string;
-  creator?: string;
-  createdAt?: string;
-  publishedAt?: string;
-  excerpt?: string;
-  summary?: string;
-  link?: string;
-  url?: string;
-  externalLink?: string;
-  href?: string;
+export type PostCardVariant = "grid" | "lead";
+
+interface PostCardProps {
+  post: Post;
+  variant?: PostCardVariant;
+  /** True while an event's calendar day is today or later. */
+  upcoming?: boolean;
+  /** Load the cover immediately (the lead card is above the fold). */
+  priority?: boolean;
+  /** Opens the read sheet for posts without an external link. */
+  onOpen: (post: Post) => void;
 }
 
-export function PostCard({ post }: { post: Post }) {
-  const [imageError, setImageError] = useState(false);
+const titleLinkClassName =
+  "text-left after:absolute after:inset-0 after:rounded-2xl after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-primary focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-background";
 
-  // Format date safely - check multiple possible date field names
-  const formatDate = () => {
-    // Prioritize datePublished over date field
-    // Check various possible date fields in order of preference
-    const dateValue = post.datePublished || post.date || post.createdAt || post.publishedAt;
-
-    if (!dateValue) return "No date";
-
-    try {
-      let date: Date;
-      
-      // Check if it's already a Date object using Object.prototype.toString
-      if (dateValue && typeof dateValue === "object" && Object.prototype.toString.call(dateValue) === "[object Date]") {
-        // Already a Date object
-        date = dateValue as Date;
-      } else if (typeof dateValue === "string") {
-        // Handle different string formats
-        // Check if it's in MM-DD-YYYY format (e.g., "10-17-2023")
-        const mmddyyyyMatch = dateValue.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-        if (mmddyyyyMatch) {
-          const [, month, day, year] = mmddyyyyMatch;
-          date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        } else {
-          // Try standard Date parsing (ISO, etc.)
-          date = new Date(dateValue);
-        }
-      } else {
-        date = new Date(dateValue as string | number);
-      }
-
-      // Check if date is valid before formatting
-      if (isNaN(date.getTime())) {
-        return "Invalid date";
-      }
-
-      return format(date, "MMM d, yyyy");
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Invalid date";
-    }
-  };
-
-  // Update the getImageUrl function to ensure it always returns a string
-  // Normalize local image URLs to start with / if they don't already
-  const getImageUrl = () => {
-    const url = post.imageUrl || post.image || post.thumbnail || post.featuredImage || "";
-    if (!url) return "";
-    
-    // If it's already an external URL, return as-is
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-    
-    // If it's a local path and doesn't start with /, add it
-    if (url && !url.startsWith("/")) {
-      return `/${url}`;
-    }
-    
-    return url;
-  };
-
-  // Update the getLink function to not return a fallback "#"
-  const getLink = () => {
-    return post.link || post.url || post.externalLink || post.href || "";
-  };
-
-  // Now hasLink will only be true if there's an actual link
-  const hasLink = Boolean(getLink());
-  const imageSrc = getImageUrl();
-  const isRemoteImage =
-    imageSrc.startsWith("http://") || imageSrc.startsWith("https://");
-  const hasImage = !!imageSrc && !imageError;
-
+function PostCardComponent({
+  post,
+  variant = "grid",
+  upcoming = false,
+  priority = false,
+  onOpen,
+}: PostCardProps) {
+  const isLead = variant === "lead";
+  const hasLink = Boolean(post.link);
   const title = post.title || "Untitled";
-  const CardWrapper = ({ children }: { children: React.ReactNode }) => {
-    if (hasLink) {
-      return (
-        <Link
-          href={getLink()}
-          target="_blank"
-          rel="noopener noreferrer"
-          passHref
-          className="block h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl sm:rounded-2xl"
-          aria-label={`Read more about ${title} (opens in new tab)`}
-        >
-          <div className="cursor-pointer h-full transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]">
-            {children}
-          </div>
-        </Link>
-      );
-    }
-    return (
-      <div className="h-full cursor-default" role="article">
-        {children}
-      </div>
-    );
-  };
+
+  const titleClassName = cn(
+    titleLinkClassName,
+    "font-bold leading-tight text-foreground transition-colors group-hover:text-primary",
+    isLead
+      ? "text-xl sm:text-2xl lg:text-3xl line-clamp-3"
+      : "text-lg sm:text-xl line-clamp-2"
+  );
 
   return (
-    <CardWrapper>
-      <article className={`flex flex-col h-full ${hasLink ? "group" : ""}`}>
-        {/* Image with soft rounded corners - no outer card border */}
-        <div className="relative w-full h-48 sm:h-56 overflow-hidden rounded-xl sm:rounded-2xl">
-          {hasImage && !imageError ? (
-            <>
-              <Image
-                src={imageSrc}
-                alt={post.title || "Post image"}
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                priority={false}
-                loading="lazy"
-                unoptimized={isRemoteImage}
-                className={`object-cover transition-transform duration-700 ${hasLink ? "group-hover:scale-105" : ""}`}
-                onError={() => setImageError(true)}
-                style={{ objectPosition: "center center" }}
-              />
-              <div
-                className={`absolute inset-0 transition-opacity duration-300 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-70 ${hasLink ? "group-hover:opacity-50" : ""}`}
-              />
-              {hasLink && (
-                <div
-                  className="absolute bottom-3 right-3 z-10 flex items-center justify-center transition-all duration-300 opacity-0 group-hover:opacity-100 scale-95 group-hover:scale-100"
-                  aria-hidden="true"
-                >
-                  <div className="p-2 rounded-full bg-primary/85 backdrop-blur-sm shadow-md border border-white/20">
-                    <ExternalLink className="w-4 h-4 text-white" aria-hidden="true" />
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="relative w-full h-full">
-              <Image
-                src="/key-art-banner.png"
-                alt="Shadowrun FPS Banner"
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                className="object-cover"
-                unoptimized={false}
-              />
-            </div>
-          )}
+    <article
+      className={cn(
+        "group relative flex h-full flex-col",
+        isLead && "sm:flex-row sm:items-center sm:gap-6 lg:gap-8"
+      )}
+    >
+      {/* Every cover is 16:9, so one upload size crops the same way in both layouts. */}
+      <div
+        className={cn(
+          "relative aspect-video w-full overflow-hidden rounded-xl sm:rounded-2xl",
+          isLead && "sm:w-1/2 sm:shrink-0"
+        )}
+      >
+        <PostCoverImage
+          imageUrl={post.imageUrl}
+          alt={post.title}
+          priority={priority}
+          sizes={
+            isLead
+              ? "(max-width: 640px) 100vw, 50vw"
+              : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          }
+          className="transition-transform duration-700 group-hover:scale-105"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-          {/* Type badge – smaller, lighter so it doesn’t compete with the image */}
-          <div className="absolute z-10 top-2.5 left-2.5 sm:top-3 sm:left-3">
-            <span
-              className={`inline-block px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider rounded-md backdrop-blur-sm ${
-                post.type === "EVENT"
-                  ? "bg-primary/35 text-white"
-                  : "bg-black/40 text-white"
-              }`}
-            >
-              {post.type || "Post"}
-            </span>
+        {/* One row so the badges and date wrap together instead of overlapping on narrow covers. */}
+        <div className="absolute inset-x-2.5 top-2.5 z-10 flex flex-wrap items-start justify-between gap-1.5 sm:inset-x-3 sm:top-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <PostTypeBadge type={post.type} />
+            {upcoming ? (
+              <span className="inline-block rounded-md bg-background/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-foreground shadow-sm sm:text-xs">
+                Upcoming
+              </span>
+            ) : null}
           </div>
-
-          {/* Date – same minimal style as type for consistency */}
-          <div className="absolute z-10 top-2.5 right-2.5 sm:top-3 sm:right-3">
-            <span className="inline-block px-2 py-0.5 text-[10px] sm:text-xs font-semibold text-white rounded-md bg-black/40 backdrop-blur-sm">
-              {formatDate()}
-            </span>
-          </div>
-        </div>
-
-        {/* Content on the page below image – more space between image and title */}
-        <div className="flex flex-col flex-grow pt-5 sm:pt-6 space-y-2">
-          <h3
-            className={`text-lg sm:text-xl font-bold leading-tight text-foreground line-clamp-2 transition-colors duration-300 ${hasLink ? "group-hover:text-primary group-hover:underline group-hover:underline-offset-2" : ""}`}
+          <span
+            className="inline-block rounded-md bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm sm:text-xs"
+            suppressHydrationWarning
           >
-            {title}
-          </h3>
-          <p className="text-sm sm:text-base text-muted-foreground line-clamp-2 sm:line-clamp-3 leading-relaxed">
-            {post.description ||
-              post.excerpt ||
-              post.summary ||
-              "No description available"}
-          </p>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1 sm:gap-0 pt-1 text-xs sm:text-sm text-muted-foreground">
-            <span className="font-medium">
-              By {post.authorNickname || post.author || post.creator || "Unknown"}
-            </span>
-          </div>
+            {formatPostDate(post)}
+          </span>
         </div>
-      </article>
-    </CardWrapper>
+      </div>
+
+      <div
+        className={cn(
+          "flex min-w-0 flex-grow flex-col space-y-2 pt-4 sm:pt-5",
+          isLead && "sm:basis-0 sm:pt-0"
+        )}
+      >
+        <h3>
+          {hasLink ? (
+            <a
+              href={post.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={titleClassName}
+            >
+              {title}
+              <span className="sr-only"> (opens in new tab)</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onOpen(post)}
+              className={titleClassName}
+            >
+              {title}
+            </button>
+          )}
+        </h3>
+
+        {post.description ? (
+          <p
+            className={cn(
+              "whitespace-pre-line leading-relaxed text-muted-foreground",
+              isLead
+                ? "text-base line-clamp-4 sm:line-clamp-6"
+                : "text-sm sm:text-base line-clamp-3"
+            )}
+          >
+            {post.description}
+          </p>
+        ) : null}
+
+        <div className="mt-auto flex items-center justify-between gap-3 pt-1 text-xs text-muted-foreground sm:text-sm">
+          <span className="min-w-0 truncate font-medium">By {post.author}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 font-medium text-primary">
+            {hasLink ? (
+              <>
+                Open link
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+              </>
+            ) : (
+              "Read more"
+            )}
+          </span>
+        </div>
+      </div>
+    </article>
   );
 }
+
+export const PostCard = memo(PostCardComponent);

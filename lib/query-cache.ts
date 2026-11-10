@@ -83,8 +83,14 @@ class QueryCache {
   }
 }
 
-// Global cache instance
-export const queryCache = new QueryCache();
+// One cache for every route bundle. A module-level Map can be copied per
+// bundle, so a create request would clear a different copy than the list reads.
+const globalForCache = globalThis as typeof globalThis & {
+  __shadowrunQueryCache?: QueryCache;
+};
+export const queryCache =
+  globalForCache.__shadowrunQueryCache ?? new QueryCache();
+globalForCache.__shadowrunQueryCache = queryCache;
 
 // Cleanup expired entries every 5 minutes
 if (typeof setInterval !== "undefined") {

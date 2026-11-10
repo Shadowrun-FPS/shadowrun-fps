@@ -12,10 +12,26 @@ if (typeof process !== 'undefined') {
   };
 }
 
+// Hostname of the public bucket that serves uploaded post images (R2_PUBLIC_BASE_URL).
+const postMediaHost = (() => {
+    try {
+        return process.env.R2_PUBLIC_BASE_URL
+            ? new URL(process.env.R2_PUBLIC_BASE_URL).hostname
+            : "";
+    } catch {
+        return "";
+    }
+})();
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+    env: {
+        // Lets the card skip the image optimizer for hosts that are not in remotePatterns.
+        NEXT_PUBLIC_POST_MEDIA_HOST: postMediaHost,
+    },
     images: {
         remotePatterns: [
+            ...(postMediaHost ? [{ protocol: 'https', hostname: postMediaHost }] : []),
             {
                 protocol: 'https',
                 hostname: 'cdn.discordapp.com',

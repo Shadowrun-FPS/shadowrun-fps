@@ -36,8 +36,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { PostCoverImage } from "./post-cover-image";
+import { PostTypeBadge } from "./post-type-badge";
+import { formatPostDate } from "@/lib/post-date";
+import type { Post } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,9 +66,9 @@ export function PostManager({
 }: PostManagerProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [posts, setPosts] = useState<any[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [editPost, setEditPost] = useState<any>(null);
+  const [editPost, setEditPost] = useState<Post | null>(null);
   const [deletePostId, setDeletePostId] = useState<string | null>(null);
   const [reorderingPostId, setReorderingPostId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,7 +79,9 @@ export function PostManager({
   const fetchPosts = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/posts");
+      const response = await fetch(`/api/posts?t=${Date.now()}`, {
+        cache: "no-store",
+      });
       if (!response.ok) {
         throw new Error("Failed to fetch posts");
       }
@@ -134,7 +138,7 @@ export function PostManager({
     }
   };
 
-  const handleBulkReorder = async (newOrderedPosts: any[]) => {
+  const handleBulkReorder = async (newOrderedPosts: Post[]) => {
     if (reorderingPostId) return; // Prevent duplicate submissions
     setReorderingPostId("bulk"); // Use a special value for bulk operations
 
@@ -168,6 +172,9 @@ export function PostManager({
       // Optimistically update the UI immediately with correct order values
       // This ensures the UI updates instantly before the server response
       setPosts(updatedPosts);
+
+      // Reload the server-rendered public list with the new order
+      router.refresh();
 
       // Refresh from server to ensure consistency
       // This will update with the actual server state after the reorder completes
@@ -289,42 +296,6 @@ export function PostManager({
   const handleDragEnd = () => {
     setDraggedIndex(null);
     setDragOverIndex(null);
-  };
-
-  const formatDate = (dateValue: string | Date | undefined) => {
-    if (!dateValue) return "No date";
-
-    try {
-      let date: Date;
-      
-      if (dateValue instanceof Date) {
-        // Already a Date object
-        date = dateValue;
-      } else if (typeof dateValue === "string") {
-        // Handle different string formats
-        // Check if it's in MM-DD-YYYY format (e.g., "10-17-2023")
-        const mmddyyyyMatch = dateValue.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-        if (mmddyyyyMatch) {
-          const [, month, day, year] = mmddyyyyMatch;
-          date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        } else {
-          // Try standard Date parsing (ISO, etc.)
-          date = new Date(dateValue);
-        }
-      } else {
-        date = new Date(dateValue);
-      }
-
-      // Check if date is valid before formatting
-      if (isNaN(date.getTime())) {
-        return "Invalid date";
-      }
-
-      return format(date, "MMM d, yyyy");
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "Invalid date";
-    }
   };
 
   // Filter and sort posts by order (not by date) for the manage modal
@@ -502,8 +473,7 @@ export function PostManager({
                       // filteredPosts is already sorted by order, so index matches order position
                       // Use the post's order field as the source of truth for display
                       const displayOrder = post.order ?? index;
-                      const externalUrl =
-                        post.link || post.linkAddress || "";
+                      const externalUrl = post.link;
                       const globalIndex = globalOrderSorted.findIndex(
                         (p) => p._id === post._id
                       );
@@ -530,7 +500,15 @@ export function PostManager({
                       >
                         <CardContent className="p-2.5 min-[375px]:p-3 sm:p-4 md:p-5 lg:p-6 w-full max-w-full overflow-hidden">
                           <div className="flex flex-col gap-2.5 min-[375px]:gap-3 sm:gap-4 md:gap-5 w-full max-w-full">
-                            {/* Post Info */}
+                            {/* Thumbnail + post info */}
+                            <div className="flex w-full max-w-full gap-3 sm:gap-4">
+                            <div className="relative hidden h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted min-[375px]:block sm:h-20 sm:w-32">
+                              <PostCoverImage
+                                imageUrl={post.imageUrl}
+                                alt=""
+                                sizes="128px"
+                              />
+                            </div>
                             <div className="flex-1 min-w-0 space-y-1.5 min-[375px]:space-y-2 sm:space-y-2.5 w-full max-w-full overflow-hidden">
                               {/* Mobile: two rows (title block, then badges). sm+: title left / meta right */}
                               <div className="flex w-full max-w-full flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
@@ -550,18 +528,7 @@ export function PostManager({
                                     <span className="text-[10px] min-[375px]:text-xs sm:text-sm text-muted-foreground font-medium px-1.5 min-[375px]:px-2 py-0.5 rounded bg-muted/50 tabular-nums">
                                       #{displayOrder + 1}
                                     </span>
-                                    <Badge
-                                      variant={
-                                        post.type === "EVENT"
-                                          ? "default"
-                                          : post.type === "NEWS"
-                                          ? "secondary"
-                                          : "outline"
-                                      }
-                                      className="whitespace-nowrap text-[10px] min-[375px]:text-xs sm:text-sm"
-                                    >
-                                      {post.type}
-                                    </Badge>
+                                    <PostTypeBadge type={post.type} />
                                   </div>
                                 </div>
                               </div>
@@ -576,14 +543,10 @@ export function PostManager({
                                   •
                                 </span>
                                 <span className="truncate max-w-[45%] min-[375px]:max-w-none">
-                                  {formatDate(
-                                    post.datePublished ||
-                                    post.date ||
-                                      post.createdAt ||
-                                      post.publishedAt
-                                  )}
+                                  {formatPostDate(post)}
                                 </span>
                               </div>
+                            </div>
                             </div>
 
                             {/* Row 1: reorder + optional link (full width). Row 2: Edit/Delete when canManagePosts. */}

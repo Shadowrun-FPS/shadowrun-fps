@@ -29,7 +29,7 @@ const GROUP_CENTER_Y = 308;
 const SUBTITLE_GAP = 18;
 const BRAND_TOP = 36;
 
-const STONE_WORDMARK = "public/shadowrun-workmark-stone.png";
+const STONE_WORDMARK = "public/shadowrun-wordmark-stone.png";
 
 type CardSpec = {
   wordmark: string;
@@ -41,7 +41,7 @@ type CardSpec = {
 const CARDS: Record<OgCardKey, CardSpec> = {
   home: {
     wordmark: STONE_WORDMARK,
-    subtitle: "2007  ·  PC",
+    subtitle: "Download and play free",
     markWidth: HOME_MARK_WIDTH,
     showBrand: false,
   },
@@ -53,7 +53,7 @@ const CARDS: Record<OgCardKey, CardSpec> = {
   },
   events: {
     wordmark: "public/page_logos/events.webp",
-    subtitle: "Tournaments and community nights",
+    subtitle: "Announcements and community nights",
     markWidth: PAGE_MARK_WIDTH,
     showBrand: true,
   },
@@ -255,8 +255,24 @@ async function buildCard(plate: Buffer, spec: CardSpec, key: OgCardKey): Promise
     .toBuffer();
 }
 
+/** Full-height square centered so the wordmark stays whole and the lit tower stays in frame. */
+const PLAYER_ART_CROP = { left: 448, top: 0, width: 1152, height: 1152 } as const;
+const PLAYER_ART_SIZE = 512;
+
+async function buildPlayerArtwork(): Promise<void> {
+  const output = path.join(ROOT, "public/player-artwork.jpg");
+  await sharp(path.join(ROOT, "public/hero-logo-bg.webp"))
+    .extract(PLAYER_ART_CROP)
+    .resize(PLAYER_ART_SIZE, PLAYER_ART_SIZE)
+    .jpeg({ quality: 86, mozjpeg: true, chromaSubsampling: "4:4:4" })
+    .toFile(output);
+  const info = await stat(output);
+  console.log(`player-artwork.jpg  ${Math.round(info.size / 1024)} KB`);
+}
+
 async function main(): Promise<void> {
   await mkdir(OUT_DIR, { recursive: true });
+  await buildPlayerArtwork();
   const plate = await buildPlate();
   const keys = Object.keys(CARDS) as OgCardKey[];
 

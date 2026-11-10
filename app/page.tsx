@@ -29,20 +29,21 @@ export const metadata: Metadata = {
     canonical: "/",
   },
   description:
-    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows.",
   openGraph: {
     title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+      "Free PC launcher for Shadowrun FPS (2007). Download and play.",
     images: ogImages("home"),
     url: "https://www.shadowrunfps.com",
+    siteName: "Shadowrun FPS",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+      "Free PC launcher for Shadowrun FPS (2007). Download and play.",
     images: ogImages("home"),
   },
 };

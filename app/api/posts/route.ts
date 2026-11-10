@@ -7,9 +7,33 @@ import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
 import { safeLog, sanitizeString } from "@/lib/security";
-import { cachedQuery, queryCache } from "@/lib/query-cache";
+import {
+  deletePostImageIfUnused,
+  getPosts,
+  invalidatePostsCache,
+  resolvePostDate,
+} from "@/lib/posts";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
+import { LEGACY_ARTICLE_TYPE, POST_TYPES, type PostType } from "@/types";
+
+function isHttpUrl(value: string) {
+  return /^https?:\/\/\S+$/i.test(value);
+}
+
+function isValidImageUrl(value: string) {
+  return isHttpUrl(value) || /^\/[^\s/]/.test(value);
+}
+
+/** Accepts EVENT or NEWS. The retired ARTICLE type is stored as NEWS. */
+function parseSubmittedPostType(value: unknown): PostType {
+  const submitted = typeof value === "string" ? sanitizeString(value, 50) : "";
+  if (submitted === LEGACY_ARTICLE_TYPE) return "NEWS";
+  if (!POST_TYPES.includes(submitted as PostType)) {
+    throw createError.badRequest("Type must be EVENT or NEWS");
+  }
+  return submitted as PostType;
+}
 
 // Helper function to check if user is admin
 async function isUserAdmin(userId: string) {
@@ -29,32 +53,19 @@ async function isUserAdmin(userId: string) {
 
 // GET all posts
 async function getPostsHandler(req: NextRequest) {
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-
-  const result = await cachedQuery(
-    "posts:all",
-    async () => {
-      return await db
-        .collection("Posts")
-        .find({})
-        .sort({ order: 1, date: 1, datePublished: 1 })
-        .toArray();
-    },
-    5 * 60 * 1000 // Cache for 5 minutes
-  );
+  const result = await getPosts();
 
   return NextResponse.json(result, {
     headers: {
-      "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+      // The events page refetches this after every edit. A public cache was
+      // still serving the previous list, so a new post never appeared.
+      "Cache-Control": "private, no-cache, no-store, must-revalidate",
     },
   });
 }
 
 export const GET = withApiSecurity(getPostsHandler, {
   rateLimiter: "api",
-  cacheable: true,
-  cacheMaxAge: 300,
 });
 
 // POST new post
@@ -101,45 +112,45 @@ async function postPostsHandler(req: NextRequest) {
   };
   const { title, description, type, imageUrl, link, authorId, author } = validationData;
 
-  const allowedTypes = ["EVENT", "ARTICLE", "NEWS"];
-  if (!allowedTypes.includes(type)) {
-    throw createError.badRequest("Type must be EVENT, ARTICLE, or NEWS");
+  const postType = parseSubmittedPostType(type);
+
+  if (link && !isHttpUrl(link)) {
+    throw createError.badRequest("Link must be an http(s) URL");
+  }
+  if (imageUrl && !isValidImageUrl(imageUrl)) {
+    throw createError.badRequest("Image must be an http(s) URL or a site path");
   }
 
-  const highestOrder = await db
+  const earliest = await db
     .collection("Posts")
     .find({})
-    .sort({ order: -1 })
+    .sort({ order: 1 })
     .limit(1)
     .toArray();
 
-  const newOrder =
-    highestOrder.length > 0 ? (highestOrder[0].order || 0) + 1 : 0;
+  const earliestOrder =
+    earliest.length > 0 && typeof earliest[0].order === "number"
+      ? earliest[0].order
+      : 1;
+  const newOrder = earliestOrder - 1;
 
-  // Parse date from body if provided, otherwise use current date
-  let postDate = new Date();
-  if (body.date) {
-    try {
-      postDate = new Date(body.date);
-      // If date is invalid, fall back to current date
-      if (isNaN(postDate.getTime())) {
-        postDate = new Date();
-      }
-    } catch {
-      postDate = new Date();
-    }
-  }
+  // Use the submitted calendar day, otherwise the current moment
+  const now = new Date();
+  const resolvedDate = resolvePostDate(body.date) ?? {
+    date: now,
+    datePublished: now.toISOString(),
+  };
 
   const post = {
     title: sanitizeString(title, 200),
     description: description ? sanitizeString(description, 5000) : "",
-    type: sanitizeString(type, 50),
+    type: postType,
     imageUrl: imageUrl ? sanitizeString(imageUrl, 500) : "",
     link: link ? sanitizeString(link, 500) : "",
     authorId: authorId || session.user.id,
     author: author || session.user.name || "",
-    date: postDate,
-    datePublished: postDate.toISOString(),
+    date: resolvedDate.date,
+    datePublished: resolvedDate.datePublished,
     published: true,
     order: newOrder,
   };
@@ -152,7 +163,7 @@ async function postPostsHandler(req: NextRequest) {
   });
 
   // Invalidate cache
-  queryCache.invalidate("posts:all");
+  invalidatePostsCache();
 
   revalidatePath("/");
   revalidatePath("/events");
@@ -203,41 +214,62 @@ async function putPostsHandler(req: NextRequest) {
   if (updateData.title) sanitizedUpdate.title = sanitizeString(updateData.title, 200);
   if (updateData.description) sanitizedUpdate.description = sanitizeString(updateData.description, 5000);
   if (updateData.type) {
-    const sanitizedType = sanitizeString(updateData.type, 50);
-    const allowedTypes = ["EVENT", "ARTICLE", "NEWS"];
-    if (!allowedTypes.includes(sanitizedType)) {
-      throw createError.badRequest("Type must be EVENT, ARTICLE, or NEWS");
-    }
-    sanitizedUpdate.type = sanitizedType;
+    sanitizedUpdate.type = parseSubmittedPostType(updateData.type);
   }
-  if (updateData.imageUrl) sanitizedUpdate.imageUrl = sanitizeString(updateData.imageUrl, 500);
-  if (updateData.link) sanitizedUpdate.link = sanitizeString(updateData.link, 500);
+  if (updateData.imageUrl) {
+    const imageUrl = sanitizeString(updateData.imageUrl, 500);
+    if (!isValidImageUrl(imageUrl)) {
+      throw createError.badRequest("Image must be an http(s) URL or a site path");
+    }
+    sanitizedUpdate.imageUrl = imageUrl;
+  }
+  // An explicit empty string clears the link. Other optional text keeps its value when omitted.
+  if (typeof updateData.link === "string") {
+    const link = sanitizeString(updateData.link, 500);
+    if (link && !isHttpUrl(link)) {
+      throw createError.badRequest("Link must be an http(s) URL");
+    }
+    sanitizedUpdate.link = link;
+  }
   if (updateData.author) sanitizedUpdate.author = sanitizeString(updateData.author, 100);
   if (updateData.order !== undefined) sanitizedUpdate.order = updateData.order;
   if (updateData.published !== undefined) sanitizedUpdate.published = updateData.published;
-  
+
   // Handle date update
-  if (updateData.date) {
-    try {
-      const postDate = new Date(updateData.date);
-      if (!isNaN(postDate.getTime())) {
-        sanitizedUpdate.date = postDate;
-        sanitizedUpdate.datePublished = postDate.toISOString();
-      }
-    } catch {
-      // Invalid date, skip update
-    }
+  const resolvedDate = resolvePostDate(updateData.date);
+  if (resolvedDate) {
+    sanitizedUpdate.date = resolvedDate.date;
+    sanitizedUpdate.datePublished = resolvedDate.datePublished;
   }
 
-  await db.collection("Posts").updateOne(
+  const postsCollection = db.collection("Posts");
+  const previousPost = await postsCollection.findOne(
+    { _id: new ObjectId(_id) },
+    { projection: { imageUrl: 1 } }
+  );
+
+  await postsCollection.updateOne(
     { _id: new ObjectId(_id) },
     { $set: sanitizedUpdate }
   );
+
+  // A replaced upload is removed unless another post reuses it from the image library.
+  if (
+    previousPost?.imageUrl &&
+    sanitizedUpdate.imageUrl !== undefined &&
+    sanitizedUpdate.imageUrl !== previousPost.imageUrl
+  ) {
+    await deletePostImageIfUnused(previousPost.imageUrl, {
+      excludePostId: new ObjectId(_id),
+    });
+  }
 
   secureLogger.info("Post updated successfully", {
     postId: _id,
     adminId: session.user.id,
   });
+
+  invalidatePostsCache();
 
   revalidatePath("/");
   revalidatePath("/events");

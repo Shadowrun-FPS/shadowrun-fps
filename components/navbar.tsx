@@ -45,7 +45,7 @@ const DocLinks = [
   {
     title: "Events",
     href: "/events",
-    description: "Community events and tournaments",
+    description: "Community events and announcements",
     icon: (
       <Calendar className="mr-3 h-5 w-5 shrink-0 text-foreground" />
     ),

@@ -18,7 +18,7 @@ const pageTitles: Record<
   "/events": {
     title: "Events",
     logo: "events",
-    description: "Community events, tournaments, and gatherings",
+    description: "Community events, news, and announcements",
   },
   "/matches": {
     title: "Matches",

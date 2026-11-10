@@ -1,20 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import * as React from "react";
+import {
+  AlertCircle,
+  CalendarIcon,
+  Edit,
+  Eye,
+  FileText,
+  Link as LinkIcon,
+  Loader2,
+  PlusCircle,
+  Type,
+  User,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
+import { useSession } from "next-auth/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CoverImageField } from "@/components/posts/cover-image-field";
+import { PostCard } from "@/components/posts/post-card";
+import { PostDatePicker } from "@/components/posts/post-date-picker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -23,393 +46,155 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { format } from "date-fns";
-import {
-  CalendarIcon,
-  Loader2,
-  FileText,
-  Image as ImageIcon,
-  Link as LinkIcon,
-  User,
-  Type,
-  PlusCircle,
-  Edit,
-  AlertCircle,
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { useSession } from "next-auth/react";
-import { cn } from "@/lib/utils";
 import { sanitizeStringClient } from "@/lib/client-utils";
-
-// Custom Calendar with Year/Month Dropdowns
-function CalendarWithDropdowns({
-  selected,
-  onSelect,
-  ...props
-}: {
-  selected?: Date;
-  onSelect?: (date: Date | undefined) => void;
-  mode?: "single";
-  initialFocus?: boolean;
-}) {
-  const [currentMonth, setCurrentMonth] = React.useState<Date>(
-    selected || new Date()
-  );
-
-  // Update current month when selected date changes
-  React.useEffect(() => {
-    if (selected) {
-      setCurrentMonth(selected);
-    }
-  }, [selected]);
-
-  const currentYear = currentMonth.getFullYear();
-  const currentMonthIndex = currentMonth.getMonth();
-
-  // Generate years (from 2010 to 10 years in the future)
-  const currentYearNum = new Date().getFullYear();
-  const years = Array.from({ length: currentYearNum - 2010 + 11 }, (_, i) => 2010 + i);
-
-  // Month names
-  const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-  ];
-
-  const handleYearChange = (year: string) => {
-    const newDate = new Date(currentMonth);
-    newDate.setFullYear(parseInt(year));
-    setCurrentMonth(newDate);
-  };
-
-  const handleMonthChange = (month: string) => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(parseInt(month));
-    setCurrentMonth(newDate);
-  };
-
-  const goToPreviousMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentMonth(newDate);
-  };
-
-  const goToNextMonth = () => {
-    const newDate = new Date(currentMonth);
-    newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentMonth(newDate);
-  };
-
-  const goToToday = () => {
-    const today = new Date();
-    setCurrentMonth(today);
-    if (onSelect) {
-      onSelect(today);
-    }
-  };
-
-  return (
-    <div className="p-3">
-      {/* Year and Month Selectors */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-4 pb-3 border-b">
-        <div className="flex items-center gap-2 flex-1">
-          <Select
-            value={currentMonthIndex.toString()}
-            onValueChange={handleMonthChange}
-          >
-            <SelectTrigger className="h-8 w-full sm:w-[140px] text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {months.map((month, index) => (
-                <SelectItem key={index} value={index.toString()}>
-                  {month}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={currentYear.toString()}
-            onValueChange={handleYearChange}
-          >
-            <SelectTrigger className="h-8 w-full sm:w-[100px] text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="max-h-[200px]">
-              {years.map((year) => (
-                <SelectItem key={year} value={year.toString()}>
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2 text-xs"
-            onClick={goToToday}
-            type="button"
-            title="Go to today"
-          >
-            Today
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={goToPreviousMonth}
-            type="button"
-            title="Previous month"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={goToNextMonth}
-            type="button"
-            title="Next month"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Calendar */}
-      <Calendar
-        mode="single"
-        selected={selected}
-        onSelect={onSelect}
-        month={currentMonth}
-        onMonthChange={setCurrentMonth}
-        initialFocus={false}
-        {...props}
-      />
-    </div>
-  );
-}
+import { getPostDate, isUpcomingPost, toCalendarDay } from "@/lib/post-date";
+import { POST_TYPE_META } from "@/lib/post-display";
+import {
+  POST_LIMITS,
+  arePostFormValuesEqual,
+  buildPreviewPost,
+  getInitialPostFormValues,
+  validatePostForm,
+  type PostFormErrors,
+} from "@/lib/post-form";
+import { usePostUploadCleanup } from "@/hooks/usePostUploadCleanup";
+import { cn } from "@/lib/utils";
+import { POST_TYPES, type Post, type PostFormValues, type PostType } from "@/types";
 
 interface PostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData?: any;
+  /** The post being edited. Omit to create a new post. */
+  initialData?: Post;
 }
 
-export function PostDialog({
-  open,
-  onOpenChange,
-  initialData,
-}: PostDialogProps) {
+const fieldClassName =
+  "min-h-[44px] w-full border-2 text-base transition-colors touch-manipulation focus:border-primary/50 sm:min-h-[40px] sm:text-sm";
+
+interface FieldHeaderProps {
+  htmlFor: string;
+  label: string;
+  required?: boolean;
+  icon: React.ReactNode;
+  count?: { current: number; max: number };
+}
+
+function FieldHeader({ htmlFor, label, required, icon, count }: FieldHeaderProps) {
+  return (
+    <div className="flex items-center justify-between">
+      <Label
+        htmlFor={htmlFor}
+        className="flex items-center gap-2 text-sm font-medium sm:text-base"
+      >
+        {icon}
+        {label}
+        {required ? <span className="text-destructive">*</span> : null}
+      </Label>
+      {count ? (
+        <span
+          className={cn(
+            "text-xs text-muted-foreground",
+            count.current > count.max && "text-destructive"
+          )}
+        >
+          {count.current.toLocaleString()}/{count.max.toLocaleString()}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="flex items-center gap-1 text-xs text-destructive">
+      <AlertCircle className="h-3 w-3" />
+      {message}
+    </p>
+  );
+}
+
+const iconClassName = "h-4 w-4 flex-shrink-0 sm:h-5 sm:w-5";
+
+function noop() {}
+
+export function PostDialog({ open, onOpenChange, initialData }: PostDialogProps) {
   const { data: session } = useSession();
   const { toast } = useToast();
   const router = useRouter();
-  // Helper to parse date from various formats
-  const parseDate = (dateValue: any): Date | undefined => {
-    if (!dateValue) return undefined;
-    
-    if (dateValue instanceof Date) {
-      return dateValue;
-    }
-    
-    if (typeof dateValue === "string") {
-      // Handle MM-DD-YYYY format (e.g., "10-17-2023")
-      const mmddyyyyMatch = dateValue.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-      if (mmddyyyyMatch) {
-        const [, month, day, year] = mmddyyyyMatch;
-        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      }
-      // Try standard Date parsing
-      const parsed = new Date(dateValue);
-      if (!isNaN(parsed.getTime())) {
-        return parsed;
-      }
-    }
-    
-    return undefined;
-  };
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [date, setDate] = useState<Date | undefined>(
-    initialData?.datePublished ? parseDate(initialData.datePublished) :
-    initialData?.date ? parseDate(initialData.date) : 
-    new Date()
+  const defaultAuthor = session?.user?.nickname || session?.user?.name || "";
+  const initialDate = useMemo(
+    () => (initialData ? getPostDate(initialData) : undefined) ?? new Date(),
+    [initialData]
   );
 
-  const [formData, setFormData] = useState({
-    title: initialData?.title || "",
-    description: initialData?.description || "",
-    imageUrl: initialData?.imageUrl || "",
-    type: initialData?.type || "EVENT",
-    link: initialData?.link || "",
-    author:
-      initialData?.author ||
-      session?.user?.nickname ||
-      session?.user?.name ||
-      "",
-    authorId: initialData?.authorId || session?.user?.id || "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [imageError, setImageError] = useState(false);
-  const [debouncedImageUrl, setDebouncedImageUrl] = useState(initialData?.imageUrl || "");
+  const [baseline, setBaseline] = useState<PostFormValues>(() =>
+    getInitialPostFormValues(initialData, defaultAuthor)
+  );
+  const [values, setValues] = useState<PostFormValues>(baseline);
+  const [date, setDate] = useState<Date>(initialDate);
+  const [errors, setErrors] = useState<PostFormErrors>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isDiscardPromptOpen, setIsDiscardPromptOpen] = useState(false);
 
-  // Reset form when dialog opens/closes or initialData changes
+  // The session can finish loading after the dialog opens. Fill the author without counting it as an edit.
   useEffect(() => {
-    if (open) {
-      const initialImageUrl = initialData?.imageUrl || "";
-      setFormData({
-        title: initialData?.title || "",
-        description: initialData?.description || "",
-        imageUrl: initialImageUrl,
-        type: initialData?.type || "EVENT",
-        link: initialData?.link || "",
-        author:
-          initialData?.author ||
-          session?.user?.nickname ||
-          session?.user?.name ||
-          "",
-        authorId: initialData?.authorId || session?.user?.id || "",
+    if (initialData || !defaultAuthor) return;
+    setBaseline((current) =>
+      current.author ? current : { ...current, author: defaultAuthor }
+    );
+    setValues((current) =>
+      current.author ? current : { ...current, author: defaultAuthor }
+    );
+  }, [defaultAuthor, initialData]);
+
+  // Deletes uploaded covers that never reach a saved post (cancel, replace, closed tab).
+  const { trackUpload, markSaved } = usePostUploadCleanup(values.imageUrl);
+
+  const isDirty =
+    !arePostFormValuesEqual(values, baseline) ||
+    toCalendarDay(date) !== toCalendarDay(initialDate);
+
+  const updateField = useCallback(
+    <Field extends keyof PostFormValues>(
+      field: Field,
+      value: PostFormValues[Field]
+    ) => {
+      setValues((current) => ({ ...current, [field]: value }));
+      setErrors((current) => {
+        if (!current[field]) return current;
+        const { [field]: _cleared, ...remaining } = current;
+        return remaining;
       });
-      setDebouncedImageUrl(initialImageUrl);
-      setDate(
-        initialData?.datePublished ? parseDate(initialData.datePublished) :
-        initialData?.date ? parseDate(initialData.date) : 
-        new Date()
-      );
-      setErrors({});
-      setImageError(false);
-    }
-  }, [open, initialData, session]);
+    },
+    []
+  );
 
-  // Normalize image URL helper
-  const normalizeImageUrl = (url: string): string => {
-    if (!url) return "";
-    // If it's already an external URL, return as-is
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-    // If it's a local path and doesn't start with /, add it
-    if (url && !url.startsWith("/")) {
-      return `/${url}`;
-    }
-    return url;
-  };
-
-  // Debounce image URL for preview - increased delay to prevent excessive requests
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const normalized = normalizeImageUrl(formData.imageUrl);
-      setDebouncedImageUrl(normalized);
-      setImageError(false);
-    }, 800); // Wait 800ms after user stops typing
-
-    return () => clearTimeout(timer);
-  }, [formData.imageUrl]);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    
-    // Clear error for this field if it becomes valid
-    if (errors[name]) {
-      let isValid = true;
-      
-      if (name === "title") {
-        isValid = value.trim().length > 0 && value.length <= 200;
-      } else if (name === "description") {
-        isValid = value.trim().length > 0 && value.length <= 5000;
-      } else if (name === "imageUrl") {
-        const normalized = normalizeImageUrl(value);
-        isValid = value.trim().length > 0 && value.length <= 500 && (
-          normalized.match(/^(https?:\/\/.+\..+|^\/.+)$/) !== null
-        );
-      } else if (name === "link") {
-        isValid = (!value || (value.match(/^https?:\/\/.+\..+/) !== null && value.length <= 500));
-      } else if (name === "author") {
-        isValid = value.trim().length > 0 && value.length <= 100;
+  const handleOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && isSaving) return;
+      if (!nextOpen && isDirty) {
+        setIsDiscardPromptOpen(true);
+        return;
       }
-      
-      if (isValid) {
-        setErrors((prev) => {
-          const newErrors = { ...prev };
-          delete newErrors[name];
-          return newErrors;
-        });
-      }
-    }
-  };
+      onOpenChange(nextOpen);
+    },
+    [isDirty, isSaving, onOpenChange]
+  );
 
-  const handleSelectChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.title.trim()) {
-      newErrors.title = "Title is required";
-    } else if (formData.title.length > 200) {
-      newErrors.title = "Title must be 200 characters or less";
-    }
-
-    if (!formData.description.trim()) {
-      newErrors.description = "Description is required";
-    } else if (formData.description.length > 5000) {
-      newErrors.description = "Description must be 5,000 characters or less";
-    }
-
-    const normalizedImageUrl = normalizeImageUrl(formData.imageUrl);
-    if (!formData.imageUrl.trim()) {
-      newErrors.imageUrl = "Image URL is required";
-    } else if (formData.imageUrl.length > 500) {
-      newErrors.imageUrl = "Image URL must be 500 characters or less";
-    } else if (
-      !normalizedImageUrl.match(
-        /^(https?:\/\/.+\..+|^\/.+)$/
-      )
-    ) {
-      newErrors.imageUrl = "Please enter a valid URL or local path (starting with /)";
-    }
-
-    if (formData.link) {
-      if (!formData.link.match(/^https?:\/\/.+\..+/)) {
-        newErrors.link = "Please enter a valid URL";
-      } else if (formData.link.length > 500) {
-        newErrors.link = "Link must be 500 characters or less";
-      }
-    }
-
-    const allowedTypes = ["EVENT", "ARTICLE", "NEWS"];
-    if (formData.type && !allowedTypes.includes(formData.type)) {
-      newErrors.type = "Type must be Event, Article, or News";
-    }
-
-    if (!formData.author.trim()) {
-      newErrors.author = "Author is required";
-    } else if (formData.author.length > 100) {
-      newErrors.author = "Author must be 100 characters or less";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const previewPost = useMemo(() => buildPreviewPost(values, date), [values, date]);
 
   const handleSubmit = async () => {
-    if (isLoading) return; // Prevent duplicate submissions
-    if (!validateForm()) {
+    if (isSaving) return;
+
+    const validationErrors = validatePostForm(values);
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      setIsPreviewing(false);
       toast({
         title: "Validation error",
         description: "Please fix the errors in the form",
@@ -418,417 +203,355 @@ export function PostDialog({
       return;
     }
 
-    setIsLoading(true);
-
+    setIsSaving(true);
     try {
-      const authorNickname = session?.user?.name || "Unknown User";
-
-      const payload = {
-          title: sanitizeStringClient(formData.title, 200),
-          description: sanitizeStringClient(formData.description, 5000),
-          imageUrl: sanitizeStringClient(formData.imageUrl.trim(), 500),
-          type: formData.type,
-          link: formData.link ? sanitizeStringClient(formData.link.trim(), 500) : "",
-          author: sanitizeStringClient(formData.author.trim(), 100) || authorNickname,
-          authorId: session?.user?.id,
-          date: date?.toISOString(),
-          _id: initialData?._id,
-          published: true,
-        };
-
       const response = await fetch("/api/posts", {
         method: initialData ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          _id: initialData?._id,
+          title: sanitizeStringClient(values.title, POST_LIMITS.title),
+          description: sanitizeStringClient(values.description, POST_LIMITS.description),
+          imageUrl: sanitizeStringClient(values.imageUrl, POST_LIMITS.imageUrl),
+          type: values.type,
+          // An empty link is sent as-is so editing can remove an existing link.
+          link: sanitizeStringClient(values.link, POST_LIMITS.link),
+          author:
+            sanitizeStringClient(values.author, POST_LIMITS.author) ||
+            session?.user?.name ||
+            "Unknown User",
+          authorId: initialData?.authorId || session?.user?.id,
+          // A calendar day reads the same in every timezone.
+          date: toCalendarDay(date),
+          published: true,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to save post");
+        const body = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(body?.error || "Failed to save post");
       }
 
       toast({
-        title: initialData ? "Post updated" : "Post created",
+        title: initialData ? "Post updated" : "Post published",
         description: initialData
-          ? "Your post has been updated successfully"
-          : "Your post has been published successfully",
+          ? "Your changes are live."
+          : "Your post is now on the events page.",
       });
 
-      // Dispatch custom event to trigger post list refresh
-      window.dispatchEvent(new Event(initialData ? "postUpdated" : "postCreated"));
+      // The saved post now owns its cover, so it must not be cleaned up on close.
+      markSaved();
 
-      // Refresh the page to show updated data
+      // Reload the server-rendered list so the public page shows the change.
       router.refresh();
-
       onOpenChange(false);
-      // Reset form
-      setFormData({
-        title: "",
-        description: "",
-        imageUrl: "",
-        type: "EVENT",
-        link: "",
-        author: session?.user?.nickname || session?.user?.name || "",
-        authorId: session?.user?.id || "",
-      });
-      setDate(new Date());
-      setErrors({});
     } catch (error) {
-      // Only log errors in development
-      if (process.env.NODE_ENV === "development") {
-        console.error("Error saving post:", error);
-      }
       toast({
         title: "Error",
-        description: "Failed to save post. Please try again.",
+        description:
+          error instanceof Error && error.message
+            ? error.message
+            : "Failed to save post. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
+  const previewIsUpcoming = isUpcomingPost(previewPost);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-4 md:p-6">
-        <DialogHeader className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4 border-b border-border/40 pr-10 sm:pr-0">
-          <div className="flex items-start sm:items-center gap-2.5 sm:gap-3">
-            {initialData ? (
-              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
-                <Edit className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-h-[calc(100dvh-1rem)] overflow-y-auto p-3 sm:max-h-[90vh] sm:max-w-[960px] sm:p-5 md:p-6">
+          <DialogHeader className="space-y-2 border-b border-border/40 pb-3 pr-10 text-left sm:pb-4 sm:pr-0">
+            <div className="flex items-start gap-2.5 sm:items-center sm:gap-3">
+              <div className="flex-shrink-0 rounded-lg border border-primary/20 bg-primary/10 p-1.5 sm:p-2">
+                {initialData ? (
+                  <Edit className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+                ) : (
+                  <PlusCircle className="h-5 w-5 text-primary sm:h-6 sm:w-6" />
+                )}
               </div>
-            ) : (
-              <div className="p-1.5 sm:p-2 rounded-lg bg-primary/10 border border-primary/20 flex-shrink-0">
-                <PlusCircle className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="break-words text-base font-bold leading-tight sm:text-lg md:text-xl lg:text-2xl">
+                  {isPreviewing
+                    ? "Preview"
+                    : initialData
+                      ? "Edit Post"
+                      : "Create New Post"}
+                </DialogTitle>
+                <DialogDescription className="mt-1 break-words text-xs text-muted-foreground sm:text-sm">
+                  {isPreviewing
+                    ? "This is how readers will see the post."
+                    : initialData
+                      ? "Update the post details below"
+                      : "Fill in the details to publish a community post"}
+                </DialogDescription>
               </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold leading-tight break-words">
-                {initialData ? "Edit Post" : "Create New Post"}
-              </DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm mt-1 text-muted-foreground break-words">
-                {initialData
-                  ? "Update the post details below"
-                  : "Fill in the details to create a new community post"}
-              </DialogDescription>
             </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-5 md:space-y-6 py-3 sm:py-4 md:py-6">
-          {/* Title */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="title" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Title <span className="text-destructive">*</span>
-              </Label>
-              <span className={cn(
-                "text-xs text-muted-foreground",
-                formData.title.length > 200 && "text-destructive"
-              )}>
-                {formData.title.length}/200
-              </span>
-            </div>
-            <Input
-              id="title"
-              name="title"
-              value={formData.title}
-              onChange={handleChange}
-              placeholder="Enter post title"
-              className={cn(
-                "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full",
-                errors.title && "border-destructive focus:border-destructive"
-              )}
-            />
-            {errors.title && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.title}
-              </p>
-            )}
-          </div>
-
-          {/* Description */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="description" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Description <span className="text-destructive">*</span>
-              </Label>
-              <span className={cn(
-                "text-xs text-muted-foreground",
-                formData.description.length > 5000 && "text-destructive"
-              )}>
-                {formData.description.length.toLocaleString()}/5,000
-              </span>
-            </div>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Enter post description"
-              rows={5}
-              className={cn(
-                "resize-none text-base sm:text-sm border-2 focus:border-primary/50 transition-colors min-h-[120px] sm:min-h-[100px] touch-manipulation w-full",
-                errors.description && "border-destructive focus:border-destructive"
-              )}
-            />
-            {errors.description && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.description}
-              </p>
-            )}
-          </div>
-
-          {/* Image URL */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="imageUrl" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <ImageIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Image URL <span className="text-destructive">*</span>
-              </Label>
-              <span className={cn(
-                "text-xs text-muted-foreground",
-                formData.imageUrl.length > 500 && "text-destructive"
-              )}>
-                {formData.imageUrl.length}/500
-              </span>
-            </div>
-            <Input
-              id="imageUrl"
-              name="imageUrl"
-              value={formData.imageUrl}
-              onChange={(e) => {
-                handleChange(e);
-                setImageError(false);
-              }}
-              placeholder="https://example.com/image.jpg"
-              className={cn(
-                "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full",
-                errors.imageUrl && "border-destructive focus:border-destructive"
-              )}
-            />
-            {errors.imageUrl && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.imageUrl}
-              </p>
-            )}
-            {debouncedImageUrl && !imageError && debouncedImageUrl.length > 0 && (
-              <div className="mt-2 sm:mt-3 rounded-lg overflow-hidden border-2 border-border relative w-full aspect-video bg-muted">
-                <Image
-                  src={debouncedImageUrl}
-                  alt={`Preview of image for ${formData.title || "post"}`}
-                  fill
-                  className="object-cover"
-                  unoptimized
-                  onError={() => {
-                    setImageError(true);
-                  }}
-                  onLoadingComplete={() => {
-                    setImageError(false);
-                  }}
+          {isPreviewing ? (
+            <div
+              className="pointer-events-none space-y-6 py-3 sm:py-4"
+              aria-label="Post preview"
+            >
+              <div>
+                <PostCard
+                  post={previewPost}
+                  variant="lead"
+                  upcoming={previewIsUpcoming}
+                  onOpen={noop}
                 />
               </div>
-            )}
-            {imageError && (
-              <div className="mt-2 sm:mt-3 rounded-lg border-2 border-destructive/50 bg-destructive/5 p-4 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                <p className="text-xs text-destructive">
-                  Failed to load image. Please check the URL.
+              <div className="max-w-sm">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  In the grid
                 </p>
+                <PostCard
+                  post={previewPost}
+                  upcoming={previewIsUpcoming}
+                  onOpen={noop}
+                />
               </div>
-            )}
-          </div>
-
-          {/* Type and Date Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-            <div className="space-y-2 sm:space-y-2.5">
-              <Label htmlFor="type" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <Type className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Type <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value) => handleSelectChange("type", value)}
-              >
-                <SelectTrigger className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 touch-manipulation w-full">
-                  <SelectValue placeholder="Select post type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="EVENT">Event</SelectItem>
-                  <SelectItem value="ARTICLE">Article</SelectItem>
-                  <SelectItem value="NEWS">News</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.type && (
-                <p className="text-xs text-destructive flex items-center gap-1 mt-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.type}
-                </p>
-              )}
             </div>
-
-            <div className="space-y-2 sm:space-y-2.5">
-              <Label htmlFor="date" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 touch-manipulation",
-                      !date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
-                    <span className="truncate">
-                      {date ? format(date, "PPP") : "Pick a date"}
-                    </span>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 sm:min-w-[350px]" align="start">
-                  <CalendarWithDropdowns
-                    mode="single"
-                    selected={date}
-                    onSelect={setDate}
-                    initialFocus
+          ) : (
+            <div className="grid gap-6 py-3 sm:py-4 md:grid-cols-[minmax(0,1fr)_320px] md:gap-8">
+              <div className="space-y-4 sm:space-y-5">
+                <div className="space-y-2">
+                  <FieldHeader
+                    htmlFor="title"
+                    label="Title"
+                    required
+                    icon={<FileText className={iconClassName} />}
+                    count={{ current: values.title.length, max: POST_LIMITS.title }}
                   />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={values.title}
+                    onChange={(event) => updateField("title", event.target.value)}
+                    placeholder="Enter post title"
+                    className={cn(
+                      fieldClassName,
+                      errors.title && "border-destructive focus:border-destructive"
+                    )}
+                  />
+                  <FieldError message={errors.title} />
+                </div>
 
-          {/* Link */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="link" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <LinkIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Link (Optional)
-              </Label>
-              {formData.link ? (
-                <span className={cn(
-                  "text-xs text-muted-foreground",
-                  formData.link.length > 500 && "text-destructive"
-                )}>
-                  {formData.link.length}/500
-                </span>
-              ) : null}
+                <div className="space-y-2">
+                  <FieldHeader
+                    htmlFor="description"
+                    label="Description"
+                    required
+                    icon={<FileText className={iconClassName} />}
+                    count={{
+                      current: values.description.length,
+                      max: POST_LIMITS.description,
+                    }}
+                  />
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={values.description}
+                    onChange={(event) =>
+                      updateField("description", event.target.value)
+                    }
+                    placeholder="Write the full post. Line breaks are kept."
+                    rows={10}
+                    className={cn(
+                      "min-h-[220px] w-full border-2 text-base transition-colors touch-manipulation focus:border-primary/50 sm:text-sm",
+                      errors.description &&
+                        "border-destructive focus:border-destructive"
+                    )}
+                  />
+                  <FieldError message={errors.description} />
+                </div>
+
+                <div className="space-y-2">
+                  <FieldHeader
+                    htmlFor="link"
+                    label="Link (optional)"
+                    icon={<LinkIcon className={iconClassName} />}
+                    count={
+                      values.link
+                        ? { current: values.link.length, max: POST_LIMITS.link }
+                        : undefined
+                    }
+                  />
+                  <Input
+                    id="link"
+                    name="link"
+                    value={values.link}
+                    onChange={(event) => updateField("link", event.target.value)}
+                    placeholder="https://example.com/article"
+                    className={cn(
+                      fieldClassName,
+                      errors.link && "border-destructive focus:border-destructive"
+                    )}
+                  />
+                  <FieldError message={errors.link} />
+                  <p className="text-xs text-muted-foreground">
+                    With a link, the card opens that page. Without one, readers
+                    open the full post here on the site.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 sm:space-y-5">
+                <CoverImageField
+                  value={values.imageUrl}
+                  onChange={(imageUrl) => updateField("imageUrl", imageUrl)}
+                  onUploaded={trackUpload}
+                  error={errors.imageUrl}
+                  disabled={isSaving}
+                />
+
+                <div className="space-y-2">
+                  <FieldHeader
+                    htmlFor="type"
+                    label="Type"
+                    required
+                    icon={<Type className={iconClassName} />}
+                  />
+                  <Select
+                    value={values.type}
+                    onValueChange={(value) => updateField("type", value as PostType)}
+                  >
+                    <SelectTrigger
+                      id="type"
+                      className="min-h-[44px] w-full border-2 text-base touch-manipulation sm:min-h-[40px] sm:text-sm"
+                    >
+                      <SelectValue placeholder="Select post type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POST_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {POST_TYPE_META[type].label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <FieldHeader
+                    htmlFor="date"
+                    label="Date"
+                    icon={<CalendarIcon className={iconClassName} />}
+                  />
+                  <PostDatePicker id="date" value={date} onChange={setDate} />
+                </div>
+
+                <div className="space-y-2">
+                  <FieldHeader
+                    htmlFor="author"
+                    label="Author"
+                    required
+                    icon={<User className={iconClassName} />}
+                    count={{ current: values.author.length, max: POST_LIMITS.author }}
+                  />
+                  <Input
+                    id="author"
+                    name="author"
+                    value={values.author}
+                    onChange={(event) => updateField("author", event.target.value)}
+                    placeholder="Author name"
+                    className={cn(
+                      fieldClassName,
+                      errors.author && "border-destructive focus:border-destructive"
+                    )}
+                  />
+                  <FieldError message={errors.author} />
+                </div>
+              </div>
             </div>
-            <div className="relative">
-              <Input
-                id="link"
-                name="link"
-                value={formData.link}
-                onChange={handleChange}
-                placeholder="https://example.com/article"
-                className={cn(
-                  "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full pr-10",
-                  errors.link && "border-destructive focus:border-destructive"
-                )}
-              />
-              {formData.link && (
-                <a
-                  href={formData.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                  title="Open link in new tab"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                </a>
+          )}
+
+          <DialogFooter className="flex-col gap-3 border-t border-border/40 pt-4 sm:flex-row sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isSaving}
+              className="order-3 min-h-[44px] w-full touch-manipulation text-base sm:order-1 sm:min-h-[40px] sm:w-auto sm:text-sm"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setIsPreviewing((current) => !current)}
+              disabled={isSaving}
+              className="order-2 min-h-[44px] w-full touch-manipulation text-base sm:min-h-[40px] sm:w-auto sm:text-sm"
+            >
+              {isPreviewing ? (
+                <>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Back to editing
+                </>
+              ) : (
+                <>
+                  <Eye className="mr-2 h-4 w-4" />
+                  Preview
+                </>
               )}
-            </div>
-            {errors.link && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.link}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              External link where users can read more about this post
-            </p>
-          </div>
-
-          {/* Author */}
-          <div className="space-y-2 sm:space-y-2.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="author" className="flex items-center gap-2 text-sm sm:text-base font-medium">
-                <User className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                Author <span className="text-destructive">*</span>
-              </Label>
-              <span className={cn(
-                "text-xs text-muted-foreground",
-                formData.author.length > 100 && "text-destructive"
-              )}>
-                {formData.author.length}/100
-              </span>
-            </div>
-            <Input
-              id="author"
-              name="author"
-              value={formData.author}
-              onChange={handleChange}
-              placeholder="Author name"
-              className={cn(
-                "min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full",
-                errors.author && "border-destructive focus:border-destructive"
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSaving}
+              className="order-1 min-h-[44px] w-full touch-manipulation text-base sm:order-3 sm:min-h-[40px] sm:w-auto sm:text-sm"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {initialData ? "Updating..." : "Publishing..."}
+                </>
+              ) : initialData ? (
+                "Update Post"
+              ) : (
+                "Publish"
               )}
-            />
-            {errors.author && (
-              <p className="text-xs text-destructive flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                {errors.author}
-              </p>
-            )}
-          </div>
-        </div>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <DialogFooter className="flex-col sm:flex-row gap-3 sm:gap-2 pt-4 border-t border-border/40">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
-            className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-base sm:text-sm touch-manipulation order-2 sm:order-1"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="w-full sm:w-auto min-h-[44px] sm:min-h-[40px] text-base sm:text-sm touch-manipulation order-1 sm:order-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2 animate-spin" />
-                <span>{initialData ? "Updating..." : "Creating..."}</span>
-              </>
-            ) : (
-              <>
-                {initialData ? (
-                  <>
-                    <Edit className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    <span>Update Post</span>
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    <span>Create Post</span>
-                  </>
-                )}
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <AlertDialog
+        open={isDiscardPromptOpen}
+        onOpenChange={setIsDiscardPromptOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard your changes?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {initialData
+                ? "Your edits to this post have not been saved."
+                : "This post has not been published yet."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-row sm:gap-0">
+            <AlertDialogCancel className="min-h-[44px] w-full sm:min-h-0 sm:w-auto">
+              Keep editing
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setIsDiscardPromptOpen(false);
+                onOpenChange(false);
+              }}
+              className="min-h-[44px] w-full bg-destructive text-destructive-foreground hover:bg-destructive/90 sm:min-h-0 sm:w-auto"
+            >
+              Discard
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

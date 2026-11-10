@@ -4,9 +4,10 @@ import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
-import { withErrorHandling, createError } from "@/lib/error-handling";
+import { createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
-import { queryCache } from "@/lib/query-cache";
+import { invalidatePostsCache } from "@/lib/posts";
+import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
 
 // Helper function to check if user is admin
@@ -26,7 +27,7 @@ async function isUserAdmin(userId: string) {
 }
 
 // POST reorder posts - supports both single and bulk reordering
-export const POST = withErrorHandling(async (req: NextRequest) => {
+async function reorderPostsHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw createError.unauthorized("Authentication required to reorder posts");
@@ -81,7 +82,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     const result = await db.collection("Posts").bulkWrite(bulkOps);
 
     // Invalidate cache and revalidate paths
-    queryCache.invalidate("posts:all");
+    invalidatePostsCache();
     revalidatePath("/");
     revalidatePath("/events");
 
@@ -104,11 +105,11 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
       throw createError.badRequest("Post ID and new index are required");
     }
 
-    // Get all posts sorted by date then order (matching the display sort)
+    // Get all posts in the order readers see (matching the public list sort)
     const posts = await db
       .collection("Posts")
       .find({})
-      .sort({ date: 1, order: 1, datePublished: 1 })
+      .sort({ order: 1, date: 1, datePublished: 1 })
       .toArray();
 
     // Find the post to move
@@ -134,7 +135,7 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
     await db.collection("Posts").bulkWrite(bulkOps);
 
     // Invalidate cache and revalidate paths
-    queryCache.invalidate("posts:all");
+    invalidatePostsCache();
     revalidatePath("/");
     revalidatePath("/events");
 
@@ -146,4 +147,11 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
     return NextResponse.json({ success: true });
   }
+}
+
+export const POST = withApiSecurity(reorderPostsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  requireAdmin: true,
+  revalidatePaths: ["/", "/events"],
 });

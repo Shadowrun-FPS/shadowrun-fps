@@ -7,6 +7,7 @@ import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
 import { safeLog, sanitizeString } from "@/lib/security";
+import { deletePostImageIfUnused, invalidatePostsCache } from "@/lib/posts";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
 
@@ -28,8 +29,9 @@ async function isUserAdmin(userId: string) {
 
 async function deletePostHandler(
   req: NextRequest,
-  { params }: { params: { postId: string } }
+  context: { params: Promise<{ postId: string }> | { postId: string } }
 ) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json(
@@ -61,7 +63,13 @@ async function deletePostHandler(
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
-  const result = await db.collection("Posts").deleteOne({
+  const postsCollection = db.collection("Posts");
+  const post = await postsCollection.findOne(
+    { _id: new ObjectId(postId) },
+    { projection: { imageUrl: 1 } }
+  );
+
+  const result = await postsCollection.deleteOne({
     _id: new ObjectId(postId),
   });
 
@@ -72,10 +80,15 @@ async function deletePostHandler(
     );
   }
 
+  // Remove the uploaded cover along with its post, unless another post reuses it
+  await deletePostImageIfUnused(post?.imageUrl);
+
   secureLogger.info("Post deleted successfully", {
     postId,
     adminId: session.user.id,
   });
+
+  invalidatePostsCache();
 
   revalidatePath("/");
   revalidatePath("/events");

@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s | Shadowrun FPS",
   },
   description:
-    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows.",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+      "Free PC launcher for Shadowrun FPS (2007). Download and play.",
     url: "https://www.shadowrunfps.com",
     siteName: "Shadowrun FPS",
     images: ogImages("home"),
@@ -58,7 +58,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Shadowrun FPS (2007) — Download and Play on PC",
     description:
-      "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. Install steps and GFWL fixes. This is not Shadowrun Returns.",
+      "Download the free PC launcher for Shadowrun FPS (2007). Download and play.",
     images: ogImages("home"),
     creator: "@ShadowrunFPS",
   },
@@ -157,7 +157,7 @@ export default function RootLayout({
                   url: "https://www.shadowrunfps.com",
                   image: ogImages("home")[0].url,
                   description:
-                    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows. This is not Shadowrun Returns.",
+                    "Download the free PC launcher for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter for Xbox 360 and Windows.",
                 },
                 {
                   "@type": "Organization",

@@ -15,8 +15,11 @@ import { Loader2, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-/** Branded artwork used for the play button and the OS media controls. */
-const PLAYER_ARTWORK_SRC = "/ability-wheel-magic.png";
+/** Spinning mark on the on-page play button. */
+const PLAYER_BUTTON_SRC = "/ability-wheel-magic.png";
+/** Square cover for the OS media controls. The on-page button stays the wheel. */
+const MEDIA_ARTWORK_PATH = "/player-artwork.jpg";
+const MEDIA_ARTWORK_SIZE = "512x512";
 const TARGET_VOLUME = 0.6;
 const FADE_IN_MS = 600;
 const FADE_OUT_MS = 250;
@@ -255,12 +258,13 @@ function FloatingPlayerComponent({
     if (!("mediaSession" in navigator)) return;
     const { mediaSession } = navigator;
 
+    const artworkSrc = new URL(MEDIA_ARTWORK_PATH, window.location.origin).href;
     mediaSession.metadata = new MediaMetadata({
       title: trackTitle,
       artist: artist ?? "Barbatuques",
       album: "Shadowrun FPS",
       artwork: [
-        { src: PLAYER_ARTWORK_SRC, sizes: "512x512", type: "image/png" },
+        { src: artworkSrc, sizes: MEDIA_ARTWORK_SIZE, type: "image/jpeg" },
       ],
     });
 
@@ -363,7 +367,7 @@ function FloatingPlayerComponent({
           className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95 sm:h-12 sm:w-12"
         >
           <Image
-            src={PLAYER_ARTWORK_SRC}
+            src={PLAYER_BUTTON_SRC}
             alt=""
             width={48}
             height={48}

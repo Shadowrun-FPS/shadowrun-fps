@@ -6,7 +6,7 @@ export const OG_IMAGE_HEIGHT = 630;
 export const OG_CARDS = {
   home: {
     file: "home.jpg",
-    alt: "Shadowrun skyline with the stone wordmark",
+    alt: "Shadowrun skyline with the stone wordmark. Download and play free.",
   },
   download: {
     file: "download.jpg",

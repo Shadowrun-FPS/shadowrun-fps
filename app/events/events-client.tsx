@@ -1,106 +1,127 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
-import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { PostDialog } from "@/components/posts/post-dialog";
-import { PostManager } from "@/components/posts/post-manager";
-import { UserPermissions } from "@/lib/client-config";
 import dynamic from "next/dynamic";
+import { Suspense, useEffect, useState } from "react";
+import { PostArchive, PostArchiveView } from "@/components/posts/post-archive";
+import { Button } from "@/components/ui/button";
+import type { UserPermissions } from "@/lib/client-config";
+import type { Post } from "@/types";
 
-// Import FeaturedPosts with client-side only rendering
-const FeaturedPosts = dynamic(() => import("./featured-posts"), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center w-full h-96">
-      Loading posts...
+// Admin dialogs only load when an admin opens them.
+const PostDialog = dynamic(
+  () => import("@/components/posts/post-dialog").then((mod) => mod.PostDialog),
+  { ssr: false }
+);
+const PostManager = dynamic(
+  () =>
+    import("@/components/posts/post-manager").then((mod) => mod.PostManager),
+  { ssr: false }
+);
+
+interface EventsClientProps {
+  /** Posts loaded on the server. Null when the server could not reach the database. */
+  initialPosts: Post[] | null;
+}
+
+function noop() {}
+
+function PostsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-6 sm:gap-5 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
+      {[1, 2, 3].map((placeholder) => (
+        <div key={placeholder} className="flex flex-col">
+          <div className="h-48 animate-pulse rounded-xl bg-muted/50 sm:h-56 sm:rounded-2xl" />
+          <div className="space-y-2 pt-3 sm:pt-4">
+            <div className="h-6 animate-pulse rounded bg-muted/50" />
+            <div className="h-4 w-3/4 animate-pulse rounded bg-muted/50" />
+          </div>
+        </div>
+      ))}
     </div>
-  ),
-});
+  );
+}
 
-export default function EventsClient() {
+/** Loads the list in the browser when the server render had no posts to hand over. */
+function useFallbackPosts(initialPosts: Post[] | null) {
+  const [fetchedPosts, setFetchedPosts] = useState<Post[] | null>(null);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    if (initialPosts !== null) return;
+
+    let isCancelled = false;
+    fetch("/api/posts", { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to fetch posts");
+        return response.json() as Promise<Post[]>;
+      })
+      .then((posts) => {
+        if (!isCancelled) setFetchedPosts(posts);
+      })
+      .catch(() => {
+        if (!isCancelled) setHasError(true);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [initialPosts]);
+
+  return { posts: initialPosts ?? fetchedPosts, hasError };
+}
+
+export default function EventsClient({ initialPosts }: EventsClientProps) {
   const { data: session } = useSession();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isManagerOpen, setIsManagerOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [userPermissions, setUserPermissions] =
     useState<UserPermissions | null>(null);
+  const { posts, hasError } = useFallbackPosts(initialPosts);
 
-  // Add useEffect to handle client-side mounting
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!session?.user) {
+      setUserPermissions(null);
+      return;
+    }
 
-  // Fetch user permissions
-  useEffect(() => {
     const fetchPermissions = async () => {
-      if (session?.user) {
-        try {
-          // ✅ Use unified endpoint with deduplication
-          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-          const userData = await deduplicatedFetch<{
-            permissions: {
-              isAdmin: boolean;
-              isModerator: boolean;
-              isDeveloper: boolean;
-              canCreateTournament: boolean;
-            };
-          }>("/api/user/data", {
-            ttl: 60000, // Cache for 1 minute
-          });
-          setUserPermissions(userData.permissions);
-        } catch (error) {
-          console.error("Error fetching permissions:", error);
-        }
+      try {
+        const { deduplicatedFetch } = await import(
+          "@/lib/request-deduplication"
+        );
+        const userData = await deduplicatedFetch<{
+          permissions: UserPermissions;
+        }>("/api/user/data", {
+          ttl: 60000,
+        });
+        setUserPermissions(userData.permissions);
+      } catch {
+        setUserPermissions(null);
       }
     };
 
-    fetchPermissions();
+    void fetchPermissions();
   }, [session]);
 
-  // Check if user is admin
   const isAdmin = userPermissions?.isAdmin || false;
-
-  // Don't render anything until client-side hydration is complete
-  if (!mounted) {
-    return (
-      <article className="space-y-6 sm:space-y-8">
-        <section className="space-y-3 sm:space-y-4">
-          <div className="h-6 bg-muted animate-pulse rounded w-3/4" />
-          <div className="h-4 bg-muted animate-pulse rounded w-full" />
-        </section>
-        <section className="space-y-3 sm:space-y-4">
-          <div className="h-8 bg-muted animate-pulse rounded w-1/3" />
-          <div className="grid grid-cols-1 gap-4 sm:gap-5 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="rounded-xl sm:rounded-2xl h-[320px] sm:h-[360px] bg-muted/50 animate-pulse"
-              />
-            ))}
-          </div>
-        </section>
-      </article>
-    );
-  }
 
   return (
     <article className="space-y-6 sm:space-y-8">
-      {/* Introduction Section */}
       <section className="space-y-3 sm:space-y-4">
-        <p className="text-base sm:text-lg md:text-xl text-muted-foreground">
-          Stay connected with the latest Shadowrun FPS community events, tournaments, LAN parties, and community updates.
+        <p className="text-base text-muted-foreground sm:text-lg md:text-xl">
+          Stay connected with the latest Shadowrun FPS community events, LAN
+          parties, and community updates.
         </p>
 
-        {/* Admin Controls */}
         {isAdmin && (
           <div className="flex flex-wrap gap-3 sm:gap-4">
             <Button
               onClick={() => setIsDialogOpen(true)}
               className="flex items-center gap-2"
             >
-              <PlusCircle className="w-4 h-4" />
+              <PlusCircle className="h-4 w-4" />
               Create Post
             </Button>
             <Button variant="outline" onClick={() => setIsManagerOpen(true)}>
@@ -110,24 +131,37 @@ export default function EventsClient() {
         )}
       </section>
 
-      {/* Featured Posts Grid */}
       <section className="space-y-3 sm:space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
-            Upcoming Events
-          </h2>
-        </div>
-        <div className="relative">
-          <FeaturedPosts />
-        </div>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+          Community Events &amp; News
+        </h2>
+
+        {posts ? (
+          <Suspense
+            fallback={
+              <PostArchiveView posts={posts} filter="all" onFilterChange={noop} />
+            }
+          >
+            <PostArchive posts={posts} />
+          </Suspense>
+        ) : hasError ? (
+          <div className="rounded-lg border border-destructive/50 bg-destructive/5 py-12 text-center sm:py-16">
+            <p className="mb-2 text-base font-medium text-destructive sm:text-lg">
+              Error loading posts
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Refresh the page to try again.
+            </p>
+          </div>
+        ) : (
+          <PostsSkeleton />
+        )}
       </section>
 
-      {/* Post Creation Dialog */}
       {isDialogOpen && (
         <PostDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
       )}
 
-      {/* Post Manager Dialog */}
       {isManagerOpen && (
         <PostManager
           open={isManagerOpen}
