@@ -11,7 +11,11 @@ const FloatingPlayer = dynamic(
 export function HomeFloatingPlayer() {
   return (
     <IdleMount delayMs={600}>
-      <FloatingPlayer audioSrc="/baiana.mp3" trackTitle="Baiana" />
+      <FloatingPlayer
+        audioSrc="/baiana.mp3"
+        trackTitle="Baiana"
+        artist="Barbatuques"
+      />
     </IdleMount>
   );
 }

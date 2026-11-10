@@ -2,8 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import Spinner from "@/components/util/spinner";
-import { IconDiscordLogo } from "../icons/discord-logo";
-import { signIn, signOut, useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -109,22 +108,12 @@ export default function AccountDropdown() {
   };
 
 
-  // Display login button if not authenticated (Rumble-style pill outline)
-  if (status === "unauthenticated") {
-    return (
-      <Button
-        variant="outline"
-        onClick={() => signIn("discord")}
-        className="flex gap-1.5 items-center rounded-full h-8 sm:h-9 px-3 text-sm font-medium touch-manipulation border border-border/60 bg-transparent hover:bg-accent hover:border-border"
-      >
-        <IconDiscordLogo className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        Sign in
-      </Button>
-    );
+  // Signed-in people keep the avatar. Everyone else gets no header control.
+  if (status !== "authenticated") {
+    return null;
   }
 
-  // Display loading spinner while checking authentication
-  if (status === "loading" || isLoading) {
+  if (isLoading) {
     return <Spinner size="sm" />;
   }
 

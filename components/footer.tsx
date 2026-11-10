@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Youtube, Twitch, Instagram, Facebook } from "lucide-react";
+import { signIn, useSession } from "next-auth/react";
 import { getSocialUrls } from "@/lib/env";
 import { useMemo } from "react";
 import {
@@ -169,6 +170,7 @@ function buildSocialLinks(
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const { status } = useSession();
 
   const socialLinks = useMemo(() => {
     const urls = getSocialUrls();
@@ -184,9 +186,21 @@ export function Footer() {
         <div className="w-full rounded-t-2xl sm:rounded-t-3xl bg-black border-t border-gray-800/80">
           <div className="px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
-              {/* Copyright */}
               <p className="text-sm text-gray-500">
-                &copy; {currentYear} Shadowrun FPS Community
+                &copy;{" "}
+                {status === "authenticated" ? (
+                  currentYear
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void signIn("discord", { callbackUrl: "/" })}
+                    className="text-inherit underline-offset-4 hover:text-gray-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-sm"
+                    aria-label="Sign in"
+                  >
+                    {currentYear}
+                  </button>
+                )}{" "}
+                Shadowrun FPS Community
               </p>
               {/* Social links */}
               {socialLinks.length > 0 && (

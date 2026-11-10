@@ -65,6 +65,27 @@ function FloatingPlayerComponent({
 
   const isExpanded = isActive || hasError;
 
+  const setSessionPlaybackState = useCallback((state: MediaSessionPlaybackState) => {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = state;
+    } catch {
+      // Some browsers reject the state during a teardown.
+    }
+  }, []);
+
+  // Pause without a fade. requestAnimationFrame does not run while the phone
+  // is locked, so a fade would hold pause() until the page is visible again.
+  const stopNow = useCallback(() => {
+    const audio = audioRef.current;
+    cancelAnimationFrame(fadeFrameRef.current);
+    if (!audio) return;
+    audio.pause();
+    setIsActive(false);
+    setIsBuffering(false);
+    setSessionPlaybackState("paused");
+  }, [setSessionPlaybackState]);
+
   const fadeTo = useCallback((targetVolume: number, durationMs: number) => {
     const audio = audioRef.current;
     if (!audio) return Promise.resolve();
@@ -96,12 +117,22 @@ function FloatingPlayerComponent({
     setIsBuffering(true);
 
     try {
+      if (document.hidden) {
+        // The fade uses animation frames, which do not run on a locked phone.
+        cancelAnimationFrame(fadeFrameRef.current);
+        audio.volume = TARGET_VOLUME;
+        if (audio.paused) await audio.play();
+        setSessionPlaybackState("playing");
+        return;
+      }
+
       if (audio.paused) {
         // Start silent and fade up so pressing play is never jarring.
         audio.volume = 0;
         await audio.play();
       }
       void fadeTo(TARGET_VOLUME, FADE_IN_MS);
+      setSessionPlaybackState("playing");
     } catch (error) {
       // AbortError just means pause() interrupted a pending play().
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -109,15 +140,20 @@ function FloatingPlayerComponent({
       setIsActive(false);
       setIsBuffering(false);
     }
-  }, [fadeTo]);
+  }, [fadeTo, setSessionPlaybackState]);
 
   const pause = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
+    if (document.hidden) {
+      stopNow();
+      return;
+    }
+
     setIsActive(false);
     void fadeTo(0, FADE_OUT_MS).then(() => audio.pause());
-  }, [fadeTo]);
+  }, [fadeTo, stopNow]);
 
   const togglePlay = useCallback(() => {
     if (isActive) {
@@ -172,11 +208,13 @@ function FloatingPlayerComponent({
       setIsBuffering(false);
       setHasError(false);
       setIsActive(true);
+      setSessionPlaybackState("playing");
     };
     const handleWaiting = () => setIsBuffering(true);
     const handlePause = () => {
       setIsActive(false);
       setIsBuffering(false);
+      setSessionPlaybackState("paused");
     };
     const handleEnded = () => {
       audio.currentTime = 0;
@@ -210,7 +248,7 @@ function FloatingPlayerComponent({
       audio.removeEventListener("error", handleError);
       cancelAnimationFrame(fadeFrameRef.current);
     };
-  }, []);
+  }, [setSessionPlaybackState]);
 
   // Lock-screen / media-key controls and track info.
   useEffect(() => {
@@ -219,7 +257,7 @@ function FloatingPlayerComponent({
 
     mediaSession.metadata = new MediaMetadata({
       title: trackTitle,
-      artist: artist ?? "Shadowrun FPS",
+      artist: artist ?? "Barbatuques",
       album: "Shadowrun FPS",
       artwork: [
         { src: PLAYER_ARTWORK_SRC, sizes: "512x512", type: "image/png" },
@@ -229,7 +267,10 @@ function FloatingPlayerComponent({
     const audio = audioRef.current;
     const handlers: Array<[MediaSessionAction, MediaSessionActionHandler]> = [
       ["play", () => void play()],
-      ["pause", pause],
+      // Must pause in this turn. A fade waits on animation frames that a
+      // locked phone will not run until the page is opened again.
+      ["pause", stopNow],
+      ["stop", stopNow],
       [
         "seekbackward",
         () =>
@@ -271,7 +312,7 @@ function FloatingPlayerComponent({
       }
       mediaSession.metadata = null;
     };
-  }, [artist, pause, play, seekTo, trackTitle]);
+  }, [artist, play, seekTo, stopNow, trackTitle]);
 
   // Keep the OS scrubber in sync with the real position.
   useEffect(() => {
