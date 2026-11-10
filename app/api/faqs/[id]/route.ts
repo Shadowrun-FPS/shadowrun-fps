@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { isAuthorizedAdmin } from "@/lib/admin-auth";
-import { withErrorHandling, createError } from "@/lib/error-handling";
+import { canManageContentLive } from "@/lib/content-auth";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
@@ -13,15 +10,6 @@ async function putFaqHandler(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  
-  if (!isAuthorizedAdmin(session)) {
-    return NextResponse.json(
-      { error: "Only admins can update FAQs" },
-      { status: 403 }
-    );
-  }
-
   const id = sanitizeString(params.id, 50);
   if (!ObjectId.isValid(id)) {
     return NextResponse.json(
@@ -94,7 +82,7 @@ async function putFaqHandler(
 export const PUT = withApiSecurity(putFaqHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   revalidatePaths: ["/faqs", "/admin/faqs"],
 });
 
@@ -102,15 +90,6 @@ async function deleteFaqHandler(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const session = await getServerSession(authOptions);
-  
-  if (!isAuthorizedAdmin(session)) {
-    return NextResponse.json(
-      { error: "Only admins can delete FAQs" },
-      { status: 403 }
-    );
-  }
-
   const id = sanitizeString(params.id, 50);
   if (!ObjectId.isValid(id)) {
     return NextResponse.json(
@@ -140,7 +119,7 @@ async function deleteFaqHandler(
 export const DELETE = withApiSecurity(deleteFaqHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   revalidatePaths: ["/faqs", "/admin/faqs"],
 });
 

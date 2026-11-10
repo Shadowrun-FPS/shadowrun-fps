@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
-import { ObjectId } from "mongodb";
-import { isAuthorizedAdmin } from "@/lib/admin-auth";
-import { withErrorHandling, createError } from "@/lib/error-handling";
+import { canManageContentLive } from "@/lib/content-auth";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
@@ -49,15 +45,6 @@ export const GET = withApiSecurity(getFaqsHandler, {
 });
 
 async function postFaqsHandler(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  
-  if (!isAuthorizedAdmin(session)) {
-    return NextResponse.json(
-      { error: "Only admins can create FAQs" },
-      { status: 403 }
-    );
-  }
-
   const body = await req.json();
   const validation = validateBody(body, {
     title: { type: "string", required: true, maxLength: 200 },
@@ -123,7 +110,7 @@ async function postFaqsHandler(req: NextRequest) {
 export const POST = withApiSecurity(postFaqsHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   revalidatePaths: ["/faqs", "/admin/faqs"],
 });
 

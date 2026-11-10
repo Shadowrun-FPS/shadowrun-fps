@@ -5,6 +5,7 @@ import {
   SECURITY_CONFIG,
   ADMIN_ROLE_IDS,
   MODERATOR_ROLE_IDS,
+  canManageContent,
 } from "@/lib/security-config";
 import { withErrorHandling } from "@/lib/error-handling";
 import { safeLog, sanitizeString } from "@/lib/security";
@@ -15,7 +16,6 @@ export const dynamic = "force-dynamic";
 
 // Developer ID for special permissions
 const DEVELOPER_ID = SECURITY_CONFIG.DEVELOPER_ID;
-const DEVELOPER_DISCORD_ID = "238329746671271936";
 
 // Admin role IDs
 const ADMIN_ROLES = ADMIN_ROLE_IDS;
@@ -28,6 +28,7 @@ interface UserData {
     isAdmin: boolean;
     isModerator: boolean;
     canCreateTournament: boolean;
+    canManageContent: boolean;
     isDeveloper: boolean;
   };
   roles: string[];
@@ -56,9 +57,7 @@ async function getUserDataHandler(req: NextRequest) {
   }
 
   const userId = sanitizeString(session.user.id, 50);
-  const isDeveloper =
-    session.user.id === DEVELOPER_ID ||
-    session.user.id === DEVELOPER_DISCORD_ID;
+  const isDeveloper = session.user.id === DEVELOPER_ID;
 
   const [discordRolesResult, playerResult] = await Promise.allSettled([
     // Fetch Discord roles and guild nickname
@@ -155,6 +154,8 @@ async function getUserDataHandler(req: NextRequest) {
       isAdmin,
       isModerator,
       canCreateTournament: isAdmin || isModerator,
+      // Same rule the post routes enforce, so buttons only show to people who can use them.
+      canManageContent: canManageContent({ id: session.user.id, roles: userRoles }),
       isDeveloper,
     },
     roles: userRoles,

@@ -22,7 +22,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     {
       url: `${BASE_URL}/troubleshoot`,
       lastModified: LAST_UPDATED,
-      changeFrequency: "yearly",
+      changeFrequency: "monthly",
       priority: 0.8,
     },
     {

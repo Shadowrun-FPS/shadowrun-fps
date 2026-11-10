@@ -3,43 +3,18 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { canManageContentLive } from "@/lib/content-auth";
 import { createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
 import { invalidatePostsCache } from "@/lib/posts";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { revalidatePath } from "next/cache";
 
-// Helper function to check if user is admin
-async function isUserAdmin(userId: string) {
-  // Developer ID always has access
-  if (userId === SECURITY_CONFIG.DEVELOPER_ID) return true;
-
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-
-  // Check if user has admin roles in the database
-  const user = await db.collection("Players").findOne({ discordId: userId });
-  if (!user) return false;
-
-  // Check for admin roles using security config
-  return hasAdminRole(user.roles || []);
-}
-
 // POST reorder posts - supports both single and bulk reordering
 async function reorderPostsHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw createError.unauthorized("Authentication required to reorder posts");
-  }
-
-  // Check if user is admin
-  const admin = await isUserAdmin(session.user.id);
-  if (!admin) {
-    secureLogger.warn("Unauthorized attempt to reorder posts", {
-      userId: session.user.id,
-    });
-    throw createError.forbidden("Only admins can reorder posts");
   }
 
   const client = await clientPromise;
@@ -152,6 +127,6 @@ async function reorderPostsHandler(req: NextRequest) {
 export const POST = withApiSecurity(reorderPostsHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   revalidatePaths: ["/", "/events"],
 });

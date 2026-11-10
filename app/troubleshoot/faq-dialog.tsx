@@ -14,22 +14,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { safeLog } from "@/lib/security";
 import { Loader2, Trash2 } from "lucide-react";
-
-interface FAQ {
-  _id?: string;
-  title: string;
-  content: string;
-  list: string[];
-  href: string;
-  link: string;
-  category: string;
-}
+import { cn } from "@/lib/utils";
+import type { FAQFormValues } from "@/types";
 
 interface FAQDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialData?: FAQ | null;
+  initialData?: FAQFormValues | null;
   onSuccess?: () => void;
 }
 
@@ -39,7 +32,7 @@ export function FAQDialog({
   initialData,
   onSuccess,
 }: FAQDialogProps) {
-  const [formData, setFormData] = useState<FAQ>({
+  const [formData, setFormData] = useState<FAQFormValues>({
     title: "",
     content: "",
     list: [],
@@ -112,17 +105,28 @@ export function FAQDialog({
       return;
     }
 
+    const href = formData.href.trim();
+    const link = formData.link.trim();
+    if ((href && !link) || (!href && link)) {
+      toast({
+        title: "Incomplete link",
+        description: "Link URL and Link Text must both be filled, or both left empty.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const payload = {
         ...formData,
+        href,
+        link,
         list: listItems.filter((item) => item.trim() !== ""),
       };
 
-      const url = initialData
-        ? `/api/faqs/${initialData._id}`
-        : "/api/faqs";
+      const url = initialData ? `/api/faqs/${initialData._id}` : "/api/faqs";
       const method = initialData ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -149,7 +153,7 @@ export function FAQDialog({
         onSuccess();
       }
     } catch (error) {
-      console.error("Error saving FAQ:", error);
+      safeLog.error("Error saving FAQ:", error);
       toast({
         title: "Error",
         description: "Failed to save FAQ. Please try again.",
@@ -162,21 +166,25 @@ export function FAQDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[calc(100vh-2rem)] sm:max-h-[85vh] overflow-y-auto p-3 sm:p-4 md:p-6">
-        <DialogHeader className="space-y-2 sm:space-y-2.5 pb-3 sm:pb-4 border-b border-border/40 pr-10 sm:pr-0">
-          <DialogTitle className="text-base sm:text-lg md:text-xl font-bold leading-tight break-words">
+      <DialogContent
+        className={cn(
+          "flex max-h-[min(100dvh-1rem,calc(100vh-2rem))] w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[85vh] sm:max-w-[600px] sm:rounded-lg"
+        )}
+      >
+        <DialogHeader className="shrink-0 space-y-2 border-b border-border/40 px-4 pb-3 pt-4 text-left sm:space-y-2.5 sm:px-6 sm:pb-4 sm:pt-6 pr-12 sm:pr-14">
+          <DialogTitle className="break-words text-base font-bold leading-tight sm:text-lg md:text-xl">
             {initialData ? "Edit FAQ" : "Create New FAQ"}
           </DialogTitle>
-          <DialogDescription className="text-xs sm:text-sm mt-1 text-muted-foreground break-words">
+          <DialogDescription className="mt-1 break-words text-xs text-muted-foreground sm:text-sm">
             {initialData
               ? "Update the FAQ details below"
               : "Fill in the details to create a new FAQ"}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-5 md:space-y-6 py-3 sm:py-4 md:py-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:space-y-5 sm:px-6 sm:py-5 md:space-y-6">
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="title" className="text-sm sm:text-base font-medium">
+            <Label htmlFor="title" className="text-sm font-medium sm:text-base">
               Title <span className="text-destructive">*</span>
             </Label>
             <Input
@@ -185,12 +193,15 @@ export function FAQDialog({
               value={formData.title}
               onChange={handleChange}
               placeholder="Enter FAQ title"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
+              className="min-h-[44px] w-full border-2 text-base touch-manipulation transition-colors focus:border-primary/50 sm:min-h-[40px] sm:text-sm"
             />
           </div>
 
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="content" className="text-sm sm:text-base font-medium">
+            <Label
+              htmlFor="content"
+              className="text-sm font-medium sm:text-base"
+            >
               Content
             </Label>
             <Textarea
@@ -200,42 +211,43 @@ export function FAQDialog({
               onChange={handleChange}
               placeholder="Enter FAQ content"
               rows={4}
-              className="resize-none text-base sm:text-sm border-2 focus:border-primary/50 transition-colors min-h-[100px] touch-manipulation w-full"
+              className="min-h-[100px] w-full resize-none border-2 text-base touch-manipulation transition-colors focus:border-primary/50 sm:text-sm"
             />
           </div>
 
           <div className="space-y-2 sm:space-y-2.5">
-            <Label className="text-sm sm:text-base font-medium">
+            <Label className="text-sm font-medium sm:text-base">
               List Items
             </Label>
             <div className="space-y-2">
               {listItems.map((item, index) => (
-                <div key={index} className="flex gap-2">
+                <div key={index} className="flex items-center gap-2">
                   <Input
                     value={item}
                     onChange={(e) => handleListChange(index, e.target.value)}
                     placeholder={`List item ${index + 1}`}
-                    className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation flex-1"
+                    className="min-h-[44px] flex-1 border-2 text-base touch-manipulation transition-colors focus:border-primary/50 sm:min-h-[40px] sm:text-sm"
                   />
-                  {listItems.length > 1 && (
+                  {listItems.length > 1 ? (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       onClick={() => removeListItem(index)}
-                      className="h-10 w-10 sm:h-9 sm:w-9 touch-manipulation text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="h-11 w-11 shrink-0 touch-manipulation text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:h-10 sm:w-10"
                       title="Remove list item"
+                      aria-label={`Remove list item ${index + 1}`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               ))}
               <Button
                 type="button"
                 variant="outline"
                 onClick={addListItem}
-                className="w-full sm:w-auto h-10 sm:h-9 touch-manipulation"
+                className="h-11 w-full touch-manipulation sm:h-10 sm:w-auto"
               >
                 Add List Item
               </Button>
@@ -243,7 +255,7 @@ export function FAQDialog({
           </div>
 
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="href" className="text-sm sm:text-base font-medium">
+            <Label htmlFor="href" className="text-sm font-medium sm:text-base">
               Link URL
             </Label>
             <Input
@@ -252,12 +264,16 @@ export function FAQDialog({
               value={formData.href}
               onChange={handleChange}
               placeholder="https://example.com"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
+              className="min-h-[44px] w-full border-2 text-base touch-manipulation transition-colors focus:border-primary/50 sm:min-h-[40px] sm:text-sm"
             />
+            <p className="text-xs text-muted-foreground">
+              Link URL and Link Text are shown together on the page. Fill both,
+              or leave both empty.
+            </p>
           </div>
 
           <div className="space-y-2 sm:space-y-2.5">
-            <Label htmlFor="link" className="text-sm sm:text-base font-medium">
+            <Label htmlFor="link" className="text-sm font-medium sm:text-base">
               Link Text
             </Label>
             <Input
@@ -266,27 +282,32 @@ export function FAQDialog({
               value={formData.link}
               onChange={handleChange}
               placeholder="Download fix"
-              className="min-h-[44px] sm:min-h-[40px] text-base sm:text-sm border-2 focus:border-primary/50 transition-colors touch-manipulation w-full"
+              className="min-h-[44px] w-full border-2 text-base touch-manipulation transition-colors focus:border-primary/50 sm:min-h-[40px] sm:text-sm"
             />
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+        <DialogFooter
+          className={cn(
+            "shrink-0 flex-col gap-2 border-t border-border/40 bg-background px-4 py-3 sm:flex-row sm:justify-end sm:gap-2 sm:space-x-0 sm:px-6 sm:py-4",
+            "pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+          )}
+        >
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
+            className="h-11 w-full touch-manipulation sm:h-10 sm:w-auto"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isLoading}
-            className="w-full sm:w-auto min-h-[44px] sm:min-h-0"
+            className="h-11 w-full touch-manipulation sm:h-10 sm:w-auto"
           >
             {isLoading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Saving...
               </>
             ) : initialData ? (
@@ -300,4 +321,3 @@ export function FAQDialog({
     </Dialog>
   );
 }
-

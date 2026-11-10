@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
-import { safeLog, sanitizeString } from "@/lib/security";
+import { canManageContentLive } from "@/lib/content-auth";
+import { sanitizeString } from "@/lib/security";
 import { withApiSecurity, validateBody } from "@/lib/api-wrapper";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { canManageFeaturedBroadcast } from "@/lib/security-config";
 
 export const dynamic = 'force-dynamic';
 
@@ -48,19 +48,8 @@ async function getFeaturedVideoHandler() {
 
 async function updateFeaturedVideoHandler(req: Request) {
   const session = await getServerSession(authOptions);
-
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const userRoles = session.user.roles || [];
-  if (
-    !canManageFeaturedBroadcast(
-      session.user.id,
-      userRoles,
-      session.user.isAdmin,
-    )
-  ) {
+  // Auth is enforced by the wrapper; session is only needed for updatedBy.
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -142,7 +131,9 @@ export const GET = withApiSecurity(getFeaturedVideoHandler, {
 });
 
 export const PUT = withApiSecurity(updateFeaturedVideoHandler, {
-  rateLimiter: "api",
+  rateLimiter: "admin",
+  requireAuth: true,
+  authorize: canManageContentLive,
   cacheable: false,
 });
 

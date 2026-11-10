@@ -24,6 +24,8 @@ export interface UserPermissions {
   isAdmin: boolean;
   isModerator: boolean;
   canCreateTournament: boolean;
+  /** Developer ID, Admin role, or Founder role. Gates creating and managing posts. */
+  canManageContent?: boolean;
   isDeveloper: boolean;
   roles?: string[];
 }

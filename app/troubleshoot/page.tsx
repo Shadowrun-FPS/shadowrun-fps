@@ -14,20 +14,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ogImages } from "@/lib/og-images";
-import clientPromise from "@/lib/mongodb";
+import { formatFaqAnswerText, getFaqsForTroubleshoot } from "@/lib/faqs";
 import { FAQsSection } from "./faqs-section";
 
+const PAGE_TITLE = "Troubleshooting";
+const PAGE_DESCRIPTION =
+  "Fixes for common errors, controllers, and networking. Start with Common errors if you have a specific message or code.";
+
 export const metadata: Metadata = {
-  title: "GFWL and PC Fixes",
-  description:
-    "Fix Shadowrun FPS (2007) on PC: Games for Windows Live activation, key errors, FPS caps, NAT, controllers, and crashes.",
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
   alternates: {
     canonical: "/troubleshoot",
   },
   openGraph: {
-    title: "Shadowrun FPS GFWL and PC Fixes",
-    description:
-      "GFWL activation, networking, performance, and controller fixes for Shadowrun FPS on PC.",
+    title: "Troubleshooting | Shadowrun FPS",
+    description: PAGE_DESCRIPTION,
     url: "https://www.shadowrunfps.com/troubleshoot",
     siteName: "Shadowrun FPS",
     locale: "en_US",
@@ -36,32 +38,33 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shadowrun FPS GFWL and PC Fixes",
-    description:
-      "GFWL, NAT, FPS, and crash fixes for Shadowrun FPS on PC.",
+    title: "Troubleshooting | Shadowrun FPS",
+    description: PAGE_DESCRIPTION,
     images: ogImages("troubleshooting"),
   },
 };
 
-async function getFaqsForSchema(): Promise<{ title: string; content: string }[]> {
-  try {
-    const client = await clientPromise;
-    const db = client.db("ShadowrunWeb");
-    const faqs = await db
-      .collection("FAQs")
-      .find({ category: "errors" })
-      .sort({ order: 1 })
-      .limit(20)
-      .project({ title: 1, content: 1 })
-      .toArray();
-    return faqs as unknown as { title: string; content: string }[];
-  } catch {
-    return [];
-  }
-}
-
 export default async function TroubleshootPage() {
-  const faqs = await getFaqsForSchema();
+  const faqs = await getFaqsForTroubleshoot();
+
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: "https://www.shadowrunfps.com/",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Troubleshooting",
+        item: "https://www.shadowrunfps.com/troubleshoot",
+      },
+    ],
+  };
 
   const faqSchema =
     faqs.length > 0
@@ -73,192 +76,254 @@ export default async function TroubleshootPage() {
             name: faq.title,
             acceptedAnswer: {
               "@type": "Answer",
-              text: faq.content || faq.title,
+              text: formatFaqAnswerText(faq) || faq.title,
             },
           })),
         }
       : null;
 
+  const howToSchema = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: "Fix PCID / GFWL registry conflicts for Shadowrun FPS",
+    description:
+      "Clear the local Games for Windows Live Xlive folder and reinstall GFWL when Shadowrun FPS has PCID or networking conflicts on PC.",
+    step: [
+      {
+        "@type": "HowToStep",
+        position: 1,
+        name: "Uninstall GFWL",
+        text: "Uninstall Games for Windows Live components.",
+      },
+      {
+        "@type": "HowToStep",
+        position: 2,
+        name: "Open Registry Editor",
+        text: "Open regedit as administrator.",
+      },
+      {
+        "@type": "HowToStep",
+        position: 3,
+        name: "Locate the Xlive folder",
+        text: "Navigate to C:\\Users\\USERNAME\\AppData\\Local\\Microsoft\\Xlive",
+      },
+      {
+        "@type": "HowToStep",
+        position: 4,
+        name: "Delete the folder",
+        text: "Delete the entire Xlive folder.",
+      },
+      {
+        "@type": "HowToStep",
+        position: 5,
+        name: "Reinstall GFWL",
+        text: "Reinstall Games for Windows Live, then launch Shadowrun FPS.",
+      },
+    ],
+  };
+
   return (
     <>
-      {faqSchema && (
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      {faqSchema ? (
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
-      )}
+      ) : null}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
+      />
       <DocLayout>
-      <article>
-        <TroubleshootPageHero />
+        <article>
+          <TroubleshootPageHero />
 
-        <div className="space-y-10 pt-6 sm:space-y-12 sm:pt-8 md:space-y-14 md:pt-10">
-          <DocSection id="errors" eyebrow="Errors" title="Common errors">
-            <div className="space-y-4 sm:space-y-5">
-              <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
-                Find solutions to common issues and error messages below. Click
-                an item to expand the fix.
-              </p>
-              <div className="rounded-2xl border border-border/50 bg-card/25 p-4 shadow-sm sm:p-6 md:p-8">
-                <FAQsSection />
+          <div className="space-y-10 pt-6 sm:space-y-12 sm:pt-8 md:space-y-14 md:pt-10">
+            <DocSection id="errors" eyebrow="Errors" title="Common errors">
+              <div className="space-y-4 sm:space-y-5">
+                <p className="text-base leading-relaxed text-muted-foreground sm:text-lg">
+                  Find solutions to common issues and error messages below.
+                  Expand an item for the fix.
+                </p>
+                <div className="rounded-2xl border border-border/50 bg-card/25 p-4 shadow-sm sm:p-6 md:p-8">
+                  <FAQsSection initialFaqs={faqs} />
+                </div>
               </div>
-            </div>
-          </DocSection>
+            </DocSection>
 
-          <DocSection id="controller" eyebrow="Input" title="Controller setup">
-            <Card className="border-border/60 bg-card/40 shadow-sm">
-              <CardHeader className="px-4 sm:px-6">
-                <CardTitle className="text-lg sm:text-xl">
-                  Controller configuration
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 px-4 text-sm sm:px-6 sm:text-base">
-                <div>
-                  <p className="mb-2 font-semibold text-foreground">
-                    Xbox controllers
-                  </p>
-                  <DocBulletList>
-                    <DocBulletItem>Natively supported</DocBulletItem>
-                    <DocBulletItem>Must be enabled in main menu settings</DocBulletItem>
-                  </DocBulletList>
-                </div>
-                <div>
-                  <p className="mb-2 font-semibold text-foreground">
-                    PlayStation and other controllers
-                  </p>
-                  <p className="mb-3 text-muted-foreground">
-                    Any non-Xbox gamepad uses the steps below — Xbox controllers are
-                    native once enabled in the main menu (Switch Pro, generic PC
-                    pads, etc. follow the same workflow as PlayStation).
-                  </p>
-                  <ol className="space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                        1
-                      </span>
-                      <span className="text-muted-foreground">
-                        Add Shadowrun as Non-Steam Game
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                        2
-                      </span>
-                      <span className="text-muted-foreground">
-                        Enable PlayStation Controller Support in Steam
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                        3
-                      </span>
-                      <span className="text-muted-foreground">
-                        Connect controller via USB or Bluetooth
-                      </span>
-                    </li>
-                  </ol>
-                </div>
-                <DocCallout variant="warning" title="Main menu only">
-                  <DocBulletList>
-                    <DocBulletItem>
-                      Controller settings can only be changed from the main menu
-                    </DocBulletItem>
-                    <DocBulletItem>
-                      You cannot switch input methods during a match
-                    </DocBulletItem>
-                  </DocBulletList>
-                </DocCallout>
-              </CardContent>
-            </Card>
-          </DocSection>
-
-          <DocSection id="getting-game" eyebrow="Platforms" title="Getting the game">
-            <div className="grid gap-4 sm:grid-cols-2">
+            <DocSection id="controller" eyebrow="Input" title="Controller setup">
               <Card className="border-border/60 bg-card/40 shadow-sm">
                 <CardHeader className="px-4 sm:px-6">
-                  <CardTitle className="text-lg sm:text-xl">PC version</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">
+                    Controller configuration
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2.5 px-4 text-sm sm:px-6 sm:text-base">
-                  <p className="text-muted-foreground">
-                    Install from the{" "}
-                    <Link
-                      href="/download"
-                      className="font-medium text-primary underline-offset-4 hover:underline"
+                <CardContent className="space-y-4 px-4 text-sm sm:px-6 sm:text-base">
+                  <div>
+                    <p className="mb-2 font-semibold text-foreground">
+                      Xbox controllers
+                    </p>
+                    <DocBulletList>
+                      <DocBulletItem>Natively supported</DocBulletItem>
+                      <DocBulletItem>
+                        Must be enabled in main menu settings
+                      </DocBulletItem>
+                    </DocBulletList>
+                  </div>
+                  <div>
+                    <p className="mb-2 font-semibold text-foreground">
+                      PlayStation and other controllers
+                    </p>
+                    <p className="mb-3 text-muted-foreground">
+                      Any non-Xbox gamepad uses the steps below — Xbox
+                      controllers are native once enabled in the main menu
+                      (Switch Pro, generic PC pads, etc. follow the same
+                      workflow as PlayStation).
+                    </p>
+                    <ol className="space-y-2">
+                      <li className="flex items-start gap-2">
+                        <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                          1
+                        </span>
+                        <span className="text-muted-foreground">
+                          Add Shadowrun as Non-Steam Game
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                          2
+                        </span>
+                        <span className="text-muted-foreground">
+                          Enable PlayStation Controller Support in Steam
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
+                          3
+                        </span>
+                        <span className="text-muted-foreground">
+                          Connect controller via USB or Bluetooth
+                        </span>
+                      </li>
+                    </ol>
+                  </div>
+                  <DocCallout variant="warning" title="Main menu only">
+                    <DocBulletList>
+                      <DocBulletItem>
+                        Controller settings can only be changed from the main
+                        menu
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        You cannot switch input methods during a match
+                      </DocBulletItem>
+                    </DocBulletList>
+                  </DocCallout>
+                </CardContent>
+              </Card>
+            </DocSection>
+
+            <DocSection
+              id="getting-game"
+              eyebrow="Platforms"
+              title="Getting the game"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Card className="border-border/60 bg-card/40 shadow-sm">
+                  <CardHeader className="px-4 sm:px-6">
+                    <CardTitle className="text-lg sm:text-xl">
+                      PC version
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5 px-4 text-sm sm:px-6 sm:text-base">
+                    <p className="text-muted-foreground">
+                      Install from the{" "}
+                      <Link
+                        href="/download"
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        download page
+                      </Link>
+                      .
+                    </p>
+                    <DocBulletList>
+                      <DocBulletItem>
+                        Download the launcher and run the installer
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Open the launcher and sign in with Discord
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Follow the setup prompts, then click Play
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Discord server membership is required
+                      </DocBulletItem>
+                    </DocBulletList>
+                  </CardContent>
+                </Card>
+                <Card className="border-border/60 bg-card/40 shadow-sm">
+                  <CardHeader className="px-4 sm:px-6">
+                    <CardTitle className="text-lg sm:text-xl">
+                      Xbox version
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2.5 px-4 text-sm sm:px-6 sm:text-base">
+                    <a
+                      href="https://www.xbox.com/en-US/games/store/shadowrun/bsnjbk3gbdt3"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mb-2 block font-medium text-primary underline-offset-4 hover:underline"
                     >
-                      download page
-                    </Link>
-                    .
-                  </p>
-                  <DocBulletList>
-                    <DocBulletItem>
-                      Download the launcher and run the installer
-                    </DocBulletItem>
-                    <DocBulletItem>
-                      Open the launcher and sign in with Discord
-                    </DocBulletItem>
-                    <DocBulletItem>
-                      Follow the setup prompts, then click Play
-                    </DocBulletItem>
-                    <DocBulletItem>
-                      Discord server membership is required
-                    </DocBulletItem>
-                  </DocBulletList>
-                </CardContent>
-              </Card>
-              <Card className="border-border/60 bg-card/40 shadow-sm">
-                <CardHeader className="px-4 sm:px-6">
-                  <CardTitle className="text-lg sm:text-xl">Xbox version</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2.5 px-4 text-sm sm:px-6 sm:text-base">
-                  <a
-                    href="https://www.xbox.com/en-US/games/store/shadowrun/bsnjbk3gbdt3"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mb-2 block font-medium text-primary underline-offset-4 hover:underline"
-                  >
-                    Available on Xbox Store ($14.99)
-                  </a>
-                  <DocBulletList>
-                    <DocBulletItem>
-                      Xbox Live Gold required for public matchmaking
-                    </DocBulletItem>
-                    <DocBulletItem>
-                      Private matches may be accessible without Gold
-                    </DocBulletItem>
-                  </DocBulletList>
-                  <p className="pt-1 font-medium text-primary">
-                    Game is most active in private lobbies
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          </DocSection>
+                      Available on Xbox Store ($14.99)
+                    </a>
+                    <DocBulletList>
+                      <DocBulletItem>
+                        Xbox Live Gold required for public matchmaking
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Private matches may be accessible without Gold
+                      </DocBulletItem>
+                    </DocBulletList>
+                    <p className="pt-1 font-medium text-primary">
+                      Game is most active in private lobbies
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </DocSection>
 
-          <DocSection
-            id="connection"
-            eyebrow="Network"
-            title="Connection issues"
-          >
-            <Card className="border-border/60 bg-card/40 shadow-sm">
-              <CardContent className="space-y-5 px-4 pt-5 text-sm sm:px-6 sm:pt-6 sm:text-base">
-                <div>
-                  <p className="mb-2 font-semibold text-foreground">
-                    Basic troubleshooting
-                  </p>
-                  <DocBulletList>
-                    <DocBulletItem>
-                      Enable open NAT or UPnP in router settings
-                    </DocBulletItem>
-                    <DocBulletItem>
-                      Verify open NAT status in Xbox Console Companion App
-                    </DocBulletItem>
-                    <DocBulletItem>Check for PCID registry conflicts</DocBulletItem>
-                    <DocBulletItem>
-                      Contact ISP about Carrier Grade NAT (CGNAT)
-                    </DocBulletItem>
-                  </DocBulletList>
-                </div>
-                <DocCallout variant="warning" title="Registry fix (PCID / GFWL)">
-                  <ol className="space-y-2">
+            <DocSection
+              id="connection"
+              eyebrow="Network"
+              title="Connection issues"
+            >
+              <Card className="border-border/60 bg-card/40 shadow-sm">
+                <CardContent className="space-y-5 px-4 pt-5 text-sm sm:px-6 sm:pt-6 sm:text-base">
+                  <div>
+                    <p className="mb-2 font-semibold text-foreground">
+                      Basic troubleshooting
+                    </p>
+                    <DocBulletList>
+                      <DocBulletItem>
+                        Enable open NAT or UPnP in router settings
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Verify open NAT status in Xbox Console Companion App
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Check for PCID registry conflicts
+                      </DocBulletItem>
+                      <DocBulletItem>
+                        Contact ISP about Carrier Grade NAT (CGNAT)
+                      </DocBulletItem>
+                    </DocBulletList>
+                  </div>
+                  <DocCallout variant="warning" title="Registry fix (PCID / GFWL)">
+                    <ol className="space-y-2">
                       <li className="flex items-start gap-2">
                         <span className="mt-1.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
                           1
@@ -304,44 +369,48 @@ export default async function TroubleshootPage() {
                       </li>
                     </ol>
                   </DocCallout>
-              </CardContent>
-            </Card>
-          </DocSection>
+                </CardContent>
+              </Card>
+            </DocSection>
 
-          <DocSection eyebrow="Continue" title="What's next?">
-            <p className="text-sm text-muted-foreground sm:text-base">
-              If you still need the game, start with the launcher.
-            </p>
-            <div className="grid max-w-xl gap-3">
-              <Link
-                href="/download"
-                className="group flex min-h-[4.5rem] items-center gap-3 rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-5"
-              >
-                <div className="min-w-0 flex-1 text-left">
-                  <h3 className="flex items-center gap-2 font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[color,text-decoration-color] group-hover:text-primary group-hover:underline group-hover:decoration-primary/60">
-                    <Download className="h-4 w-4 shrink-0 text-primary/80" aria-hidden />
-                    Download launcher
-                  </h3>
-                  <p className="mt-1 text-sm leading-snug text-muted-foreground">
-                    Install the launcher, sign in with Discord, then click Play
-                  </p>
-                </div>
-                <ChevronRight
-                  className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-hidden
-                />
-              </Link>
-            </div>
-          </DocSection>
+            <DocSection eyebrow="Continue" title="What's next?">
+              <p className="text-sm text-muted-foreground sm:text-base">
+                If you still need the game, start with the launcher.
+              </p>
+              <div className="grid max-w-xl gap-3">
+                <Link
+                  href="/download"
+                  className="group flex min-h-[4.5rem] items-center gap-3 rounded-2xl border border-border/60 bg-muted/10 p-4 shadow-sm transition-colors hover:border-primary/30 hover:bg-muted/18 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:p-5"
+                >
+                  <div className="min-w-0 flex-1 text-left">
+                    <h3 className="flex items-center gap-2 font-semibold leading-snug text-foreground underline-offset-4 decoration-transparent transition-[color,text-decoration-color] group-hover:text-primary group-hover:underline group-hover:decoration-primary/60">
+                      <Download
+                        className="h-4 w-4 shrink-0 text-primary/80"
+                        aria-hidden
+                      />
+                      Download launcher
+                    </h3>
+                    <p className="mt-1 text-sm leading-snug text-muted-foreground">
+                      Install the launcher, sign in with Discord, then click
+                      Play
+                    </p>
+                  </div>
+                  <ChevronRight
+                    className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                    aria-hidden
+                  />
+                </Link>
+              </div>
+            </DocSection>
 
-          <TroubleshootDiscordCta
-            title="Still having issues?"
-            description="If you’ve tried everything above, our Discord has experienced players who can help with your specific setup."
-            buttonLabel="Get help on Discord"
-          />
-        </div>
-      </article>
-    </DocLayout>
+            <TroubleshootDiscordCta
+              title="Still having issues?"
+              description="If you’ve tried everything above, our Discord has experienced players who can help with your specific setup."
+              buttonLabel="Get help on Discord"
+            />
+          </div>
+        </article>
+      </DocLayout>
     </>
   );
 }

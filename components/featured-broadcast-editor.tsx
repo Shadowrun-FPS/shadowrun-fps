@@ -22,7 +22,6 @@ import {
   getYouTubeEmbedUrl,
   type FeaturedVideoSettings,
 } from "@/lib/featured-video";
-import { canManageFeaturedBroadcast } from "@/lib/security-config";
 import { safeLog } from "@/lib/security";
 
 const defaultSettings: FeaturedVideoSettings = {
@@ -38,7 +37,7 @@ export function FeaturedBroadcastEditor() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const { toast } = useToast();
-  const [discordRoleIds, setDiscordRoleIds] = useState<string[] | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
   const [gateLoading, setGateLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [loadingSettings, setLoadingSettings] = useState(false);
@@ -48,7 +47,7 @@ export function FeaturedBroadcastEditor() {
 
   useEffect(() => {
     if (status !== "authenticated" || !session?.user?.id) {
-      setDiscordRoleIds(null);
+      setCanEdit(false);
       return;
     }
 
@@ -59,14 +58,17 @@ export function FeaturedBroadcastEditor() {
         const { deduplicatedFetch } = await import(
           "@/lib/request-deduplication"
         );
-        const userData = await deduplicatedFetch<{ roles: string[] }>(
-          "/api/user/data",
-          { ttl: 60000 }
-        );
-        if (!cancelled) setDiscordRoleIds(userData.roles ?? []);
+        const userData = await deduplicatedFetch<{
+          permissions: { canManageContent?: boolean };
+        }>("/api/user/data", {
+          ttl: 60000,
+        });
+        if (!cancelled) {
+          setCanEdit(userData.permissions?.canManageContent === true);
+        }
       } catch (e) {
-        safeLog.error("FeaturedBroadcastEditor: role fetch failed", e);
-        if (!cancelled) setDiscordRoleIds(null);
+        safeLog.error("FeaturedBroadcastEditor: permission fetch failed", e);
+        if (!cancelled) setCanEdit(false);
       } finally {
         if (!cancelled) setGateLoading(false);
       }
@@ -76,14 +78,6 @@ export function FeaturedBroadcastEditor() {
       cancelled = true;
     };
   }, [status, session?.user?.id]);
-
-  const canEdit =
-    session?.user?.id != null &&
-    canManageFeaturedBroadcast(
-      session.user.id,
-      discordRoleIds ?? [],
-      session.user.isAdmin
-    );
 
   const loadSettings = useCallback(async () => {
     setLoadingSettings(true);
@@ -162,10 +156,9 @@ export function FeaturedBroadcastEditor() {
 
   if (
     status === "unauthenticated" ||
+    status === "loading" ||
     gateLoading ||
-    discordRoleIds === null ||
-    !canEdit ||
-    status === "loading"
+    !canEdit
   ) {
     return null;
   }

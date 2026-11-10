@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { SECURITY_CONFIG, hasAdminRole } from "@/lib/security-config";
+import { canManageContentLive } from "@/lib/content-auth";
 import { withErrorHandling, createError } from "@/lib/error-handling";
 import { secureLogger } from "@/lib/secure-logger";
 import { safeLog, sanitizeString } from "@/lib/security";
@@ -35,22 +35,6 @@ function parseSubmittedPostType(value: unknown): PostType {
   return submitted as PostType;
 }
 
-// Helper function to check if user is admin
-async function isUserAdmin(userId: string) {
-  // Developer ID always has access
-  if (userId === SECURITY_CONFIG.DEVELOPER_ID) return true;
-
-  const client = await clientPromise;
-  const db = client.db("ShadowrunWeb");
-
-  // Check if user has admin roles in the database
-  const user = await db.collection("Players").findOne({ discordId: userId });
-  if (!user) return false;
-
-  // Check for admin roles using security config
-  return hasAdminRole(user.roles || []);
-}
-
 // GET all posts
 async function getPostsHandler(req: NextRequest) {
   const result = await getPosts();
@@ -73,14 +57,6 @@ async function postPostsHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw createError.unauthorized("Authentication required to create posts");
-  }
-
-  const admin = await isUserAdmin(session.user.id);
-  if (!admin) {
-    secureLogger.warn("Unauthorized attempt to create post", {
-      userId: session.user.id,
-    });
-    throw createError.forbidden("Only admins can create posts");
   }
 
   const client = await clientPromise;
@@ -177,7 +153,7 @@ async function postPostsHandler(req: NextRequest) {
 export const POST = withApiSecurity(postPostsHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   revalidatePaths: ["/", "/events"],
 });
 
@@ -186,14 +162,6 @@ async function putPostsHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     throw createError.unauthorized("Authentication required to update posts");
-  }
-
-  const admin = await isUserAdmin(session.user.id);
-  if (!admin) {
-    secureLogger.warn("Unauthorized attempt to update post", {
-      userId: session.user.id,
-    });
-    throw createError.forbidden("Only admins can update posts");
   }
 
   const client = await clientPromise;
@@ -280,6 +248,6 @@ async function putPostsHandler(req: NextRequest) {
 export const PUT = withApiSecurity(putPostsHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   revalidatePaths: ["/", "/events"],
 });

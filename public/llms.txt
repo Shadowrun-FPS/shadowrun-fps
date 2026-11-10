@@ -6,7 +6,7 @@
 
 - [Home](https://www.shadowrunfps.com/): Community hub for the 2007 FASA Studios multiplayer shooter. Not Shadowrun Returns, Dragonfall, or Hong Kong.
 - [Download](https://www.shadowrunfps.com/download): Free PC launcher, with install steps
-- [Troubleshooting](https://www.shadowrunfps.com/troubleshoot): Fixes for GFWL activation, FPS limits, NAT, and controller issues
+- [Troubleshooting](https://www.shadowrunfps.com/troubleshoot): Common error fixes, controllers, networking, and install help for Shadowrun FPS on PC
 - [Events](https://www.shadowrunfps.com/events): Community events and announcements
 
 ## About the game

@@ -99,52 +99,36 @@ export function hasAdminRole(userRoles: string[] = []): boolean {
   return userRoles.some((role) => ADMIN_ROLE_IDS.includes(role));
 }
 
-/** Legacy co-developer Discord user id (matches admin / developer gates). */
-export const LEGACY_CO_DEVELOPER_DISCORD_ID = "238329746671271936";
-
-export function isDeveloperDiscordUser(userId: string): boolean {
-  return (
-    userId === SECURITY_CONFIG.DEVELOPER_ID ||
-    userId === LEGACY_CO_DEVELOPER_DISCORD_ID
-  );
-}
-
-/**
- * Home broadcast editor + PUT /api/featured-video: staff roles from env
- * ({@link MODERATOR_ROLE_IDS}), primary/co-developer Discord user ids, or NextAuth isAdmin.
- */
-export function canManageFeaturedBroadcast(
-  userId: string | undefined,
-  discordRoleIds: string[],
-  sessionIsAdmin?: boolean,
-): boolean {
-  if (!userId) return false;
-  if (isDeveloperDiscordUser(userId)) return true;
-  if (sessionIsAdmin) return true;
-  return hasModeratorRole(discordRoleIds);
-}
-
 /**
  * Developer / `isAdmin` / **admin & founder** Discord roles only (not moderator/GM).
- * For routes where moderators should pass, use {@link isAuthorizedAdmin} in `lib/admin-auth.ts`.
+ * Used by the API wrapper's unused `requireAdmin` path. Prefer
+ * {@link canManageContent} / live checks for content writes.
  */
 export function isSessionAdminUser(
   user: { id: string; isAdmin?: boolean; roles?: string[] } | undefined,
   roleIdsForCheck?: string[],
 ): boolean {
   if (!user?.id) return false;
-  if (
-    user.id === SECURITY_CONFIG.DEVELOPER_ID ||
-    user.id === LEGACY_CO_DEVELOPER_DISCORD_ID
-  ) {
-    return true;
-  }
+  if (user.id === SECURITY_CONFIG.DEVELOPER_ID) return true;
   if (user.isAdmin) return true;
   const roles =
     roleIdsForCheck && roleIdsForCheck.length > 0
       ? roleIdsForCheck
       : (user.roles ?? []);
   return hasAdminRole(roles);
+}
+
+/**
+ * Who can create and manage site content (event and news posts, FAQs, home
+ * broadcast): the developer Discord ID, or anyone holding the Admin or Founder
+ * role. Moderators and GMs are intentionally excluded.
+ */
+export function canManageContent(
+  user: { id?: string | null; roles?: string[] } | null | undefined,
+): boolean {
+  if (!user?.id) return false;
+  if (user.id === SECURITY_CONFIG.DEVELOPER_ID) return true;
+  return hasAdminRole(user.roles ?? []);
 }
 
 export function hasModeratorRole(userRoles: string[] = []): boolean {

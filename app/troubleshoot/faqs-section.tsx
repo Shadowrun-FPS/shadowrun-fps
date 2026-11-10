@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, type DragEvent } from "react";
-import type { Session } from "next-auth";
-import { getSession } from "next-auth/react";
+import { useState, useEffect, useMemo, type DragEvent } from "react";
+import { useSession } from "next-auth/react";
 import { safeLog } from "@/lib/security";
 import {
   Accordion,
@@ -11,7 +10,21 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, GripVertical, ArrowUpDown } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  PlusCircle,
+  Edit,
+  Trash2,
+  GripVertical,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ExternalLink,
+  Search,
+  X,
+  Check,
+  Loader2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FAQDialog } from "./faq-dialog";
 import {
@@ -25,29 +38,24 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import type { FAQ } from "@/types";
 
-interface FAQ {
-  _id: string;
-  title: string;
-  content: string;
-  list: string[];
-  href: string;
-  link: string;
-  category: string;
-  order: number;
-}
+const FAQS_CACHE_KEY = "/api/faqs?category=errors";
 
 interface UserPermissions {
-  isAdmin?: boolean;
-  isModerator?: boolean;
-  isDeveloper?: boolean;
-  roles?: string[];
+  canManageContent?: boolean;
 }
 
-export function FAQsSection() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [faqs, setFaqs] = useState<FAQ[]>([]);
-  const [loading, setLoading] = useState(true);
+type ReorderSaveState = "idle" | "saving" | "saved";
+
+interface FAQsSectionProps {
+  initialFaqs?: FAQ[];
+}
+
+export function FAQsSection({ initialFaqs = [] }: FAQsSectionProps) {
+  const { data: session } = useSession();
+  const [faqs, setFaqs] = useState<FAQ[]>(initialFaqs);
+  const [loading, setLoading] = useState(initialFaqs.length === 0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFaq, setEditingFaq] = useState<FAQ | null>(null);
   const [deleteFaqId, setDeleteFaqId] = useState<string | null>(null);
@@ -56,67 +64,56 @@ export function FAQsSection() {
   const [isReorderMode, setIsReorderMode] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [openItem, setOpenItem] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [reorderSaveState, setReorderSaveState] =
+    useState<ReorderSaveState>("idle");
   const { toast } = useToast();
 
-  // Fetch session client-side — avoids SSR requiring SessionProvider context
-  // when this section is composed under DocLayout from a Server Component.
   useEffect(() => {
-    let cancelled = false;
-    getSession()
-      .then((nextSession) => {
-        if (!cancelled) setSession(nextSession);
-      })
-      .catch((error) => {
-        safeLog.error("Error fetching session:", error);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    if (!session?.user) {
+      setUserPermissions(null);
+      return;
+    }
 
-  // Check if user is admin
-  useEffect(() => {
     const fetchPermissions = async () => {
-      if (session?.user) {
-        try {
-          // ✅ Use unified endpoint with deduplication
-          const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-          const userData = await deduplicatedFetch<{
-            permissions: {
-              isAdmin: boolean;
-              isModerator: boolean;
-              isDeveloper: boolean;
-            };
-          }>("/api/user/data", {
-            ttl: 60000, // Cache for 1 minute
-          });
-          setUserPermissions(userData.permissions);
-        } catch (error) {
-          safeLog.error("Error fetching permissions:", error);
-        }
+      try {
+        const { deduplicatedFetch } = await import(
+          "@/lib/request-deduplication"
+        );
+        const userData = await deduplicatedFetch<{
+          permissions: {
+            canManageContent: boolean;
+          };
+        }>("/api/user/data", {
+          ttl: 60000,
+        });
+        setUserPermissions(userData.permissions);
+      } catch (error) {
+        safeLog.error("Error fetching permissions:", error);
+        setUserPermissions(null);
       }
     };
 
-    fetchPermissions();
+    void fetchPermissions();
   }, [session]);
 
-  const DEVELOPER_ID = "238329746671271936";
-  const isAdmin =
-    userPermissions?.isAdmin ||
-    session?.user?.id === DEVELOPER_ID ||
-    (userPermissions?.roles && Array.isArray(userPermissions.roles) && 
-     userPermissions.roles.some((role: string) => 
-       role === process.env.NEXT_PUBLIC_ADMIN_ROLE_ID || 
-       role === process.env.NEXT_PUBLIC_FOUNDER_ROLE_ID
-     ));
+  const canManageContent = userPermissions?.canManageContent ?? false;
 
-  // Fetch FAQs - use deduplication
   useEffect(() => {
+    // Prefer SSR data so FAQ answers are in the initial HTML for search/AI crawlers.
+    if (initialFaqs.length > 0) {
+      setLoading(false);
+      return;
+    }
+
     const fetchFAQs = async () => {
       try {
-        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-        const data = await deduplicatedFetch<FAQ[]>("/api/faqs?category=errors", {
-          ttl: 300000, // Cache for 5 minutes (FAQs don't change often)
+        const { deduplicatedFetch } = await import(
+          "@/lib/request-deduplication"
+        );
+        const data = await deduplicatedFetch<FAQ[]>(FAQS_CACHE_KEY, {
+          ttl: 300000,
         });
         setFaqs(data);
       } catch (error) {
@@ -126,8 +123,107 @@ export function FAQsSection() {
       }
     };
 
-    fetchFAQs();
+    void fetchFAQs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only; SSR payload seeds state
   }, []);
+
+  useEffect(() => {
+    if (reorderSaveState !== "saved") return;
+    const timer = window.setTimeout(() => {
+      setReorderSaveState("idle");
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [reorderSaveState]);
+
+  const filteredFaqs = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query || isReorderMode) return faqs;
+
+    return faqs.filter((faq) => {
+      const haystack = [
+        faq.title,
+        faq.content,
+        ...(faq.list ?? []),
+        faq.link,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [faqs, searchQuery, isReorderMode]);
+
+  const refreshFaqs = async () => {
+    const { deduplicatedFetch, requestDeduplicator } = await import(
+      "@/lib/request-deduplication"
+    );
+    requestDeduplicator.invalidate(FAQS_CACHE_KEY);
+    const data = await deduplicatedFetch<FAQ[]>(FAQS_CACHE_KEY, {
+      ttl: 300000,
+      useCache: false,
+    });
+    setFaqs(data);
+  };
+
+  const persistOrder = async (updatedFaqs: FAQ[]) => {
+    setReorderSaveState("saving");
+    try {
+      const response = await fetch("/api/faqs/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          faqs: updatedFaqs.map((faq) => ({
+            _id: faq._id,
+            order: faq.order,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update FAQ order");
+      }
+
+      setReorderSaveState("saved");
+    } catch (error) {
+      safeLog.error("Error updating FAQ order:", error);
+      setReorderSaveState("idle");
+      toast({
+        title: "Error",
+        description: "Failed to update FAQ order. Please try again.",
+        variant: "destructive",
+      });
+      try {
+        await refreshFaqs();
+      } catch (revertError) {
+        safeLog.error("Error reverting FAQs:", revertError);
+      }
+    }
+  };
+
+  const moveFaq = async (fromIndex: number, toIndex: number) => {
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= faqs.length ||
+      toIndex >= faqs.length ||
+      reorderSaveState === "saving"
+    ) {
+      return;
+    }
+
+    const newFaqs = [...faqs];
+    const [movedFaq] = newFaqs.splice(fromIndex, 1);
+    newFaqs.splice(toIndex, 0, movedFaq);
+
+    const updatedFaqs = newFaqs.map((faq, index) => ({
+      ...faq,
+      order: index,
+    }));
+
+    setFaqs(updatedFaqs);
+    await persistOrder(updatedFaqs);
+  };
 
   const handleDelete = async () => {
     if (!deleteFaqId) return;
@@ -139,6 +235,10 @@ export function FAQsSection() {
 
       if (response.ok) {
         setFaqs(faqs.filter((faq) => faq._id !== deleteFaqId));
+        const { requestDeduplicator } = await import(
+          "@/lib/request-deduplication"
+        );
+        requestDeduplicator.invalidate(FAQS_CACHE_KEY);
         toast({
           title: "FAQ deleted",
           description: "The FAQ has been deleted successfully.",
@@ -175,19 +275,31 @@ export function FAQsSection() {
   const handleDialogClose = async () => {
     setIsDialogOpen(false);
     setEditingFaq(null);
-    // ✅ Refresh FAQs using deduplication
     try {
-      const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-      const data = await deduplicatedFetch<FAQ[]>("/api/faqs?category=errors", {
-        ttl: 300000,
-      });
-      setFaqs(data);
+      await refreshFaqs();
     } catch (error) {
       safeLog.error("Error refreshing FAQs:", error);
     }
   };
 
-  const handleDragStart = (index: number) => {
+  const toggleReorderMode = () => {
+    setIsReorderMode((prev) => {
+      const next = !prev;
+      if (next) {
+        setOpenItem("");
+        setSearchQuery("");
+      }
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      setReorderSaveState("idle");
+      return next;
+    });
+  };
+
+  const handleDragStart = (e: DragEvent, index: number) => {
+    if (!isReorderMode) return;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
     setDraggedIndex(index);
   };
 
@@ -211,59 +323,9 @@ export function FAQsSection() {
       return;
     }
 
-    const newFaqs = [...faqs];
-    const draggedFaq = newFaqs[draggedIndex];
-    newFaqs.splice(draggedIndex, 1);
-    newFaqs.splice(dropIndex, 0, draggedFaq);
-
-    // Update order values
-    const updatedFaqs = newFaqs.map((faq, index) => ({
-      ...faq,
-      order: index,
-    }));
-
-    setFaqs(updatedFaqs);
+    const fromIndex = draggedIndex;
     setDraggedIndex(null);
-
-    // Batch update all FAQs in the database
-    try {
-      const response = await fetch("/api/faqs/reorder", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          faqs: updatedFaqs.map((faq) => ({
-            _id: faq._id,
-            order: faq.order,
-          })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update FAQ order");
-      }
-
-      toast({
-        title: "FAQs reordered",
-        description: "The FAQ order has been updated successfully.",
-      });
-    } catch (error) {
-      safeLog.error("Error updating FAQ order:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update FAQ order. Please try again.",
-        variant: "destructive",
-      });
-      // ✅ Revert on error using deduplication
-      try {
-        const { deduplicatedFetch } = await import("@/lib/request-deduplication");
-        const data = await deduplicatedFetch<FAQ[]>("/api/faqs?category=errors", {
-          ttl: 300000,
-        });
-        setFaqs(data);
-      } catch (revertError) {
-        safeLog.error("Error reverting FAQs:", revertError);
-      }
-    }
+    await moveFaq(fromIndex, dropIndex);
   };
 
   const handleDragEnd = () => {
@@ -286,196 +348,326 @@ export function FAQsSection() {
   return (
     <>
       <div className="space-y-4 sm:space-y-5">
-        {isAdmin ? (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  variant={isReorderMode ? "default" : "outline"}
-                  onClick={() => setIsReorderMode(!isReorderMode)}
-                  className={cn(
-                    "gap-2 px-3 sm:px-4 h-10 sm:h-9 touch-manipulation flex-1 lg:flex-initial transition-all duration-300 relative overflow-hidden",
-                    isReorderMode 
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/30 border-2 border-primary ring-2 ring-primary/20 hover:bg-primary/90 hover:shadow-xl" 
-                      : "hover:bg-accent hover:border-primary/50 hover:text-foreground border-2"
+        {canManageContent ? (
+          <div className="space-y-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+              <Button
+                variant={isReorderMode ? "default" : "outline"}
+                onClick={toggleReorderMode}
+                aria-pressed={isReorderMode}
+                disabled={reorderSaveState === "saving"}
+                className={cn(
+                  "h-11 gap-2 px-3 touch-manipulation transition-colors md:h-10 sm:w-auto sm:px-4",
+                  "w-full sm:w-auto",
+                  isReorderMode
+                    ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "border-2 hover:border-primary/50 hover:bg-accent hover:text-foreground"
+                )}
+              >
+                {isReorderMode ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <ArrowUpDown className="h-4 w-4" />
+                )}
+                <span className="font-semibold">
+                  {isReorderMode ? (
+                    "Done"
+                  ) : (
+                    <>
+                      <span className="sm:hidden">Reorder</span>
+                      <span className="hidden sm:inline">Reorder FAQs</span>
+                    </>
                   )}
+                </span>
+              </Button>
+              <Button
+                onClick={handleAdd}
+                disabled={isReorderMode}
+                className="h-11 w-full gap-2 px-3 touch-manipulation sm:w-auto sm:px-4 md:h-10"
+              >
+                <PlusCircle className="h-4 w-4" />
+                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">Add FAQ</span>
+              </Button>
+            </div>
+            {isReorderMode ? (
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  Use the arrows to move items. On a pointer device, drag the
+                  handle to reorder.
+                </p>
+                <p
+                  className="text-xs text-muted-foreground tabular-nums sm:text-sm"
+                  aria-live="polite"
                 >
-                  {isReorderMode && (
-                    <span className="absolute inset-0 bg-gradient-to-r from-primary/20 via-transparent to-primary/20 animate-pulse" />
-                  )}
-                  <ArrowUpDown className={cn(
-                    "w-4 h-4 transition-all duration-300 relative z-10",
-                    isReorderMode 
-                      ? "animate-bounce text-primary-foreground" 
-                      : "text-current"
-                  )} />
-                  <span className={cn(
-                    "relative z-10 font-semibold transition-colors duration-300",
-                    isReorderMode ? "text-primary-foreground" : "text-current"
-                  )}>
-                    <span className="sm:hidden">Reorder</span>
-                    <span className="hidden sm:inline">Reorder FAQs</span>
-                  </span>
-                  {isReorderMode && (
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full animate-ping" />
-                  )}
-                </Button>
-                <Button
-                  onClick={handleAdd}
-                  className="gap-2 px-3 sm:px-4 h-10 sm:h-9 touch-manipulation flex-1 lg:flex-initial"
-                >
-                  <PlusCircle className="w-4 h-4" />
-                  <span className="sm:hidden">Add</span>
-                  <span className="hidden sm:inline">Add FAQ</span>
-                </Button>
+                  {reorderSaveState === "saving" ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Saving…
+                    </span>
+                  ) : reorderSaveState === "saved" ? (
+                    <span className="inline-flex items-center gap-1.5 text-foreground/80">
+                      <Check className="h-3.5 w-3.5" />
+                      Saved
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : null}
-        <Accordion 
-          type="single" 
-          collapsible={!isReorderMode}
-          disabled={isReorderMode}
-          className="w-full space-y-3 sm:space-y-4"
-        >
-          {faqs.map((faq, index) => (
-            <div
-              key={faq._id}
-              draggable={isReorderMode}
-              onDragStart={(e) => {
-                if (isReorderMode) {
-                  handleDragStart(index);
-                  e.dataTransfer.effectAllowed = "move";
-                }
-              }}
-              onDragOver={(e) => {
-                if (isReorderMode) {
-                  handleDragOver(e, index);
-                }
-              }}
-              onDragLeave={handleDragLeave}
-              onDrop={(e) => {
-                if (isReorderMode) {
-                  handleDrop(e, index);
-                }
-              }}
-              onDragEnd={handleDragEnd}
+
+        {!isReorderMode ? (
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search errors or fixes…"
+              aria-label="Search FAQs"
               className={cn(
-                "group w-full min-w-0 border-2 rounded-xl mb-3 shadow-sm backdrop-blur-sm",
-                "transition-all duration-300 ease-in-out",
-                "bg-card/50 hover:bg-card/80",
-                "border-border/60 hover:border-border/80",
-                "hover:shadow-lg hover:shadow-primary/5",
-                isReorderMode && "cursor-move select-none",
-                draggedIndex === index && "opacity-40 scale-[0.98] shadow-lg shadow-primary/20 border-primary/40",
-                dragOverIndex === index && "border-primary border-2 scale-[1.02] shadow-xl shadow-primary/30 bg-primary/5 ring-2 ring-primary/20",
-                !isReorderMode && "hover:scale-[1.01]"
+                "h-11 rounded-xl border-2 pl-9 text-base touch-manipulation sm:h-10 sm:text-sm",
+                searchQuery.trim() ? "pr-10" : "pr-3"
               )}
-            >
-              <AccordionItem
-                value={`item-${index}`}
-                className={cn(
-                  "w-full min-w-0 border-0 rounded-xl overflow-hidden bg-transparent",
-                  "data-[state=open]:bg-transparent data-[state=open]:shadow-none",
-                  "hover:bg-transparent"
-                )}
-                disabled={isReorderMode}
+            />
+            {searchQuery.trim() ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Clear search"
               >
-                <div className="flex w-full min-w-0 items-stretch gap-2 sm:gap-3">
-                  {isReorderMode && (
-                    <div 
-                      className="flex min-h-[44px] w-[44px] shrink-0 touch-manipulation items-center justify-center self-stretch pl-3 sm:w-[52px] sm:pl-4 group/drag"
-                      onTouchStart={(e) => e.stopPropagation()}
-                    >
-                      <div className="relative rounded-lg bg-muted/50 p-2 transition-colors duration-200 group-hover/drag:bg-primary/10">
-                        <GripVertical className="h-5 w-5 text-muted-foreground transition-colors duration-200 group-hover/drag:text-primary sm:h-6 sm:w-6 cursor-grab active:cursor-grabbing" />
-                        <div className="absolute inset-0 rounded-lg bg-primary/0 transition-colors duration-200 group-hover/drag:bg-primary/5" />
-                      </div>
-                    </div>
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {filteredFaqs.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/60 bg-muted/5 px-4 py-8 text-center">
+            <p className="text-sm font-medium text-foreground sm:text-base">
+              No matching fixes
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+              Try a different error code or keyword.
+            </p>
+          </div>
+        ) : (
+          <Accordion
+            type="single"
+            collapsible={!isReorderMode}
+            value={isReorderMode ? "" : openItem}
+            onValueChange={(value) => {
+              if (!isReorderMode) {
+                setOpenItem(value);
+              }
+            }}
+            disabled={isReorderMode}
+            className="w-full space-y-3 sm:space-y-4"
+          >
+            {filteredFaqs.map((faq, index) => {
+              const sourceIndex = faqs.findIndex((item) => item._id === faq._id);
+              const displayIndex = isReorderMode ? sourceIndex : index;
+
+              return (
+                <div
+                  key={faq._id}
+                  onDragOver={(e) => {
+                    if (isReorderMode) {
+                      handleDragOver(e, displayIndex);
+                    }
+                  }}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => {
+                    if (isReorderMode) {
+                      void handleDrop(e, displayIndex);
+                    }
+                  }}
+                  className={cn(
+                    "group w-full min-w-0 rounded-xl border-2 shadow-sm backdrop-blur-sm",
+                    "transition-colors duration-200",
+                    "border-border/60 bg-card/50 hover:border-border/80 hover:bg-card/80",
+                    "hover:shadow-md hover:shadow-primary/5",
+                    draggedIndex === displayIndex &&
+                      "border-primary/40 opacity-40 shadow-lg shadow-primary/20",
+                    dragOverIndex === displayIndex &&
+                      "border-primary bg-primary/5 ring-2 ring-primary/20"
                   )}
-                  <AccordionTrigger 
+                >
+                  <AccordionItem
+                    value={`item-${faq._id}`}
                     className={cn(
-                      "min-h-[44px] min-w-0 flex-1 rounded-none px-4 py-3 text-base font-semibold hover:no-underline sm:px-6 sm:py-4 sm:text-lg",
-                      "touch-manipulation transition-colors duration-200",
-                      "bg-transparent hover:bg-transparent active:bg-transparent",
-                      "group-data-[state=open]:bg-transparent",
-                      "group-data-[state=open]:text-primary",
-                      "hover:text-foreground",
-                      isReorderMode && "pointer-events-none opacity-90"
+                      "mb-0 w-full min-w-0 overflow-hidden rounded-xl border-0 bg-transparent",
+                      "data-[state=open]:bg-transparent data-[state=open]:shadow-none",
+                      "hover:bg-transparent"
                     )}
+                    disabled={isReorderMode}
                   >
-                    {faq.title}
-                  </AccordionTrigger>
-                </div>
-              <AccordionContent>
-                <div className="px-4 pt-3 pb-5 sm:px-6 sm:pt-4 sm:pb-6 space-y-4">
-                  {faq.content && (
-                    <p className="leading-relaxed text-foreground/90 text-sm sm:text-base">{faq.content}</p>
-                  )}
-                  {faq.list && faq.list.length > 0 && (
-                    <ul className="pl-6 space-y-2.5 list-disc mb-3">
-                      {faq.list.map((item, i) => (
-                        <li key={i} className="leading-relaxed text-foreground/90 text-sm sm:text-base">
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {faq.href && (
-                    <a
-                      href={faq.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${faq.link} (opens in new window)`}
-                      className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 rounded-md text-sm font-medium text-primary hover:bg-primary/10 hover:text-primary/90 transition-colors duration-200 border border-primary/20 hover:border-primary/40"
-                    >
-                      {faq.link || "Download fix"}
-                      <span className="sr-only">Opens in new tab</span>
-                    </a>
-                  )}
-                  {isAdmin && (
-                    <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border/50">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(faq)}
-                        className="gap-2 px-3 h-9 touch-manipulation hover:bg-accent/80"
+                    <div className="flex w-full min-w-0 items-stretch gap-1 sm:gap-2">
+                      {isReorderMode ? (
+                        <>
+                          <div
+                            className="group/drag flex min-h-[44px] w-[44px] shrink-0 cursor-grab items-center justify-center self-stretch pl-2 active:cursor-grabbing sm:w-[52px] sm:pl-3"
+                            draggable
+                            onDragStart={(e) =>
+                              handleDragStart(e, displayIndex)
+                            }
+                            onDragEnd={handleDragEnd}
+                            title="Drag to reorder"
+                            aria-label={`Drag to reorder ${faq.title}`}
+                          >
+                            <div className="rounded-lg bg-muted/50 p-2 transition-colors duration-200 group-hover/drag:bg-primary/10">
+                              <GripVertical className="h-5 w-5 text-muted-foreground transition-colors duration-200 group-hover/drag:text-primary sm:h-6 sm:w-6" />
+                            </div>
+                          </div>
+                          <div className="flex shrink-0 flex-col justify-center gap-1 py-2 pr-1">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={
+                                displayIndex <= 0 ||
+                                reorderSaveState === "saving"
+                              }
+                              onClick={() =>
+                                void moveFaq(displayIndex, displayIndex - 1)
+                              }
+                              className="h-9 w-9 touch-manipulation sm:h-8 sm:w-8"
+                              title={
+                                displayIndex <= 0
+                                  ? "Already at top"
+                                  : "Move up"
+                              }
+                              aria-label={`Move ${faq.title} up`}
+                            >
+                              <ArrowUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              disabled={
+                                displayIndex >= faqs.length - 1 ||
+                                reorderSaveState === "saving"
+                              }
+                              onClick={() =>
+                                void moveFaq(displayIndex, displayIndex + 1)
+                              }
+                              className="h-9 w-9 touch-manipulation sm:h-8 sm:w-8"
+                              title={
+                                displayIndex >= faqs.length - 1
+                                  ? "Already at bottom"
+                                  : "Move down"
+                              }
+                              aria-label={`Move ${faq.title} down`}
+                            >
+                              <ArrowDown className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </>
+                      ) : null}
+
+                      <AccordionTrigger
+                        className={cn(
+                          "min-h-[44px] min-w-0 flex-1 rounded-none px-3 py-3 text-base font-semibold hover:no-underline sm:px-5 sm:py-4 sm:text-lg",
+                          "touch-manipulation transition-colors duration-200",
+                          "bg-transparent hover:bg-transparent active:bg-transparent",
+                          "group-data-[state=open]:bg-transparent",
+                          "group-data-[state=open]:text-primary",
+                          "hover:text-foreground",
+                          isReorderMode && "pointer-events-none opacity-90"
+                        )}
                       >
-                        <Edit className="w-4 h-4" />
-                        <span className="sm:hidden">Edit</span>
-                        <span className="hidden sm:inline">Edit FAQ</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDeleteFaqId(faq._id)}
-                        className="gap-2 px-3 h-9 text-destructive hover:text-destructive/90 hover:bg-destructive/10 touch-manipulation"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="sm:hidden">Delete</span>
-                        <span className="hidden sm:inline">Delete FAQ</span>
-                      </Button>
+                        {faq.title}
+                      </AccordionTrigger>
+
+                      {canManageContent && !isReorderMode ? (
+                        <div className="flex shrink-0 items-center gap-0.5 self-center pr-2 sm:gap-1 sm:pr-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(faq)}
+                            className="h-10 w-10 touch-manipulation hover:bg-accent/80 sm:h-9 sm:w-9"
+                            aria-label="Edit FAQ"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteFaqId(faq._id)}
+                            className="h-10 w-10 touch-manipulation text-destructive hover:bg-destructive/10 hover:text-destructive/90 sm:h-9 sm:w-9"
+                            aria-label="Delete FAQ"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : null}
                     </div>
-                  )}
+                    <AccordionContent className="p-0">
+                      <div className="space-y-4 px-4 pb-5 pt-1 sm:px-5 sm:pb-6 sm:pt-2">
+                        {faq.content ? (
+                          <p className="text-sm leading-relaxed text-foreground/90 sm:text-base">
+                            {faq.content}
+                          </p>
+                        ) : null}
+                        {faq.list && faq.list.length > 0 ? (
+                          <ul className="mb-1 list-disc space-y-2.5 pl-5 sm:pl-6">
+                            {faq.list.map((item, i) => (
+                              <li
+                                key={i}
+                                className="text-sm leading-relaxed text-foreground/90 sm:text-base"
+                              >
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        {faq.href ? (
+                          <a
+                            href={faq.href}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={`${faq.link || "Download fix"} (opens in new window)`}
+                            className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-primary/20 px-3 py-2 text-sm font-medium text-primary transition-colors duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary/90"
+                          >
+                            {faq.link || "Download fix"}
+                            <ExternalLink className="h-4 w-4 shrink-0" aria-hidden />
+                            <span className="sr-only">Opens in new tab</span>
+                          </a>
+                        ) : null}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-            </div>
-          ))}
-        </Accordion>
+              );
+            })}
+          </Accordion>
+        )}
       </div>
 
-      {isDialogOpen && (
+      {isDialogOpen ? (
         <FAQDialog
           open={isDialogOpen}
           onOpenChange={setIsDialogOpen}
           initialData={editingFaq}
           onSuccess={handleDialogClose}
         />
-      )}
+      ) : null}
 
-      <AlertDialog open={deleteFaqId !== null} onOpenChange={(open) => !open && setDeleteFaqId(null)}>
+      <AlertDialog
+        open={deleteFaqId !== null}
+        onOpenChange={(open) => !open && setDeleteFaqId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete FAQ</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this FAQ? This action cannot be undone.
+              Are you sure you want to delete this FAQ? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -492,4 +684,3 @@ export function FAQsSection() {
     </>
   );
 }
-

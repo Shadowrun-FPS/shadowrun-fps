@@ -105,7 +105,7 @@ export default function EventsClient({ initialPosts }: EventsClientProps) {
     void fetchPermissions();
   }, [session]);
 
-  const isAdmin = userPermissions?.isAdmin || false;
+  const canManageContent = userPermissions?.canManageContent ?? false;
 
   return (
     <article className="space-y-6 sm:space-y-8">
@@ -115,7 +115,7 @@ export default function EventsClient({ initialPosts }: EventsClientProps) {
           parties, and community updates.
         </p>
 
-        {isAdmin && (
+        {canManageContent && (
           <div className="flex flex-wrap gap-3 sm:gap-4">
             <Button
               onClick={() => setIsDialogOpen(true)}
@@ -166,7 +166,7 @@ export default function EventsClient({ initialPosts }: EventsClientProps) {
         <PostManager
           open={isManagerOpen}
           onOpenChange={setIsManagerOpen}
-          canManagePosts={isAdmin}
+          canManagePosts={canManageContent}
         />
       )}
     </article>

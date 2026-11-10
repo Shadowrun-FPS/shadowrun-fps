@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getServerSession, type Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { rateLimiters, getClientIdentifier, safeLog, sanitizeString } from "./security";
 import { handleApiError } from "./error-handling";
@@ -24,6 +24,13 @@ export interface ApiWrapperOptions {
   requireAuth?: boolean;
   /** Whether this route requires admin privileges */
   requireAdmin?: boolean;
+  /**
+   * Custom permission check for the signed-in user. Takes the place of
+   * `requireAdmin` when a route needs a stricter or different rule. May be async.
+   */
+  authorize?: (
+    user: NonNullable<Session["user"]>
+  ) => boolean | Promise<boolean>;
   /** Maximum request body size in bytes (default: 1MB) */
   maxBodySize?: number;
   /** Whether to add cache headers (for GET requests) */
@@ -66,12 +73,19 @@ export function withApiSecurity(
       }
 
       // Authentication check
-      if (options.requireAuth || options.requireAdmin) {
+      if (options.requireAuth || options.requireAdmin || options.authorize) {
         if (!session?.user) {
           return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        if (options.requireAdmin) {
+        if (options.authorize) {
+          if (!(await options.authorize(session.user))) {
+            return NextResponse.json(
+              { error: "Forbidden" },
+              { status: 403 }
+            );
+          }
+        } else if (options.requireAdmin) {
           if (!isSessionAdminUser(session.user)) {
             return NextResponse.json(
               { error: "Forbidden" },

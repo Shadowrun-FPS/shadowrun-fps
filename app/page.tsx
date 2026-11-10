@@ -14,7 +14,7 @@ import { HeroLogo } from "@/components/home/hero-logo";
 import { authOptions } from "@/lib/auth";
 import { HERO_BACKGROUND_SRC } from "@/lib/hero-assets";
 import { ogImages } from "@/lib/og-images";
-import { canManageFeaturedBroadcast } from "@/lib/security-config";
+import { canManageContent } from "@/lib/security-config";
 
 // ISR: revalidate every 5 minutes as a fallback.
 // On-demand revalidation via revalidatePath("/") fires immediately when
@@ -68,13 +68,7 @@ const schemaData = {
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  const canEditBroadcast =
-    session?.user?.id != null &&
-    canManageFeaturedBroadcast(
-      session.user.id,
-      session.user.roles ?? [],
-      session.user.isAdmin,
-    );
+  const canEditBroadcast = canManageContent(session?.user);
 
   return (
     <>

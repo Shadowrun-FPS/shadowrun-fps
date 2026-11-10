@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import clientPromise from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-import { isAuthorizedAdmin } from "@/lib/admin-auth";
-import { withErrorHandling, createError } from "@/lib/error-handling";
+import { canManageContentLive } from "@/lib/content-auth";
+import { createError } from "@/lib/error-handling";
+import { withApiSecurity } from "@/lib/api-wrapper";
+import { revalidatePath } from "next/cache";
 
 // POST endpoint to batch update FAQ order
-export const POST = withErrorHandling(async (req: NextRequest) => {
-  const session = await getServerSession(authOptions);
-  
-  if (!isAuthorizedAdmin(session)) {
-    throw createError.forbidden("Only admins can reorder FAQs");
-  }
-
+async function reorderFaqsHandler(req: NextRequest) {
   const client = await clientPromise;
   const db = client.db("ShadowrunWeb");
 
@@ -48,10 +42,19 @@ export const POST = withErrorHandling(async (req: NextRequest) => {
 
   const result = await db.collection("FAQs").bulkWrite(bulkOps);
 
+  revalidatePath("/faqs");
+  revalidatePath("/admin/faqs");
+
   return NextResponse.json({
     success: true,
     message: `Successfully updated order for ${result.modifiedCount} FAQs`,
     modifiedCount: result.modifiedCount,
   });
-});
+}
 
+export const POST = withApiSecurity(reorderFaqsHandler, {
+  rateLimiter: "admin",
+  requireAuth: true,
+  authorize: canManageContentLive,
+  revalidatePaths: ["/faqs", "/admin/faqs"],
+});

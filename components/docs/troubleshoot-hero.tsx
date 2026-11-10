@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, Download, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DocCallout } from "@/components/docs/doc-callout";
 
 import { DISCORD_SERVER_HREF as DISCORD_HREF } from "@/lib/community-links";
 
@@ -22,27 +21,6 @@ export function TroubleshootPageHero() {
             if you have a specific message or code.
           </p>
         </div>
-
-        <DocCallout variant="note" title="Quick navigation">
-          <p>
-            Jump to{" "}
-            <a
-              href="#errors"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              Common errors
-            </a>{" "}
-            for fast answers, or use the{" "}
-            <Link
-              href="/download"
-              className="font-medium text-primary underline-offset-4 hover:underline"
-            >
-              download page
-            </Link>{" "}
-            if you still need to install: download the launcher, sign in with
-            Discord, then click Play.
-          </p>
-        </DocCallout>
 
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <Button variant="default" size="default" asChild className="w-full sm:w-auto">

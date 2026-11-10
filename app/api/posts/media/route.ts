@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { AppError, createError } from "@/lib/error-handling";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import { findPostImageUrlsInUse } from "@/lib/posts";
+import { canManageContentLive } from "@/lib/content-auth";
 import { secureLogger } from "@/lib/secure-logger";
 import {
   MAX_POST_IMAGE_BYTES,
@@ -55,7 +56,7 @@ async function postMediaHandler(req: NextRequest) {
 export const POST = withApiSecurity(postMediaHandler, {
   rateLimiter: "upload",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
   maxBodySize: MAX_REQUEST_BYTES,
 });
 
@@ -80,7 +81,7 @@ async function getMediaLibraryHandler() {
 export const GET = withApiSecurity(getMediaLibraryHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
 });
 
 // A composer session never uploads more than a handful of images.
@@ -119,5 +120,5 @@ async function deleteMediaHandler(req: NextRequest) {
 export const DELETE = withApiSecurity(deleteMediaHandler, {
   rateLimiter: "admin",
   requireAuth: true,
-  requireAdmin: true,
+  authorize: canManageContentLive,
 });
