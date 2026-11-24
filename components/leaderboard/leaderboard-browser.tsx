@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatMatchDateTime } from "@/lib/match-date";
+import { LocalDateTime } from "@/components/local-date-time";
 import {
   DEFAULT_LEADERBOARD_FILTERS,
   DEFAULT_LEADERBOARD_SORT,
@@ -165,7 +165,7 @@ export function LeaderboardBrowser({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Updated {formatMatchDateTime(data.updatedAt)} · {data.players.length}{" "}
+          Updated <LocalDateTime iso={data.updatedAt} /> · {data.players.length}{" "}
           players
         </p>
         <Button
@@ -190,7 +190,7 @@ export function LeaderboardBrowser({
         highlightedName={highlightedName}
       />
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
@@ -216,7 +216,7 @@ export function LeaderboardBrowser({
           <SelectTrigger
             id="leaderboard-tier"
             aria-label="Rank tier"
-            className="w-[9.5rem] shrink-0 sm:w-[11.5rem]"
+            className="h-10 min-h-10 w-[9.5rem] shrink-0 rounded-lg border-input/80 bg-background/80 px-3 text-base sm:w-[11.5rem] md:text-sm"
           >
             <SelectValue placeholder="All tiers" />
           </SelectTrigger>
@@ -291,6 +291,7 @@ export function LeaderboardBrowser({
 
       <PlayerSheet
         player={selectedPlayer}
+        players={data.players}
         matches={data.matches}
         open={selectedPlayerId !== null}
         onOpenChange={(open) => {

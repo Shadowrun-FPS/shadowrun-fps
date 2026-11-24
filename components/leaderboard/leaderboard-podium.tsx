@@ -53,8 +53,8 @@ export const LeaderboardPodium = memo(function LeaderboardPodium({
                 nameClassName="text-lg font-semibold tracking-tight"
               />
               <span className="text-sm tabular-nums text-muted-foreground">
-                {formatElo(player.elo)} Elo · {player.wins}–{player.losses} ·{" "}
-                {formatPercent(player.winRate)}
+                {formatElo(player.elo)} Elo · {player.wins}–{player.losses} W/L ·{" "}
+                {formatPercent(player.winRate)} WR
               </span>
             </button>
           </li>

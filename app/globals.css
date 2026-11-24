@@ -285,9 +285,10 @@
   display: none;
 }
 
-/* Better tap targets on mobile (exclude Radix radios — they stay visually small; inner dot scales separately) */
+/* Better tap targets on mobile (exclude Radix radios — they stay visually small; inner dot scales separately).
+   Combobox triggers sit next to text inputs and should match their 40px height. */
 @media (max-width: 640px) {
-  button:not([role="radio"]),
+  button:not([role="radio"]):not([role="combobox"]),
   a {
     @apply min-h-[44px] min-w-[44px];
   }

@@ -28,9 +28,9 @@ const COLUMNS: {
 }[] = [
   { key: "rank", label: "Rank", shortLabel: "#", align: "left" },
   { key: "elo", label: "Elo", shortLabel: "Elo", align: "right" },
-  { key: "wins", label: "Record", shortLabel: "W-L", align: "right" },
+  { key: "wins", label: "W/L Record", shortLabel: "W/L", align: "right" },
   { key: "winRate", label: "Win %", shortLabel: "WR", align: "right" },
-  { key: "kd", label: "K/D", shortLabel: "K/D", align: "right" },
+  { key: "kd", label: "Career K/D", shortLabel: "K/D", align: "right" },
   { key: "matches", label: "Matches", shortLabel: "M", align: "right" },
 ];
 

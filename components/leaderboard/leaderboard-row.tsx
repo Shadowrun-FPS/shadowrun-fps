@@ -37,15 +37,15 @@ export const LeaderboardRow = memo(function LeaderboardRow({
           nameClassName="font-medium"
         />
         <span className="mt-0.5 block text-xs tabular-nums text-muted-foreground">
-          {player.wins}–{player.losses}
+          {player.wins}–{player.losses} W/L
         </span>
       </span>
       <span className="shrink-0 text-right">
         <span className="block text-sm font-semibold tabular-nums">
-          {formatElo(player.elo)}
+          {formatElo(player.elo)} Elo
         </span>
         <span className="text-xs tabular-nums text-muted-foreground">
-          {formatPercent(player.winRate)} · {formatKd(player.kd)} K/D
+          {formatPercent(player.winRate)} WR · {formatKd(player.kd)} K/D
         </span>
       </span>
     </button>

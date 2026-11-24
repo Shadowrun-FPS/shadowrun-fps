@@ -16,7 +16,7 @@ const DEFAULT_ALLOWED_HOSTS = ["test-downloads.shadowrunfps.com"] as const;
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BODY_BYTES = 512 * 1024;
 const CACHE_TTL_MS = 60_000;
-const CACHE_KEY = "leaderboard:public:v4";
+const CACHE_KEY = "leaderboard:public:v7";
 const MAX_PLAYERS = 5_000;
 const MAX_MATCHES = 500;
 const MAX_MATCH_PLAYERS = 16;
@@ -43,6 +43,7 @@ interface RankedSnapshotMatchPlayer {
   eloBefore: unknown;
   eloChange: unknown;
   id: unknown;
+  performanceUsed: unknown;
   stats: unknown;
   team: unknown;
 }
@@ -240,6 +241,9 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
     const id = entry.id.toLowerCase();
     namesById.set(id, name);
     if (EXCLUDED_PLAYER_IDS.has(id)) continue;
+    // Snapshot ranks include 0-match ladder entries. Public standings only
+    // list players who have played, then re-rank so numbers stay consecutive.
+    if (matches < 1) continue;
 
     const player: LeaderboardPlayer = {
       id,
@@ -255,6 +259,8 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
       accuracy: ratio(totals.shotsHit, totals.shotsFired),
       avgKills: ratio(totals.kills, statsMatches),
       avgDeaths: ratio(totals.deaths, statsMatches),
+      avgResurrects: ratio(totals.resurrects, statsMatches),
+      avgBonus: ratio(totals.scoreboardBonus, statsMatches),
       totals,
       tier: getRankTier(elo),
     };
@@ -286,6 +292,10 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
 
       const id = rawPlayer.id.toLowerCase();
       const team = rawPlayer.team === 1 ? 1 : 0;
+      const hasStats =
+        rawPlayer.performanceUsed === true &&
+        rawPlayer.stats != null &&
+        typeof rawPlayer.stats === "object";
       matchPlayers.push({
         id,
         name: namesById.get(id) ?? "Unknown",
@@ -293,7 +303,8 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
         eloBefore: asFiniteNumber(rawPlayer.eloBefore),
         eloAfter: asFiniteNumber(rawPlayer.eloAfter),
         eloChange: asFiniteNumber(rawPlayer.eloChange),
-        stats: parseTotals(rawPlayer.stats),
+        performanceUsed: hasStats,
+        stats: hasStats ? parseTotals(rawPlayer.stats) : null,
       });
     }
 

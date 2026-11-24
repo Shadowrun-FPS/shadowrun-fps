@@ -42,7 +42,7 @@ export const RankTierMark = memo(function RankTierMark({
 
 interface PlayerIdentityProps {
   name: string;
-  tier: LeaderboardRankTier;
+  tier?: LeaderboardRankTier;
   nameClassName?: string;
   className?: string;
   markSize?: number;
@@ -57,7 +57,7 @@ export const PlayerIdentity = memo(function PlayerIdentity({
 }: PlayerIdentityProps) {
   return (
     <span className={cn("flex min-w-0 items-center gap-2", className)}>
-      <RankTierMark tier={tier} size={markSize} />
+      {tier ? <RankTierMark tier={tier} size={markSize} /> : null}
       <span className={cn("min-w-0 truncate", nameClassName)}>{name}</span>
     </span>
   );

@@ -27,3 +27,26 @@ export function formatMatchDateTime(isoTimestamp: string): string {
 
   return `${dateFormatter.format(date)}, ${time}`;
 }
+
+/**
+ * Formats a timestamp in the visitor's local timezone, e.g.
+ * "Nov 23, 2026, 7:30 PM EST". Call from the client after mount so SSR
+ * does not bake in the server's timezone.
+ */
+export function formatLocalDateTime(isoTimestamp: string): string {
+  const date = new Date(isoTimestamp);
+  const datePart = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+  const timePart = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  })
+    .format(date)
+    .replace(/[\u202f\u00a0]/g, " ");
+
+  return `${datePart}, ${timePart}`;
+}

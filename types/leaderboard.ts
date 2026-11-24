@@ -37,18 +37,24 @@ export interface LeaderboardPlayer {
   accuracy: number | null;
   avgKills: number | null;
   avgDeaths: number | null;
+  avgResurrects: number | null;
+  avgBonus: number | null;
   totals: RankedPlayerTotals;
   tier: LeaderboardRankTier;
 }
 
+export type RankedTeamId = 0 | 1;
+
 export interface LeaderboardMatchPlayer {
   id: string;
   name: string;
-  team: 0 | 1;
+  team: RankedTeamId;
   eloBefore: number;
   eloAfter: number;
   eloChange: number;
-  stats: RankedPlayerTotals;
+  /** False when the snapshot has Elo but no end-game combat card. */
+  performanceUsed: boolean;
+  stats: RankedPlayerTotals | null;
 }
 
 export interface LeaderboardMatch {
@@ -58,7 +64,7 @@ export interface LeaderboardMatch {
   mode: string;
   number: number;
   score: [number, number];
-  winningTeam: 0 | 1;
+  winningTeam: RankedTeamId;
   players: LeaderboardMatchPlayer[];
 }
 
