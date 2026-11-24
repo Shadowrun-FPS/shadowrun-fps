@@ -1,0 +1,302 @@
+"use client";
+
+import {
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { RefreshCw, Search, X } from "lucide-react";
+import { useSession } from "next-auth/react";
+
+import { LeaderboardPodium } from "@/components/leaderboard/leaderboard-podium";
+import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
+import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
+import { PlayerSheet } from "@/components/leaderboard/player-sheet";
+import { RankTierMark } from "@/components/leaderboard/rank-tier-mark";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { PaginationControls } from "@/components/ui/pagination-controls";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { formatMatchDateTime } from "@/lib/match-date";
+import {
+  DEFAULT_LEADERBOARD_FILTERS,
+  DEFAULT_LEADERBOARD_SORT,
+  RANK_TIER_LABELS,
+  RANK_TIER_ORDER,
+  filterLeaderboardPlayers,
+  getPodiumPlayers,
+  namesMatch,
+  sortLeaderboardPlayers,
+} from "@/lib/leaderboard-stats";
+import { cn } from "@/lib/utils";
+import type {
+  LeaderboardFilters,
+  LeaderboardPayload,
+  LeaderboardRankTier,
+  LeaderboardSort,
+  LeaderboardSortKey,
+} from "@/types";
+
+const PLAYERS_PER_PAGE = 25;
+
+interface LeaderboardBrowserProps {
+  data: LeaderboardPayload;
+  onRefresh: () => void;
+  isRefreshing: boolean;
+}
+
+export function LeaderboardBrowser({
+  data,
+  onRefresh,
+  isRefreshing,
+}: LeaderboardBrowserProps) {
+  const { data: session } = useSession();
+  const highlightedName = session?.user?.nickname || session?.user?.name || null;
+
+  const [filters, setFilters] = useState<LeaderboardFilters>(
+    DEFAULT_LEADERBOARD_FILTERS,
+  );
+  const deferredFilters = useDeferredValue(filters);
+  const isUpdating = deferredFilters !== filters;
+  const [sort, setSort] = useState<LeaderboardSort>(DEFAULT_LEADERBOARD_SORT);
+  const [requestedPage, setRequestedPage] = useState(1);
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const listTopRef = useRef<HTMLDivElement>(null);
+
+  const podiumPlayers = useMemo(
+    () => getPodiumPlayers(data.players),
+    [data.players],
+  );
+
+  const filteredPlayers = useMemo(
+    () =>
+      sortLeaderboardPlayers(
+        filterLeaderboardPlayers(data.players, deferredFilters),
+        sort,
+      ),
+    [data.players, deferredFilters, sort],
+  );
+
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredPlayers.length / PLAYERS_PER_PAGE),
+  );
+  const currentPage = Math.min(requestedPage, pageCount);
+  const visiblePlayers = useMemo(
+    () =>
+      filteredPlayers.slice(
+        (currentPage - 1) * PLAYERS_PER_PAGE,
+        currentPage * PLAYERS_PER_PAGE,
+      ),
+    [filteredPlayers, currentPage],
+  );
+
+  const selectedPlayer = useMemo(
+    () =>
+      data.players.find((player) => player.id === selectedPlayerId) ?? null,
+    [data.players, selectedPlayerId],
+  );
+
+  const hasActiveFilters = useMemo(
+    () =>
+      filters.query !== DEFAULT_LEADERBOARD_FILTERS.query ||
+      filters.tier !== DEFAULT_LEADERBOARD_FILTERS.tier,
+    [filters.query, filters.tier],
+  );
+
+  const handlePageChange = useCallback((nextPage: number) => {
+    setRequestedPage(nextPage);
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const updateFilter = useCallback(
+    <Key extends keyof LeaderboardFilters>(
+      key: Key,
+      value: LeaderboardFilters[Key],
+    ) => {
+      setFilters((current) => ({ ...current, [key]: value }));
+      setRequestedPage(1);
+    },
+    [],
+  );
+
+  const resetFilters = useCallback(() => {
+    setFilters(DEFAULT_LEADERBOARD_FILTERS);
+    setSort(DEFAULT_LEADERBOARD_SORT);
+    setRequestedPage(1);
+  }, []);
+
+  const handleSort = useCallback((key: LeaderboardSortKey) => {
+    setSort((current) => {
+      if (current.key === key) {
+        return {
+          key,
+          direction: current.direction === "asc" ? "desc" : "asc",
+        };
+      }
+      return {
+        key,
+        direction: key === "rank" ? "asc" : "desc",
+      };
+    });
+    setRequestedPage(1);
+  }, []);
+
+  const selectPlayer = useCallback((playerId: string) => {
+    setSelectedPlayerId(playerId);
+  }, []);
+
+  const rangedLabel =
+    filteredPlayers.length > 0
+      ? `Showing ${(currentPage - 1) * PLAYERS_PER_PAGE + 1}–${
+          (currentPage - 1) * PLAYERS_PER_PAGE + visiblePlayers.length
+        } of ${filteredPlayers.length} players`
+      : "0 players found";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          Updated {formatMatchDateTime(data.updatedAt)} · {data.players.length}{" "}
+          players
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+          className="gap-1.5"
+        >
+          <RefreshCw
+            className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+            aria-hidden="true"
+          />
+          Refresh
+        </Button>
+      </div>
+
+      <LeaderboardPodium
+        players={podiumPlayers}
+        onSelectPlayer={selectPlayer}
+        highlightedName={highlightedName}
+      />
+
+      <div className="flex gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <Input
+            id="leaderboard-search"
+            type="search"
+            aria-label="Search by player name"
+            value={filters.query}
+            onChange={(event) => updateFilter("query", event.target.value)}
+            placeholder="Search player name"
+            className="pl-9"
+            maxLength={32}
+          />
+        </div>
+        <Select
+          value={filters.tier}
+          onValueChange={(value) =>
+            updateFilter("tier", value as LeaderboardRankTier | "all")
+          }
+        >
+          <SelectTrigger
+            id="leaderboard-tier"
+            aria-label="Rank tier"
+            className="w-[9.5rem] shrink-0 sm:w-[11.5rem]"
+          >
+            <SelectValue placeholder="All tiers" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All tiers</SelectItem>
+            {RANK_TIER_ORDER.map((tier) => (
+              <SelectItem key={tier} value={tier}>
+                <span className="flex items-center gap-2">
+                  <RankTierMark tier={tier} size={20} />
+                  {RANK_TIER_LABELS[tier]}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div
+        ref={listTopRef}
+        className="flex min-h-[2.25rem] items-center justify-between gap-2 text-sm text-muted-foreground"
+      >
+        <span aria-live="polite">{rangedLabel}</span>
+        {hasActiveFilters ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={resetFilters}
+            className="gap-1"
+          >
+            <X aria-hidden="true" />
+            Clear
+          </Button>
+        ) : null}
+      </div>
+
+      {filteredPlayers.length > 0 ? (
+        <div
+          className={cn(
+            "space-y-2 transition-opacity",
+            isUpdating && "opacity-60",
+          )}
+        >
+          {visiblePlayers.map((player) => (
+            <LeaderboardRow
+              key={player.id}
+              player={player}
+              isHighlighted={namesMatch(player.name, highlightedName)}
+              onSelect={selectPlayer}
+            />
+          ))}
+          <LeaderboardTable
+            players={visiblePlayers}
+            sort={sort}
+            onSort={handleSort}
+            onSelectPlayer={selectPlayer}
+            highlightedName={highlightedName}
+          />
+        </div>
+      ) : (
+        <div className="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
+          No players match those filters.
+        </div>
+      )}
+
+      <PaginationControls
+        page={currentPage}
+        pageCount={pageCount}
+        onPageChange={handlePageChange}
+        className="pt-2"
+      />
+
+      <PlayerSheet
+        player={selectedPlayer}
+        matches={data.matches}
+        open={selectedPlayerId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlayerId(null);
+        }}
+      />
+    </div>
+  );
+}

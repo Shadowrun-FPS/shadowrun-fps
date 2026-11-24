@@ -46,6 +46,14 @@
     --team-red: 0 62% 42%;
     --team-blue: 214 70% 42%;
 
+    /* Ranked Elo tiers (emblem colors from the official ladder) */
+    --tier-obsidian: 12 42% 32%;
+    --tier-diamond: 195 68% 38%;
+    --tier-platinum: 168 42% 34%;
+    --tier-gold: 40 68% 40%;
+    --tier-silver: 220 8% 46%;
+    --tier-bronze: 28 48% 38%;
+
     --border: 220 13% 88%;
     --input: 220 13% 88%;
     --ring: 207 76% 42%;
@@ -108,6 +116,13 @@
 
     --team-red: 0 62% 48%;
     --team-blue: 214 76% 52%;
+
+    --tier-obsidian: 12 48% 58%;
+    --tier-diamond: 195 72% 62%;
+    --tier-platinum: 168 48% 58%;
+    --tier-gold: 40 72% 62%;
+    --tier-silver: 220 10% 72%;
+    --tier-bronze: 28 52% 58%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
@@ -289,6 +304,12 @@ html,
 body {
   max-width: 100%;
   overflow-x: hidden;
+}
+
+/* overflow-x: hidden on html makes it the scroll container, so Radix
+   locking body overflow still leaves a page scrollbar next to sheets. */
+html:has(body[data-scroll-locked]) {
+  overflow: hidden;
 }
 
 /* Make all boxes border-box for better sizing */

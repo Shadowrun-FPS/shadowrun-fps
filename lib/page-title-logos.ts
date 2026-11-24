@@ -38,4 +38,10 @@ export const PAGE_TITLE_LOGOS: Record<PageTitleLogoKey, PageTitleLogo> = {
     height: 215,
     alt: "Terms of Use",
   },
+  leaderboard: {
+    src: "/page_logos/leaderboard.webp",
+    width: 1400,
+    height: 223,
+    alt: "Leaderboard",
+  },
 };

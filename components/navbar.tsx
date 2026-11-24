@@ -22,6 +22,7 @@ import {
   Download,
   HelpCircle,
   Home,
+  Trophy,
 } from "lucide-react";
 
 
@@ -48,6 +49,14 @@ const DocLinks = [
     description: "Community events and announcements",
     icon: (
       <Calendar className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
+  },
+  {
+    title: "Leaderboard",
+    href: "/leaderboard",
+    description: "Live ranked Elo standings",
+    icon: (
+      <Trophy className="mr-3 h-5 w-5 shrink-0 text-foreground" />
     ),
   },
   {
@@ -117,6 +126,18 @@ export function Navbar() {
           >
             <Calendar className="mr-2 h-4 w-4 shrink-0 opacity-90" />
             Events
+          </Link>
+
+          <Link
+            href="/leaderboard"
+            className={cn(
+              desktopNavControlClass,
+              pathname === "/leaderboard" && desktopNavRouteActiveClass
+            )}
+            aria-current={pathname === "/leaderboard" ? "page" : undefined}
+          >
+            <Trophy className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Leaderboard
           </Link>
 
           <Link

@@ -26,6 +26,11 @@ const pageTitles: Record<
     description:
       "Search ranked best-of-three series and open any game to see its scoreboard.",
   },
+  "/leaderboard": {
+    title: "Leaderboard",
+    logo: "leaderboard",
+    description: "Live ranked Elo standings, records, and recent games.",
+  },
   "/troubleshoot": {
     title: "Troubleshooting",
     logo: "troubleshooting",

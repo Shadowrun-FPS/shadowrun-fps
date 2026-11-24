@@ -72,6 +72,12 @@ module.exports = {
         },
         "team-red": "hsl(var(--team-red))",
         "team-blue": "hsl(var(--team-blue))",
+        "tier-obsidian": "hsl(var(--tier-obsidian))",
+        "tier-diamond": "hsl(var(--tier-diamond))",
+        "tier-platinum": "hsl(var(--tier-platinum))",
+        "tier-gold": "hsl(var(--tier-gold))",
+        "tier-silver": "hsl(var(--tier-silver))",
+        "tier-bronze": "hsl(var(--tier-bronze))",
         discord: {
           DEFAULT: "var(--discord-brand)",
           foreground: "var(--white-500)",

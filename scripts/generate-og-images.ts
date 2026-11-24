@@ -3,6 +3,7 @@
  *
  * One shared city plate, then each page's stone wordmark and a short line.
  * Matches is generated with the set and stays unwired until that page is public.
+ * Leaderboard uses the same stone page wordmark as the in-page hero.
  *
  * Subtitles are set in Cinzel Medium (SIL OFL, see scripts/fonts/OFL.txt).
  */
@@ -32,7 +33,10 @@ const BRAND_TOP = 36;
 const STONE_WORDMARK = "public/shadowrun-wordmark-stone.png";
 
 type CardSpec = {
-  wordmark: string;
+  /** Stone wordmark artwork. Omit when `titleText` is set. */
+  wordmark?: string;
+  /** Cinzel title used when a page has no stone wordmark yet. */
+  titleText?: string;
   subtitle: string;
   markWidth: number;
   showBrand: boolean;
@@ -78,6 +82,12 @@ const CARDS: Record<OgCardKey, CardSpec> = {
   matches: {
     wordmark: "public/page_logos/matches.webp",
     subtitle: "Ranked series and scoreboards",
+    markWidth: PAGE_MARK_WIDTH,
+    showBrand: true,
+  },
+  leaderboard: {
+    wordmark: "public/page_logos/leaderboard.webp",
+    subtitle: "Live ranked Elo standings",
     markWidth: PAGE_MARK_WIDTH,
     showBrand: true,
   },
@@ -182,6 +192,17 @@ async function rasterSubtitle(text: string): Promise<RasterText> {
   return { png, width: drawn.width, height: drawn.height };
 }
 
+async function rasterTitle(text: string): Promise<RasterText> {
+  let fontSize = 72;
+  let drawn = subtitleSvg(text, fontSize);
+  while (drawn.width > 1000 && fontSize > 40) {
+    fontSize -= 2;
+    drawn = subtitleSvg(text, fontSize);
+  }
+  const png = await sharp(drawn.svg).png().toBuffer();
+  return { png, width: drawn.width, height: drawn.height };
+}
+
 async function textShadow(text: Buffer): Promise<Buffer> {
   return sharp(text).linear([0, 0, 0, 0.9], [0, 0, 0, 0]).blur(3).png().toBuffer();
 }
@@ -205,10 +226,24 @@ function centeredLeft(itemWidth: number): number {
 }
 
 async function buildCard(plate: Buffer, spec: CardSpec, key: OgCardKey): Promise<Buffer> {
-  const mark = await prepareMark(spec.wordmark, spec.markWidth);
-  const markMeta = await sharp(mark).metadata();
-  const markWidth = markMeta.width ?? spec.markWidth;
-  const markHeight = markMeta.height ?? 0;
+  let mark: Buffer;
+  let markWidth: number;
+  let markHeight: number;
+
+  if (spec.titleText) {
+    const title = await rasterTitle(spec.titleText);
+    mark = title.png;
+    markWidth = title.width;
+    markHeight = title.height;
+  } else if (spec.wordmark) {
+    mark = await prepareMark(spec.wordmark, spec.markWidth);
+    const markMeta = await sharp(mark).metadata();
+    markWidth = markMeta.width ?? spec.markWidth;
+    markHeight = markMeta.height ?? 0;
+  } else {
+    throw new Error(`${key} needs a wordmark or titleText`);
+  }
+
   const shadow = await markShadow(mark);
   const subtitle = await rasterSubtitle(spec.subtitle);
   const subtitleShade = await textShadow(subtitle.png);

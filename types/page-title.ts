@@ -1,5 +1,11 @@
 export type PageTitleLogoKey =
-  "download" | "events" | "troubleshooting" | "privacy" | "matches" | "terms";
+  | "download"
+  | "events"
+  | "troubleshooting"
+  | "privacy"
+  | "matches"
+  | "terms"
+  | "leaderboard";
 
 export interface PageTitleLogo {
   src: string;

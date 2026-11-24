@@ -15,5 +15,11 @@ declare namespace NodeJS {
     NEXT_PUBLIC_SOCIAL_INSTAGRAM?: string;
     NEXT_PUBLIC_SOCIAL_FACEBOOK?: string;
     NEXT_PUBLIC_SOCIAL_RUMBLE?: string;
+    /** Server-only ranked snapshot or REST URL. Never expose to the client. */
+    RANKED_LEADERBOARD_URL?: string;
+    /** Optional extra hosts (comma-separated) allowed for RANKED_LEADERBOARD_URL. */
+    RANKED_LEADERBOARD_HOSTS?: string;
+    /** Optional bearer token for a future read-only REST API. Server-only. */
+    RANKED_LEADERBOARD_TOKEN?: string;
   }
 }

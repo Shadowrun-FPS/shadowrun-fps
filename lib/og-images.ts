@@ -32,6 +32,10 @@ export const OG_CARDS = {
     file: "matches.jpg",
     alt: "Shadowrun FPS matches",
   },
+  leaderboard: {
+    file: "leaderboard.jpg",
+    alt: "Shadowrun FPS ranked leaderboard",
+  },
 } as const;
 
 export type OgCardKey = keyof typeof OG_CARDS;
