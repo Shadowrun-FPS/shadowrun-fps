@@ -206,6 +206,10 @@ export const PlayerSheet = memo(function PlayerSheet({
                           ),
                       )}
                     />
+                    <StatCell
+                      label="FF $"
+                      value={formatBonus(player.totals.friendlyFireTotal)}
+                    />
                   </div>
 
                   <section className="mt-5 space-y-2">
