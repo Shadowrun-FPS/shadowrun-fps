@@ -2,11 +2,11 @@
 
 import { memo } from "react";
 
+import { EloChange } from "@/components/leaderboard/elo-change";
 import { PlayerIdentity } from "@/components/leaderboard/rank-tier-mark";
 import {
   RANKED_TEAM_LABELS,
   formatBonus,
-  formatEloChange,
   formatPercent,
   getOpposingTeam,
   getPlayerTeam,
@@ -58,7 +58,6 @@ const MatchPlayerRow = memo(function MatchPlayerRow({
   standing: LeaderboardPlayer | undefined;
 }) {
   const stats = player.stats;
-  const eloLabel = formatEloChange(player.eloChange);
 
   return (
     <li
@@ -74,15 +73,7 @@ const MatchPlayerRow = memo(function MatchPlayerRow({
           markSize={20}
           nameClassName="text-sm font-medium"
         />
-        <span
-          className={cn(
-            "shrink-0 text-sm font-semibold tabular-nums",
-            player.eloChange > 0 && "text-primary",
-            player.eloChange < 0 && "text-destructive",
-          )}
-        >
-          {eloLabel}
-        </span>
+        <EloChange change={player.eloChange} className="text-sm" />
       </div>
       {stats ? (
         <p className="mt-1 text-xs tabular-nums text-muted-foreground">

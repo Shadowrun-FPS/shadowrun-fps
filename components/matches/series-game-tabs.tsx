@@ -2,22 +2,44 @@
 
 import { memo, useState } from "react";
 
+import { RANKED_TEAM_LABELS } from "@/lib/leaderboard-stats";
 import { cn } from "@/lib/utils";
-import { MATCH_TEAM_LABELS } from "@/lib/mock-matches";
-import type { MatchSeries } from "@/types";
+import type { RankedMatchSeries } from "@/types";
 
 import { Scoreboard } from "./scoreboard";
 
 interface SeriesGameTabsProps {
-  series: MatchSeries;
+  series: RankedMatchSeries;
+  initialGameId?: string | null;
+  onSelectPlayer?: (playerId: string) => void;
+  selectablePlayerIds?: ReadonlySet<string>;
 }
 
-/** Game 1 / 2 / 3 switcher for a best-of-three series. */
+/** Game switcher for a best-of-three series. A single game skips the tabs. */
 export const SeriesGameTabs = memo(function SeriesGameTabs({
   series,
+  initialGameId,
+  onSelectPlayer,
+  selectablePlayerIds,
 }: SeriesGameTabsProps) {
-  const [activeGameIndex, setActiveGameIndex] = useState(0);
+  const initialIndex = Math.max(
+    0,
+    series.games.findIndex((game) => game.id === initialGameId),
+  );
+  const [activeGameIndex, setActiveGameIndex] = useState(initialIndex);
   const activeGame = series.games[activeGameIndex] ?? series.games[0];
+
+  if (!activeGame) return null;
+
+  if (series.games.length < 2) {
+    return (
+      <Scoreboard
+        game={activeGame}
+        onSelectPlayer={onSelectPlayer}
+        selectablePlayerIds={selectablePlayerIds}
+      />
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -30,13 +52,13 @@ export const SeriesGameTabs = memo(function SeriesGameTabs({
           const isActive = gameIndex === activeGameIndex;
           return (
             <button
-              key={game.gameNumber}
+              key={game.id}
               type="button"
               role="tab"
               aria-selected={isActive}
               onClick={() => setActiveGameIndex(gameIndex)}
               className={cn(
-                "min-h-[2.5rem] flex-1 rounded-md border px-3 py-2 text-sm transition-colors sm:flex-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "min-h-[2.5rem] flex-1 rounded-md border px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex-none",
                 isActive
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-secondary/50 text-muted-foreground hover:text-foreground",
@@ -44,14 +66,18 @@ export const SeriesGameTabs = memo(function SeriesGameTabs({
             >
               Game {game.gameNumber}
               <span className="ml-2 hidden text-xs opacity-80 sm:inline">
-                {game.mapName} · {MATCH_TEAM_LABELS[game.winningTeam]}
+                {game.mapName} · {RANKED_TEAM_LABELS[game.winningTeam]}
               </span>
             </button>
           );
         })}
       </div>
-      {/* key resets scoreboard paging when switching games */}
-      <Scoreboard key={activeGame.gameNumber} game={activeGame} />
+      <Scoreboard
+        key={activeGame.id}
+        game={activeGame}
+        onSelectPlayer={onSelectPlayer}
+        selectablePlayerIds={selectablePlayerIds}
+      />
     </div>
   );
 });

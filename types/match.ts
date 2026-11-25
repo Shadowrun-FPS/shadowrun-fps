@@ -1,41 +1,62 @@
-export type MatchTeamSide = "lineage" | "rna";
+import type { RankedTeamId } from "./leaderboard";
+import type { RankedPlayerScoreboard } from "./ranked-scoreboard";
 
-export type MatchFormat = "bo3";
+/** One ranked game, alone or inside a best-of-three series. */
+export type MatchFormat = "single" | "bo3";
 
-export interface ScoreboardPlayer {
+export interface MatchScoreboardPlayer {
+  id: string;
   name: string;
-  team: MatchTeamSide;
-  bonusTotal: number;
-  kills: number;
-  deaths: number;
-  resurrects: number;
-  friendlyFireCost: number;
+  team: RankedTeamId;
+  /**
+   * Elo the player entered this match with.
+   * Rank icons use this so the scoreboard shows the tier from that game,
+   * not their current leaderboard tier.
+   */
+  elo: number | null;
+  /** Elo change from this match, rounded for display. */
+  eloChange: number | null;
+  /** False when the export has Elo but no end-game scoreboard. */
+  performanceUsed: boolean;
+  scoreboard: RankedPlayerScoreboard | null;
 }
 
-export interface MatchGame {
-  gameNumber: 1 | 2 | 3;
+export interface RankedMatchGame {
+  id: string;
+  /** 1-based index within a series. Singles are always 1. */
+  gameNumber: number;
+  /** Monotonic match number from the ranked export, when present. */
+  rankedNumber: number;
+  finishedAt: string;
   mapId: string;
   mapName: string;
-  mapImage: string;
+  mapImage: string | null;
   mode: string;
-  winningTeam: MatchTeamSide;
-  /** Rounds won by each side, e.g. 6-5. */
-  score: Record<MatchTeamSide, number>;
-  /** Match clock shown on the in-game scoreboard, e.g. "0:18". */
-  clock: string;
-  players: ScoreboardPlayer[];
+  winningTeam: RankedTeamId;
+  /** Rounds won by team 0 (RNA) and team 1 (Lineage). */
+  score: [number, number];
+  players: MatchScoreboardPlayer[];
 }
 
-export interface MatchSeries {
+/**
+ * Browse unit for /matches.
+ * The current export has no series id, so each game is a `single` series.
+ * Matches that share `seriesId` (or an explicit bo3 format) group here.
+ */
+export interface RankedMatchSeries {
   id: string;
-  playedAt: string;
   format: MatchFormat;
-  /** Display names of the two ranked teams (one per side). */
-  teamNames: Record<MatchTeamSide, string>;
-  games: MatchGame[];
-  /** Games won by each side in the series, e.g. 2-1. */
-  seriesScore: Record<MatchTeamSide, number>;
-  winner: MatchTeamSide;
+  playedAt: string;
+  games: RankedMatchGame[];
+  /** Games won by team 0 and team 1. A single is 1-0 or 0-1. */
+  seriesScore: [number, number];
+  winner: RankedTeamId | null;
+}
+
+export interface RankedMatchesPayload {
+  schema: string;
+  updatedAt: string;
+  series: RankedMatchSeries[];
 }
 
 export interface MatchFilters {
@@ -43,35 +64,23 @@ export interface MatchFilters {
   query: string;
   /** Map id or "all". */
   mapId: string;
-  /** Series winner side or "all". */
-  winner: MatchTeamSide | "all";
-  /** Inclusive ISO date (yyyy-mm-dd) or empty string. */
+  /** Series or match winner, or "all". */
+  winner: RankedTeamId | "all";
+  /** Inclusive yyyy-mm-dd in Pacific time, or empty. */
   dateFrom: string;
   dateTo: string;
-}
-
-export interface ScoreboardColumn {
-  key: keyof Pick<
-    ScoreboardPlayer,
-    "bonusTotal" | "kills" | "deaths" | "resurrects" | "friendlyFireCost"
-  >;
-  label: string;
-  /** Compact header used on narrow screens so the table fits without scrolling. */
-  shortLabel: string;
-  isCurrency?: boolean;
 }
 
 export type SortDirection = "asc" | "desc";
 
 export interface ScoreboardSort {
-  /** "player" sorts by name; otherwise a stat column key. */
-  key: "player" | ScoreboardColumn["key"];
+  /** "player" sorts by name; otherwise a scoreboard column id. */
+  key: string;
   direction: SortDirection;
 }
 
-export interface ScoreboardPage {
+export interface MatchMapOption {
   id: string;
-  title: string;
-  /** Columns for stat tables; undefined means the page is not built yet. */
-  columns?: ScoreboardColumn[];
+  name: string;
+  image: string | null;
 }

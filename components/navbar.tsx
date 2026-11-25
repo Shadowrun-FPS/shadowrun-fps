@@ -22,6 +22,7 @@ import {
   Download,
   HelpCircle,
   Home,
+  Swords,
   Trophy,
 } from "lucide-react";
 
@@ -57,6 +58,14 @@ const DocLinks = [
     description: "Live ranked Elo standings",
     icon: (
       <Trophy className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
+  },
+  {
+    title: "Matches",
+    href: "/matches",
+    description: "Ranked match scoreboards",
+    icon: (
+      <Swords className="mr-3 h-5 w-5 shrink-0 text-foreground" />
     ),
   },
   {
@@ -138,6 +147,18 @@ export function Navbar() {
           >
             <Trophy className="mr-2 h-4 w-4 shrink-0 opacity-90" />
             Leaderboard
+          </Link>
+
+          <Link
+            href="/matches"
+            className={cn(
+              desktopNavControlClass,
+              pathname === "/matches" && desktopNavRouteActiveClass
+            )}
+            aria-current={pathname === "/matches" ? "page" : undefined}
+          >
+            <Swords className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Matches
           </Link>
 
           <Link

@@ -3,6 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 
+import { EloChange } from "@/components/leaderboard/elo-change";
 import { MatchResults } from "@/components/leaderboard/match-results";
 import { PlayerIdentity } from "@/components/leaderboard/rank-tier-mark";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,6 @@ import {
   didPlayerWin,
   formatBonus,
   formatElo,
-  formatEloChange,
   formatKd,
   formatPercent,
   formatPlayerMatchScore,
@@ -37,6 +37,8 @@ interface PlayerSheetProps {
   matches: LeaderboardMatch[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Public standings rank. Hidden for players kept off the leaderboard. */
+  showRank?: boolean;
 }
 
 function StatCell({ label, value }: { label: string; value: string }) {
@@ -56,6 +58,7 @@ export const PlayerSheet = memo(function PlayerSheet({
   matches,
   open,
   onOpenChange,
+  showRank = true,
 }: PlayerSheetProps) {
   const allMatches = useMemo(
     () => (player ? getPlayerMatches(matches, player.id) : []),
@@ -150,7 +153,13 @@ export const PlayerSheet = memo(function PlayerSheet({
                       nameClassName="text-2xl font-semibold tracking-tight"
                     />
                   </SheetTitle>
-                  <SheetDescription>Rank {player.rank}</SheetDescription>
+                  {showRank ? (
+                    <SheetDescription>Rank {player.rank}</SheetDescription>
+                  ) : (
+                    <SheetDescription className="sr-only">
+                      Career stats for a player who is not on the public leaderboard.
+                    </SheetDescription>
+                  )}
                 </>
               )}
             </SheetHeader>
@@ -210,6 +219,10 @@ export const PlayerSheet = memo(function PlayerSheet({
                             player.statsMatches,
                           ),
                       )}
+                    />
+                    <StatCell
+                      label="Peak bonus $"
+                      value={formatBonus(player.peakBonus)}
                     />
                     <StatCell
                       label="Avg bonus $/round"
@@ -277,15 +290,10 @@ export const PlayerSheet = memo(function PlayerSheet({
                                           ? "L"
                                           : "—"}
                                     </span>
-                                    <span
-                                      className={cn(
-                                        "text-sm font-semibold tabular-nums",
-                                        eloChange > 0 && "text-primary",
-                                        eloChange < 0 && "text-destructive",
-                                      )}
-                                    >
-                                      {formatEloChange(eloChange)}
-                                    </span>
+                                    <EloChange
+                                      change={eloChange}
+                                      className="text-sm"
+                                    />
                                   </div>
                                   <p className="mt-1 truncate text-sm">
                                     {match.map} · {match.mode}

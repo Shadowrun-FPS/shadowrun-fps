@@ -1,5 +1,7 @@
 import type {
   LeaderboardFilters,
+  LeaderboardHighlight,
+  LeaderboardHighlightScope,
   LeaderboardMatch,
   LeaderboardMatchPlayer,
   LeaderboardPlayer,
@@ -232,14 +234,273 @@ export function sortLeaderboardPlayers(
   });
 }
 
-export function getPodiumPlayers(
+export const LEADERBOARD_SEASON_DAYS = 30;
+const MIN_GAMES_FOR_IMPROVED = 2;
+
+interface SeasonForm {
+  games: number;
+  firstElo: number;
+  peakKills: number | null;
+  peakBonus: number | null;
+}
+
+function pickHighlightPlayer(
   players: LeaderboardPlayer[],
-  limit = 3,
-): LeaderboardPlayer[] {
-  return players
-    .filter((player) => player.matches >= 1)
-    .sort((first, second) => first.rank - second.rank)
-    .slice(0, limit);
+  read: (player: LeaderboardPlayer) => number | null,
+  prefer: "max" | "min",
+): LeaderboardPlayer | null {
+  let best: LeaderboardPlayer | null = null;
+  let bestScore: number | null = null;
+
+  for (const player of players) {
+    const score = read(player);
+    if (score == null || !Number.isFinite(score)) continue;
+
+    if (
+      best == null ||
+      bestScore == null ||
+      (prefer === "max" ? score > bestScore : score < bestScore) ||
+      (score === bestScore && player.elo > best.elo)
+    ) {
+      best = player;
+      bestScore = score;
+    }
+  }
+
+  return best;
+}
+
+function pacificCalendarDay(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function pickDailyRotation<T>(items: readonly T[], dayKey: string): T {
+  let hash = 0;
+  for (let index = 0; index < dayKey.length; index += 1) {
+    hash = (hash * 31 + dayKey.charCodeAt(index)) >>> 0;
+  }
+  return items[hash % items.length] as T;
+}
+
+function recentMatches(
+  matches: LeaderboardMatch[],
+  now: Date,
+  days: number,
+): LeaderboardMatch[] {
+  const cutoff = now.getTime() - days * 24 * 60 * 60 * 1000;
+  return matches.filter((match) => {
+    const finishedAt = Date.parse(match.finishedAt);
+    return Number.isFinite(finishedAt) && finishedAt >= cutoff;
+  });
+}
+
+function seasonFormByPlayer(
+  matches: LeaderboardMatch[],
+): Map<string, SeasonForm> {
+  const form = new Map<string, SeasonForm>();
+  const ordered = [...matches].sort(
+    (first, second) =>
+      Date.parse(first.finishedAt) - Date.parse(second.finishedAt),
+  );
+
+  for (const match of ordered) {
+    for (const seat of match.players) {
+      const current = form.get(seat.id);
+      if (!current) {
+        form.set(seat.id, {
+          games: 1,
+          firstElo: seat.eloBefore,
+          peakKills: seat.stats?.kills ?? null,
+          peakBonus: seat.stats?.scoreboardBonus ?? null,
+        });
+        continue;
+      }
+
+      current.games += 1;
+      if (seat.stats) {
+        if (current.peakKills == null || seat.stats.kills > current.peakKills) {
+          current.peakKills = seat.stats.kills;
+        }
+        if (
+          current.peakBonus == null ||
+          seat.stats.scoreboardBonus > current.peakBonus
+        ) {
+          current.peakBonus = seat.stats.scoreboardBonus;
+        }
+      }
+    }
+  }
+
+  return form;
+}
+
+function getSeasonHighlights(
+  players: LeaderboardPlayer[],
+  matches: LeaderboardMatch[],
+  now: Date,
+): LeaderboardHighlight[] {
+  const windowMatches = recentMatches(matches, now, LEADERBOARD_SEASON_DAYS);
+  const form = seasonFormByPlayer(windowMatches);
+  const listed = players.filter((player) => form.has(player.id));
+  const highlights: LeaderboardHighlight[] = [];
+
+  const mostImproved = pickHighlightPlayer(
+    listed,
+    (player) => {
+      const season = form.get(player.id);
+      if (!season || season.games < MIN_GAMES_FOR_IMPROVED) return null;
+      return player.elo - season.firstElo;
+    },
+    "max",
+  );
+  if (mostImproved) {
+    const season = form.get(mostImproved.id);
+    const delta = season ? mostImproved.elo - season.firstElo : 0;
+    if (season && delta > 0) {
+      highlights.push({
+        id: "most_improved",
+        label: "Most improved",
+        value: formatEloChange(delta),
+        detail: `${formatElo(season.firstElo)} → ${formatElo(mostImproved.elo)}`,
+        player: mostImproved,
+      });
+    }
+  }
+
+  const mostGames = pickHighlightPlayer(
+    listed,
+    (player) => form.get(player.id)?.games ?? null,
+    "max",
+  );
+  if (mostGames) {
+    const games = form.get(mostGames.id)?.games ?? 0;
+    if (games > 0) {
+      highlights.push({
+        id: "most_games",
+        label: "Most games played",
+        value: `${games.toLocaleString("en-US")} ${
+          games === 1 ? "game" : "games"
+        }`,
+        player: mostGames,
+      });
+    }
+  }
+
+  const rotating: LeaderboardHighlight[] = [];
+
+  const mostKills = pickHighlightPlayer(
+    listed,
+    (player) => form.get(player.id)?.peakKills ?? null,
+    "max",
+  );
+  if (mostKills) {
+    const kills = form.get(mostKills.id)?.peakKills;
+    if (kills != null) {
+      rotating.push({
+        id: "peak_kills",
+        label: "Most kills in a game",
+        value: `${kills.toLocaleString("en-US")} kills`,
+        player: mostKills,
+      });
+    }
+  }
+
+  const mostBonus = pickHighlightPlayer(
+    listed,
+    (player) => form.get(player.id)?.peakBonus ?? null,
+    "max",
+  );
+  if (mostBonus) {
+    const bonus = form.get(mostBonus.id)?.peakBonus;
+    if (bonus != null) {
+      rotating.push({
+        id: "peak_bonus",
+        label: "Highest bonus in a game",
+        value: formatBonus(bonus),
+        player: mostBonus,
+      });
+    }
+  }
+
+  if (rotating.length === 1) {
+    highlights.push(rotating[0]);
+  } else if (rotating.length > 1) {
+    highlights.push(pickDailyRotation(rotating, pacificCalendarDay(now)));
+  }
+
+  return highlights;
+}
+
+function getCareerHighlights(
+  players: LeaderboardPlayer[],
+): LeaderboardHighlight[] {
+  const listed = players.filter((player) => player.matches >= 1);
+  const highlights: LeaderboardHighlight[] = [];
+
+  // Slot order mirrors season: [headline] [most games] [peak bonus/combat].
+  const mostKills = pickHighlightPlayer(
+    listed,
+    (player) => player.peakKills,
+    "max",
+  );
+  if (mostKills?.peakKills != null) {
+    highlights.push({
+      id: "peak_kills",
+      label: "Most kills in a game",
+      value: `${mostKills.peakKills.toLocaleString("en-US")} kills`,
+      player: mostKills,
+    });
+  }
+
+  const mostGames = pickHighlightPlayer(
+    listed,
+    (player) => player.matches,
+    "max",
+  );
+  if (mostGames != null && mostGames.matches > 0) {
+    highlights.push({
+      id: "most_games",
+      label: "Most games played",
+      value: `${mostGames.matches.toLocaleString("en-US")} ${
+        mostGames.matches === 1 ? "game" : "games"
+      }`,
+      player: mostGames,
+    });
+  }
+
+  const mostBonus = pickHighlightPlayer(
+    listed,
+    (player) => player.peakBonus,
+    "max",
+  );
+  if (mostBonus?.peakBonus != null) {
+    highlights.push({
+      id: "peak_bonus",
+      label: "Highest bonus in a game",
+      value: formatBonus(mostBonus.peakBonus),
+      player: mostBonus,
+    });
+  }
+
+  return highlights;
+}
+
+/** Highlights above the standings for season (default) or career scope. */
+export function getLeaderboardHighlights(
+  players: LeaderboardPlayer[],
+  matches: LeaderboardMatch[],
+  scope: LeaderboardHighlightScope = "season",
+  now = new Date(),
+): LeaderboardHighlight[] {
+  if (scope === "career") {
+    return getCareerHighlights(players);
+  }
+  return getSeasonHighlights(players, matches, now);
 }
 
 export function getPlayerMatches(

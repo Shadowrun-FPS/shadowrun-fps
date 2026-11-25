@@ -3,14 +3,18 @@
 import {
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { RefreshCw, SlidersHorizontal, X } from "lucide-react";
 
+import { PlayerNameSearch } from "@/components/leaderboard/player-name-search";
+import { PlayerSheet } from "@/components/leaderboard/player-sheet";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
@@ -20,39 +24,98 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { RANKED_TEAM_LABELS } from "@/lib/leaderboard-stats";
 import {
   DEFAULT_MATCH_FILTERS,
-  MATCH_MAPS,
-  MATCH_TEAM_LABELS,
-  getMatches,
-} from "@/lib/mock-matches";
-import type { MatchFilters } from "@/types";
+  filterMatchSeries,
+  seriesMatchesFocus,
+} from "@/lib/match-browse";
+import { formatMatchDateTime } from "@/lib/match-date";
+import { cn } from "@/lib/utils";
+import type {
+  LeaderboardMatch,
+  LeaderboardPlayer,
+  MatchFilters,
+  RankedMatchSeries,
+  RankedTeamId,
+} from "@/types";
 
 import { SeriesCard } from "./series-card";
 
-const SERIES_PER_PAGE = 5;
+const RESULTS_PER_PAGE = 8;
 
-/** Search, filter, and browse past ranked series (mock data for now). */
-export function MatchesBrowser() {
+interface MatchesBrowserProps {
+  seriesList: RankedMatchSeries[];
+  updatedAt: string;
+  players: LeaderboardPlayer[];
+  /** Profiles kept off the public leaderboard, available for match sheets. */
+  unlistedPlayers: LeaderboardPlayer[];
+  leaderboardMatches: LeaderboardMatch[];
+  onRefresh: () => void;
+  isRefreshing: boolean;
+}
+
+function resultNoun(seriesList: RankedMatchSeries[], count: number): string {
+  const hasSeries = seriesList.some((series) => series.format === "bo3");
+  const hasSingles = seriesList.some((series) => series.format === "single");
+  if (hasSeries && hasSingles) return count === 1 ? "result" : "results";
+  if (hasSeries) return "series";
+  return count === 1 ? "match" : "matches";
+}
+
+/** Search, filter, and open ranked matches or best-of-three series. */
+export function MatchesBrowser({
+  seriesList,
+  updatedAt,
+  players,
+  unlistedPlayers,
+  leaderboardMatches,
+  onRefresh,
+  isRefreshing,
+}: MatchesBrowserProps) {
+  const searchParams = useSearchParams();
+  const focusId = searchParams.get("match");
   const [filters, setFilters] = useState<MatchFilters>(DEFAULT_MATCH_FILTERS);
   const deferredFilters = useDeferredValue(filters);
   const isUpdating = deferredFilters !== filters;
 
-  const matches = useMemo(() => getMatches(deferredFilters), [deferredFilters]);
+  const matches = useMemo(
+    () => filterMatchSeries(seriesList, deferredFilters),
+    [deferredFilters, seriesList],
+  );
 
   const [requestedPage, setRequestedPage] = useState(1);
   const listTopRef = useRef<HTMLDivElement>(null);
-  const pageCount = Math.max(1, Math.ceil(matches.length / SERIES_PER_PAGE));
+  const pageCount = Math.max(1, Math.ceil(matches.length / RESULTS_PER_PAGE));
   const currentPage = Math.min(requestedPage, pageCount);
+
+  const mapOptions = useMemo(() => {
+    const maps = new Map<string, string>();
+    for (const series of seriesList) {
+      for (const game of series.games) maps.set(game.mapId, game.mapName);
+    }
+    return [...maps.entries()].sort((first, second) =>
+      first[1].localeCompare(second[1]),
+    );
+  }, [seriesList]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    const index = matches.findIndex((series) =>
+      seriesMatchesFocus(series, focusId),
+    );
+    if (index >= 0) {
+      setRequestedPage(Math.floor(index / RESULTS_PER_PAGE) + 1);
+    }
+  }, [focusId, matches]);
 
   const visibleMatches = useMemo(
     () =>
       matches.slice(
-        (currentPage - 1) * SERIES_PER_PAGE,
-        currentPage * SERIES_PER_PAGE,
+        (currentPage - 1) * RESULTS_PER_PAGE,
+        currentPage * RESULTS_PER_PAGE,
       ),
-    [matches, currentPage],
+    [currentPage, matches],
   );
 
   const handlePageChange = useCallback((nextPage: number) => {
@@ -67,6 +130,34 @@ export function MatchesBrowser() {
     },
     [],
   );
+
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const sheetPlayers = useMemo(
+    () => [...players, ...unlistedPlayers],
+    [players, unlistedPlayers],
+  );
+  const unlistedPlayerIds = useMemo(
+    () => new Set(unlistedPlayers.map((player) => player.id)),
+    [unlistedPlayers],
+  );
+  const playersById = useMemo(() => {
+    const byId = new Map<string, LeaderboardPlayer>();
+    for (const player of sheetPlayers) byId.set(player.id, player);
+    return byId;
+  }, [sheetPlayers]);
+  const selectablePlayerIds = useMemo(
+    () => new Set(playersById.keys()),
+    [playersById],
+  );
+  const selectPlayer = useCallback(
+    (playerId: string) => {
+      if (playersById.has(playerId)) setSelectedPlayerId(playerId);
+    },
+    [playersById],
+  );
+  const selectedPlayer = selectedPlayerId
+    ? (playersById.get(selectedPlayerId) ?? null)
+    : null;
 
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const toggleFilters = useCallback(
@@ -98,26 +189,35 @@ export function MatchesBrowser() {
     [filters],
   );
 
+  const noun = resultNoun(matches, matches.length);
+  const rangeStart =
+    matches.length === 0 ? 0 : (currentPage - 1) * RESULTS_PER_PAGE + 1;
+  const rangeEnd = (currentPage - 1) * RESULTS_PER_PAGE + visibleMatches.length;
+
   return (
     <div className="space-y-3">
       <div className="space-y-2">
         <div className="flex gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          <PlayerNameSearch
+            id="match-search"
+            value={filters.query}
+            onChange={(query) => updateFilter("query", query)}
+            players={sheetPlayers}
+            maxLength={64}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            aria-label="Refresh matches"
+            className="shrink-0 px-3"
+          >
+            <RefreshCw
+              className={cn(isRefreshing && "animate-spin")}
               aria-hidden="true"
             />
-            <Input
-              id="match-search"
-              type="search"
-              aria-label="Search by player name"
-              value={filters.query}
-              onChange={(event) => updateFilter("query", event.target.value)}
-              placeholder="Search player name"
-              className="pl-9"
-              maxLength={32}
-            />
-          </div>
+          </Button>
           <Button
             type="button"
             variant="outline"
@@ -144,10 +244,7 @@ export function MatchesBrowser() {
           )}
         >
           <div className="space-y-1">
-            <Label
-              htmlFor="match-map"
-              className="text-xs text-muted-foreground"
-            >
+            <Label htmlFor="match-map" className="text-xs text-muted-foreground">
               Map
             </Label>
             <Select
@@ -159,9 +256,9 @@ export function MatchesBrowser() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All maps</SelectItem>
-                {MATCH_MAPS.map((map) => (
-                  <SelectItem key={map.id} value={map.id}>
-                    {map.name}
+                {mapOptions.map(([mapId, mapName]) => (
+                  <SelectItem key={mapId} value={mapId}>
+                    {mapName}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -176,9 +273,12 @@ export function MatchesBrowser() {
               Winner
             </Label>
             <Select
-              value={filters.winner}
+              value={filters.winner === "all" ? "all" : String(filters.winner)}
               onValueChange={(value) =>
-                updateFilter("winner", value as MatchFilters["winner"])
+                updateFilter(
+                  "winner",
+                  value === "all" ? "all" : (Number(value) as RankedTeamId),
+                )
               }
             >
               <SelectTrigger id="match-winner">
@@ -186,28 +286,23 @@ export function MatchesBrowser() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Either team</SelectItem>
-                <SelectItem value="lineage">
-                  {MATCH_TEAM_LABELS.lineage}
-                </SelectItem>
-                <SelectItem value="rna">{MATCH_TEAM_LABELS.rna}</SelectItem>
+                <SelectItem value="1">{RANKED_TEAM_LABELS[1]}</SelectItem>
+                <SelectItem value="0">{RANKED_TEAM_LABELS[0]}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
-            <Label
-              htmlFor="match-from"
-              className="text-xs text-muted-foreground"
-            >
+            <Label htmlFor="match-from" className="text-xs text-muted-foreground">
               From
             </Label>
-            <Input
+            <DatePicker
               id="match-from"
-              type="date"
               value={filters.dateFrom}
               max={filters.dateTo || undefined}
-              onChange={(event) => updateFilter("dateFrom", event.target.value)}
-              className="min-w-0"
+              onChange={(value) => updateFilter("dateFrom", value)}
+              placeholder="Any date"
+              aria-label="From date"
             />
           </div>
 
@@ -215,13 +310,13 @@ export function MatchesBrowser() {
             <Label htmlFor="match-to" className="text-xs text-muted-foreground">
               To
             </Label>
-            <Input
+            <DatePicker
               id="match-to"
-              type="date"
               value={filters.dateTo}
               min={filters.dateFrom || undefined}
-              onChange={(event) => updateFilter("dateTo", event.target.value)}
-              className="min-w-0"
+              onChange={(value) => updateFilter("dateTo", value)}
+              placeholder="Any date"
+              aria-label="To date"
             />
           </div>
         </div>
@@ -233,10 +328,11 @@ export function MatchesBrowser() {
       >
         <span aria-live="polite">
           {matches.length > 0
-            ? `Showing ${(currentPage - 1) * SERIES_PER_PAGE + 1}-${
-                (currentPage - 1) * SERIES_PER_PAGE + visibleMatches.length
-              } of ${matches.length} series`
-            : "0 series found"}
+            ? `Showing ${rangeStart}-${rangeEnd} of ${matches.length} ${noun}`
+            : `0 ${noun} found`}
+        </span>
+        <span className="hidden text-xs sm:inline">
+          Updated {formatMatchDateTime(updatedAt)}
         </span>
         {hasActiveFilters ? (
           <Button
@@ -260,12 +356,23 @@ export function MatchesBrowser() {
           )}
         >
           {visibleMatches.map((series) => (
-            <SeriesCard key={series.id} series={series} />
+            <SeriesCard
+              key={series.id}
+              series={series}
+              defaultExpanded={seriesMatchesFocus(series, focusId)}
+              initialGameId={focusId}
+              onSelectPlayer={
+                sheetPlayers.length > 0 ? selectPlayer : undefined
+              }
+              selectablePlayerIds={selectablePlayerIds}
+            />
           ))}
         </div>
       ) : (
         <div className="rounded-xl border border-dashed border-border px-4 py-12 text-center text-sm text-muted-foreground">
-          No ranked series match those filters.
+          {hasActiveFilters
+            ? "No ranked matches match those filters."
+            : "No ranked matches yet."}
         </div>
       )}
 
@@ -274,6 +381,19 @@ export function MatchesBrowser() {
         pageCount={pageCount}
         onPageChange={handlePageChange}
         className="pt-2"
+      />
+
+      <PlayerSheet
+        player={selectedPlayer}
+        players={sheetPlayers}
+        matches={leaderboardMatches}
+        open={selectedPlayer !== null}
+        showRank={
+          selectedPlayer != null && !unlistedPlayerIds.has(selectedPlayer.id)
+        }
+        onOpenChange={(open) => {
+          if (!open) setSelectedPlayerId(null);
+        }}
       />
     </div>
   );

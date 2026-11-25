@@ -7,16 +7,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { RefreshCw, Search, X } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 import { LeaderboardPodium } from "@/components/leaderboard/leaderboard-podium";
 import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
 import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
+import { PlayerNameSearch } from "@/components/leaderboard/player-name-search";
 import { PlayerSheet } from "@/components/leaderboard/player-sheet";
 import { RankTierMark } from "@/components/leaderboard/rank-tier-mark";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import {
   Select,
@@ -32,13 +32,14 @@ import {
   RANK_TIER_LABELS,
   RANK_TIER_ORDER,
   filterLeaderboardPlayers,
-  getPodiumPlayers,
+  getLeaderboardHighlights,
   namesMatch,
   sortLeaderboardPlayers,
 } from "@/lib/leaderboard-stats";
 import { cn } from "@/lib/utils";
 import type {
   LeaderboardFilters,
+  LeaderboardHighlightScope,
   LeaderboardPayload,
   LeaderboardRankTier,
   LeaderboardSort,
@@ -69,11 +70,14 @@ export function LeaderboardBrowser({
   const [sort, setSort] = useState<LeaderboardSort>(DEFAULT_LEADERBOARD_SORT);
   const [requestedPage, setRequestedPage] = useState(1);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [highlightScope, setHighlightScope] =
+    useState<LeaderboardHighlightScope>("season");
   const listTopRef = useRef<HTMLDivElement>(null);
 
-  const podiumPlayers = useMemo(
-    () => getPodiumPlayers(data.players),
-    [data.players],
+  const highlights = useMemo(
+    () =>
+      getLeaderboardHighlights(data.players, data.matches, highlightScope),
+    [data.players, data.matches, highlightScope],
   );
 
   const filteredPlayers = useMemo(
@@ -185,28 +189,22 @@ export function LeaderboardBrowser({
       </div>
 
       <LeaderboardPodium
-        players={podiumPlayers}
+        highlights={highlights}
+        scope={highlightScope}
+        onScopeChange={setHighlightScope}
         onSelectPlayer={selectPlayer}
         highlightedName={highlightedName}
       />
 
       <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            id="leaderboard-search"
-            type="search"
-            aria-label="Search by player name"
-            value={filters.query}
-            onChange={(event) => updateFilter("query", event.target.value)}
-            placeholder="Search player name"
-            className="pl-9"
-            maxLength={32}
-          />
-        </div>
+        <PlayerNameSearch
+          id="leaderboard-search"
+          value={filters.query}
+          onChange={(query) => updateFilter("query", query)}
+          players={data.players}
+          onSelectPlayer={selectPlayer}
+          maxLength={32}
+        />
         <Select
           value={filters.tier}
           onValueChange={(value) =>
@@ -291,7 +289,7 @@ export function LeaderboardBrowser({
 
       <PlayerSheet
         player={selectedPlayer}
-        players={data.players}
+        players={[...data.players, ...(data.unlistedPlayers ?? [])]}
         matches={data.matches}
         open={selectedPlayerId !== null}
         onOpenChange={(open) => {

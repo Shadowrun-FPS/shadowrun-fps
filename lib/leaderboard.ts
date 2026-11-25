@@ -14,17 +14,26 @@ const DEFAULT_SNAPSHOT_URL =
   "https://test-downloads.shadowrunfps.com/ranked/v1/leaderboard.json";
 const DEFAULT_ALLOWED_HOSTS = ["test-downloads.shadowrunfps.com"] as const;
 const FETCH_TIMEOUT_MS = 5_000;
-const MAX_BODY_BYTES = 512 * 1024;
+/** Headroom for scoreboard fields. The slim leaderboard projection still drops them. */
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const CACHE_TTL_MS = 60_000;
-const CACHE_KEY = "leaderboard:public:v13";
+const RAW_CACHE_KEY = "ranked:snapshot:v1";
+const CACHE_KEY = "leaderboard:public:v16";
 const MAX_PLAYERS = 5_000;
 const MAX_MATCHES = 500;
 const MAX_MATCH_PLAYERS = 16;
 const MAX_NAME_LENGTH = 64;
 const PLAYER_ID_PATTERN = /^[a-f0-9]{24}$/i;
 
-/** Player ids omitted from public standings. Not exposed in the UI. */
+/**
+ * Player ids omitted from public standings.
+ * Their career profile still ships in `unlistedPlayers` for match sheets.
+ */
 const EXCLUDED_PLAYER_IDS = new Set(["dbbe8bde3b43ed17249712a3"]);
+
+export function isUnlistedLeaderboardPlayer(playerId: string): boolean {
+  return EXCLUDED_PLAYER_IDS.has(playerId.toLowerCase());
+}
 
 interface RankedSnapshotPlayer {
   elo: unknown;
@@ -233,6 +242,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
   }
 
   const players: LeaderboardPlayer[] = [];
+  const unlistedPlayers: LeaderboardPlayer[] = [];
   const namesById = new Map<string, string>();
   const bonusPerRoundAccrual = new Map<
     string,
@@ -241,6 +251,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
   const peakFriendlyFireById = new Map<string, number>();
   const peakEloById = new Map<string, number>();
   const peakKillsById = new Map<string, number>();
+  const peakBonusById = new Map<string, number>();
 
   for (const entry of snapshot.players as RankedSnapshotPlayer[]) {
     if (!entry || typeof entry !== "object") continue;
@@ -252,7 +263,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
     );
     if (!name) continue;
 
-    const matches = asNonNegativeInt(entry.matches);
+    const matchesPlayed = asNonNegativeInt(entry.matches);
     const wins = asNonNegativeInt(entry.wins);
     const losses = asNonNegativeInt(entry.losses);
     const statsMatches = asNonNegativeInt(entry.statsMatches);
@@ -262,10 +273,9 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
 
     const id = entry.id.toLowerCase();
     namesById.set(id, name);
-    if (EXCLUDED_PLAYER_IDS.has(id)) continue;
     // Snapshot ranks include 0-match ladder entries. Public standings only
     // list players who have played, then re-rank so numbers stay consecutive.
-    if (matches < 1) continue;
+    if (matchesPlayed < 1) continue;
 
     const player: LeaderboardPlayer = {
       id,
@@ -274,9 +284,9 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
       elo,
       wins,
       losses,
-      matches,
+      matches: matchesPlayed,
       statsMatches,
-      winRate: ratio(wins, matches),
+      winRate: ratio(wins, matchesPlayed),
       kd: combatKd(totals, statsMatches),
       accuracy: ratio(totals.shotsHit, totals.shotsFired),
       avgKills: ratio(totals.kills, statsMatches),
@@ -287,11 +297,16 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
       peakFriendlyFire: null,
       peakElo: elo,
       peakKills: null,
+      peakBonus: null,
       totals,
       tier: getRankTier(elo),
     };
 
     peakEloById.set(id, elo);
+    if (EXCLUDED_PLAYER_IDS.has(id)) {
+      unlistedPlayers.push(player);
+      continue;
+    }
     players.push(player);
   }
 
@@ -349,6 +364,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
           "min",
         );
         recordExtreme(peakKillsById, id, stats.kills, "max");
+        recordExtreme(peakBonusById, id, stats.scoreboardBonus, "max");
 
         if (matchRounds > 0) {
           const accrued = bonusPerRoundAccrual.get(id) ?? {
@@ -374,9 +390,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
     });
   }
 
-  players.sort((first, second) => first.rank - second.rank);
-  players.forEach((player, index) => {
-    player.rank = index + 1;
+  const applyDerivedPeaks = (player: LeaderboardPlayer) => {
     const accrued = bonusPerRoundAccrual.get(player.id);
     player.avgBonusPerRound = accrued
       ? ratio(accrued.bonus, accrued.rounds)
@@ -384,12 +398,21 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
     player.peakFriendlyFire = peakFriendlyFireById.get(player.id) ?? null;
     player.peakElo = peakEloById.get(player.id) ?? player.elo;
     player.peakKills = peakKillsById.get(player.id) ?? null;
+    player.peakBonus = peakBonusById.get(player.id) ?? null;
+  };
+
+  players.sort((first, second) => first.rank - second.rank);
+  players.forEach((player, index) => {
+    player.rank = index + 1;
+    applyDerivedPeaks(player);
   });
+  unlistedPlayers.forEach(applyDerivedPeaks);
 
   return {
     schema: RANKED_PUBLIC_SCHEMA,
     updatedAt: sanitizeString(snapshot.updatedAt, 40),
     players,
+    unlistedPlayers,
     matches,
   };
 }
@@ -445,8 +468,13 @@ async function fetchRankedSnapshot(): Promise<unknown> {
   }
 }
 
+/** One upstream download shared by the slim leaderboard and rich match projections. */
+export async function getRankedSnapshot(): Promise<unknown> {
+  return cachedQuery(RAW_CACHE_KEY, fetchRankedSnapshot, CACHE_TTL_MS);
+}
+
 async function loadLeaderboard(): Promise<LeaderboardPayload> {
-  const snapshot = await fetchRankedSnapshot();
+  const snapshot = await getRankedSnapshot();
   return normalizeLeaderboard(snapshot);
 }
 

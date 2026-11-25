@@ -57,8 +57,29 @@ export interface LeaderboardPlayer {
   peakElo: number | null;
   /** Highest single-match kill count in the snapshot (combat stats only). */
   peakKills: number | null;
+  /** Highest single-match scoreboard bonus in the snapshot (combat stats only). */
+  peakBonus: number | null;
   totals: RankedPlayerTotals;
   tier: LeaderboardRankTier;
+}
+
+export type LeaderboardHighlightScope = "season" | "career";
+
+export type LeaderboardHighlightId =
+  | "most_improved"
+  | "most_games"
+  | "peak_kills"
+  | "peak_bonus";
+
+/** Highlight card shown above the standings list. */
+export interface LeaderboardHighlight {
+  id: LeaderboardHighlightId;
+  label: string;
+  /** Primary stat shown on the right, e.g. "+662" or "26 kills". */
+  value: string;
+  /** Optional secondary line, e.g. season Elo path "1,500 → 2,162". */
+  detail?: string;
+  player: LeaderboardPlayer;
 }
 
 export type RankedTeamId = 0 | 1;
@@ -89,7 +110,13 @@ export interface LeaderboardMatch {
 export interface LeaderboardPayload {
   schema: string;
   updatedAt: string;
+  /** Public standings only. Excluded players are not listed here. */
   players: LeaderboardPlayer[];
+  /**
+   * Career profiles kept off the public leaderboard (e.g. intentional exclusions).
+   * Used for match scoreboard player sheets and in-match roster tiers.
+   */
+  unlistedPlayers: LeaderboardPlayer[];
   matches: LeaderboardMatch[];
 }
 

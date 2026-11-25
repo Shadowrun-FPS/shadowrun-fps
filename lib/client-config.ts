@@ -15,7 +15,6 @@ export const CLIENT_CONFIG = {
   FEATURES: {
     PLAYER_STATS: process.env.NEXT_PUBLIC_FEATURE_PLAYER_STATS === "true",
     MODERATION: process.env.NEXT_PUBLIC_FEATURE_MODERATION === "true",
-    MATCHES: process.env.NEXT_PUBLIC_FEATURE_MATCHES === "true",
   },
 } as const;
 

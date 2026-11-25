@@ -24,7 +24,7 @@ const pageTitles: Record<
     title: "Matches",
     logo: "matches",
     description:
-      "Search ranked best-of-three series and open any game to see its scoreboard.",
+      "Open a ranked match for its in-game scoreboard. Best-of-three series show up when games are grouped.",
   },
   "/leaderboard": {
     title: "Leaderboard",
