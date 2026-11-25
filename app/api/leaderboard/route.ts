@@ -4,6 +4,7 @@ import { withApiSecurity } from "@/lib/api-wrapper";
 import { getLeaderboardOrThrow } from "@/lib/leaderboard";
 import { safeLog } from "@/lib/security";
 
+// Force-dynamic: ranked snapshot is proxied live with a short in-memory TTL.
 export const dynamic = "force-dynamic";
 
 async function getLeaderboardHandler(_request: NextRequest) {

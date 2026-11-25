@@ -38,7 +38,25 @@ export interface LeaderboardPlayer {
   avgKills: number | null;
   avgDeaths: number | null;
   avgResurrects: number | null;
+  /** Career scoreboard bonus / stats matches (per match). */
   avgBonus: number | null;
+  /**
+   * Snapshot match bonus / rounds played with stats.
+   * Rounds come from match score totals (first to 6).
+   */
+  avgBonusPerRound: number | null;
+  /**
+   * Worst single-match friendly-fire money in the snapshot
+   * (most negative seating with combat stats).
+   */
+  peakFriendlyFire: number | null;
+  /**
+   * Highest Elo observed in the snapshot (match elo before/after),
+   * floored at current Elo.
+   */
+  peakElo: number | null;
+  /** Highest single-match kill count in the snapshot (combat stats only). */
+  peakKills: number | null;
   totals: RankedPlayerTotals;
   tier: LeaderboardRankTier;
 }

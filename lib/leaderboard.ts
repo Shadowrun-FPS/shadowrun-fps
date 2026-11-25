@@ -16,7 +16,7 @@ const DEFAULT_ALLOWED_HOSTS = ["test-downloads.shadowrunfps.com"] as const;
 const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BODY_BYTES = 512 * 1024;
 const CACHE_TTL_MS = 60_000;
-const CACHE_KEY = "leaderboard:public:v8";
+const CACHE_KEY = "leaderboard:public:v13";
 const MAX_PLAYERS = 5_000;
 const MAX_MATCHES = 500;
 const MAX_MATCH_PLAYERS = 16;
@@ -172,6 +172,21 @@ function ratio(numerator: number, denominator: number): number | null {
   return numerator / denominator;
 }
 
+function recordExtreme(
+  map: Map<string, number>,
+  id: string,
+  value: number,
+  prefer: "min" | "max",
+): void {
+  const prior = map.get(id);
+  if (
+    prior == null ||
+    (prefer === "max" ? value > prior : value < prior)
+  ) {
+    map.set(id, value);
+  }
+}
+
 function parseTotals(value: unknown): RankedPlayerTotals {
   const totals =
     value && typeof value === "object" ? (value as Record<string, unknown>) : {};
@@ -219,6 +234,13 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
 
   const players: LeaderboardPlayer[] = [];
   const namesById = new Map<string, string>();
+  const bonusPerRoundAccrual = new Map<
+    string,
+    { bonus: number; rounds: number }
+  >();
+  const peakFriendlyFireById = new Map<string, number>();
+  const peakEloById = new Map<string, number>();
+  const peakKillsById = new Map<string, number>();
 
   for (const entry of snapshot.players as RankedSnapshotPlayer[]) {
     if (!entry || typeof entry !== "object") continue;
@@ -261,10 +283,15 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
       avgDeaths: ratio(totals.deaths, statsMatches),
       avgResurrects: ratio(totals.resurrects, statsMatches),
       avgBonus: ratio(totals.scoreboardBonus, statsMatches),
+      avgBonusPerRound: null,
+      peakFriendlyFire: null,
+      peakElo: elo,
+      peakKills: null,
       totals,
       tier: getRankTier(elo),
     };
 
+    peakEloById.set(id, elo);
     players.push(player);
   }
 
@@ -282,6 +309,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
     const teamZeroScore = asNonNegativeInt(score[0]);
     const teamOneScore = asNonNegativeInt(score[1]);
     const winningTeam = entry.winningTeam === 1 ? 1 : 0;
+    const matchRounds = teamZeroScore + teamOneScore;
 
     const matchPlayers: LeaderboardMatchPlayer[] = [];
     for (const rawPlayer of entry.players as RankedSnapshotMatchPlayer[]) {
@@ -292,20 +320,46 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
 
       const id = rawPlayer.id.toLowerCase();
       const team = rawPlayer.team === 1 ? 1 : 0;
+      const eloBefore = asFiniteNumber(rawPlayer.eloBefore);
+      const eloAfter = asFiniteNumber(rawPlayer.eloAfter);
       const hasStats =
         rawPlayer.performanceUsed === true &&
         rawPlayer.stats != null &&
         typeof rawPlayer.stats === "object";
+      const stats = hasStats ? parseTotals(rawPlayer.stats) : null;
       matchPlayers.push({
         id,
         name: namesById.get(id) ?? "Unknown",
         team,
-        eloBefore: asFiniteNumber(rawPlayer.eloBefore),
-        eloAfter: asFiniteNumber(rawPlayer.eloAfter),
+        eloBefore,
+        eloAfter,
         eloChange: asFiniteNumber(rawPlayer.eloChange),
         performanceUsed: hasStats,
-        stats: hasStats ? parseTotals(rawPlayer.stats) : null,
+        stats,
       });
+
+      recordExtreme(peakEloById, id, eloBefore, "max");
+      recordExtreme(peakEloById, id, eloAfter, "max");
+
+      if (stats) {
+        recordExtreme(
+          peakFriendlyFireById,
+          id,
+          stats.friendlyFireTotal,
+          "min",
+        );
+        recordExtreme(peakKillsById, id, stats.kills, "max");
+
+        if (matchRounds > 0) {
+          const accrued = bonusPerRoundAccrual.get(id) ?? {
+            bonus: 0,
+            rounds: 0,
+          };
+          accrued.bonus += stats.scoreboardBonus;
+          accrued.rounds += matchRounds;
+          bonusPerRoundAccrual.set(id, accrued);
+        }
+      }
     }
 
     matches.push({
@@ -323,6 +377,13 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
   players.sort((first, second) => first.rank - second.rank);
   players.forEach((player, index) => {
     player.rank = index + 1;
+    const accrued = bonusPerRoundAccrual.get(player.id);
+    player.avgBonusPerRound = accrued
+      ? ratio(accrued.bonus, accrued.rounds)
+      : null;
+    player.peakFriendlyFire = peakFriendlyFireById.get(player.id) ?? null;
+    player.peakElo = peakEloById.get(player.id) ?? player.elo;
+    player.peakKills = peakKillsById.get(player.id) ?? null;
   });
 
   return {
