@@ -1,12 +1,9 @@
 import { Download } from "lucide-react";
 
-import { DownloadVersions } from "@/components/download-versions";
 import { Button } from "@/components/ui/button";
 import {
   CHANGELOG_CHANNEL_URL,
-  GAME_VERSION,
   LAUNCHER_SETUP_URL,
-  LAUNCHER_VERSION,
   PORTABLE_LAUNCHER_URL,
 } from "@/lib/download-urls";
 
@@ -53,12 +50,18 @@ export default function DownloadPage() {
         <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Installation
         </h2>
-        <DownloadVersions
-          className="mt-2"
-          changelogHref={CHANGELOG_CHANNEL_URL}
-          gameVersion={GAME_VERSION}
-          launcherVersion={LAUNCHER_VERSION}
-        />
+        <p className="mt-2 text-sm text-muted-foreground">
+          Release notes are posted in the{" "}
+          <a
+            href={CHANGELOG_CHANNEL_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            Discord changelog channel
+          </a>
+          .
+        </p>
 
         <Button
           asChild

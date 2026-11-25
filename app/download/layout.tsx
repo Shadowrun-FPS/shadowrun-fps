@@ -2,11 +2,7 @@ import type { Metadata } from "next";
 
 import { DocHero } from "@/components/doc-hero";
 import { ogImages } from "@/lib/og-images";
-import {
-  GAME_VERSION,
-  LAUNCHER_INSTALLER_SCHEMA_URL,
-  LAUNCHER_VERSION,
-} from "@/lib/download-urls";
+import { LAUNCHER_INSTALLER_SCHEMA_URL } from "@/lib/download-urls";
 
 export const metadata: Metadata = {
   title: {
@@ -52,12 +48,6 @@ export default function DownloadLayout({
             name: "Shadowrun FPS Launcher",
             applicationCategory: "GameApplication",
             operatingSystem: "Windows",
-            softwareVersion: LAUNCHER_VERSION,
-            additionalProperty: {
-              "@type": "PropertyValue",
-              name: "Game version",
-              value: GAME_VERSION,
-            },
             offers: {
               "@type": "Offer",
               price: "0",

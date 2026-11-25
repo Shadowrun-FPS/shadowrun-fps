@@ -18,10 +18,6 @@ export const PORTABLE_LAUNCHER_URL =
     ? `${DOWNLOADS_ORIGIN}/Shadowrun%20FPS%20Launcher.exe?v=${encodeURIComponent(portableLauncherCacheBust)}`
     : `${DOWNLOADS_ORIGIN}/Shadowrun%20FPS%20Launcher.exe`;
 
-/** Major.minor only; patch builds are tracked in the Discord changelog channel. */
-export const GAME_VERSION = "1.5" as const;
-export const LAUNCHER_VERSION = "1.0" as const;
-
 /** Discord text channel where release notes for every build are posted. */
 export const CHANGELOG_CHANNEL_URL =
   "https://discord.com/channels/930362820627943495/1569200453676175411" as const;
