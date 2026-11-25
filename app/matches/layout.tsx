@@ -5,7 +5,7 @@ import { ogImages } from "@/lib/og-images";
 const SITE_URL = "https://www.shadowrunfps.com";
 
 export const metadata: Metadata = {
-  title: "Past Matches",
+  title: "Match History",
   description:
     "Open a ranked Shadowrun FPS match for its in-game scoreboard. Best-of-three series show up when games are grouped.",
   alternates: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   creator: "Shadowrun FPS Community",
   publisher: "Shadowrun FPS Community",
   openGraph: {
-    title: "Shadowrun FPS Past Matches",
+    title: "Shadowrun FPS Match History",
     description:
       "Ranked match scoreboards for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter.",
     url: "https://www.shadowrunfps.com/matches",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Shadowrun FPS Past Matches",
+    title: "Shadowrun FPS Match History",
     description:
       "Ranked match scoreboards for Shadowrun FPS, the 2007 FASA Studios multiplayer shooter.",
     images: ogImages("matches"),
