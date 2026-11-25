@@ -237,11 +237,27 @@ export function sortLeaderboardPlayers(
 export const LEADERBOARD_SEASON_DAYS = 30;
 const MIN_GAMES_FOR_IMPROVED = 2;
 
+const SEASON_KD_FLOORS = [5, 3] as const;
+const SEASON_BONUS_FLOORS = [5, 3] as const;
+const SEASON_WIN_FLOORS = [8, 5] as const;
+const SEASON_RES_FLOORS = [3] as const;
+const CAREER_KD_FLOORS = [10] as const;
+const CAREER_BONUS_FLOORS = [10] as const;
+const CAREER_WIN_FLOORS = [15] as const;
+const CAREER_RES_FLOORS = [5] as const;
+const CAREER_PEAK_ELO_FLOORS = [3, 1] as const;
+
 interface SeasonForm {
   games: number;
+  wins: number;
   firstElo: number;
   peakKills: number | null;
   peakBonus: number | null;
+  statsGames: number;
+  kills: number;
+  deaths: number;
+  bonusTotal: number;
+  resurrects: number;
 }
 
 function pickHighlightPlayer(
@@ -287,6 +303,58 @@ function pickDailyRotation<T>(items: readonly T[], dayKey: string): T {
   return items[hash % items.length] as T;
 }
 
+function pickRotatingHighlight(
+  candidates: Array<LeaderboardHighlight | null>,
+  now: Date,
+): LeaderboardHighlight | null {
+  const rotating = candidates.filter(
+    (highlight): highlight is LeaderboardHighlight => highlight != null,
+  );
+  if (rotating.length === 0) return null;
+  if (rotating.length === 1) return rotating[0];
+  return pickDailyRotation(rotating, pacificCalendarDay(now));
+}
+
+function fromSeason(
+  player: LeaderboardPlayer | null,
+  form: Map<string, SeasonForm>,
+  build: (
+    player: LeaderboardPlayer,
+    season: SeasonForm,
+  ) => LeaderboardHighlight | null,
+): LeaderboardHighlight | null {
+  if (!player) return null;
+  const season = form.get(player.id);
+  if (!season) return null;
+  return build(player, season);
+}
+
+function pickWithMinSample(
+  players: LeaderboardPlayer[],
+  sample: (player: LeaderboardPlayer) => number,
+  score: (player: LeaderboardPlayer) => number | null,
+  floors: readonly number[],
+): LeaderboardPlayer | null {
+  for (const floor of floors) {
+    const pick = pickHighlightPlayer(
+      players,
+      (player) => (sample(player) >= floor ? score(player) : null),
+      "max",
+    );
+    if (pick) return pick;
+  }
+  return null;
+}
+
+function highlightGames(count: number): string {
+  return `${count.toLocaleString("en-US")} ${count === 1 ? "game" : "games"}`;
+}
+
+function combatRatio(kills: number, deaths: number): number | null {
+  if (deaths === 0) return kills > 0 ? kills : null;
+  return kills / deaths;
+}
+
 function recentMatches(
   matches: LeaderboardMatch[],
   now: Date,
@@ -314,15 +382,27 @@ function seasonFormByPlayer(
       if (!current) {
         form.set(seat.id, {
           games: 1,
+          wins: seat.team === match.winningTeam ? 1 : 0,
           firstElo: seat.eloBefore,
           peakKills: seat.stats?.kills ?? null,
           peakBonus: seat.stats?.scoreboardBonus ?? null,
+          statsGames: seat.stats ? 1 : 0,
+          kills: seat.stats?.kills ?? 0,
+          deaths: seat.stats?.deaths ?? 0,
+          bonusTotal: seat.stats?.scoreboardBonus ?? 0,
+          resurrects: seat.stats?.resurrects ?? 0,
         });
         continue;
       }
 
       current.games += 1;
+      if (seat.team === match.winningTeam) current.wins += 1;
       if (seat.stats) {
+        current.statsGames += 1;
+        current.kills += seat.stats.kills;
+        current.deaths += seat.stats.deaths;
+        current.bonusTotal += seat.stats.scoreboardBonus;
+        current.resurrects += seat.stats.resurrects;
         if (current.peakKills == null || seat.stats.kills > current.peakKills) {
           current.peakKills = seat.stats.kills;
         }
@@ -383,77 +463,138 @@ function getSeasonHighlights(
       highlights.push({
         id: "most_games",
         label: "Most games played",
-        value: `${games.toLocaleString("en-US")} ${
-          games === 1 ? "game" : "games"
-        }`,
+        value: highlightGames(games),
         player: mostGames,
       });
     }
   }
-
-  const rotating: LeaderboardHighlight[] = [];
 
   const mostKills = pickHighlightPlayer(
     listed,
     (player) => form.get(player.id)?.peakKills ?? null,
     "max",
   );
-  if (mostKills) {
-    const kills = form.get(mostKills.id)?.peakKills;
-    if (kills != null) {
-      rotating.push({
-        id: "peak_kills",
-        label: "Most kills in a game",
-        value: `${kills.toLocaleString("en-US")} kills`,
-        player: mostKills,
-      });
-    }
-  }
-
   const mostBonus = pickHighlightPlayer(
     listed,
     (player) => form.get(player.id)?.peakBonus ?? null,
     "max",
   );
-  if (mostBonus) {
-    const bonus = form.get(mostBonus.id)?.peakBonus;
-    if (bonus != null) {
-      rotating.push({
-        id: "peak_bonus",
-        label: "Highest bonus in a game",
-        value: formatBonus(bonus),
-        player: mostBonus,
-      });
-    }
-  }
+  const hottestKd = pickWithMinSample(
+    listed,
+    (player) => form.get(player.id)?.statsGames ?? 0,
+    (player) => {
+      const season = form.get(player.id);
+      return season ? combatRatio(season.kills, season.deaths) : null;
+    },
+    SEASON_KD_FLOORS,
+  );
+  const avgBonus = pickWithMinSample(
+    listed,
+    (player) => form.get(player.id)?.statsGames ?? 0,
+    (player) => {
+      const season = form.get(player.id);
+      if (!season || season.statsGames <= 0) return null;
+      return season.bonusTotal / season.statsGames;
+    },
+    SEASON_BONUS_FLOORS,
+  );
+  const mostRes = pickWithMinSample(
+    listed,
+    (player) => form.get(player.id)?.statsGames ?? 0,
+    (player) => form.get(player.id)?.resurrects ?? null,
+    SEASON_RES_FLOORS,
+  );
+  const bestWinRate = pickWithMinSample(
+    listed,
+    (player) => form.get(player.id)?.games ?? 0,
+    (player) => {
+      const season = form.get(player.id);
+      if (!season || season.games <= 0) return null;
+      return season.wins / season.games;
+    },
+    SEASON_WIN_FLOORS,
+  );
 
-  if (rotating.length === 1) {
-    highlights.push(rotating[0]);
-  } else if (rotating.length > 1) {
-    highlights.push(pickDailyRotation(rotating, pacificCalendarDay(now)));
-  }
+  const third = pickRotatingHighlight(
+    [
+      fromSeason(mostKills, form, (player, season) =>
+        season.peakKills == null
+          ? null
+          : {
+              id: "peak_kills",
+              label: "Most kills in a game",
+              value: `${season.peakKills.toLocaleString("en-US")} kills`,
+              player,
+            },
+      ),
+      fromSeason(mostBonus, form, (player, season) =>
+        season.peakBonus == null
+          ? null
+          : {
+              id: "peak_bonus",
+              label: "Highest bonus in a game",
+              value: formatBonus(season.peakBonus),
+              player,
+            },
+      ),
+      fromSeason(hottestKd, form, (player, season) => ({
+        id: "highest_kd",
+        label: "Hottest K/D",
+        value: formatKd(combatRatio(season.kills, season.deaths)),
+        detail: highlightGames(season.statsGames),
+        player,
+      })),
+      fromSeason(avgBonus, form, (player, season) => ({
+        id: "avg_bonus",
+        label: "Highest avg bonus",
+        value: formatBonus(season.bonusTotal / season.statsGames),
+        detail: highlightGames(season.statsGames),
+        player,
+      })),
+      fromSeason(mostRes, form, (player, season) =>
+        season.resurrects <= 0
+          ? null
+          : {
+              id: "most_resurrects",
+              label: "Most resurrects",
+              value: `${season.resurrects.toLocaleString("en-US")} res`,
+              player,
+            },
+      ),
+      fromSeason(bestWinRate, form, (player, season) => ({
+        id: "best_win_rate",
+        label: "Best win %",
+        value: formatPercent(season.wins / season.games),
+        detail: highlightGames(season.games),
+        player,
+      })),
+    ],
+    now,
+  );
+  if (third) highlights.push(third);
 
   return highlights;
 }
 
 function getCareerHighlights(
   players: LeaderboardPlayer[],
+  now: Date,
 ): LeaderboardHighlight[] {
   const listed = players.filter((player) => player.matches >= 1);
   const highlights: LeaderboardHighlight[] = [];
 
-  // Slot order mirrors season: [headline] [most games] [peak bonus/combat].
-  const mostKills = pickHighlightPlayer(
+  const peakElo = pickWithMinSample(
     listed,
-    (player) => player.peakKills,
-    "max",
+    (player) => player.matches,
+    (player) => player.peakElo ?? player.elo,
+    CAREER_PEAK_ELO_FLOORS,
   );
-  if (mostKills?.peakKills != null) {
+  if (peakElo) {
     highlights.push({
-      id: "peak_kills",
-      label: "Most kills in a game",
-      value: `${mostKills.peakKills.toLocaleString("en-US")} kills`,
-      player: mostKills,
+      id: "peak_elo",
+      label: "Peak Elo",
+      value: formatElo(peakElo.peakElo ?? peakElo.elo),
+      player: peakElo,
     });
   }
 
@@ -466,26 +607,103 @@ function getCareerHighlights(
     highlights.push({
       id: "most_games",
       label: "Most games played",
-      value: `${mostGames.matches.toLocaleString("en-US")} ${
-        mostGames.matches === 1 ? "game" : "games"
-      }`,
+      value: highlightGames(mostGames.matches),
       player: mostGames,
     });
   }
 
+  const mostKills = pickHighlightPlayer(
+    listed,
+    (player) => player.peakKills,
+    "max",
+  );
   const mostBonus = pickHighlightPlayer(
     listed,
     (player) => player.peakBonus,
     "max",
   );
-  if (mostBonus?.peakBonus != null) {
-    highlights.push({
-      id: "peak_bonus",
-      label: "Highest bonus in a game",
-      value: formatBonus(mostBonus.peakBonus),
-      player: mostBonus,
-    });
-  }
+  const highestKd = pickWithMinSample(
+    listed,
+    (player) => player.statsMatches,
+    (player) => player.kd,
+    CAREER_KD_FLOORS,
+  );
+  const avgBonus = pickWithMinSample(
+    listed,
+    (player) => player.statsMatches,
+    (player) => player.avgBonus,
+    CAREER_BONUS_FLOORS,
+  );
+  const mostRes = pickWithMinSample(
+    listed,
+    (player) => player.statsMatches,
+    (player) => player.totals.resurrects,
+    CAREER_RES_FLOORS,
+  );
+  const bestWinRate = pickWithMinSample(
+    listed,
+    (player) => player.matches,
+    (player) => player.winRate,
+    CAREER_WIN_FLOORS,
+  );
+
+  const third = pickRotatingHighlight(
+    [
+      mostKills?.peakKills != null
+        ? {
+            id: "peak_kills" as const,
+            label: "Most kills in a game",
+            value: `${mostKills.peakKills.toLocaleString("en-US")} kills`,
+            player: mostKills,
+          }
+        : null,
+      mostBonus?.peakBonus != null
+        ? {
+            id: "peak_bonus" as const,
+            label: "Highest bonus in a game",
+            value: formatBonus(mostBonus.peakBonus),
+            player: mostBonus,
+          }
+        : null,
+      highestKd?.kd != null
+        ? {
+            id: "highest_kd" as const,
+            label: "Highest K/D",
+            value: formatKd(highestKd.kd),
+            detail: highlightGames(highestKd.statsMatches),
+            player: highestKd,
+          }
+        : null,
+      avgBonus?.avgBonus != null
+        ? {
+            id: "avg_bonus" as const,
+            label: "Highest avg bonus",
+            value: formatBonus(avgBonus.avgBonus),
+            detail: highlightGames(avgBonus.statsMatches),
+            player: avgBonus,
+          }
+        : null,
+      mostRes && mostRes.totals.resurrects > 0
+        ? {
+            id: "most_resurrects" as const,
+            label: "Most resurrects",
+            value: `${mostRes.totals.resurrects.toLocaleString("en-US")} res`,
+            player: mostRes,
+          }
+        : null,
+      bestWinRate?.winRate != null
+        ? {
+            id: "best_win_rate" as const,
+            label: "Best win %",
+            value: formatPercent(bestWinRate.winRate),
+            detail: highlightGames(bestWinRate.matches),
+            player: bestWinRate,
+          }
+        : null,
+    ],
+    now,
+  );
+  if (third) highlights.push(third);
 
   return highlights;
 }
@@ -498,7 +716,7 @@ export function getLeaderboardHighlights(
   now = new Date(),
 ): LeaderboardHighlight[] {
   if (scope === "career") {
-    return getCareerHighlights(players);
+    return getCareerHighlights(players, now);
   }
   return getSeasonHighlights(players, matches, now);
 }

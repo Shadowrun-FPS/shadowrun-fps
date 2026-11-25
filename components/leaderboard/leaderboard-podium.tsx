@@ -12,9 +12,14 @@ import type {
 
 const HIGHLIGHT_SURFACE: Record<LeaderboardHighlight["id"], string> = {
   most_improved: "border-primary/50 bg-primary/10",
+  peak_elo: "border-primary/50 bg-primary/10",
   most_games: "border-border bg-muted/40",
   peak_kills: "border-border bg-tertiary/30",
   peak_bonus: "border-border bg-tertiary/30",
+  avg_bonus: "border-border bg-tertiary/30",
+  highest_kd: "border-border bg-tertiary/30",
+  most_resurrects: "border-border bg-muted/40",
+  best_win_rate: "border-border bg-tertiary/30",
 };
 
 const SCOPE_OPTIONS: {
@@ -111,7 +116,7 @@ export const LeaderboardPodium = memo(function LeaderboardPodium({
                   <span
                     className={cn(
                       "mt-auto flex min-h-[1.25rem] flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums",
-                      highlight.detail
+                      highlight.id === "most_improved"
                         ? "justify-center text-center"
                         : "justify-end text-right",
                     )}

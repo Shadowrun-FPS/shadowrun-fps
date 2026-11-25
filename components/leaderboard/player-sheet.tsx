@@ -176,77 +176,80 @@ export const PlayerSheet = memo(function PlayerSheet({
                 />
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <StatCell
-                      label="Current ELO"
-                      value={formatElo(player.elo)}
-                    />
-                    <StatCell
-                      label="Peak ELO"
-                      value={formatElo(player.peakElo ?? player.elo)}
-                    />
-                    <StatCell
-                      label="W/L Record"
-                      value={`${player.wins}–${player.losses}`}
-                    />
-                    <StatCell
-                      label="Career win %"
-                      value={formatPercent(player.winRate)}
-                    />
-                    <StatCell label="Career K/D" value={formatKd(player.kd)} />
-                    <StatCell
-                      label="Career accuracy"
-                      value={formatPercent(player.accuracy)}
-                    />
-                    <StatCell
-                      label="Avg kills"
-                      value={formatStatAverage(player.avgKills)}
-                    />
-                    <StatCell
-                      label="Peak kills"
-                      value={
-                        player.peakKills == null
-                          ? "—"
-                          : String(player.peakKills)
-                      }
-                    />
-                    <StatCell
-                      label="Avg bonus $/match"
-                      value={formatBonus(
-                        player.avgBonus ??
-                          perStatsMatch(
-                            player.totals.scoreboardBonus,
-                            player.statsMatches,
-                          ),
-                      )}
-                    />
-                    <StatCell
-                      label="Peak bonus $"
-                      value={formatBonus(player.peakBonus)}
-                    />
-                    <StatCell
-                      label="Avg bonus $/round"
-                      value={formatBonus(player.avgBonusPerRound)}
-                    />
-                    <StatCell
-                      label="FF $"
-                      value={formatBonus(player.totals.friendlyFireTotal)}
-                    />
-                    <StatCell
-                      label="Peak FF $"
-                      value={formatBonus(player.peakFriendlyFire)}
-                    />
-                    <StatCell
-                      label="Avg res"
-                      value={formatStatAverage(
-                        player.avgResurrects ??
-                          perStatsMatch(
-                            player.totals.resurrects,
-                            player.statsMatches,
-                          ),
-                      )}
-                    />
-                  </div>
+                  <section className="space-y-2">
+                    <h3 className="text-sm font-medium">Career</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <StatCell
+                        label="Current ELO"
+                        value={formatElo(player.elo)}
+                      />
+                      <StatCell
+                        label="Peak ELO"
+                        value={formatElo(player.peakElo ?? player.elo)}
+                      />
+                      <StatCell
+                        label="W/L Record"
+                        value={`${player.wins}–${player.losses}`}
+                      />
+                      <StatCell
+                        label="Win %"
+                        value={formatPercent(player.winRate)}
+                      />
+                      <StatCell label="K/D" value={formatKd(player.kd)} />
+                      <StatCell
+                        label="Accuracy"
+                        value={formatPercent(player.accuracy)}
+                      />
+                      <StatCell
+                        label="Avg kills"
+                        value={formatStatAverage(player.avgKills)}
+                      />
+                      <StatCell
+                        label="Peak kills"
+                        value={
+                          player.peakKills == null
+                            ? "—"
+                            : String(player.peakKills)
+                        }
+                      />
+                      <StatCell
+                        label="Avg bonus $/match"
+                        value={formatBonus(
+                          player.avgBonus ??
+                            perStatsMatch(
+                              player.totals.scoreboardBonus,
+                              player.statsMatches,
+                            ),
+                        )}
+                      />
+                      <StatCell
+                        label="Peak bonus $"
+                        value={formatBonus(player.peakBonus)}
+                      />
+                      <StatCell
+                        label="Avg bonus $/round"
+                        value={formatBonus(player.avgBonusPerRound)}
+                      />
+                      <StatCell
+                        label="FF $"
+                        value={formatBonus(player.totals.friendlyFireTotal)}
+                      />
+                      <StatCell
+                        label="Peak FF $"
+                        value={formatBonus(player.peakFriendlyFire)}
+                      />
+                      <StatCell
+                        label="Avg res"
+                        value={formatStatAverage(
+                          player.avgResurrects ??
+                            perStatsMatch(
+                              player.totals.resurrects,
+                              player.statsMatches,
+                            ),
+                        )}
+                      />
+                    </div>
+                  </section>
 
                   <section className="mt-5 space-y-2">
                     <h3 className="text-sm font-medium">Recent Games</h3>

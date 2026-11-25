@@ -69,7 +69,12 @@ export type LeaderboardHighlightId =
   | "most_improved"
   | "most_games"
   | "peak_kills"
-  | "peak_bonus";
+  | "peak_bonus"
+  | "peak_elo"
+  | "highest_kd"
+  | "avg_bonus"
+  | "most_resurrects"
+  | "best_win_rate";
 
 /** Highlight card shown above the standings list. */
 export interface LeaderboardHighlight {

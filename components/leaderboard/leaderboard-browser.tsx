@@ -169,8 +169,7 @@ export function LeaderboardBrowser({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          Updated <LocalDateTime iso={data.updatedAt} /> · {data.players.length}{" "}
-          players
+          Updated <LocalDateTime iso={data.updatedAt} />
         </p>
         <Button
           type="button"
