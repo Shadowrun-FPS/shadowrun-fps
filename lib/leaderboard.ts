@@ -18,7 +18,7 @@ const FETCH_TIMEOUT_MS = 5_000;
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const CACHE_TTL_MS = 60_000;
 const RAW_CACHE_KEY = "ranked:snapshot:v1";
-const CACHE_KEY = "leaderboard:public:v16";
+const CACHE_KEY = "leaderboard:public:v17";
 const MAX_PLAYERS = 5_000;
 const MAX_MATCHES = 500;
 const MAX_MATCH_PLAYERS = 16;
@@ -53,6 +53,7 @@ interface RankedSnapshotMatchPlayer {
   eloChange: unknown;
   id: unknown;
   performanceUsed: unknown;
+  scoreboard: unknown;
   stats: unknown;
   team: unknown;
 }
@@ -213,6 +214,14 @@ function parseTotals(value: unknown): RankedPlayerTotals {
   };
 }
 
+function readDamagePercent(scoreboard: unknown): number | null {
+  if (!scoreboard || typeof scoreboard !== "object") return null;
+  const combat = (scoreboard as { combat?: unknown }).combat;
+  if (!combat || typeof combat !== "object") return null;
+  const value = (combat as { damage_percent?: unknown }).damage_percent;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
 function combatKd(totals: RankedPlayerTotals, statsMatches: number): number | null {
   if (statsMatches <= 0) return null;
   if (totals.deaths === 0) return totals.kills > 0 ? totals.kills : null;
@@ -323,7 +332,19 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
     const score = Array.isArray(entry.score) ? entry.score : [];
     const teamZeroScore = asNonNegativeInt(score[0]);
     const teamOneScore = asNonNegativeInt(score[1]);
+    const declaredWinner =
+      entry.winningTeam === 0 || entry.winningTeam === 1
+        ? entry.winningTeam
+        : null;
+    // Standings still coerce a missing winner so existing match views keep a side.
+    // Rivals uses `decisive` and ignores that guess.
     const winningTeam = entry.winningTeam === 1 ? 1 : 0;
+    const decisive =
+      declaredWinner === 0
+        ? teamZeroScore > teamOneScore
+        : declaredWinner === 1
+          ? teamOneScore > teamZeroScore
+          : false;
     const matchRounds = teamZeroScore + teamOneScore;
 
     const matchPlayers: LeaderboardMatchPlayer[] = [];
@@ -351,6 +372,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
         eloChange: asFiniteNumber(rawPlayer.eloChange),
         performanceUsed: hasStats,
         stats,
+        damagePercent: hasStats ? readDamagePercent(rawPlayer.scoreboard) : null,
       });
 
       recordExtreme(peakEloById, id, eloBefore, "max");
@@ -386,6 +408,7 @@ export function normalizeLeaderboard(raw: unknown): LeaderboardPayload {
       number: asNonNegativeInt(entry.number),
       score: [teamZeroScore, teamOneScore],
       winningTeam,
+      decisive,
       players: matchPlayers,
     });
   }

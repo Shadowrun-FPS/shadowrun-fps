@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "tsx --test --test-force-exit lib/rivals/*.test.ts lib/compare/*.test.ts",
     "og:images": "tsx scripts/generate-og-images.ts",
     "upload:r2": "node --env-file=.env.local ./node_modules/tsx/dist/cli.mjs scripts/upload-to-r2.ts"
   },

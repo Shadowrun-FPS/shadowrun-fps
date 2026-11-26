@@ -21,12 +21,13 @@ export function PageTitle({ logo, children, className }: PageTitleProps) {
     return <h1 className={cn("shadowrun-title", className)}>{children}</h1>;
   }
 
-  const { src, width, height, alt } = PAGE_TITLE_LOGOS[logo];
+  const { src, width, height, alt, wide } = PAGE_TITLE_LOGOS[logo];
 
   return (
     <h1
       className={cn(
-        "mx-auto w-full max-w-[min(88vw,36rem)] sm:max-w-xl md:max-w-2xl",
+        "mx-auto w-full",
+        wide ? "max-w-[min(94vw,64rem)]" : "max-w-[min(88vw,36rem)] sm:max-w-xl md:max-w-2xl",
         className,
       )}
     >

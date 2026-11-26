@@ -31,6 +31,16 @@ const pageTitles: Record<
     logo: "leaderboard",
     description: "Live ranked Elo standings, records, and recent games.",
   },
+  "/leaderboard/rivals": {
+    title: "Rivals",
+    logo: "rivals",
+    description: "Opposing-team rivalries from recorded ranked matches.",
+  },
+  "/leaderboard/compare": {
+    title: "Compare Players",
+    logo: "comparePlayers",
+    description: "Side-by-side records for two to four ranked players.",
+  },
   "/troubleshoot": {
     title: "Troubleshooting",
     logo: "troubleshooting",
@@ -40,10 +50,14 @@ const pageTitles: Record<
 
 export function DocHero() {
   const pathname = usePathname();
-  const pageInfo = pageTitles[pathname || ""] || {
-    title: "Documentation",
-    description: "Guides and resources for Shadowrun FPS",
-  };
+  const pageInfo = pathname?.startsWith("/leaderboard/compare")
+    ? pageTitles["/leaderboard/compare"]
+    : pathname?.startsWith("/leaderboard/rivals")
+      ? pageTitles["/leaderboard/rivals"]
+      : pageTitles[pathname || ""] || {
+        title: "Documentation",
+        description: "Guides and resources for Shadowrun FPS",
+      };
 
   return (
     <div className="overflow-hidden relative">

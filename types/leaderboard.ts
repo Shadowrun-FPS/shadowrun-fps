@@ -99,6 +99,11 @@ export interface LeaderboardMatchPlayer {
   /** False when the snapshot has Elo but no end-game combat card. */
   performanceUsed: boolean;
   stats: RankedPlayerTotals | null;
+  /**
+   * This match's combat damage share, already in percent points.
+   * Null when the scoreboard did not record it.
+   */
+  damagePercent: number | null;
 }
 
 export interface LeaderboardMatch {
@@ -109,6 +114,12 @@ export interface LeaderboardMatch {
   number: number;
   score: [number, number];
   winningTeam: RankedTeamId;
+  /**
+   * True only when the export named team 0 or 1 and that side's score is
+   * strictly higher. Tied or undeclared results stay in history, but they
+   * are not wins or losses.
+   */
+  decisive: boolean;
   players: LeaderboardMatchPlayer[];
 }
 

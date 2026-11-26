@@ -24,6 +24,8 @@ import {
   Home,
   Swords,
   Trophy,
+  Flame,
+  GitCompare,
 } from "lucide-react";
 
 
@@ -58,6 +60,22 @@ const DocLinks = [
     description: "Live ranked Elo standings",
     icon: (
       <Trophy className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
+  },
+  {
+    title: "Rivals",
+    href: "/leaderboard/rivals",
+    description: "Opponents you keep facing",
+    icon: (
+      <Flame className="mr-3 h-5 w-5 shrink-0 text-foreground" />
+    ),
+  },
+  {
+    title: "Compare",
+    href: "/leaderboard/compare",
+    description: "Side-by-side records for two to four players",
+    icon: (
+      <GitCompare className="mr-3 h-5 w-5 shrink-0 text-foreground" />
     ),
   },
   {
@@ -150,6 +168,30 @@ export function Navbar() {
           </Link>
 
           <Link
+            href="/leaderboard/rivals"
+            className={cn(
+              desktopNavControlClass,
+              pathname.startsWith("/leaderboard/rivals") && desktopNavRouteActiveClass
+            )}
+            aria-current={pathname.startsWith("/leaderboard/rivals") ? "page" : undefined}
+          >
+            <Flame className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Rivals
+          </Link>
+
+          <Link
+            href="/leaderboard/compare"
+            className={cn(
+              desktopNavControlClass,
+              pathname.startsWith("/leaderboard/compare") && desktopNavRouteActiveClass
+            )}
+            aria-current={pathname.startsWith("/leaderboard/compare") ? "page" : undefined}
+          >
+            <GitCompare className="mr-2 h-4 w-4 shrink-0 opacity-90" />
+            Compare
+          </Link>
+
+          <Link
             href="/matches"
             className={cn(
               desktopNavControlClass,
@@ -201,7 +243,12 @@ function MobileNav({ onNavigate }: { onNavigate: () => void }) {
       </Link>
 
       {DocLinks.map((link) => {
-        const isActive = pathname === link.href;
+        const isActive =
+          link.href === "/leaderboard/rivals"
+            ? pathname.startsWith("/leaderboard/rivals")
+            : link.href === "/leaderboard/compare"
+              ? pathname.startsWith("/leaderboard/compare")
+              : pathname === link.href;
         return (
           <Link
             key={link.title}

@@ -5,7 +5,9 @@ export type PageTitleLogoKey =
   | "privacy"
   | "matches"
   | "terms"
-  | "leaderboard";
+  | "leaderboard"
+  | "rivals"
+  | "comparePlayers";
 
 export interface PageTitleLogo {
   src: string;
@@ -13,4 +15,6 @@ export interface PageTitleLogo {
   height: number;
   /** Text equivalent of the artwork; this is the heading's accessible name. */
   alt: string;
+  /** Long wordmarks need a wider hero slot so the letters stay readable. */
+  wide?: boolean;
 }

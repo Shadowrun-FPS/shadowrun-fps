@@ -3,11 +3,13 @@
 import {
   useCallback,
   useDeferredValue,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { RefreshCw, X } from "lucide-react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 
 import { LeaderboardPodium } from "@/components/leaderboard/leaderboard-podium";
@@ -37,6 +39,7 @@ import {
   sortLeaderboardPlayers,
 } from "@/lib/leaderboard-stats";
 import { cn } from "@/lib/utils";
+import { PLAYER_ID_PATTERN } from "@/lib/rivals/config";
 import type {
   LeaderboardFilters,
   LeaderboardHighlightScope,
@@ -74,6 +77,16 @@ export function LeaderboardBrowser({
     useState<LeaderboardHighlightScope>("season");
   const listTopRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("player");
+    if (!requested || !PLAYER_ID_PATTERN.test(requested)) return;
+    const playerId = requested.toLowerCase();
+    const known =
+      data.players.some((player) => player.id === playerId) ||
+      (data.unlistedPlayers ?? []).some((player) => player.id === playerId);
+    if (known) setSelectedPlayerId(playerId);
+  }, [data.players, data.unlistedPlayers]);
+
   const highlights = useMemo(
     () =>
       getLeaderboardHighlights(data.players, data.matches, highlightScope),
@@ -105,8 +118,10 @@ export function LeaderboardBrowser({
 
   const selectedPlayer = useMemo(
     () =>
-      data.players.find((player) => player.id === selectedPlayerId) ?? null,
-    [data.players, selectedPlayerId],
+      data.players.find((player) => player.id === selectedPlayerId) ??
+      data.unlistedPlayers?.find((player) => player.id === selectedPlayerId) ??
+      null,
+    [data.players, data.unlistedPlayers, selectedPlayerId],
   );
 
   const hasActiveFilters = useMemo(
@@ -171,20 +186,25 @@ export function LeaderboardBrowser({
         <p className="text-sm text-muted-foreground">
           Updated <LocalDateTime iso={data.updatedAt} />
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={isRefreshing}
-          className="gap-1.5"
-        >
-          <RefreshCw
-            className={cn("h-4 w-4", isRefreshing && "animate-spin")}
-            aria-hidden="true"
-          />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/leaderboard/rivals">Rivals</Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            className="gap-1.5"
+          >
+            <RefreshCw
+              className={cn("h-4 w-4", isRefreshing && "animate-spin")}
+              aria-hidden="true"
+            />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <LeaderboardPodium
@@ -291,8 +311,24 @@ export function LeaderboardBrowser({
         players={[...data.players, ...(data.unlistedPlayers ?? [])]}
         matches={data.matches}
         open={selectedPlayerId !== null}
+        showRank={
+          selectedPlayer
+            ? !data.unlistedPlayers?.some((player) => player.id === selectedPlayer.id)
+            : true
+        }
         onOpenChange={(open) => {
-          if (!open) setSelectedPlayerId(null);
+          if (!open) {
+            setSelectedPlayerId(null);
+            const url = new URL(window.location.href);
+            if (url.searchParams.has("player")) {
+              url.searchParams.delete("player");
+              window.history.replaceState(
+                null,
+                "",
+                `${url.pathname}${url.search}${url.hash}`,
+              );
+            }
+          }
         }}
       />
     </div>

@@ -78,6 +78,10 @@ module.exports = {
         "tier-gold": "hsl(var(--tier-gold))",
         "tier-silver": "hsl(var(--tier-silver))",
         "tier-bronze": "hsl(var(--tier-bronze))",
+        "compare-1": "hsl(var(--compare-1))",
+        "compare-2": "hsl(var(--compare-2))",
+        "compare-3": "hsl(var(--compare-3))",
+        "compare-4": "hsl(var(--compare-4))",
         discord: {
           DEFAULT: "var(--discord-brand)",
           foreground: "var(--white-500)",

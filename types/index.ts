@@ -2,6 +2,8 @@ export * from "./types";
 export * from "./faq";
 export * from "./launcher";
 export * from "./leaderboard";
+export * from "./rivals";
+export * from "./compare";
 export * from "./match";
 export * from "./ranked-scoreboard";
 export * from "./page-title";

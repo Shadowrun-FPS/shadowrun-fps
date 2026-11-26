@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import Spinner from "@/components/util/spinner";
 import { signOut, useSession } from "next-auth/react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "../ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Swords } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserPermissions, UserRoleInfo } from "@/lib/client-config";
+import { rivalsOverviewHref } from "@/lib/rivals/links";
 import { deduplicatedFetch } from "@/lib/request-deduplication";
 import { safeLog } from "@/lib/security";
 
@@ -161,6 +163,13 @@ export default function AccountDropdown() {
             </>
           )}
 
+          <DropdownMenuItem asChild className="cursor-pointer gap-3 rounded-xl py-2.5">
+            <Link href={rivalsOverviewHref()}>
+              <Swords className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
+              My Rivals
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator className="my-1 bg-border/60" />
           <DropdownMenuItem
             className="cursor-pointer gap-3 rounded-xl py-2.5 text-destructive focus:bg-destructive/10 focus:text-destructive"
             onSelect={(event) => {

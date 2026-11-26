@@ -2,6 +2,7 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
+import Link from "next/link";
 
 import { EloChange } from "@/components/leaderboard/elo-change";
 import { MatchResults } from "@/components/leaderboard/match-results";
@@ -153,13 +154,27 @@ export const PlayerSheet = memo(function PlayerSheet({
                       nameClassName="text-2xl font-semibold tracking-tight"
                     />
                   </SheetTitle>
-                  {showRank ? (
-                    <SheetDescription>Rank {player.rank}</SheetDescription>
-                  ) : (
-                    <SheetDescription className="sr-only">
-                      Career stats for a player who is not on the public leaderboard.
-                    </SheetDescription>
-                  )}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {showRank ? (
+                      <SheetDescription>Rank {player.rank}</SheetDescription>
+                    ) : (
+                      <SheetDescription className="sr-only">
+                        Career stats for a player who is not on the public leaderboard.
+                      </SheetDescription>
+                    )}
+                    <Link
+                      href={`/leaderboard/rivals?player=${player.id}`}
+                      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      Rivals
+                    </Link>
+                    <Link
+                      href={`/leaderboard/compare?players=${player.id}`}
+                      className="text-sm font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                      Compare
+                    </Link>
+                  </div>
                 </>
               )}
             </SheetHeader>

@@ -3,7 +3,7 @@ import { MetadataRoute } from "next";
 const BASE_URL = "https://www.shadowrunfps.com";
 
 /** Last content revision. A fresh `new Date()` would mark every URL as changed on each request. */
-const LAST_UPDATED = new Date("2026-11-09");
+const LAST_UPDATED = new Date("2026-11-25");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -36,6 +36,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: LAST_UPDATED,
       changeFrequency: "hourly",
       priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/leaderboard/rivals`,
+      lastModified: LAST_UPDATED,
+      changeFrequency: "hourly",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/leaderboard/compare`,
+      lastModified: LAST_UPDATED,
+      changeFrequency: "hourly",
+      priority: 0.7,
     },
     {
       url: `${BASE_URL}/matches`,

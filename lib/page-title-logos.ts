@@ -44,4 +44,17 @@ export const PAGE_TITLE_LOGOS: Record<PageTitleLogoKey, PageTitleLogo> = {
     height: 223,
     alt: "Leaderboard",
   },
+  rivals: {
+    src: "/page_logos/rivals.webp",
+    width: 2118,
+    height: 603,
+    alt: "Rivals",
+  },
+  comparePlayers: {
+    src: "/page_logos/compare-players.webp",
+    width: 2122,
+    height: 319,
+    alt: "Compare Players",
+    wide: true,
+  },
 };

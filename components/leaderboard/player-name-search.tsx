@@ -53,6 +53,7 @@ interface PlayerNameSearchProps {
   placeholder?: string;
   maxLength?: number;
   className?: string;
+  disabled?: boolean;
   "aria-label"?: string;
 }
 
@@ -66,6 +67,7 @@ export function PlayerNameSearch({
   placeholder = "Search player name",
   maxLength = 64,
   className,
+  disabled = false,
   "aria-label": ariaLabel = "Search by player name",
 }: PlayerNameSearchProps) {
   const listboxId = useId();
@@ -78,7 +80,7 @@ export function PlayerNameSearch({
     [players, value],
   );
 
-  const showList = isOpen && suggestions.length > 0;
+  const showList = !disabled && isOpen && suggestions.length > 0;
 
   useEffect(() => {
     setActiveIndex(0);
@@ -165,6 +167,7 @@ export function PlayerNameSearch({
           showList ? `${listboxId}-option-${activeIndex}` : undefined
         }
         value={value}
+        disabled={disabled}
         onChange={(event) => {
           onChange(event.target.value);
           setIsOpen(true);
@@ -172,7 +175,7 @@ export function PlayerNameSearch({
         onFocus={() => setIsOpen(true)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="pl-9"
+        className="pl-9 disabled:cursor-not-allowed"
         maxLength={maxLength}
         autoComplete="off"
         spellCheck={false}

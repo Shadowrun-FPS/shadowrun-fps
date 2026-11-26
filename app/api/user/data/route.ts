@@ -11,6 +11,7 @@ import { withErrorHandling } from "@/lib/error-handling";
 import { safeLog, sanitizeString } from "@/lib/security";
 import { withApiSecurity } from "@/lib/api-wrapper";
 import clientPromise from "@/lib/mongodb";
+import { sanitizeRivalsPreference } from "@/lib/rivals/preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ interface UserData {
     discordNickname?: string;
     discordProfilePicture?: string;
   } | null;
+  rivalsPreference: ReturnType<typeof sanitizeRivalsPreference>;
 }
 
 async function getUserDataHandler(req: NextRequest) {
@@ -119,6 +121,7 @@ async function getUserDataHandler(req: NextRequest) {
           discordUsername: player.discordUsername || null,
           discordNickname: player.discordNickname || null,
           discordProfilePicture: player.discordProfilePicture || null,
+          rivalsPreference: player.rivalsPreference ?? null,
         };
       } catch (error) {
         safeLog.error("Error fetching player:", error);
@@ -132,8 +135,17 @@ async function getUserDataHandler(req: NextRequest) {
     discordRolesResult.status === "fulfilled"
       ? discordRolesResult.value
       : { roles: [], guildNickname: null };
-  const player =
+  const playerRecord =
     playerResult.status === "fulfilled" ? playerResult.value : null;
+  const rivalsPreference = sanitizeRivalsPreference(playerRecord?.rivalsPreference);
+  const player = playerRecord
+    ? {
+        discordId: playerRecord.discordId,
+        discordUsername: playerRecord.discordUsername,
+        discordNickname: playerRecord.discordNickname,
+        discordProfilePicture: playerRecord.discordProfilePicture,
+      }
+    : null;
 
   // Calculate permissions
   const userRoles = discordData.roles || [];
@@ -162,20 +174,16 @@ async function getUserDataHandler(req: NextRequest) {
     guildNickname: discordData.guildNickname,
     roleDisplay,
     player,
+    rivalsPreference,
   };
 
   const response = NextResponse.json(userData);
-  response.headers.set(
-    "Cache-Control",
-    "private, s-maxage=60, stale-while-revalidate=120"
-  );
+  response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
 
 export const GET = withApiSecurity(getUserDataHandler, {
   rateLimiter: "api",
   requireAuth: true,
-  cacheable: true,
-  cacheMaxAge: 60,
 });
 
