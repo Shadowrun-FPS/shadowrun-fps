@@ -590,10 +590,12 @@ function getCareerHighlights(
     CAREER_PEAK_ELO_FLOORS,
   );
   if (peakElo) {
+    const peak = peakElo.peakElo ?? peakElo.elo;
     highlights.push({
       id: "peak_elo",
       label: "Peak Elo",
-      value: formatElo(peakElo.peakElo ?? peakElo.elo),
+      value: formatElo(peak),
+      detail: peak > peakElo.elo ? `Current ${formatElo(peakElo.elo)}` : undefined,
       player: peakElo,
     });
   }

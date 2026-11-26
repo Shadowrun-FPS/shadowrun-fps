@@ -115,16 +115,34 @@ export const LeaderboardPodium = memo(function LeaderboardPodium({
                   />
                   <span
                     className={cn(
-                      "mt-auto flex min-h-[1.25rem] flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums",
-                      highlight.id === "most_improved"
-                        ? "justify-center text-center"
+                      "mt-auto flex min-h-[1.25rem] items-baseline gap-x-2 tabular-nums",
+                      highlight.id === "most_improved" ||
+                        highlight.id === "peak_elo"
+                        ? "justify-between"
                         : "justify-end text-right",
                     )}
                   >
-                    <span className="text-sm font-semibold text-foreground md:text-base">
+                    {(highlight.id === "most_improved" ||
+                      highlight.id === "peak_elo") &&
+                    highlight.detail ? (
+                      <span className="text-xs text-muted-foreground">
+                        {highlight.detail}
+                      </span>
+                    ) : null}
+                    <span
+                      className={cn(
+                        "text-sm font-semibold text-foreground md:text-base",
+                        (highlight.id === "most_improved" ||
+                          highlight.id === "peak_elo") &&
+                          !highlight.detail &&
+                          "ml-auto",
+                      )}
+                    >
                       {highlight.value}
                     </span>
-                    {highlight.detail ? (
+                    {highlight.id !== "most_improved" &&
+                    highlight.id !== "peak_elo" &&
+                    highlight.detail ? (
                       <span className="text-xs text-muted-foreground">
                         {highlight.detail}
                       </span>
